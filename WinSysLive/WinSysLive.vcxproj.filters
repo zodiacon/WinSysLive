@@ -222,5 +222,89 @@
     <Image Include="res\Refresh.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\chart.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\color_wheel.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\cpu.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\desktop.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\device.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\directx.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\DLL.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\EnvironmentVariables.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\etw.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\event.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\file.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\folder.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\handle.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\key.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\lower-pane.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Memory.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\message.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\mutex.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Object.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\port.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\windowstation.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\section.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\semaphore.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\session.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\thread.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\timer.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\token.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Users.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
   </ItemGroup>
 </Project>

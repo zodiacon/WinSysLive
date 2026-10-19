@@ -70,6 +70,9 @@ LRESULT CProcGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 
 	// no gripper (the sheet has one), no minimum (the sheet keeps its own)
 	InitDynamicLayout(false, false);
+	// painted off screen, bottom to top: resizing moves most controls, which otherwise flicker as each erases and
+	// repaints in turn (not for a page with a list view, which composited painting slows down)
+	ModifyStyleEx(0, WS_EX_COMPOSITED);
 	ApplyTheme(m_hWnd);
 	return TRUE;
 }
