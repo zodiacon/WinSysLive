@@ -130,6 +130,12 @@ namespace ColumnLayout {
 		return cm->GetColumnTag<int>((int)hdi.lParam);
 	}
 
+	bool IsLeftmostColumn(CListViewCtrl list, int column) {
+		auto header = list.GetHeader();
+		HDITEM hdi{ HDI_LPARAM };
+		return header.GetItem(header.OrderToIndex(0), &hdi) && (int)hdi.lParam == column;
+	}
+
 	CMenuHandle PrepareHeaderMenu(CMenu& menu, int column, std::span<ColumnDef const> defs) {
 		menu.LoadMenu(IDR_CONTEXT);
 		CMenuHandle popup = menu.GetSubMenu(2);

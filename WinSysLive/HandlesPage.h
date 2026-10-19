@@ -32,6 +32,7 @@ public:
 	CString GetColumnText(HWND, int row, int col) const;
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
+	int GetRowImage(HWND, int row, int col) const;
 
 	BEGIN_MSG_MAP(CHandlesPage)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -83,6 +84,8 @@ private:
 	// queries the name the first time (a closed handle can't be queried anymore)
 	std::wstring const& GetName(HandleData& data, bool closed) const;
 	std::wstring QueryName(WinSys::HandleEntry const& entry) const;
+	// the icon for an object type (files depend on the name)
+	static UINT GetTypeIcon(std::wstring const& type);
 	void SelectHandle(uint64_t value);
 	bool ShowsAddresses() const;
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;

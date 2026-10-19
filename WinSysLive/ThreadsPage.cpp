@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ProcessInfoEx.h"
 #include "ThreadsPage.h"
+#include "Interfaces.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
 #include "AppSettings.h"
@@ -66,12 +67,19 @@ namespace {
 	}
 }
 
+void CThreadsPage::SetFrame(IMainFrame* frame) {
+	m_Frame = frame;
+}
+
 LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
 	m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | LVS_REPORT | LVS_OWNERDATA |
-		LVS_SINGLESEL | LVS_SHOWSELALWAYS);
-	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
+		LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
+	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP | LVS_EX_SUBITEMIMAGES);
+	// the state icons, in the leftmost column
+	if (m_Frame)
+		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().ThreadColumns(), s_Columns));
@@ -307,6 +315,24 @@ std::wstring CThreadsPage::GetText(ThreadRow const& row, Column column) const {
 		case Column::Created: return FormatHelper::FormatDateTime(row.Key.Created);
 	}
 	return L"";
+}
+
+int CThreadsPage::GetRowImage(HWND, int row, int col) const {
+	if (row >= (int)m_Rows.size() || !m_Frame || !ColumnLayout::IsLeftmostColumn(m_List, col))
+		return -1;
+	auto& r = m_Rows[row];
+	if (r.Exited)
+		return m_Frame->GetIconIndex(IDI_KILL);
+	UINT icon;
+	switch (r.State) {
+		case 1: case 3: case 7: icon = IDI_CONTINUE; break;	// Ready, Standby, Deferred Ready
+		case 2: icon = IDI_RUN; break;	// Running
+		case 4: icon = IDI_KILL; break;	// Terminated
+		case 5: case 8: icon = IDI_PAUSE; break;	// Waiting, Gate Wait
+		case 6: case 9: icon = IDI_MEMORY; break;	// Transition, Waiting for Swap: the kernel stack isn't resident
+		default: icon = IDI_THREADS; break;	// Initialized
+	}
+	return m_Frame->GetIconIndex(icon);
 }
 
 int CThreadsPage::GetSaveColumnRange(HWND, int&) const {

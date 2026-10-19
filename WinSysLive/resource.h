@@ -25,6 +25,26 @@
 #define IDI_MODULES                 218
 #define IDI_THREADS                 219
 #define IDI_LOWERPANE               220
+#define IDI_OBJECT                  221
+#define IDI_GRAPHICS                222
+#define IDI_FILE                    223
+#define IDI_DESKTOP                 224
+#define IDI_DEVICE                  225
+#define IDI_EVENT                   226
+#define IDI_KEY                     227
+#define IDI_ALPC                    228
+#define IDI_MUTEX                   229
+#define IDI_SEMAPHORE               230
+#define IDI_TIMER                   231
+#define IDI_DIRECTX                 232
+#define IDI_ETW                     233
+#define IDI_DIRECTORY               234
+#define IDI_PORT                    235
+#define IDI_SECTION                 236
+#define IDI_SESSION                 237
+#define IDI_TOKEN                   238
+#define IDI_WINSTA                  239
+#define IDI_MEMORY                  240
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
 #define IDC_MOVEUP                  1001
@@ -75,7 +95,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	221
+#define _APS_NEXT_RESOURCE_VALUE	241
 #define _APS_NEXT_CONTROL_VALUE		1005
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32813

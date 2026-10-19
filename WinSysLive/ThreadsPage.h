@@ -6,6 +6,8 @@
 #include "ColumnLayout.h"
 #include "resource.h"
 
+struct IMainFrame;
+
 //
 // The Threads tab of the Processes view's lower pane: the threads of the selected process, read from the
 // frame's snapshot (which has every process's threads after its entry) on every refresh. CPU, cycles and the
@@ -21,6 +23,8 @@ class CThreadsPage :
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLive_ThreadsPage", 0, COLOR_WINDOW)
 
+	// for the state icons
+	void SetFrame(IMainFrame* frame);
 	// nullptr: no process
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
 	// takes the threads from the current snapshot
@@ -30,6 +34,7 @@ public:
 	CString GetColumnText(HWND, int row, int col) const;
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
+	int GetRowImage(HWND, int row, int col) const;
 
 	BEGIN_MSG_MAP(CThreadsPage)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -108,6 +113,7 @@ private:
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
 	void SaveColumns() const;
 
+	IMainFrame* m_Frame{ nullptr };
 	CListViewCtrl m_List;
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::vector<ThreadRow> m_Rows;	// in display order

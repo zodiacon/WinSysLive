@@ -66,8 +66,11 @@ LRESULT CHandlesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
 	m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | LVS_REPORT | LVS_OWNERDATA |
-		LVS_SINGLESEL | LVS_SHOWSELALWAYS);
-	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
+		LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
+	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP | LVS_EX_SUBITEMIMAGES);
+	// the type icons, in the leftmost column
+	if (m_Frame)
+		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().HandleColumns(), s_Columns));
 	return 0;
@@ -272,6 +275,34 @@ std::wstring CHandlesPage::GetText(HandleRow const& row, Column column) const {
 		}
 	}
 	return L"";
+}
+
+int CHandlesPage::GetRowImage(HWND, int row, int col) const {
+	if (row >= (int)m_Rows.size() || !m_Frame || !ColumnLayout::IsLeftmostColumn(m_List, col))
+		return -1;
+	auto& r = m_Rows[row];
+	auto& type = ObjectTypes::GetName(r.Data->Entry.TypeIndex);
+	if (type == L"File") {
+		// devices and pipes keep their NT names; files on drives get DOS paths
+		auto& name = GetName(*r.Data, r.Closed);
+		return m_Frame->GetIconIndex(name.starts_with(L"\\") ? IDI_DEVICE : IDI_FILE);
+	}
+	return m_Frame->GetIconIndex(GetTypeIcon(type));
+}
+
+UINT CHandlesPage::GetTypeIcon(std::wstring const& type) {
+	static const std::unordered_map<std::wstring, UINT> icons{
+		{ L"Event", IDI_EVENT }, { L"Mutant", IDI_MUTEX }, { L"Semaphore", IDI_SEMAPHORE },
+		{ L"Timer", IDI_TIMER }, { L"IRTimer", IDI_TIMER }, { L"Key", IDI_KEY }, { L"ALPC Port", IDI_ALPC },
+		{ L"Desktop", IDI_DESKTOP }, { L"WindowStation", IDI_WINSTA }, { L"Composition", IDI_GRAPHICS },
+		{ L"Directory", IDI_DIRECTORY }, { L"Section", IDI_SECTION }, { L"Session", IDI_SESSION }, { L"Token", IDI_TOKEN }, { L"Thread", IDI_THREADS },
+		{ L"EtwRegistration", IDI_ETW }, { L"EtwConsumer", IDI_ETW }, { L"EtwSessionDemuxEntry", IDI_ETW },
+		{ L"FilterConnectionPort", IDI_PORT }, { L"FilterCommunicationPort", IDI_PORT },
+	};
+	if (auto it = icons.find(type); it != icons.end())
+		return it->second;
+	// DxgkSharedResource, DxgkCompositionObject...
+	return type.starts_with(L"Dxgk") ? IDI_DIRECTX : IDI_OBJECT;
 }
 
 int CHandlesPage::GetSaveColumnRange(HWND, int&) const {

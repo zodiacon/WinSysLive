@@ -14,6 +14,7 @@ void CProcessDetails::Init(IMainFrame* frame) {
 	SetImageList(frame->GetImageList());
 
 	m_Handles.SetFrame(frame);
+	m_Threads.SetFrame(frame);
 	m_Handles.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Modules.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);

@@ -44,5 +44,8 @@ namespace ColumnLayout {
 	std::optional<int> HeaderColumnAt(CListViewCtrl list, ColumnManager const* cm, POINT pt);
 	// The header's context menu (IDR_CONTEXT's Column popup) for a column: Hide (disabled for -1 or a mandatory
 	// column) and Select Columns
+	// Whether a column (an index into the column manager, as CVirtualListView passes it) is the leftmost one shown,
+	// which the user can change by dragging: row icons go there (with LVS_EX_SUBITEMIMAGES)
+	bool IsLeftmostColumn(CListViewCtrl list, int column);
 	CMenuHandle PrepareHeaderMenu(CMenu& menu, int column, std::span<ColumnDef const> defs);
 }
