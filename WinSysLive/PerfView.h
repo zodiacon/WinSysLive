@@ -5,7 +5,7 @@
 #include "PerfNav.h"
 
 //
-// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network) and the selected page on the right.
+// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, a page per drive) and the selected page on the right.
 // Samples are taken on every refresh tick and handed to every page, also while the tab or the page is hidden,
 // so the history is there when it's shown.
 //
@@ -43,12 +43,16 @@ private:
 	void SampleCpu(PerfSample& sample);
 	void SampleMemory(PerfSample& sample);
 	void SampleNetwork(PerfSample& sample);
+	void SampleDisks(PerfSample& sample);
+	// adds and removes drive pages to match the drives that exist
+	void SyncDiskPages();
 	void UpdateNav(PerfSample const& sample);
 	void UpdateTimeSpan();
 	void ShowPage(int index);
 	void Layout();
 
-	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem };
+	// the drive pages follow, from FirstDiskItem, in drive letter order (m_DiskLetters)
+	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem, FirstDiskItem };
 
 	CPerfNav m_Nav;
 	std::vector<std::unique_ptr<IPerfPage>> m_Pages;	// in NavItem order
@@ -59,5 +63,9 @@ private:
 	// the memory lists (modified, standby, free) may need elevation; without them, the composition is in use/available
 	bool m_HasMemoryLists{ false };
 	int m_Interval{ 0 };	// the update interval the time span text was built for
+	std::wstring m_TimeSpanText;
+	GraphCtrl::GraphTheme m_Theme;	// for pages created later
 	WinSys::NetworkTracker m_Network;
+	WinSys::DiskTracker m_Disks;
+	std::vector<wchar_t> m_DiskLetters;
 };

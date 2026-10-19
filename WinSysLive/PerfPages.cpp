@@ -375,3 +375,83 @@ void CPerfNetworkPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 		a.Graph->SetExpectedInterval(interval);
 	}
 }
+//
+// Disk
+//
+
+void CPerfDiskPage::CreateGraphs() {
+	auto title = std::format(L"Disk {}:", m_Letter);
+	m_Active.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE,
+		GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_TOOLTIP | GCS_VALUEOVERLAY);
+	m_ActiveSeries = m_Active.AddSeries(L"Active", SeriesStyle{ PerfColors::DiskActive, PerfColors::DiskActive });
+	m_Active.SetTitle(title + L" Active Time");
+	m_Active.SetRange(0, 100);
+	m_Active.SetValueFormatter(Format::Percent);
+	m_Active.SetHistoryLength(PerfHistoryLength);
+
+	m_Transfer.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE,
+		GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
+	m_Transfer.AddSeries(L"Read", SeriesStyle{ PerfColors::DiskRead, PerfColors::DiskRead });
+	m_Transfer.AddSeries(L"Write", SeriesStyle{ PerfColors::DiskWrite, PerfColors::DiskWrite });
+	m_Transfer.SetTitle(title + L" Transfer Rate");
+	m_Transfer.SetRange(0, 1024 * 1024);
+	m_Transfer.SetAutoScale(true);
+	m_Transfer.SetValueFormatter(Format::BytesPerSec);
+	m_Transfer.SetHistoryLength(PerfHistoryLength);
+
+	m_Space.Create(m_hWnd, 0, 0, 0, 0);
+	m_Space.AddSegment(L"Used", PerfColors::DiskActive);
+	m_Space.AddSegment(L"Free", RGB(90, 90, 100));
+	m_Space.SetTitle(L"Space");
+	m_Space.SetValueFormatter(Format::Bytes);
+	m_Lines.resize(2);
+}
+
+void CPerfDiskPage::LayoutGraphs(CRect const& rc, int gap) {
+	int spaceHeight = std::min(Scale(64), rc.Height());
+	int height = std::max(0, rc.Height() - spaceHeight - 2 * gap);
+	int activeHeight = height / 2;
+	m_Active.MoveWindow(rc.left, rc.top, rc.Width(), activeHeight);
+	m_Transfer.MoveWindow(rc.left, rc.top + activeHeight + gap, rc.Width(), height - activeHeight);
+	m_Space.MoveWindow(rc.left, rc.bottom - spaceHeight, rc.Width(), spaceHeight);
+}
+
+void CPerfDiskPage::Sample(PerfSample const& sample) {
+	auto it = std::ranges::find_if(*sample.Disks, [&](auto& v) { return v.Letter == m_Letter; });
+	if (it == sample.Disks->end() || !it->HasPerformance) {
+		m_Active.PushSample(m_ActiveSeries, MissingSample);
+		float missing[] = { MissingSample, MissingSample };
+		m_Transfer.PushSamples(missing, _countof(missing));
+		return;
+	}
+
+	auto& v = *it;
+	m_Active.PushSample(m_ActiveSeries, (float)v.ActivePercent);
+	float transfer[] = { (float)v.ReadRate, (float)v.WriteRate };
+	m_Transfer.PushSamples(transfer, _countof(transfer));
+	m_Space.SetTotal((float)v.TotalBytes);
+	float space[] = { (float)(v.TotalBytes - v.FreeBytes), (float)v.FreeBytes };
+	m_Space.SetValues(space, _countof(space));
+
+	wchar_t read[32], write[32];
+	Format::BytesPerSec((float)v.ReadRate, read, _countof(read));
+	Format::BytesPerSec((float)v.WriteRate, write, _countof(write));
+	m_Lines[0] = std::format(L"Active: {:.0f}%    Read: {} ({:.0f}/s)    Write: {} ({:.0f}/s)    Response time: {:.2f} ms    Queue: {}",
+		v.ActivePercent, read, v.ReadsPerSecond, write, v.WritesPerSecond, v.ResponseTime, v.QueueDepth);
+	m_Lines[1] = std::format(L"Label: {}    File system: {}    Type: {}    Capacity: {}    Used: {}    Free: {}",
+		v.Label.empty() ? L"(none)" : v.Label, v.FileSystem, v.DriveType == DRIVE_REMOVABLE ? L"Removable" : L"Fixed",
+		FormatBytes((int64_t)v.TotalBytes), FormatBytes((int64_t)(v.TotalBytes - v.FreeBytes)), FormatBytes((int64_t)v.FreeBytes));
+}
+
+void CPerfDiskPage::ApplyTheme() {
+	m_Active.SetTheme(m_Theme);
+	m_Transfer.SetTheme(m_Theme);
+	m_Space.SetTheme(m_Theme);
+}
+
+void CPerfDiskPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
+	for (auto graph : { &m_Active, &m_Transfer }) {
+		graph->SetTimeSpanText(text);
+		graph->SetExpectedInterval(interval);
+	}
+}

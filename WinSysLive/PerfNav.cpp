@@ -19,6 +19,24 @@ int CPerfNav::AddItem(std::wstring title, COLORREF color, GraphType graph) {
 	return (int)m_Items.size() - 1;
 }
 
+void CPerfNav::InsertItem(int index, std::wstring title, COLORREF color, GraphType graph) {
+	m_Items.insert(m_Items.begin() + index, { std::move(title), {}, color, graph });
+	if (m_Selected >= index)
+		m_Selected++;
+	if (m_hWnd)
+		Invalidate();
+}
+
+void CPerfNav::RemoveItem(int index) {
+	m_Items.erase(m_Items.begin() + index);
+	if (m_Selected == index)
+		m_Selected = -1;
+	else if (m_Selected > index)
+		m_Selected--;
+	if (m_hWnd)
+		Invalidate();
+}
+
 void CPerfNav::SetItemValue(int index, std::wstring value) {
 	auto& item = m_Items[index];
 	if (item.Value == value)

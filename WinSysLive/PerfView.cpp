@@ -47,6 +47,7 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	PerfSample sample;
 	SampleMemory(sample);
 	SampleNetwork(sample);	// the first update sets the baseline: all rates are 0
+	SampleDisks(sample);	// creates the drive pages
 	for (auto& page : m_Pages)
 		page->Update(sample, false);
 	UpdateNav(sample);
@@ -79,6 +80,7 @@ void CPerfView::OnRefresh(bool active) {
 	SampleCpu(sample);
 	SampleMemory(sample);
 	SampleNetwork(sample);
+	SampleDisks(sample);
 	for (int i = 0; i < (int)m_Pages.size(); i++)
 		m_Pages[i]->Update(sample, active && i == m_Page);
 	UpdateNav(sample);
@@ -156,6 +158,55 @@ void CPerfView::SampleNetwork(PerfSample& sample) {
 	sample.NetSend = m_Network.GetTotalSendRate();
 }
 
+void CPerfView::SampleDisks(PerfSample& sample) {
+	m_Disks.Update();
+	sample.Disks = &m_Disks.GetVolumes();
+	SyncDiskPages();
+}
+
+void CPerfView::SyncDiskPages() {
+	auto& volumes = m_Disks.GetVolumes();
+	auto exists = [&](wchar_t letter) {
+		return std::ranges::any_of(volumes, [=](auto& v) { return v.Letter == letter; });
+	};
+
+	for (int i = (int)m_DiskLetters.size() - 1; i >= 0; i--) {
+		if (exists(m_DiskLetters[i]))
+			continue;
+		int index = FirstDiskItem + i;
+		if (m_Page == index)
+			m_Nav.SelectItem(SummaryItem);
+		::DestroyWindow(m_Pages[index]->GetHwnd());
+		m_Pages.erase(m_Pages.begin() + index);
+		m_Nav.RemoveItem(index);
+		m_DiskLetters.erase(m_DiskLetters.begin() + i);
+		if (m_Page > index)
+			m_Page--;
+	}
+
+	bool added = false;
+	for (auto& v : volumes) {
+		auto pos = std::ranges::lower_bound(m_DiskLetters, v.Letter);
+		if (pos != m_DiskLetters.end() && *pos == v.Letter)
+			continue;
+		// in drive letter order
+		int index = FirstDiskItem + int(pos - m_DiskLetters.begin());
+		m_DiskLetters.insert(pos, v.Letter);
+		auto page = std::make_unique<CPerfDiskPage>(v.Letter);
+		page->CreatePage(m_hWnd);
+		page->SetTheme(m_Theme);
+		if (m_Interval)
+			page->SetTimeSpan(m_TimeSpanText, m_Interval);
+		m_Pages.insert(m_Pages.begin() + index, std::move(page));
+		m_Nav.InsertItem(index, std::format(L"Disk {}:", v.Letter), PerfColors::DiskActive, CPerfNav::GraphType::Percent);
+		if (m_Page >= index)
+			m_Page++;
+		added = true;
+	}
+	if (added)
+		Layout();
+}
+
 void CPerfView::UpdateNav(PerfSample const& sample) {
 	if (sample.HasCpu) {
 		m_Nav.PushItemSample(CpuItem, sample.CpuPercent());
@@ -173,6 +224,15 @@ void CPerfView::UpdateNav(PerfSample const& sample) {
 		m_Nav.PushItemSample(NetworkItem, (float)(sample.NetReceive + sample.NetSend));
 		m_Nav.SetItemValue(NetworkItem, std::format(L"R: {}  S: {}", receive, send));
 	}
+	for (auto& v : *sample.Disks) {
+		int index = FirstDiskItem + int(std::ranges::find(m_DiskLetters, v.Letter) - m_DiskLetters.begin());
+		if (!v.HasPerformance) {
+			m_Nav.SetItemValue(index, v.Label);
+			continue;
+		}
+		m_Nav.PushItemSample(index, (float)v.ActivePercent);
+		m_Nav.SetItemValue(index, v.Label.empty() ? std::format(L"{:.0f}%", v.ActivePercent) : std::format(L"{:.0f}%  {}", v.ActivePercent, v.Label));
+	}
 	if (sample.HasCpu || sample.HasMemory) {
 		m_Nav.SetItemValue(SummaryItem, std::format(L"CPU {:.0f}%    Memory {:.0f}%", sample.CpuPercent(), sample.MemoryPercent()));
 	}
@@ -186,9 +246,9 @@ void CPerfView::UpdateTimeSpan() {
 	m_Interval = interval;
 
 	auto seconds = PerfHistoryLength * interval / 1000;
-	auto text = seconds % 60 == 0 ? std::format(L"{} minutes", seconds / 60) : std::format(L"{} seconds", seconds);
+	m_TimeSpanText = seconds % 60 == 0 ? std::format(L"{} minutes", seconds / 60) : std::format(L"{} seconds", seconds);
 	for (auto& page : m_Pages)
-		page->SetTimeSpan(text, interval);
+		page->SetTimeSpan(m_TimeSpanText, interval);
 }
 
 void CPerfView::ShowPage(int index) {
@@ -203,10 +263,10 @@ void CPerfView::ShowPage(int index) {
 }
 
 void CPerfView::OnThemeChanged(bool dark) {
-	auto theme = dark ? GraphTheme::Dark() : GraphTheme::Light();
-	m_Nav.SetTheme(theme);
+	m_Theme = dark ? GraphTheme::Dark() : GraphTheme::Light();
+	m_Nav.SetTheme(m_Theme);
 	for (auto& page : m_Pages)
-		page->SetTheme(theme);
+		page->SetTheme(m_Theme);
 }
 
 LRESULT CPerfView::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {

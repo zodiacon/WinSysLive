@@ -15,6 +15,9 @@ public:
 	enum class GraphType { None, Percent, AutoScale };
 
 	int AddItem(std::wstring title, COLORREF color, GraphType graph);
+	// the selection follows the item it was on; removing the selected item leaves nothing selected
+	void InsertItem(int index, std::wstring title, COLORREF color, GraphType graph);
+	void RemoveItem(int index);
 	void SetItemValue(int index, std::wstring value);
 	void PushItemSample(int index, float value);
 	int GetItemCount() const;

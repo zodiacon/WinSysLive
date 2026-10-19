@@ -4,6 +4,7 @@
 #include <GraphControl/include/GraphGrid.h>
 #include <GraphControl/include/CompositionBar.h>
 #include <WinSys/Network.h>
+#include <WinSys/Disk.h>
 
 // samples kept by the graphs
 const size_t PerfHistoryLength = 120;
@@ -14,6 +15,9 @@ namespace PerfColors {
 	const COLORREF Memory = RGB(139, 92, 196);
 	const COLORREF Receive = RGB(214, 140, 40);
 	const COLORREF Send = RGB(60, 160, 90);
+	const COLORREF DiskActive = RGB(64, 168, 160);
+	const COLORREF DiskRead = RGB(60, 140, 210);
+	const COLORREF DiskWrite = RGB(220, 120, 60);
 }
 
 //
@@ -37,6 +41,9 @@ struct PerfSample {
 	std::vector<WinSys::NetworkTracker::Interface> const* Adapters{ nullptr };
 	bool HasNetwork{ false };
 	double NetReceive{ 0 }, NetSend{ 0 };
+
+	// drives with a letter; owned by CPerfView and valid for the duration of the update
+	std::vector<WinSys::DiskTracker::Volume> const* Disks{ nullptr };
 
 	float CpuPercent() const {
 		return KernelCpu + UserCpu;
@@ -283,4 +290,25 @@ private:
 	UINT m_Interval{ 0 };
 	CRect m_GraphRect;	// from the last LayoutGraphs, for laying out again when adapters change
 	int m_Gap{ 0 };
+};
+//
+// A drive (C:, D:...): active time, read/write transfer rates and how full it is.
+//
+class CPerfDiskPage : public CPerfPage<CPerfDiskPage> {
+public:
+	DECLARE_WND_CLASS_EX(L"WinSysLivePerfDisk", CS_HREDRAW | CS_VREDRAW, -1)
+
+	explicit CPerfDiskPage(wchar_t letter) : m_Letter(letter) {}
+
+	void CreateGraphs();
+	void LayoutGraphs(CRect const& rc, int gap);
+	void Sample(PerfSample const& sample);
+	void ApplyTheme();
+	void ApplyTimeSpan(std::wstring const& text, UINT interval);
+
+private:
+	GraphCtrl::CGraphControl m_Active, m_Transfer;
+	GraphCtrl::SeriesId m_ActiveSeries{ GraphCtrl::InvalidSeries };
+	GraphCtrl::CCompositionBar m_Space;
+	wchar_t m_Letter;
 };
