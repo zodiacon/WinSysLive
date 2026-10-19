@@ -44,7 +44,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 		AddPage(*page);
 	};
 	add(L"Performance", IDI_PERFORMANCE, L"CPU, memory and I/O over time.");
-	add(L"Environment", IDI_ENVIRONMENT, L"The process's environment variables.");
+	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
+	AddPage(*m_Environment);
 	add(L"Memory", IDI_MEMORY, L"The process's address space: regions, their protection and usage.");
 	add(L"Token", IDI_TOKEN, L"The process token: user, groups, privileges and integrity level.");
 	add(L"Threads", IDI_THREADS, L"The process's threads.");
@@ -74,8 +75,7 @@ void CProcessSheet::OnSheetInitialized() {
 	// rather than the first field, with its text selected
 	PostMessage(WM_NEXTDLGCTL, (WPARAM)GetDlgItem(IDOK).m_hWnd, TRUE);
 
-	// WTLHelper's hook themes new windows on the main thread only
-	DarkMode::setDarkWndNotifySafe(m_hWnd);
+	// the controls are themed by WTLHelper's hook (InitThread), the title bar is not
 	DarkMode::setDarkTitleBarEx(m_hWnd, true);
 }
 
@@ -109,6 +109,8 @@ void ShowProcessProperties(ProcessProperties props) {
 			MSG msg;
 			::PeekMessage(&msg, nullptr, 0, 0, PM_NOREMOVE);
 			*id = ::GetCurrentThreadId();
+			// the sheet's windows themed as the main thread's are
+			WTLHelper::InitThread();
 			CProcessSheet sheet(std::move(props));
 			if (!s_Closing && sheet.Create(nullptr)) {
 				sheet.ShowWindow(SW_SHOW);
@@ -126,6 +128,7 @@ void ShowProcessProperties(ProcessProperties props) {
 					sheet.DestroyWindow();
 			}
 		}
+		WTLHelper::TermThread();
 		*id = 0;
 	});
 	// the thread sets its ID once it has a message queue

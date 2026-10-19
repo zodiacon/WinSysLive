@@ -1,5 +1,6 @@
 #pragma once
 
+#include <VirtualListView.h>
 #include "resource.h"
 
 //
@@ -47,11 +48,57 @@ private:
 
 	// ASLR, CFG, CET and DEP, from the process's mitigation policies (and the image's header, for ASLR)
 	void ShowMitigations();
-	// the process, if it's still the one the sheet is for (its ID may have been reused)
-	wil::unique_handle OpenProcess(DWORD access) const;
 
 	ProcessProperties const& m_Props;
 	HICON m_hIcon;	// the sheet's
+};
+
+//
+// The Environment page: the process's environment variables, read from its process parameters (WinSys
+// Process::GetEnvironment) when the page is first shown. Copy puts the selected variables on the clipboard,
+// Copy All all of them, as NAME=value lines.
+//
+class CProcEnvironmentPage :
+	public CPropertyPageImpl<CProcEnvironmentPage>,
+	public CDynamicDialogLayout<CProcEnvironmentPage>,
+	public CVirtualListView<CProcEnvironmentPage> {
+public:
+	enum { IDD = IDD_PROC_ENVIRONMENT };
+
+	explicit CProcEnvironmentPage(ProcessProperties const& props);
+
+	// CVirtualListView
+	CString GetColumnText(HWND, int row, int col) const;
+	void DoSort(SortInfo const* si);
+	void OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState);
+
+	BEGIN_MSG_MAP(CProcEnvironmentPage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		COMMAND_ID_HANDLER(IDC_ENV_COPY, OnCopy)
+		COMMAND_ID_HANDLER(IDC_ENV_COPYALL, OnCopy)
+		NOTIFY_HANDLER(IDC_ENV_LIST, LVN_ITEMCHANGED, OnItemChanged)
+		CHAIN_MSG_MAP(CVirtualListView<CProcEnvironmentPage>)
+		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcEnvironmentPage>)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CProcEnvironmentPage>)
+	END_MSG_MAP()
+
+// Handler prototypes (uncomment arguments if needed):
+//	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+//	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+//	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+
+	// reads the variables; false (with the status line saying why) if they can't be read
+	bool Load();
+	void UpdateButtons();
+
+	ProcessProperties const& m_Props;
+	CListViewCtrl m_List;
+	std::vector<std::pair<std::wstring, std::wstring>> m_Vars;	// in display order
 };
 
 //

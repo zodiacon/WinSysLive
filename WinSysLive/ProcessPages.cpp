@@ -3,14 +3,11 @@
 #include "FormatHelper.h"
 #include "Signature.h"
 #include <WinSys/Helpers.h>
+#include <WinSys/Processes.h>
 #include <WTLHelper.h>
+#include <ClipboardHelper.h>
 
 namespace {
-	// the pages run on the sheet's thread, where WTLHelper's hook doesn't theme new dialogs
-	void ApplyTheme(HWND hDlg) {
-		DarkMode::setDarkWndNotifySafe(hDlg);
-	}
-
 	void SetIconId(PROPSHEETPAGE& psp, UINT icon) {
 		psp.dwFlags |= PSP_USEICONID;
 		psp.pszIcon = MAKEINTRESOURCE(icon);
@@ -33,6 +30,20 @@ namespace {
 		if (nt->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
 			return reinterpret_cast<IMAGE_NT_HEADERS64 const*>(nt)->OptionalHeader.DllCharacteristics;
 		return nt->OptionalHeader.DllCharacteristics;
+	}
+
+	// the process, if it's still the one the sheet is for (its ID may have been reused): null otherwise, with the
+	// last error set
+	wil::unique_handle OpenProcess(ProcessProperties const& props, DWORD access) {
+		wil::unique_handle hProcess(::OpenProcess(access, FALSE, props.Id));
+		FILETIME created, exited, kernel, user;
+		if (hProcess && ::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
+			&& (int64_t(created.dwHighDateTime) << 32 | created.dwLowDateTime) != props.CreateTime) {
+			// another process with the same ID
+			hProcess.reset();
+			::SetLastError(ERROR_NOT_FOUND);
+		}
+		return hProcess;
 	}
 
 	// "Enabled (a, b)" or "Enabled"
@@ -73,26 +84,13 @@ LRESULT CProcGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 	// painted off screen, bottom to top: resizing moves most controls, which otherwise flicker as each erases and
 	// repaints in turn (not for a page with a list view, which composited painting slows down)
 	ModifyStyleEx(0, WS_EX_COMPOSITED);
-	ApplyTheme(m_hWnd);
 	return TRUE;
 }
 
-wil::unique_handle CProcGeneralPage::OpenProcess(DWORD access) const {
-	wil::unique_handle hProcess(::OpenProcess(access, FALSE, m_Props.Id));
-	FILETIME created, exited, kernel, user;
-	if (hProcess && ::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
-		&& (int64_t(created.dwHighDateTime) << 32 | created.dwLowDateTime) != m_Props.CreateTime) {
-		// another process with the same ID
-		hProcess.reset();
-		::SetLastError(ERROR_NOT_FOUND);
-	}
-	return hProcess;
-}
-
 void CProcGeneralPage::ShowMitigations() {
-	auto hProcess = OpenProcess(PROCESS_QUERY_INFORMATION);
+	auto hProcess = OpenProcess(m_Props, PROCESS_QUERY_INFORMATION);
 	if (!hProcess)
-		hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION);
+		hProcess = OpenProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
 	if (!hProcess) {
 		auto text = WinSys::Helpers::GetErrorText(::GetLastError());
 		for (UINT id : { IDC_PROC_ASLR, IDC_PROC_CFG, IDC_PROC_CET, IDC_PROC_DEP })
@@ -163,7 +161,7 @@ LRESULT CProcGeneralPage::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
 		return 0;
 
-	auto hProcess = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION);
+	auto hProcess = OpenProcess(m_Props, PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION);
 	if (!hProcess || !::TerminateProcess(hProcess.get(), 1)) {
 		AtlMessageBox(m_hWnd, std::format(L"Failed to terminate the process: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
 			IDR_MAINFRAME, MB_ICONERROR);
@@ -175,6 +173,90 @@ LRESULT CProcGeneralPage::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	return 0;
 }
 
+CProcEnvironmentPage::CProcEnvironmentPage(ProcessProperties const& props) : m_Props(props) {
+	SetIconId(m_psp, IDI_ENVIRONMENT);
+}
+
+LRESULT CProcEnvironmentPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	m_List.Attach(GetDlgItem(IDC_ENV_LIST));
+	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP);
+	auto cm = GetColumnManager(m_List);
+	auto dpi = ::GetDpiForWindow(m_hWnd);
+	cm->AddColumn(L"Name", LVCFMT_LEFT, ::MulDiv(180, dpi, 96));
+	cm->AddColumn(L"Value", LVCFMT_LEFT, ::MulDiv(560, dpi, 96));
+
+	if (Load()) {
+		m_List.SetItemCount((int)m_Vars.size());
+		SetDlgItemText(IDC_ENV_STATUS, std::format(L"{} variables", m_Vars.size()).c_str());
+	}
+	GetDlgItem(IDC_ENV_COPYALL).EnableWindow(!m_Vars.empty());
+	UpdateButtons();
+
+	InitDynamicLayout(false, false);
+	return TRUE;
+}
+
+bool CProcEnvironmentPage::Load() {
+	auto hProcess = OpenProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
+	if (!hProcess) {
+		SetDlgItemText(IDC_ENV_STATUS, std::format(L"Can't read the environment: {}",
+			WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
+		return false;
+	}
+	m_Vars = WinSys::Process::GetEnvironment(hProcess.get());
+	if (m_Vars.empty()) {
+		// a process with no environment at all is unlikely: rather, its memory couldn't be read
+		SetDlgItemText(IDC_ENV_STATUS, L"Can't read the environment");
+		return false;
+	}
+	// by name, as the list is shown before any sorting
+	std::ranges::stable_sort(m_Vars, [](auto const& v1, auto const& v2) { return ::_wcsicmp(v1.first.c_str(), v2.first.c_str()) < 0; });
+	return true;
+}
+
+CString CProcEnvironmentPage::GetColumnText(HWND, int row, int col) const {
+	if (row >= (int)m_Vars.size())
+		return L"";
+	auto& [name, value] = m_Vars[row];
+	return col == 0 ? name.c_str() : value.c_str();
+}
+
+void CProcEnvironmentPage::DoSort(SortInfo const* si) {
+	auto col = si->SortColumn;
+	std::ranges::stable_sort(m_Vars, [&](auto const& v1, auto const& v2) {
+		auto result = col == 0 ? ::_wcsicmp(v1.first.c_str(), v2.first.c_str()) : ::_wcsicmp(v1.second.c_str(), v2.second.c_str());
+		return si->SortAscending ? result < 0 : result > 0;
+		});
+	// the selection is by row: it would now be other variables
+	m_List.SetItemState(-1, 0, LVIS_SELECTED);
+}
+
+void CProcEnvironmentPage::OnStateChanged(HWND, int, int, UINT, UINT) {
+	// a range of rows selected with Shift
+	UpdateButtons();
+}
+
+LRESULT CProcEnvironmentPage::OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& bHandled) {
+	UpdateButtons();
+	bHandled = FALSE;
+	return 0;
+}
+
+void CProcEnvironmentPage::UpdateButtons() {
+	GetDlgItem(IDC_ENV_COPY).EnableWindow(m_List.GetSelectedCount() > 0);
+}
+
+LRESULT CProcEnvironmentPage::OnCopy(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// NAME=value lines, as in the environment block itself
+	std::wstring text;
+	for (int i = id == IDC_ENV_COPYALL ? 0 : m_List.GetNextItem(-1, LVNI_SELECTED); i >= 0 && i < (int)m_Vars.size();
+		i = id == IDC_ENV_COPYALL ? i + 1 : m_List.GetNextItem(i, LVNI_SELECTED))
+		text += std::format(L"{}={}\r\n", m_Vars[i].first, m_Vars[i].second);
+	if (!text.empty())
+		ClipboardHelper::CopyText(m_hWnd, text.c_str());
+	return 0;
+}
+
 CProcPlaceholderPage::CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring text) :
 	CPropertyPageImpl(title), m_Text(std::move(text)) {
 	SetIconId(m_psp, icon);
@@ -182,7 +264,6 @@ CProcPlaceholderPage::CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring
 
 LRESULT CProcPlaceholderPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	SetDlgItemText(IDC_PROC_PLACEHOLDER, m_Text.c_str());
-	ApplyTheme(m_hWnd);
 	return TRUE;
 }
 

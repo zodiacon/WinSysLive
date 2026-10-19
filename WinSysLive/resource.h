@@ -48,6 +48,7 @@
 #define IDI_ENVIRONMENT             241
 #define IDD_PROC_GENERAL            242
 #define IDD_PROC_PAGE               243
+#define IDD_PROC_ENVIRONMENT        244
 #define IDC_PROC_ICON               1005
 #define IDC_PROC_NAME               1006
 #define IDC_PROC_DESCRIPTION        1007
@@ -66,6 +67,10 @@
 #define IDC_PROC_SIGNATURE          1020
 #define IDC_PROC_VERIFY             1021
 #define IDC_PROC_KILL               1022
+#define IDC_ENV_LIST                1023
+#define IDC_ENV_STATUS              1024
+#define IDC_ENV_COPY                1025
+#define IDC_ENV_COPYALL             1026
 #define ID_VIEW_PROPERTIES          32814
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
@@ -118,8 +123,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	244
-#define _APS_NEXT_CONTROL_VALUE		1023
+#define _APS_NEXT_RESOURCE_VALUE	245
+#define _APS_NEXT_CONTROL_VALUE		1027
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32815
 #endif

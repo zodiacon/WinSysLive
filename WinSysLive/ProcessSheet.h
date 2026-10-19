@@ -27,6 +27,7 @@ private:
 	std::wstring m_Title;
 	CIcon m_Icon, m_SmallIcon;	// the process's, or the system's application icon
 	std::unique_ptr<CProcGeneralPage> m_General;
+	std::unique_ptr<CProcEnvironmentPage> m_Environment;
 	std::vector<std::unique_ptr<CProcPlaceholderPage>> m_Pages;
 };
 
