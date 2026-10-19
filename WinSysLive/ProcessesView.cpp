@@ -583,11 +583,25 @@ LRESULT CProcessesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled
 
 LRESULT CProcessesView::OnSelectionChanged(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& /*bHandled*/) {
 	UpdateUI();
+	if (m_LowerPane)
+		SetTimer(DetailsTimerId, DetailsDelay);
+	return 0;
+}
+
+LRESULT CProcessesView::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id != DetailsTimerId) {
+		bHandled = FALSE;
+		return 0;
+	}
+	KillTimer(DetailsTimerId);
 	UpdateDetails();
 	return 0;
 }
 
 void CProcessesView::UpdateDetails() {
+	// nothing to keep up to date while the pane is hidden; it catches up when shown (OnToggleLowerPane)
+	if (!m_LowerPane)
+		return;
 	auto item = GetSelectedProcess();
 	m_Details.SetProcess(item && !item->Terminated ? item->Process : nullptr);
 }
@@ -595,8 +609,10 @@ void CProcessesView::UpdateDetails() {
 LRESULT CProcessesView::OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_LowerPane = !m_LowerPane;
 	m_Splitter.SetSinglePaneMode(m_LowerPane ? SPLIT_PANE_NONE : SPLIT_PANE_TOP);
-	if (m_LowerPane)
+	if (m_LowerPane) {
+		UpdateDetails();
 		m_Details.Refresh();
+	}
 	auto& settings = AppSettings::Get();
 	settings.ProcessLowerPane(m_LowerPane);
 	settings.Save();

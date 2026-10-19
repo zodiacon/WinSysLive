@@ -60,6 +60,12 @@
     <ClCompile Include="ModulesPage.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="AccessMask.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlesPage.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="UsersView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -117,6 +123,12 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ModulesPage.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="AccessMask.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlesPage.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="UsersView.h">

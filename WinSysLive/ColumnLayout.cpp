@@ -104,7 +104,14 @@ namespace ColumnLayout {
 			auto& def = defs[c.Id];
 			cm->AddColumn(def.Name, def.Format, c.Width, c.Id);
 		}
-		CListViewCtrl(cm->GetListView()).Invalidate();
+		CListViewCtrl lv(cm->GetListView());
+		// the list view ignores the alignment of column 0 when it's inserted, but not when it's set
+		if (!columns.empty() && defs[columns[0].Id].Format != LVCFMT_LEFT) {
+			LVCOLUMN lvc{ LVCF_FMT };
+			lvc.fmt = defs[columns[0].Id].Format;
+			lv.SetColumn(0, &lvc);
+		}
+		lv.Invalidate();
 	}
 
 	std::optional<int> HeaderColumnAt(CListViewCtrl list, ColumnManager const* cm, POINT pt) {

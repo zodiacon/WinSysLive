@@ -9,30 +9,12 @@ CProcessDetails::CProcessDetails() {
 	m_bDestroyImageList = false;	// the frame's
 }
 
-CListViewCtrl CProcessDetails::CreateList(std::span<ColumnInfo const> columns) {
-	CListViewCtrl list;
-	list.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPSIBLINGS | LVS_REPORT | LVS_OWNERDATA | LVS_SINGLESEL |
-		LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
-	list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
-	for (int i = 0; i < (int)columns.size(); i++)
-		list.InsertColumn(i, columns[i].Name, columns[i].Format, columns[i].Width);
-	return list;
-}
-
 void CProcessDetails::Init(IMainFrame* frame) {
 	m_Frame = frame;
 	SetImageList(frame->GetImageList());
 
-	static const ColumnInfo handles[] = {
-		{ L"Handle", 80, LVCFMT_RIGHT },
-		{ L"Type", 120, LVCFMT_LEFT },
-		{ L"Name", 400, LVCFMT_LEFT },
-		{ L"Address", 140, LVCFMT_RIGHT },	// of the kernel object
-		{ L"Access", 100, LVCFMT_RIGHT },
-		{ L"Decoded Access", 300, LVCFMT_LEFT },	// the access mask's rights, named for the object's type
-		{ L"Attributes", 100, LVCFMT_LEFT },
-	};
-	m_Handles = CreateList(handles);
+	m_Handles.SetFrame(frame);
+	m_Handles.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Modules.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	AddPage(m_Handles, L"Handles", frame->GetIconIndex(IDI_HANDLES));
@@ -47,7 +29,10 @@ void CProcessDetails::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
 		return;
 	m_Process = std::move(process);
 	m_Threads.SetProcess(m_Process);
-	m_Modules.SetProcess(m_Process);
+	// the handles and the modules cost more: enumerated only while their tab is shown (and when it's activated)
+	int page = GetActivePage();
+	m_Modules.SetProcess(m_Process, page == ModulesPage);
+	m_Handles.SetProcess(m_Process, page == HandlesPage);
 }
 
 ProcessInfoEx* CProcessDetails::GetProcess() const {
@@ -56,8 +41,10 @@ ProcessInfoEx* CProcessDetails::GetProcess() const {
 
 void CProcessDetails::Refresh() {
 	m_Threads.Refresh();
-	if (GetActivePage() == ModulesPage)
-		m_Modules.Refresh();
+	switch (GetActivePage()) {
+		case ModulesPage: m_Modules.Refresh(); break;
+		case HandlesPage: m_Handles.Refresh(); break;
+	}
 }
 
 void CProcessDetails::OnPageActivated(int page) {
@@ -65,4 +52,6 @@ void CProcessDetails::OnPageActivated(int page) {
 	// not refreshed while hidden (see Refresh)
 	if (page == ModulesPage && m_Modules)
 		m_Modules.Refresh();
+	else if (page == HandlesPage && m_Handles)
+		m_Handles.Refresh();
 }

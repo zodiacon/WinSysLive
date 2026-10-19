@@ -91,7 +91,7 @@ LRESULT CModulesPage::OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lP
 	return 1;	// the list covers the page
 }
 
-void CModulesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
+void CModulesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate) {
 	if (process == m_Process)
 		return;
 	m_Process = std::move(process);
@@ -100,7 +100,12 @@ void CModulesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
 	m_NewTicks.clear();
 	m_FirstEnum = true;
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
-	Refresh();
+	if (enumerate)
+		Refresh();
+	else {
+		m_Rows.clear();
+		m_List.SetItemCount(0);
+	}
 	if (m_List.GetItemCount() > 0)
 		m_List.EnsureVisible(0, FALSE);
 }

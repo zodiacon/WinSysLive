@@ -17,8 +17,8 @@ class CModulesPage :
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLive_ModulesPage", 0, COLOR_WINDOW)
 
-	// nullptr: no process
-	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
+	// nullptr: no process. Without enumerating, the list is empty until the next Refresh
+	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
 	// enumerates the modules again
 	void Refresh();
 

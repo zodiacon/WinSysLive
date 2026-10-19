@@ -15,6 +15,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(ServiceColumns, L"");
 		SETTING_STRING(ThreadColumns, L"");
 		SETTING_STRING(ModuleColumns, L"");
+		SETTING_STRING(HandleColumns, L"");
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
@@ -28,6 +29,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ServiceColumns)
 	DEF_SETTING_STRING(ThreadColumns)
 	DEF_SETTING_STRING(ModuleColumns)
+	DEF_SETTING_STRING(HandleColumns)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };

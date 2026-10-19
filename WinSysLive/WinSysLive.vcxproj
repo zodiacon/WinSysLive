@@ -345,6 +345,8 @@
     <ClCompile Include="ProcessDetails.cpp" />
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
+    <ClCompile Include="AccessMask.cpp" />
+    <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
     <ClCompile Include="ThreadsPage.cpp" />
     <ClCompile Include="UsersView.cpp" />
@@ -368,6 +370,8 @@
     <ClInclude Include="ProcessDetails.h" />
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
+    <ClInclude Include="AccessMask.h" />
+    <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />
     <ClInclude Include="ThreadsPage.h" />
     <ClInclude Include="UsersView.h" />
