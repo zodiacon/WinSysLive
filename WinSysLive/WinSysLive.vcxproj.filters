@@ -87,6 +87,12 @@
     <ClCompile Include="ColumnsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="ProcessSheet.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessPages.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -156,6 +162,12 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ColumnsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessSheet.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessPages.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
   </ItemGroup>

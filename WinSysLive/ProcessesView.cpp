@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "resource.h"
 #include "ProcessesView.h"
+#include "ProcessSheet.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
 #include <WinSys/Processes.h>
@@ -634,6 +635,7 @@ void CProcessesView::UpdateUI() {
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
+	ui.UIEnable(ID_VIEW_PROPERTIES, m_Active && item && !item->Terminated);
 	for (int i = 0; i < _countof(s_Priorities); i++) {
 		ui.UIEnable(ID_PRIORITY_REALTIME + i, live);
 		ui.UISetRadio(ID_PRIORITY_REALTIME + i, false);
@@ -666,6 +668,8 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_GOTOFILELOCATION, MF_BYCOMMAND | (item->Process->GetImagePath().empty() ? MF_GRAYED : MF_ENABLED));
+	popup.EnableMenuItem(ID_VIEW_PROPERTIES, MF_BYCOMMAND | (item->Terminated ? MF_GRAYED : MF_ENABLED));
+	popup.SetMenuDefaultItem(ID_VIEW_PROPERTIES);
 	for (int i = 0; i < _countof(s_Priorities); i++) {
 		popup.EnableMenuItem(ID_PRIORITY_REALTIME + i, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 		if (s_Priorities[i].BasePriority == item->Process->NativeInfo->BasePriority)
@@ -772,6 +776,38 @@ LRESULT CProcessesView::OnSetPriority(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 		ShowError(L"Opening the process");
 	else if (!process->SetPriorityClass(s_Priorities[id - ID_PRIORITY_REALTIME].PriorityClass))
 		ShowError(L"Setting the priority");
+	return 0;
+}
+
+LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!item || item->Terminated)
+		return 0;
+
+	// the sheet runs on its own thread: it gets copies, not the snapshot
+	auto& p = *item->Process;
+	ProcessProperties props;
+	props.Id = p.Id;
+	props.CreateTime = p.Key.Created;
+	props.ParentId = p.ParentId;
+	props.SessionId = p.NativeInfo->SessionId;
+	props.ImageName = p.GetImageName();
+	props.ImagePath = p.GetImagePath();
+	props.CommandLine = p.GetCommandLine();
+	props.User = p.GetUser();
+	props.Description = p.GetDescription();
+	// the parent, if it's still the process that created this one
+	if (auto parent = Frame()->GetProcessManager().GetProcessById(p.ParentId); parent && parent->Key.Created <= p.Key.Created)
+		props.ParentName = parent->GetImageName();
+	ShowProcessProperties(std::move(props));
+	return 0;
+}
+
+LRESULT CProcessesView::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	// the commands are in ALT_MSG_MAP(1), which only the frame routes to
+	BOOL handled;
+	if (reinterpret_cast<NMITEMACTIVATE*>(hdr)->iItem >= 0)
+		OnProperties(0, ID_VIEW_PROPERTIES, nullptr, handled);
 	return 0;
 }
 

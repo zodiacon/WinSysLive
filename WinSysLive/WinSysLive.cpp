@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include "MainFrm.h"
+#include "ProcessSheet.h"
 #include "WTLHelper.h"
 #include "AppSettings.h"
 
@@ -32,6 +33,9 @@ int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	}
 
 	int nRet = theLoop.Run();
+
+	// the property sheets run on threads of their own
+	CloseProcessProperties();
 
 	_Module.RemoveMessageLoop();
 	return nRet;

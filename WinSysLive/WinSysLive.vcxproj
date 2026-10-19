@@ -330,6 +330,8 @@
     <ClCompile Include="AboutDlg.cpp" />
     <ClCompile Include="ColumnLayout.cpp" />
     <ClCompile Include="ColumnsDlg.cpp" />
+    <ClCompile Include="ProcessSheet.cpp" />
+    <ClCompile Include="ProcessPages.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -360,6 +362,8 @@
     <ClInclude Include="AboutDlg.h" />
     <ClInclude Include="ColumnLayout.h" />
     <ClInclude Include="ColumnsDlg.h" />
+    <ClInclude Include="ProcessSheet.h" />
+    <ClInclude Include="ProcessPages.h" />
     <ClInclude Include="AppSettings.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="resource.h" />

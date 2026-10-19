@@ -45,6 +45,21 @@
 #define IDI_TOKEN                   238
 #define IDI_WINSTA                  239
 #define IDI_MEMORY                  240
+#define IDI_ENVIRONMENT             241
+#define IDD_PROC_GENERAL            242
+#define IDD_PROC_PAGE               243
+#define IDC_PROC_ICON               1005
+#define IDC_PROC_NAME               1006
+#define IDC_PROC_DESCRIPTION        1007
+#define IDC_PROC_PATH               1008
+#define IDC_PROC_COMMANDLINE        1009
+#define IDC_PROC_PID                1010
+#define IDC_PROC_PARENT             1011
+#define IDC_PROC_USER               1012
+#define IDC_PROC_SESSION            1013
+#define IDC_PROC_STARTED            1014
+#define IDC_PROC_PLACEHOLDER        1015
+#define ID_VIEW_PROPERTIES          32814
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
 #define IDC_MOVEUP                  1001
@@ -96,9 +111,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	241
-#define _APS_NEXT_CONTROL_VALUE		1005
+#define _APS_NEXT_RESOURCE_VALUE	244
+#define _APS_NEXT_CONTROL_VALUE		1016
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32814
+#define _APS_NEXT_COMMAND_VALUE		32815
 #endif
 #endif

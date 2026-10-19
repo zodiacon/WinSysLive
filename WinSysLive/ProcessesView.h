@@ -28,6 +28,7 @@ public:
 		NOTIFY_CODE_HANDLER(TLVN_SELCHANGED, OnSelectionChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		NOTIFY_CODE_HANDLER(NM_RCLICK, OnRightClick)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		CHAIN_MSG_MAP(CViewBase<CProcessesView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILL, OnKill)
@@ -36,6 +37,7 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
 		COMMAND_RANGE_HANDLER(ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE, OnSetPriority)
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
+		COMMAND_ID_HANDLER(ID_VIEW_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
 		COMMAND_ID_HANDLER(ID_VIEW_LOWERPANE, OnToggleLowerPane)
@@ -81,6 +83,8 @@ private:
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetPriority(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
