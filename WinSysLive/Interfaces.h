@@ -20,6 +20,9 @@ struct IMainFrame abstract {
 
 	// snapshot updated by the frame on every refresh tick, before IView::OnRefresh is called
 	virtual ProcessManager& GetProcessManager() = 0;
+
+	// switches to the Processes tab and selects the process
+	virtual void GoToProcess(uint32_t pid) = 0;
 };
 
 struct IView abstract {
@@ -31,4 +34,6 @@ struct IView abstract {
 	// called on every refresh tick for all views, active or not; inactive views should update data only, not redraw
 	virtual void OnRefresh(bool /*active*/) {}
 	virtual void OnThemeChanged(bool /*dark*/) {}
+	// views listing processes select the process (see IMainFrame::GoToProcess)
+	virtual void ShowProcess(uint32_t /*pid*/) {}
 };

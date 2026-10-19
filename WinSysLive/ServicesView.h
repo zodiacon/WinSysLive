@@ -1,17 +1,92 @@
 #pragma once
 
+#include "resource.h"
 #include "ViewBase.h"
+#include <VirtualListView.h>
+#include <WinSys/ServiceManager.h>
+#include <WinSys/Service.h>
+#include <functional>
 
 class CServicesView :
-	public CViewBase<CServicesView> {
+	public CViewBase<CServicesView>,
+	public CVirtualListView<CServicesView> {
 public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	void OnRefresh(bool active) override;
+
+	// CVirtualListView
+	CString GetColumnText(HWND, int row, int col) const;
+	int GetRowImage(HWND, int row, int col) const;
+	void DoSort(SortInfo const* si);
+	int GetSaveColumnRange(HWND, int&) const;
+	bool OnRightClickList(HWND, int row, int col, POINT const& pt);
+	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt);
 
 	BEGIN_MSG_MAP(CServicesView)
+		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
+		CHAIN_MSG_MAP(CVirtualListView<CServicesView>)
 		CHAIN_MSG_MAP(CViewBase<CServicesView>)
 	ALT_MSG_MAP(1)
+		COMMAND_ID_HANDLER(ID_SERVICE_START, OnStart)
+		COMMAND_ID_HANDLER(ID_SERVICE_STOP, OnStop)
+		COMMAND_ID_HANDLER(ID_SERVICE_PAUSE, OnPause)
+		COMMAND_ID_HANDLER(ID_SERVICE_CONTINUE, OnContinue)
+		COMMAND_ID_HANDLER(ID_SERVICE_RESTART, OnRestart)
+		COMMAND_ID_HANDLER(ID_SERVICE_GOTOPROCESS, OnGoToProcess)
+		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		CHAIN_MSG_MAP_ALT(CViewBase<CServicesView>, 1)
 	END_MSG_MAP()
+
+private:
+	enum class Column {
+		Name, DisplayName, State, StartType, Type, ProcessId, ProcessName, Account, BinaryPath, Description,
+	};
+
+	struct ServiceItem {
+		explicit ServiceItem(WinSys::ServiceInfo info) : Info(std::move(info)) {}
+
+		WinSys::ServiceInfo Info;
+		int NewTicks{ 0 };		// > 0: highlighted as new
+		int ChangedTicks{ 0 };	// > 0: highlighted as changed (state or process)
+
+		// loaded on first use and cached: each takes a call to the SCM
+		WinSys::ServiceConfiguration const* GetConfig();
+		std::wstring const& GetDescription();
+
+	private:
+		std::unique_ptr<WinSys::ServiceConfiguration> m_Config;
+		std::wstring m_Description;
+		bool m_ConfigLoaded{ false }, m_DescriptionLoaded{ false };
+	};
+
+	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnStart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnPause(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnContinue(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	std::wstring GetText(ServiceItem& item, Column column) const;
+	int CompareServices(ServiceItem& s1, ServiceItem& s2, Column column) const;
+	ServiceItem* GetSelectedService() const;
+	void SelectService(std::wstring const& name);
+	bool Control(WinSys::ServiceAccessMask access, PCWSTR operation, std::function<bool(WinSys::Service&)> const& action);
+	void ShowError(PCWSTR operation, DWORD error) const;
+
+	CListViewCtrl m_List;
+	std::vector<std::shared_ptr<ServiceItem>> m_Items;	// in display order
+	std::unordered_map<std::wstring, std::shared_ptr<ServiceItem>> m_ItemsByName;
+
+	// restart: stop, then start once the service has stopped (polled with a timer, so the UI doesn't block)
+	enum { RestartTimerId = 1 };
+	std::wstring m_RestartName;
+	ULONGLONG m_RestartDeadline{ 0 };
 };

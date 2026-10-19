@@ -90,8 +90,8 @@ void CMainFrame::InitToolBar(bool elevated) {
 		{ ID_VIEW_PAUSE, IDI_PAUSE },
 		{ ID_VIEW_REFRESH, IDI_REFRESH },
 		{ 0 },
-		{ ID_VIEW_PROCESSTREE, IDI_PROCESSES, BTNS_CHECK },
-		{ ID_PROCESS_KILL, IDI_KILL },
+		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
+		{ ID_PROCESS_KILL, IDI_PROCESS_KILL },
 	};
 	const int iconSize = 24;
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
@@ -375,4 +375,14 @@ int CMainFrame::GetIconIndex(UINT iconId) const {
 
 ProcessManager& CMainFrame::GetProcessManager() {
 	return m_ProcessManager;
+}
+
+void CMainFrame::GoToProcess(uint32_t pid) {
+	for (int i = 0; i < _countof(s_Tabs); i++) {
+		if (s_Tabs[i].Type == TabType::Processes) {
+			m_Tabs.SetActivePage(i);
+			m_Views[i]->ShowProcess(pid);
+			break;
+		}
+	}
 }

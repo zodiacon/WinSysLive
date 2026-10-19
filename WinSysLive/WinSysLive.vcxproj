@@ -372,6 +372,10 @@
     <Image Include="res\Waiting.ico" />
     <Image Include="res\History.ico" />
     <Image Include="res\stop.ico" />
+    <Image Include="res\process_kill.ico" />
+    <Image Include="res\tree.ico" />
+    <Image Include="res\ready.ico" />
+    <Image Include="res\Refresh.ico" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\wtlhelper\GraphControl\GraphControl.vcxproj">

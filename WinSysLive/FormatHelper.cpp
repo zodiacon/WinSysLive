@@ -49,3 +49,61 @@ std::wstring FormatHelper::FormatPriority(int basePriority) {
 	}
 	return std::to_wstring(basePriority);
 }
+
+PCWSTR FormatHelper::ServiceStateToString(WinSys::ServiceState state) {
+	using enum WinSys::ServiceState;
+	switch (state) {
+		case Running: return L"Running";
+		case Stopped: return L"Stopped";
+		case Paused: return L"Paused";
+		case StartPending: return L"Starting";
+		case StopPending: return L"Stopping";
+		case PausePending: return L"Pausing";
+		case ContinuePending: return L"Continuing";
+	}
+	return L"Unknown";
+}
+
+std::wstring FormatHelper::ServiceStartTypeToString(WinSys::ServiceConfiguration const& config) {
+	using enum WinSys::ServiceStartType;
+	std::wstring text;
+	switch (config.StartType) {
+		case Boot: text = L"Boot"; break;
+		case System: text = L"System"; break;
+		case Auto: text = L"Automatic"; break;
+		case Demand: text = L"Manual"; break;
+		case Disabled: return L"Disabled";
+		default: text = std::to_wstring((int)config.StartType); break;
+	}
+	bool delayed = config.StartType == Auto && config.DelayedAutoStart;
+	if (delayed || config.TriggerStart) {
+		text += L" (";
+		if (delayed)
+			text += config.TriggerStart ? L"Delayed Start, " : L"Delayed Start";
+		if (config.TriggerStart)
+			text += L"Trigger Start";
+		text += L")";
+	}
+	return text;
+}
+
+std::wstring FormatHelper::ServiceTypeToString(WinSys::ServiceType type) {
+	using enum WinSys::ServiceType;
+	std::wstring text;
+	if ((type & UserService) == UserService)
+		text = (type & UserServiceInstance) == UserServiceInstance ? L"User Service Instance" : L"User Service";
+	else if ((type & Win32SharedProcess) == Win32SharedProcess)
+		text = L"Shared Process";
+	else if ((type & Win32OwnProcess) == Win32OwnProcess)
+		text = L"Own Process";
+	else if ((type & KernelDriver) == KernelDriver)
+		text = L"Kernel Driver";
+	else if ((type & FileSystemDriver) == FileSystemDriver)
+		text = L"File System Driver";
+
+	if ((type & PackageService) == PackageService)
+		text += L", Package";
+	if ((type & InteractiveProcess) == InteractiveProcess)
+		text += L", Interactive";
+	return text;
+}

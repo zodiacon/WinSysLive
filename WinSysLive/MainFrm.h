@@ -82,6 +82,7 @@ private:
 	HIMAGELIST GetImageList() const override;
 	int GetIconIndex(UINT iconId) const override;
 	ProcessManager& GetProcessManager() override;
+	void GoToProcess(uint32_t pid) override;
 
 	struct TabInfo {
 		TabType Type;

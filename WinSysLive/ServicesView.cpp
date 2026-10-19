@@ -1,7 +1,396 @@
 #include "pch.h"
+#include "resource.h"
 #include "ServicesView.h"
-#include <WinSys/ServiceManager.h>
+#include "FormatHelper.h"
+#include <WinSys/Helpers.h>
+#include <WinSys/SecurityHelper.h>
+#include <ClipboardHelper.h>
+#include <SortHelper.h>
+#include <unordered_set>
+
+using namespace WinSys;
+
+namespace {
+	// highlighting lasts this many updates
+	const int HighlightTicks = 2;
+	// how long a restart waits for the service to stop
+	const ULONGLONG RestartTimeout = 30000;
+}
+
+WinSys::ServiceConfiguration const* CServicesView::ServiceItem::GetConfig() {
+	if (!m_ConfigLoaded) {
+		m_ConfigLoaded = true;
+		m_Config = ServiceManager::GetServiceConfiguration(Info.GetName());
+	}
+	return m_Config.get();
+}
+
+std::wstring const& CServicesView::ServiceItem::GetDescription() {
+	if (!m_DescriptionLoaded) {
+		m_DescriptionLoaded = true;
+		m_Description = ServiceManager::GetServiceDescription(Info.GetName());
+	}
+	return m_Description;
+}
 
 CString CServicesView::GetTitle() const {
 	return L"Services";
+}
+
+LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
+		LVS_REPORT | LVS_OWNERDATA | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
+	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
+	m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+	SuspendHookWhilePainting(m_List);
+
+	auto cm = GetColumnManager(m_List);
+	cm->AddColumn(L"Name", LVCFMT_LEFT, 180, Column::Name);
+	cm->AddColumn(L"Display Name", LVCFMT_LEFT, 260, Column::DisplayName);
+	cm->AddColumn(L"State", LVCFMT_LEFT, 80, Column::State);
+	cm->AddColumn(L"Start Type", LVCFMT_LEFT, 170, Column::StartType);
+	cm->AddColumn(L"Type", LVCFMT_LEFT, 110, Column::Type);
+	cm->AddColumn(L"PID", LVCFMT_RIGHT, 60, Column::ProcessId);
+	cm->AddColumn(L"Process", LVCFMT_LEFT, 120, Column::ProcessName);
+	cm->AddColumn(L"Account", LVCFMT_LEFT, 160, Column::Account);
+	cm->AddColumn(L"Binary Path", LVCFMT_LEFT, 350, Column::BinaryPath);
+	cm->AddColumn(L"Description", LVCFMT_LEFT, 400, Column::Description);
+
+	for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices)) {
+		auto item = std::make_shared<ServiceItem>(svc);
+		m_ItemsByName.insert({ svc.GetName(), item });
+		m_Items.push_back(std::move(item));
+	}
+	m_List.SetItemCount((int)m_Items.size());
+
+	return 0;
+}
+
+void CServicesView::OnRefresh(bool active) {
+	auto services = ServiceManager::EnumServices(ServiceEnumType::AllServices);
+	if (services.empty())
+		return;	// keep what we have if enumeration failed
+
+	auto selected = GetSelectedService();
+	auto selectedName = selected ? selected->Info.GetName() : L"";
+
+	bool added = false;
+	std::unordered_set<std::wstring> current;
+	current.reserve(services.size());
+	for (auto& svc : services) {
+		current.insert(svc.GetName());
+		if (auto it = m_ItemsByName.find(svc.GetName()); it != m_ItemsByName.end()) {
+			auto& item = *it->second;
+			auto& before = item.Info.GetStatusProcess();
+			auto& now = svc.GetStatusProcess();
+			if (before.CurrentState != now.CurrentState || before.ProcessId != now.ProcessId)
+				item.ChangedTicks = HighlightTicks;
+			else if (item.ChangedTicks > 0)
+				item.ChangedTicks--;
+			if (item.NewTicks > 0)
+				item.NewTicks--;
+			item.Info = std::move(svc);
+		}
+		else {
+			auto item = std::make_shared<ServiceItem>(std::move(svc));
+			item->NewTicks = HighlightTicks;
+			m_ItemsByName.insert({ item->Info.GetName(), item });
+			m_Items.push_back(std::move(item));
+			added = true;
+		}
+	}
+
+	// services that were deleted
+	bool removed = std::erase_if(m_Items, [&](auto& item) { return !current.contains(item->Info.GetName()); }) > 0;
+	if (removed)
+		std::erase_if(m_ItemsByName, [&](auto& pair) { return !current.contains(pair.first); });
+
+	if (added || removed)
+		m_List.SetItemCountEx((int)m_Items.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+
+	// states change, so the order may too; DoSort keeps the selection
+	if (GetSortInfo(m_List))
+		Sort(m_List);
+	else if (added || removed)
+		SelectService(selectedName);
+
+	if (active)
+		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+CString CServicesView::GetColumnText(HWND, int row, int col) const {
+	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(col);
+	return GetText(*m_Items[row], column).c_str();
+}
+
+std::wstring CServicesView::GetText(ServiceItem& item, Column column) const {
+	auto& status = item.Info.GetStatusProcess();
+	switch (column) {
+		case Column::Name: return item.Info.GetName();
+		case Column::DisplayName: return item.Info.GetDisplayName();
+		case Column::State: return FormatHelper::ServiceStateToString(status.CurrentState);
+		case Column::StartType:
+			if (auto config = item.GetConfig(); config)
+				return FormatHelper::ServiceStartTypeToString(*config);
+			return L"";
+		case Column::Type: return FormatHelper::ServiceTypeToString(status.Type);
+		case Column::ProcessId: return status.ProcessId ? std::to_wstring(status.ProcessId) : L"";
+		case Column::ProcessName: return Frame()->GetProcessManager().GetProcessNameById(status.ProcessId);
+		case Column::Account:
+			if (auto config = item.GetConfig(); config)
+				return config->AccountName;
+			return L"";
+		case Column::BinaryPath:
+			if (auto config = item.GetConfig(); config)
+				return config->BinaryPathName;
+			return L"";
+		case Column::Description: return item.GetDescription();
+	}
+	return L"";
+}
+
+int CServicesView::GetRowImage(HWND, int, int) const {
+	return Frame()->GetIconIndex(IDI_SERVICES);
+}
+
+int CServicesView::GetSaveColumnRange(HWND, int&) const {
+	// DoSort keeps the selection (by name), so CVirtualListView doesn't need to
+	return -1;
+}
+
+void CServicesView::DoSort(SortInfo const* si) {
+	auto selected = GetSelectedService();
+	auto selectedName = selected ? selected->Info.GetName() : L"";
+
+	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(si->SortColumn);
+	std::ranges::stable_sort(m_Items, [&](auto& s1, auto& s2) {
+		auto result = CompareServices(*s1, *s2, column);
+		return si->SortAscending ? result < 0 : result > 0;
+		});
+
+	SelectService(selectedName);
+}
+
+int CServicesView::CompareServices(ServiceItem& s1, ServiceItem& s2, Column column) const {
+	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
+	auto compareText = [](std::wstring const& a, std::wstring const& b) { return ::_wcsicmp(a.c_str(), b.c_str()); };
+	auto& st1 = s1.Info.GetStatusProcess();
+	auto& st2 = s2.Info.GetStatusProcess();
+
+	switch (column) {
+		case Column::State: return compare(st1.CurrentState, st2.CurrentState);
+		case Column::ProcessId: return compare(st1.ProcessId, st2.ProcessId);
+		case Column::Type: return compare(st1.Type, st2.Type);
+		case Column::StartType:
+		{
+			auto c1 = s1.GetConfig(), c2 = s2.GetConfig();
+			if (!c1 || !c2)
+				return compare(c1 != nullptr, c2 != nullptr);
+			if (auto result = compare(c1->StartType, c2->StartType); result)
+				return result;
+			return compare(c1->DelayedAutoStart, c2->DelayedAutoStart);
+		}
+	}
+	// the rest are text
+	return compareText(GetText(s1, column), GetText(s2, column));
+}
+
+LRESULT CServicesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+
+	auto cd = reinterpret_cast<NMLVCUSTOMDRAW*>(hdr);
+	switch (cd->nmcd.dwDrawStage) {
+		case CDDS_PREPAINT:
+			return CDRF_NOTIFYITEMDRAW;
+
+		case CDDS_ITEMPREPAINT:
+		{
+			auto index = (int)cd->nmcd.dwItemSpec;
+			if (index < 0 || index >= (int)m_Items.size())
+				break;
+			auto& item = *m_Items[index];
+			bool dark = WTLHelper::IsDarkMode();
+			if (item.NewTicks > 0) {
+				cd->clrTextBk = dark ? RGB(0, 96, 0) : RGB(160, 255, 160);
+				cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
+			}
+			else if (item.ChangedTicks > 0) {
+				cd->clrTextBk = dark ? RGB(112, 88, 0) : RGB(255, 236, 140);
+				cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
+			}
+			break;
+		}
+	}
+	return CDRF_DODEFAULT;
+}
+
+CServicesView::ServiceItem* CServicesView::GetSelectedService() const {
+	int index = m_List.GetSelectedIndex();
+	return index >= 0 && index < (int)m_Items.size() ? m_Items[index].get() : nullptr;
+}
+
+void CServicesView::SelectService(std::wstring const& name) {
+	// the list view keeps the selection by index, which sorting and changes to the list shift
+	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+	if (name.empty())
+		return;
+	auto it = std::ranges::find_if(m_Items, [&](auto& item) { return item->Info.GetName() == name; });
+	if (it != m_Items.end()) {
+		int index = (int)(it - m_Items.begin());
+		m_List.SetItemState(index, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+	}
+}
+
+bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
+	if (row < 0)
+		return false;
+
+	auto& item = *m_Items[row];
+	auto& status = item.Info.GetStatusProcess();
+	auto state = status.CurrentState;
+	auto accepted = status.ControlsAccepted;
+	bool pauseContinue = (accepted & ServiceControlsAccepted::PauseContinue) == ServiceControlsAccepted::PauseContinue;
+	bool canStop = (accepted & ServiceControlsAccepted::Stop) == ServiceControlsAccepted::Stop;
+
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXT);
+	CMenuHandle popup = menu.GetSubMenu(1);
+	MenuItemData const icons[] = {
+		{ ID_SERVICE_START, IDI_RUN },
+		{ ID_SERVICE_STOP, IDI_KILL },
+		{ ID_SERVICE_PAUSE, IDI_PAUSE },
+		{ ID_SERVICE_CONTINUE, IDI_CONTINUE },
+		{ ID_SERVICE_RESTART, IDI_REFRESH },
+	};
+	WTLHelper::InitMenu(popup, icons, _countof(icons));
+
+	auto enable = [&](UINT id, bool enabled) {
+		popup.EnableMenuItem(id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
+	};
+	enable(ID_SERVICE_START, state == ServiceState::Stopped);
+	enable(ID_SERVICE_STOP, canStop && state != ServiceState::Stopped);
+	enable(ID_SERVICE_PAUSE, pauseContinue && state == ServiceState::Running);
+	enable(ID_SERVICE_CONTINUE, pauseContinue && state == ServiceState::Paused);
+	enable(ID_SERVICE_RESTART, canStop && state == ServiceState::Running && m_RestartName.empty());
+	enable(ID_SERVICE_GOTOPROCESS, status.ProcessId != 0);
+
+	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
+	return true;
+}
+
+bool CServicesView::OnDoubleClickList(HWND, int row, int, POINT const&) {
+	if (row < 0)
+		return false;
+	if (auto pid = m_Items[row]->Info.GetStatusProcess().ProcessId; pid)
+		Frame()->GoToProcess(pid);
+	return true;
+}
+
+void CServicesView::ShowError(PCWSTR operation, DWORD error) const {
+	auto text = std::format(L"{} failed", operation);
+	if (error)
+		text += L": " + Helpers::GetErrorText(error);
+	if (error == ERROR_ACCESS_DENIED && !SecurityHelper::IsRunningElevated())
+		text += L"\nControlling most services requires running as administrator (File > Run as Administrator).";
+	AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+}
+
+bool CServicesView::Control(ServiceAccessMask access, PCWSTR operation, std::function<bool(WinSys::Service&)> const& action) {
+	auto item = GetSelectedService();
+	if (!item)
+		return false;
+
+	auto service = WinSys::Service::Open(item->Info.GetName(), access);
+	if (!service) {
+		ShowError(operation, ::GetLastError());
+		return false;
+	}
+	if (!action(*service)) {
+		ShowError(operation, ::GetLastError());
+		return false;
+	}
+	return true;
+}
+
+LRESULT CServicesView::OnStart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	Control(ServiceAccessMask::Start, L"Starting the service", [](auto& svc) { return svc.Start(); });
+	return 0;
+}
+
+LRESULT CServicesView::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	Control(ServiceAccessMask::Stop, L"Stopping the service", [](auto& svc) { return svc.Stop(); });
+	return 0;
+}
+
+LRESULT CServicesView::OnPause(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	Control(ServiceAccessMask::PauseContinue, L"Pausing the service", [](auto& svc) { return svc.Pause(); });
+	return 0;
+}
+
+LRESULT CServicesView::OnContinue(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	Control(ServiceAccessMask::PauseContinue, L"Continuing the service", [](auto& svc) { return svc.Continue(); });
+	return 0;
+}
+
+LRESULT CServicesView::OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedService();
+	if (!item || !m_RestartName.empty())
+		return 0;
+
+	if (!Control(ServiceAccessMask::Stop | ServiceAccessMask::Start, L"Stopping the service", [](auto& svc) { return svc.Stop(); }))
+		return 0;
+
+	m_RestartName = item->Info.GetName();
+	m_RestartDeadline = ::GetTickCount64() + RestartTimeout;
+	SetTimer(RestartTimerId, 250);
+	return 0;
+}
+
+LRESULT CServicesView::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id != RestartTimerId) {
+		bHandled = FALSE;
+		return 0;
+	}
+
+	auto state = ServiceManager::GetServiceState(m_RestartName);
+	if (state != ServiceState::Stopped && ::GetTickCount64() < m_RestartDeadline)
+		return 0;
+
+	KillTimer(RestartTimerId);
+	auto name = std::move(m_RestartName);
+	m_RestartName.clear();
+	if (state != ServiceState::Stopped) {
+		AtlMessageBox(m_hWnd, std::format(L"Service {} did not stop in time; not restarting it.", name).c_str(), IDR_MAINFRAME, MB_ICONWARNING);
+		return 0;
+	}
+
+	auto service = WinSys::Service::Open(name, ServiceAccessMask::Start);
+	if (!service || !service->Start())
+		ShowError(L"Starting the service", ::GetLastError());
+	return 0;
+}
+
+LRESULT CServicesView::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto item = GetSelectedService(); item && item->Info.GetStatusProcess().ProcessId)
+		Frame()->GoToProcess(item->Info.GetStatusProcess().ProcessId);
+	return 0;
+}
+
+LRESULT CServicesView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedService();
+	if (!item)
+		return 0;
+
+	// all columns, tab separated
+	std::wstring text;
+	for (int i = 0; i <= (int)Column::Description; i++) {
+		if (i > 0)
+			text += L'\t';
+		text += GetText(*item, (Column)i);
+	}
+	ClipboardHelper::CopyText(m_hWnd, text.c_str());
+	return 0;
 }

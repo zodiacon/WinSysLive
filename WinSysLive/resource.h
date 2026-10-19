@@ -15,6 +15,9 @@
 #define IDI_PAUSE                   207
 #define IDI_REFRESH                 208
 #define IDI_KILL                    209
+#define IDI_TREE                    210
+#define IDI_CONTINUE                211
+#define IDI_PROCESS_KILL            212
 //#define IDR_WINSYSLIVETYPE	129
 #define ID_OPTIONS_DARKMODE			32774
 #define ID_VIEW_PROCESSES			32775
@@ -39,14 +42,20 @@
 #define ID_PRIORITY_NORMAL          32795
 #define ID_PRIORITY_BELOWNORMAL     32796
 #define ID_PRIORITY_IDLE            32797
+#define ID_SERVICE_START            32798
+#define ID_SERVICE_STOP             32799
+#define ID_SERVICE_PAUSE            32800
+#define ID_SERVICE_CONTINUE         32801
+#define ID_SERVICE_RESTART          32802
+#define ID_SERVICE_GOTOPROCESS      32803
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	210
+#define _APS_NEXT_RESOURCE_VALUE	213
 #define _APS_NEXT_CONTROL_VALUE		1000
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32798
+#define _APS_NEXT_COMMAND_VALUE		32804
 #endif
 #endif

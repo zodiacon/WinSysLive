@@ -111,6 +111,18 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
     END
+    POPUP "Service"
+    BEGIN
+        MENUITEM "&Start",                       ID_SERVICE_START
+        MENUITEM "S&top",                        ID_SERVICE_STOP
+        MENUITEM "&Pause",                       ID_SERVICE_PAUSE
+        MENUITEM "&Continue",                    ID_SERVICE_CONTINUE
+        MENUITEM "&Restart",                     ID_SERVICE_RESTART
+        MENUITEM SEPARATOR
+        MENUITEM "&Go to Process",               ID_SERVICE_GOTOPROCESS
+        MENUITEM SEPARATOR
+        MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
+    END
 END
 
 /////////////////////////////////////////////////////////////////////////////
@@ -127,8 +139,11 @@ IDI_PERFORMANCE          ICON                    "res\\perf.ico"
 IDI_PROCESS              ICON                    "res\\process.ico"
 IDI_RUN                  ICON                    "res\\Running.ico"
 IDI_PAUSE                ICON                    "res\\Waiting.ico"
-IDI_REFRESH              ICON                    "res\\History.ico"
+IDI_REFRESH              ICON                    "res\\Refresh.ico"
 IDI_KILL                 ICON                    "res\\stop.ico"
+IDI_TREE                 ICON                    "res\\tree.ico"
+IDI_CONTINUE             ICON                    "res\\ready.ico"
+IDI_PROCESS_KILL         ICON                    "res\\process_kill.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //

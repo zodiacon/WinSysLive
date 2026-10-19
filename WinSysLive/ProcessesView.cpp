@@ -95,6 +95,16 @@ void CProcessesView::OnThemeChanged(bool dark) {
 	m_Tree.Invalidate();
 }
 
+void CProcessesView::ShowProcess(uint32_t pid) {
+	auto process = Frame()->GetProcessManager().GetProcessById(pid);
+	if (!process)
+		return;
+	if (auto it = m_Items.find(process->Key); it != m_Items.end() && it->second.Item) {
+		m_Tree.SelectItem(it->second.Item);
+		m_Tree.SetFocus();
+	}
+}
+
 void CProcessesView::BuildItems() {
 	auto selected = GetSelectedProcess();
 	auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
@@ -382,7 +392,7 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 	CMenu menu;
 	menu.LoadMenu(IDR_CONTEXT);
 	CMenuHandle popup = menu.GetSubMenu(0);
-	WTLHelper::InitMenu(popup, MenuItemData{ ID_PROCESS_KILL, IDI_KILL });
+	WTLHelper::InitMenu(popup, MenuItemData{ ID_PROCESS_KILL, IDI_PROCESS_KILL });
 
 	bool live = CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })

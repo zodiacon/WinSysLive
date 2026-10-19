@@ -1,5 +1,7 @@
 #pragma once
 
+#include <WinSys/ServiceManager.h>
+
 struct FormatHelper abstract final {
 	// with thousands separators
 	static std::wstring FormatNumber(int64_t value);
@@ -11,4 +13,9 @@ struct FormatHelper abstract final {
 	static std::wstring FormatDateTime(int64_t time);
 	// kernel base priority (as in SYSTEM_PROCESS_INFORMATION) to a priority class name
 	static std::wstring FormatPriority(int basePriority);
+
+	static PCWSTR ServiceStateToString(WinSys::ServiceState state);
+	// as services.msc shows it, e.g. "Automatic (Delayed Start)"
+	static std::wstring ServiceStartTypeToString(WinSys::ServiceConfiguration const& config);
+	static std::wstring ServiceTypeToString(WinSys::ServiceType type);
 };
