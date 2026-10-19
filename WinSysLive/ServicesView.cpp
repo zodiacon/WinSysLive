@@ -132,31 +132,12 @@ void CServicesView::OnActivate(bool active) {
 }
 
 std::vector<ColumnLayout::ShownColumn> CServicesView::GetShownColumns() const {
-	auto header = m_List.GetHeader();
-	int count = header.GetItemCount();
-	std::vector<int> order(count);
-	header.GetOrderArray(count, order.data());
-	auto cm = GetColumnManager(m_List);
-	std::vector<ColumnLayout::ShownColumn> columns;
-	for (int index : order) {
-		// the header item's lParam is the column manager's index
-		HDITEM hdi{ HDI_LPARAM };
-		header.GetItem(index, &hdi);
-		columns.push_back({ (int)cm->GetColumnTag<Column>((int)hdi.lParam), m_List.GetColumnWidth(index) });
-	}
-	return columns;
+	return ColumnLayout::GetShownColumns(m_List, GetColumnManager(m_List));
 }
 
 void CServicesView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
 	ClearSort(m_List.m_hWnd);
-	// the column manager holds only the shown columns, added in display order
-	auto cm = GetColumnManager(m_List);
-	cm->Clear();
-	for (auto& c : columns) {
-		auto& def = s_Columns[c.Id];
-		cm->AddColumn(def.Name, def.Format, c.Width, (Column)c.Id);
-	}
-	m_List.Invalidate();
+	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
 }
 
 void CServicesView::SaveColumns() const {
@@ -173,35 +154,17 @@ LRESULT CServicesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 	return 0;
 }
 
-LRESULT CServicesView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
-	// the header's NM_RCLICK doesn't get here, but its WM_CONTEXTMENU comes up through the list view, which makes
-	// itself the window, so the header is found by the position; the rows have their own menu (OnRightClickList)
-	auto header = m_List.GetHeader();
+LRESULT CServicesView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	// the header's NM_RCLICK doesn't get here, but its WM_CONTEXTMENU does; the rows have their own menu (OnRightClickList)
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-	CRect rcHeader;
-	header.GetWindowRect(&rcHeader);
-	if ((HWND)wParam != m_List || !rcHeader.PtInRect(pt)) {
+	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
+	if (!column) {
 		bHandled = FALSE;
 		return 0;
 	}
-	HDHITTESTINFO hit{};
-	hit.pt = pt;
-	header.ScreenToClient(&hit.pt);
-	if (header.HitTest(&hit) < 0)
-		return 0;
-
-	// the header item's lParam is the column manager's index
-	HDITEM hdi{ HDI_LPARAM };
-	header.GetItem(hit.iItem, &hdi);
-	m_MenuColumn = (int)GetColumnManager(m_List)->GetColumnTag<Column>((int)hdi.lParam);
-
+	m_MenuColumn = *column;
 	CMenu menu;
-	menu.LoadMenu(IDR_CONTEXT);
-	CMenuHandle popup = menu.GetSubMenu(2);
-	popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE,
-		std::format(L"&Hide \"{}\"", s_Columns[m_MenuColumn].Name).c_str());
-	popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (s_Columns[m_MenuColumn].Mandatory ? MF_GRAYED : MF_ENABLED));
-	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
+	Frame()->ShowContextMenu(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, s_Columns), pt, TPM_RIGHTBUTTON);
 	return 0;
 }
 

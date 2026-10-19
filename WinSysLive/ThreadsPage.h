@@ -11,8 +11,9 @@
 // frame's snapshot (which has every process's threads after its entry) on every refresh. CPU, cycles and the
 // context switch delta come from the previous refresh's values, kept per thread. The values the snapshot
 // doesn't have (ideal CPU, I/O and memory priority, cycles, service) are queried through a handle to each
-// thread, opened once while its process is shown. The columns are chosen from the header's context menu and kept
-// in the ThreadColumns setting.
+// thread, opened once while its process is shown. New threads are highlighted for a while, exited ones are shown
+// (with their last values) for one refresh. The columns are chosen from the header's context menu and kept in the
+// ThreadColumns setting.
 //
 class CThreadsPage :
 	public CWindowImpl<CThreadsPage>,
@@ -39,6 +40,7 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
+		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CThreadsPage>)
 	END_MSG_MAP()
 
@@ -72,6 +74,8 @@ private:
 		uint64_t Cycles{ 0 };
 		int64_t CyclesDelta{ -1 };	// -1: not known yet
 		std::wstring const* Service{ nullptr };	// in the thread's ThreadState
+		bool New{ false };		// highlighted as created
+		bool Exited{ false };	// highlighted as exited, for one refresh
 	};
 	// what's kept per thread between refreshes
 	struct ThreadState {
@@ -81,6 +85,8 @@ private:
 		bool Known{ false };	// the values above are from a previous refresh
 		std::unique_ptr<WinSys::Thread> Handle;
 		std::wstring Service;	// queried once: a thread's service doesn't change
+		int NewTicks{ 0 };	// refreshes left to highlight it as created
+		ThreadRow Last;		// shown once more when the thread exits
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -91,6 +97,7 @@ private:
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
 	std::wstring GetText(ThreadRow const& row, Column column) const;
 	void SelectThread(uint32_t tid);
@@ -105,6 +112,8 @@ private:
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::vector<ThreadRow> m_Rows;	// in display order
 	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Threads;	// node-based: ThreadRow::Service stays valid
+	// the threads that exited on the last refresh: their rows point to their ThreadState's Service
+	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Exited;
 	LARGE_INTEGER m_PrevTime{};	// of the previous refresh (QPC), 0 if none
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 };

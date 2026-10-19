@@ -5,6 +5,7 @@
 #include "ViewBase.h"
 #include "AppSettings.h"
 #include "resource.h"
+#include <WTLHelper.h>
 
 using namespace WinSys;
 
@@ -54,6 +55,9 @@ namespace {
 		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
 	};
 
+	// highlighting of created threads lasts this many refreshes
+	const int NewThreadTicks = 2;
+
 	std::unique_ptr<Thread> OpenThread(uint32_t tid) {
 		// limited access is all a protected process's threads allow; the I/O and memory priorities need more
 		if (auto thread = Thread::OpenById(tid, ThreadAccessMask::QueryInformation))
@@ -82,31 +86,12 @@ LRESULT CThreadsPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 }
 
 std::vector<ColumnLayout::ShownColumn> CThreadsPage::GetShownColumns() const {
-	auto header = m_List.GetHeader();
-	int count = header.GetItemCount();
-	std::vector<int> order(count);
-	header.GetOrderArray(count, order.data());
-	auto cm = GetColumnManager(m_List);
-	std::vector<ColumnLayout::ShownColumn> columns;
-	for (int index : order) {
-		// the header item's lParam is the column manager's index
-		HDITEM hdi{ HDI_LPARAM };
-		header.GetItem(index, &hdi);
-		columns.push_back({ (int)cm->GetColumnTag<Column>((int)hdi.lParam), m_List.GetColumnWidth(index) });
-	}
-	return columns;
+	return ColumnLayout::GetShownColumns(m_List, GetColumnManager(m_List));
 }
 
 void CThreadsPage::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
 	ClearSort(m_List.m_hWnd);
-	// the column manager holds only the shown columns, added in display order
-	auto cm = GetColumnManager(m_List);
-	cm->Clear();
-	for (auto& c : columns) {
-		auto& def = s_Columns[c.Id];
-		cm->AddColumn(def.Name, def.Format, c.Width, (Column)c.Id);
-	}
-	m_List.Invalidate();
+	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
 }
 
 void CThreadsPage::SaveColumns() const {
@@ -116,36 +101,18 @@ void CThreadsPage::SaveColumns() const {
 }
 
 LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
-	// the header's WM_CONTEXTMENU comes up through the list view, so the header is found by the position
-	auto header = m_List.GetHeader();
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-	CRect rcHeader;
-	header.GetWindowRect(&rcHeader);
-	if (!rcHeader.PtInRect(pt)) {
+	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
+	if (!column) {
 		bHandled = FALSE;
 		return 0;
 	}
-	HDHITTESTINFO hit{};
-	hit.pt = pt;
-	header.ScreenToClient(&hit.pt);
-	int& column = m_MenuColumn;
-	column = -1;
-	if (header.HitTest(&hit) >= 0) {
-		HDITEM hdi{ HDI_LPARAM };
-		header.GetItem(hit.iItem, &hdi);
-		column = (int)GetColumnManager(m_List)->GetColumnTag<Column>((int)hdi.lParam);
-	}
-
+	m_MenuColumn = *column;
 	CMenu menu;
-	menu.LoadMenu(IDR_CONTEXT);
-	CMenuHandle popup = menu.GetSubMenu(2);
-	if (column >= 0)
-		popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE, std::format(L"&Hide \"{}\"", s_Columns[column].Name).c_str());
-	popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (column >= 0 && !s_Columns[column].Mandatory ? MF_ENABLED : MF_GRAYED));
 	// the commands come to this page (OnHideColumn, OnSelectColumns): through the frame, Select Columns would go to the
 	// active view (the process list). They're posted, not returned (TPM_RETURNCMD), so the dialog doesn't run inside the
 	// header's right-button handling, where it didn't paint
-	::TrackPopupMenuEx(popup, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
+	::TrackPopupMenuEx(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, s_Columns), TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 	return 0;
 }
 
@@ -189,6 +156,7 @@ void CThreadsPage::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
 	m_Process = std::move(process);
 	// the handles and the values to compute deltas from belong to the previous process
 	m_Threads.clear();
+	m_Exited.clear();
 	m_PrevTime = {};
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	Refresh();
@@ -230,14 +198,23 @@ void CThreadsPage::Refresh() {
 			// the address the thread was created with; StartAddress is the common user-mode thunk
 			row.StartAddress = ext.Win32StartAddress ? ext.Win32StartAddress : t.StartAddress;
 
-			// a thread's state moves to the new map, so a thread that exited takes its handle with it
+			// a thread's state moves to the new map; the ones left in the old map exited
 			ThreadState state;
-			if (auto it = m_Threads.find(row.Key); it != m_Threads.end())
+			if (auto it = m_Threads.find(row.Key); it != m_Threads.end()) {
 				state = std::move(it->second);
+				m_Threads.erase(it);
+			}
 			else {
 				state.Handle = OpenThread(row.Key.Id);
 				if (state.Handle && m_Process->Id > 4)
 					state.Service = state.Handle->GetServiceNameByTag(m_Process->Id);
+				// on the first refresh of a process, all its threads are new to the page, not created
+				if (m_PrevTime.QuadPart)
+					state.NewTicks = NewThreadTicks;
+			}
+			if (state.NewTicks > 0) {
+				row.New = true;
+				state.NewTicks--;
 			}
 
 			auto cpuTime = row.KernelTime + row.UserTime;
@@ -261,6 +238,18 @@ void CThreadsPage::Refresh() {
 			state.Known = true;
 			auto& kept = current.insert({ row.Key, std::move(state) }).first->second;
 			row.Service = &kept.Service;
+			kept.Last = row;
+			m_Rows.push_back(std::move(row));
+		}
+
+		// the threads that exited since the last refresh: shown once more, as they were; their handles close with
+		// the next refresh
+		m_Exited = std::move(m_Threads);
+		for (auto& [key, state] : m_Exited) {
+			auto row = state.Last;
+			row.New = false;
+			row.Exited = true;
+			row.Service = &state.Service;
 			m_Rows.push_back(std::move(row));
 		}
 		m_Threads = std::move(current);
@@ -356,4 +345,36 @@ void CThreadsPage::DoSort(SortInfo const* si) {
 		return si->SortAscending ? result < 0 : result > 0;
 		});
 	SelectThread(selectedTid);
+}
+
+LRESULT CThreadsPage::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+	auto cd = reinterpret_cast<NMLVCUSTOMDRAW*>(hdr);
+	switch (cd->nmcd.dwDrawStage) {
+		case CDDS_PREPAINT:
+			return CDRF_NOTIFYITEMDRAW;
+
+		case CDDS_ITEMPREPAINT:
+		{
+			auto index = (int)cd->nmcd.dwItemSpec;
+			if (index < 0 || index >= (int)m_Rows.size())
+				break;
+			auto& row = m_Rows[index];
+			bool dark = WTLHelper::IsDarkMode();
+			// the colors of new and exited processes in the process list
+			if (row.Exited) {
+				cd->clrTextBk = dark ? RGB(128, 0, 0) : RGB(255, 160, 160);
+				cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
+			}
+			else if (row.New) {
+				cd->clrTextBk = dark ? RGB(0, 96, 0) : RGB(160, 255, 160);
+				cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
+			}
+			break;
+		}
+	}
+	return CDRF_DODEFAULT;
 }

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ColumnLayout.h"
 #include "ColumnsDlg.h"
+#include "resource.h"
 #include <ranges>
 
 namespace ColumnLayout {
@@ -80,5 +81,54 @@ namespace ColumnLayout {
 			columns.push_back({ item.Id, current != shown.end() ? current->Width : defs[item.Id].Width });
 		}
 		return columns;
+	}
+
+	std::vector<ShownColumn> GetShownColumns(CListViewCtrl list, ColumnManager const* cm) {
+		auto header = list.GetHeader();
+		int count = header.GetItemCount();
+		std::vector<int> order(count);
+		header.GetOrderArray(count, order.data());
+		std::vector<ShownColumn> columns;
+		for (int index : order) {
+			// the header item's lParam is the column manager's index
+			HDITEM hdi{ HDI_LPARAM };
+			header.GetItem(index, &hdi);
+			columns.push_back({ cm->GetColumnTag<int>((int)hdi.lParam), list.GetColumnWidth(index) });
+		}
+		return columns;
+	}
+
+	void SetColumns(ColumnManager* cm, std::vector<ShownColumn> const& columns, std::span<ColumnDef const> defs) {
+		cm->Clear();
+		for (auto& c : columns) {
+			auto& def = defs[c.Id];
+			cm->AddColumn(def.Name, def.Format, c.Width, c.Id);
+		}
+		CListViewCtrl(cm->GetListView()).Invalidate();
+	}
+
+	std::optional<int> HeaderColumnAt(CListViewCtrl list, ColumnManager const* cm, POINT pt) {
+		auto header = list.GetHeader();
+		CRect rc;
+		header.GetWindowRect(&rc);
+		if (!rc.PtInRect(pt))
+			return std::nullopt;
+		HDHITTESTINFO hit{};
+		hit.pt = pt;
+		header.ScreenToClient(&hit.pt);
+		if (header.HitTest(&hit) < 0)
+			return -1;
+		HDITEM hdi{ HDI_LPARAM };
+		header.GetItem(hit.iItem, &hdi);
+		return cm->GetColumnTag<int>((int)hdi.lParam);
+	}
+
+	CMenuHandle PrepareHeaderMenu(CMenu& menu, int column, std::span<ColumnDef const> defs) {
+		menu.LoadMenu(IDR_CONTEXT);
+		CMenuHandle popup = menu.GetSubMenu(2);
+		if (column >= 0)
+			popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE, std::format(L"&Hide \"{}\"", defs[column].Name).c_str());
+		popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (column >= 0 && !defs[column].Mandatory ? MF_ENABLED : MF_GRAYED));
+		return popup;
 	}
 }

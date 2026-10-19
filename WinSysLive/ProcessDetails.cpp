@@ -32,14 +32,8 @@ void CProcessDetails::Init(IMainFrame* frame) {
 		{ L"Decoded Access", 300, LVCFMT_LEFT },	// the access mask's rights, named for the object's type
 		{ L"Attributes", 100, LVCFMT_LEFT },
 	};
-	static const ColumnInfo modules[] = {
-		{ L"Name", 200, LVCFMT_LEFT },
-		{ L"Base Address", 140, LVCFMT_RIGHT },
-		{ L"Size", 100, LVCFMT_RIGHT },
-		{ L"Path", 400, LVCFMT_LEFT },
-	};
 	m_Handles = CreateList(handles);
-	m_Modules = CreateList(modules);
+	m_Modules.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	AddPage(m_Handles, L"Handles", frame->GetIconIndex(IDI_HANDLES));
 	AddPage(m_Modules, L"Modules", frame->GetIconIndex(IDI_MODULES));
@@ -53,6 +47,7 @@ void CProcessDetails::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
 		return;
 	m_Process = std::move(process);
 	m_Threads.SetProcess(m_Process);
+	m_Modules.SetProcess(m_Process);
 }
 
 ProcessInfoEx* CProcessDetails::GetProcess() const {
@@ -61,4 +56,13 @@ ProcessInfoEx* CProcessDetails::GetProcess() const {
 
 void CProcessDetails::Refresh() {
 	m_Threads.Refresh();
+	if (GetActivePage() == ModulesPage)
+		m_Modules.Refresh();
+}
+
+void CProcessDetails::OnPageActivated(int page) {
+	CNativeCustomTabViewImpl<CProcessDetails>::OnPageActivated(page);
+	// not refreshed while hidden (see Refresh)
+	if (page == ModulesPage && m_Modules)
+		m_Modules.Refresh();
 }

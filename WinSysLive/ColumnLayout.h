@@ -2,6 +2,7 @@
 
 #include <span>
 #include <optional>
+#include <ColumnManager.h>
 
 //
 // The columns a list shows, in display order with their widths, as the views keep them in a setting ("Key:width,...")
@@ -29,4 +30,19 @@ namespace ColumnLayout {
 
 	// Runs the column selection dialog. Columns that stay keep their width; the result is empty if it was canceled.
 	std::optional<std::vector<ShownColumn>> Select(HWND hParent, std::vector<ShownColumn> const& shown, std::span<ColumnDef const> defs);
+
+	//
+	// For a list view with a ColumnManager (CVirtualListView) that holds only the shown columns, added in display
+	// order, with the IDs as the tags. Rebuilding the columns invalidates CVirtualListView's sort column (call ClearSort).
+	//
+	// in display order: the header's, which the user can change by dragging
+	std::vector<ShownColumn> GetShownColumns(CListViewCtrl list, ColumnManager const* cm);
+	void SetColumns(ColumnManager* cm, std::vector<ShownColumn> const& columns, std::span<ColumnDef const> defs);
+	// The column (ID) at a point in screen coordinates: -1 on the header's empty part, nothing if the point isn't on
+	// the header. A header's WM_CONTEXTMENU comes up through the list view with the list view (or a window above it)
+	// as the window, so the position is what tells it from a row's.
+	std::optional<int> HeaderColumnAt(CListViewCtrl list, ColumnManager const* cm, POINT pt);
+	// The header's context menu (IDR_CONTEXT's Column popup) for a column: Hide (disabled for -1 or a mandatory
+	// column) and Select Columns
+	CMenuHandle PrepareHeaderMenu(CMenu& menu, int column, std::span<ColumnDef const> defs);
 }

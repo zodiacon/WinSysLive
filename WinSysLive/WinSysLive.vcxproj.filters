@@ -57,7 +57,13 @@
     <ClCompile Include="ThreadsPage.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ModulesPage.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="UsersView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="VersionInfo.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ViewFactory.cpp">
@@ -110,7 +116,13 @@
     <ClInclude Include="ThreadsPage.h">
       <Filter>Views</Filter>
     </ClInclude>
+    <ClInclude Include="ModulesPage.h">
+      <Filter>Views</Filter>
+    </ClInclude>
     <ClInclude Include="UsersView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="VersionInfo.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ViewBase.h">
