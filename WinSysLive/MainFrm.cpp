@@ -76,12 +76,14 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 void CMainFrame::InitImageList() {
 	static const UINT icons[] = {
-		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_PROCESS, IDI_RUN, IDI_KILL,
+		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_RUN, IDI_KILL,
 	};
 
-	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons), 16);
+	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons) + 1, 16);
 	for (auto id : icons)
 		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, 16));
+	// processes without an icon of their own get the system's default application icon
+	m_IconIndices[IDI_PROCESS] = m_Images.AddIcon(::LoadIcon(nullptr, IDI_APPLICATION));
 }
 
 void CMainFrame::InitToolBar(bool elevated) {
