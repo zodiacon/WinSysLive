@@ -8,6 +8,7 @@
 #include "aboutdlg.h"
 #include "MainFrm.h"
 #include "AppSettings.h"
+#include "FormatHelper.h"
 #include "WTLHelper.h"
 #include <IconHelper.h>
 #include <ToolbarHelper.h>
@@ -149,7 +150,7 @@ void CMainFrame::InitStatusBar() {
 	m_StatusBar.SubclassWindow(m_hWndStatusBar);
 
 	// pane widths come from the panes' string resources
-	int panes[] = { ID_DEFAULT_PANE, ID_PANE_PROCESSES, ID_PANE_CPU, ID_PANE_ELEVATION };
+	int panes[] = { ID_DEFAULT_PANE, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
 	m_StatusBar.SetPanes(panes, _countof(panes), false);
 	m_StatusBar.SetPaneText(ID_PANE_CPU, L"CPU: --");
 	m_StatusBar.SetPaneText(ID_PANE_ELEVATION, WinSys::SecurityHelper::IsRunningElevated() ? L"Administrator" : L"Standard User");
@@ -203,6 +204,10 @@ void CMainFrame::Refresh() {
 
 void CMainFrame::UpdateStatusBar() {
 	m_StatusBar.SetPaneText(ID_PANE_PROCESSES, std::format(L"Processes: {}", m_ProcessManager.GetProcessCount()).c_str());
+	int64_t threads = 0;
+	for (auto& p : m_ProcessManager.GetProcesses())
+		threads += p->NativeInfo->NumberOfThreads;
+	m_StatusBar.SetPaneText(ID_PANE_THREADS, (L"Threads: " + FormatHelper::FormatNumber(threads)).c_str());
 
 	// the Idle process's CPU is computed relative to the previous update, so there's nothing to show after the first one
 	if (!m_CpuValid) {

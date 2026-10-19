@@ -364,6 +364,7 @@ BEGIN
     ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
     ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle Toolbar"
     ID_PANE_PROCESSES       "Processes: 00000"
+    ID_PANE_THREADS         "Threads: 000,000"
     ID_PANE_CPU             "CPU: 100.0%  "
     ID_PANE_ELEVATION       "Standard User  "
 END

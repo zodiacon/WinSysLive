@@ -69,6 +69,7 @@
 #define ID_USER_LOGOFF              32809
 #define ID_USER_GOTOPROCESS         32810
 #define ID_VIEW_LOWERPANE           32811
+#define ID_PANE_THREADS             32812
 
 // Next default values for new objects
 // 
@@ -77,6 +78,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	221
 #define _APS_NEXT_CONTROL_VALUE		1005
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32812
+#define _APS_NEXT_COMMAND_VALUE		32813
 #endif
 #endif
