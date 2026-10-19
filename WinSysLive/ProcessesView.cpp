@@ -7,24 +7,16 @@
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
-#include "ColumnsDlg.h"
+#include "ColumnLayout.h"
 #include <ranges>
 
 using namespace WinSys;
 
 namespace {
-	struct ColumnInfo {
-		PCWSTR Name;
-		PCWSTR Key;	// stored in the ProcessColumns setting, so it must not change
-		int Width;
-		int Format;
-		bool Default;	// shown until the user chooses otherwise
-	};
-
-	// in CProcessesView::Column order
-	const ColumnInfo s_Columns[] = {
-		{ L"Name", L"Name", 220, LVCFMT_LEFT, true },
-		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true },
+	// in CProcessesView::Column order; the keys are stored in the ProcessColumns setting
+	const ColumnLayout::ColumnDef s_Columns[] = {
+		{ L"Name", L"Name", 220, LVCFMT_LEFT, true, true },
+		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true, true },
 		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
 		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false },
 		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, false },
@@ -208,52 +200,29 @@ uint32_t CProcessesView::GetJobId(ProcessInfoEx& process) {
 }
 
 std::vector<CProcessesView::ShownColumn> CProcessesView::LoadColumns() {
-	// "Key:width,Key:width...", in display order; unknown keys are skipped
 	std::vector<ShownColumn> columns;
-	auto text = AppSettings::Get().ProcessColumns();
-	for (auto part : std::views::split(std::wstring_view(text), L',')) {
-		std::wstring_view entry(part.begin(), part.end());
-		auto colon = entry.find(L':');
-		if (colon == entry.npos)
-			continue;
-		auto key = entry.substr(0, colon);
-		auto info = std::ranges::find_if(s_Columns, [&](auto& c) { return key == c.Key; });
-		if (info == std::end(s_Columns))
-			continue;
-		auto id = (Column)(info - std::begin(s_Columns));
-		int width = _wtoi(std::wstring(entry.substr(colon + 1)).c_str());
-		if (width > 0 && !std::ranges::contains(columns, id, &ShownColumn::Id))
-			columns.push_back({ id, width });
-	}
-	if (!std::ranges::contains(columns, Column::Name, &ShownColumn::Id)) {
-		// nothing saved, or nothing usable
-		columns.clear();
-		for (int i = 0; i < _countof(s_Columns); i++)
-			if (s_Columns[i].Default)
-				columns.push_back({ (Column)i, s_Columns[i].Width });
-	}
-	// the PID is always shown too
-	if (!std::ranges::contains(columns, Column::Id, &ShownColumn::Id)) {
-		auto name = std::ranges::find(columns, Column::Name, &ShownColumn::Id);
-		columns.insert(name + 1, { Column::Id, s_Columns[(int)Column::Id].Width });
-	}
+	for (auto& c : ColumnLayout::Parse(AppSettings::Get().ProcessColumns(), s_Columns))
+		columns.push_back({ (Column)c.Id, c.Width });
 	return columns;
 }
 
+std::vector<ColumnLayout::ShownColumn> CProcessesView::ToLayout(std::vector<ShownColumn> const& columns) {
+	std::vector<ColumnLayout::ShownColumn> layout;
+	for (auto& c : columns)
+		layout.push_back({ (int)c.Id, c.Width });
+	return layout;
+}
+
 void CProcessesView::SaveColumns() const {
-	std::wstring text;
-	for (auto& c : GetShownColumns()) {
-		if (!text.empty())
-			text += L',';
-		text += std::format(L"{}:{}", s_Columns[(int)c.Id].Key, c.Width);
-	}
 	auto& settings = AppSettings::Get();
-	settings.ProcessColumns(text);
+	settings.ProcessColumns(ColumnLayout::Format(ToLayout(GetShownColumns()), s_Columns));
 	settings.Save();
 }
 
 void CProcessesView::OnActivate(bool active) {
 	m_Active = active;
+	// the Services view handles it too, so it's set here rather than on every refresh (UpdateUI)
+	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
 	UpdateUI();
 	if (active)
 		m_Tree.SetFocus();
@@ -630,7 +599,6 @@ void CProcessesView::UpdateUI() {
 	// the frame's commands (menu, toolbar) that this view handles; the rest are on the context menu (see OnRightClick)
 	auto& ui = Frame()->GetUI();
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
-	ui.UIEnable(ID_VIEW_SELECTCOLUMNS, m_Active);
 	ui.UIEnable(ID_PROCESS_KILL, m_Active && CanControl(GetSelectedProcess()));
 	if (m_Active)
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
@@ -765,30 +733,13 @@ LRESULT CProcessesView::OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 }
 
 LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto shown = GetShownColumns();
-	std::vector<CColumnsDlg::Item> items, defaults;
-	for (auto& c : shown)
-		items.push_back({ (int)c.Id, s_Columns[(int)c.Id].Name, true, c.Id == Column::Name || c.Id == Column::Id });
-	for (int i = 0; i < _countof(s_Columns); i++) {
-		if (!std::ranges::contains(shown, (Column)i, &ShownColumn::Id))
-			items.push_back({ i, s_Columns[i].Name, false });
-		defaults.push_back({ i, s_Columns[i].Name, s_Columns[i].Default, i == (int)Column::Name || i == (int)Column::Id });
-	}
-	std::ranges::stable_partition(defaults, &CColumnsDlg::Item::Visible);
-
-	CColumnsDlg dlg(std::move(items), std::move(defaults));
-	if (dlg.DoModal(m_hWnd) != IDOK)
+	auto selected = ColumnLayout::Select(m_hWnd, ToLayout(GetShownColumns()), s_Columns);
+	if (!selected)
 		return 0;
 
-	// columns that stay keep their width
 	std::vector<ShownColumn> columns;
-	for (auto& item : dlg.GetItems()) {
-		if (!item.Visible)
-			break;
-		auto id = (Column)item.Id;
-		auto current = std::ranges::find(shown, id, &ShownColumn::Id);
-		columns.push_back({ id, current != shown.end() ? current->Width : s_Columns[item.Id].Width });
-	}
+	for (auto& c : *selected)
+		columns.push_back({ (Column)c.Id, c.Width });
 	SetColumns(columns);
 	SaveColumns();
 	if (ShowsNetwork() && !m_Network.IsRunning()) {
@@ -828,15 +779,14 @@ LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lPara
 	if (m_MenuColumn >= 0)
 		popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE,
 			std::format(L"&Hide \"{}\"", s_Columns[m_MenuColumn].Name).c_str());
-	// Name and PID are always shown
-	bool canHide = m_MenuColumn >= 0 && m_MenuColumn != (int)Column::Name && m_MenuColumn != (int)Column::Id;
+	bool canHide = m_MenuColumn >= 0 && !s_Columns[m_MenuColumn].Mandatory;
 	popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (canHide ? MF_ENABLED : MF_GRAYED));
 	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
 	return 0;
 }
 
 LRESULT CProcessesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (m_MenuColumn < 0 || m_MenuColumn == (int)Column::Name || m_MenuColumn == (int)Column::Id)
+	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
 		return 0;
 
 	auto columns = GetShownColumns();

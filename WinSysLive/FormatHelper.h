@@ -2,6 +2,7 @@
 
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Processes.h>
+#include <WinSys/Service.h>
 
 struct FormatHelper abstract final {
 	// with thousands separators
@@ -27,4 +28,7 @@ struct FormatHelper abstract final {
 	// as services.msc shows it, e.g. "Automatic (Delayed Start)"
 	static std::wstring ServiceStartTypeToString(WinSys::ServiceConfiguration const& config);
 	static std::wstring ServiceTypeToString(WinSys::ServiceType type);
+	static PCWSTR ServiceErrorControlToString(WinSys::ServiceErrorControl control);
+	// "Start: Network endpoint"
+	static std::wstring ServiceTriggerToString(WinSys::ServiceTriggerType type, WinSys::ServiceTriggerAction action);
 };

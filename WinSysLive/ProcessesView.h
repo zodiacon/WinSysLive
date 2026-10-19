@@ -3,6 +3,7 @@
 #include "ViewBase.h"
 #include <TreeListView/include/TreeListView.h>
 #include <WinSys/ProcessNetwork.h>
+#include "ColumnLayout.h"
 
 class CProcessesView :
 	public CViewBase<CProcessesView> {
@@ -86,6 +87,7 @@ private:
 	std::vector<ShownColumn> GetShownColumns() const;
 	void SetColumns(std::vector<ShownColumn> const& columns);
 	static std::vector<ShownColumn> LoadColumns();
+	static std::vector<ColumnLayout::ShownColumn> ToLayout(std::vector<ShownColumn> const& columns);
 	void SaveColumns() const;
 	bool ShowsNetwork() const;
 	// the job's ID when the snapshot has it (elevated), else 1 for a process in a job and 0 for one not in a job

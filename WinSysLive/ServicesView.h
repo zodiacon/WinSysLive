@@ -2,6 +2,7 @@
 
 #include "resource.h"
 #include "ViewBase.h"
+#include "ColumnLayout.h"
 #include <VirtualListView.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Service.h>
@@ -14,6 +15,7 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 
 	// CVirtualListView
@@ -26,6 +28,8 @@ public:
 
 	BEGIN_MSG_MAP(CServicesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CServicesView>)
@@ -38,12 +42,16 @@ public:
 		COMMAND_ID_HANDLER(ID_SERVICE_RESTART, OnRestart)
 		COMMAND_ID_HANDLER(ID_SERVICE_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
+		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CServicesView>, 1)
 	END_MSG_MAP()
 
 private:
 	enum class Column {
 		Name, DisplayName, State, StartType, Type, ProcessId, ProcessName, Account, BinaryPath, Description,
+		ErrorControl, Dependencies, Privileges, Triggers,
+		_Count
 	};
 
 	struct ServiceItem {
@@ -56,14 +64,18 @@ private:
 		// loaded on first use and cached: each takes a call to the SCM
 		WinSys::ServiceConfiguration const* GetConfig();
 		std::wstring const& GetDescription();
+		std::wstring const& GetPrivileges();	// the required privileges, comma separated
+		std::wstring const& GetTriggers();		// "Start: Network endpoint, Stop: ..."
 
 	private:
 		std::unique_ptr<WinSys::ServiceConfiguration> m_Config;
-		std::wstring m_Description;
-		bool m_ConfigLoaded{ false }, m_DescriptionLoaded{ false };
+		std::wstring m_Description, m_Privileges, m_Triggers;
+		bool m_ConfigLoaded{ false }, m_DescriptionLoaded{ false }, m_PrivilegesLoaded{ false }, m_TriggersLoaded{ false };
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnStart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -73,6 +85,14 @@ private:
 	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	// the shown columns in display order (the header's order, which the user can change by dragging)
+	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
+	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
+	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
+	void SaveColumns() const;
 
 	std::wstring GetText(ServiceItem& item, Column column) const;
 	int CompareServices(ServiceItem& s1, ServiceItem& s2, Column column) const;
@@ -82,6 +102,7 @@ private:
 	void ShowError(PCWSTR operation, DWORD error) const;
 
 	CListViewCtrl m_List;
+	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::vector<std::shared_ptr<ServiceItem>> m_Items;	// in display order
 	std::unordered_map<std::wstring, std::shared_ptr<ServiceItem>> m_ItemsByName;
 

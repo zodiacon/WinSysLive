@@ -173,3 +173,32 @@ std::wstring FormatHelper::ServiceTypeToString(WinSys::ServiceType type) {
 		text += L", Interactive";
 	return text;
 }
+
+PCWSTR FormatHelper::ServiceErrorControlToString(WinSys::ServiceErrorControl control) {
+	using enum WinSys::ServiceErrorControl;
+	switch (control) {
+		case Ignore: return L"Ignore";
+		case Normal: return L"Normal";
+		case Severe: return L"Severe";
+		case Critical: return L"Critical";
+	}
+	return L"";
+}
+
+std::wstring FormatHelper::ServiceTriggerToString(WinSys::ServiceTriggerType type, WinSys::ServiceTriggerAction action) {
+	using enum WinSys::ServiceTriggerType;
+	PCWSTR name;
+	switch (type) {
+		case DeviceInterfaceArrival: name = L"Device arrival"; break;
+		case IpAddressAvailability: name = L"IP address"; break;
+		case DomainJoin: name = L"Domain join"; break;
+		case FirewallPortEvent: name = L"Firewall port"; break;
+		case GroupPolicy: name = L"Group policy"; break;
+		case NetworkEndpoint: name = L"Network endpoint"; break;
+		case SystemStateChanged: name = L"System state"; break;
+		case Custom: name = L"Custom (ETW)"; break;
+		case Aggregate: name = L"Aggregate"; break;
+		default: name = L"Unknown"; break;
+	}
+	return std::format(L"{}: {}", action == WinSys::ServiceTriggerAction::Stop ? L"Stop" : L"Start", name);
+}

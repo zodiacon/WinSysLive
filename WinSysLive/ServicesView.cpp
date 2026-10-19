@@ -2,6 +2,7 @@
 #include "resource.h"
 #include "ServicesView.h"
 #include "FormatHelper.h"
+#include "AppSettings.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
 #include <ClipboardHelper.h>
@@ -15,6 +16,36 @@ namespace {
 	const int HighlightTicks = 2;
 	// how long a restart waits for the service to stop
 	const ULONGLONG RestartTimeout = 30000;
+
+	// in CServicesView::Column order; the keys are stored in the ServiceColumns setting
+	const ColumnLayout::ColumnDef s_Columns[] = {
+		{ L"Name", L"Name", 180, LVCFMT_LEFT, true, true },
+		{ L"Display Name", L"DisplayName", 260, LVCFMT_LEFT, true },
+		{ L"State", L"State", 80, LVCFMT_LEFT, true, true },
+		{ L"Start Type", L"StartType", 170, LVCFMT_LEFT, true },
+		{ L"Type", L"Type", 110, LVCFMT_LEFT, true },
+		{ L"PID", L"ProcessId", 60, LVCFMT_RIGHT, true },
+		{ L"Process", L"ProcessName", 120, LVCFMT_LEFT, true },
+		{ L"Account", L"Account", 160, LVCFMT_LEFT, true },
+		{ L"Binary Path", L"BinaryPath", 350, LVCFMT_LEFT, true },
+		{ L"Description", L"Description", 400, LVCFMT_LEFT, true },
+		{ L"Error Control", L"ErrorControl", 90, LVCFMT_LEFT, false },
+		{ L"Dependencies", L"Dependencies", 250, LVCFMT_LEFT, false },
+		{ L"Required Privileges", L"Privileges", 350, LVCFMT_LEFT, false },
+		{ L"Triggers", L"Triggers", 300, LVCFMT_LEFT, false },
+	};
+	static_assert(_countof(s_Columns) == 14);
+
+	template<typename Range, typename Format>
+	std::wstring Join(Range const& range, Format format) {
+		std::wstring text;
+		for (auto& value : range) {
+			if (!text.empty())
+				text += L", ";
+			text += format(value);
+		}
+		return text;
+	}
 }
 
 WinSys::ServiceConfiguration const* CServicesView::ServiceItem::GetConfig() {
@@ -33,6 +64,35 @@ std::wstring const& CServicesView::ServiceItem::GetDescription() {
 	return m_Description;
 }
 
+std::wstring const& CServicesView::ServiceItem::GetPrivileges() {
+	if (!m_PrivilegesLoaded) {
+		m_PrivilegesLoaded = true;
+		if (auto svc = Service::Open(Info.GetName(), ServiceAccessMask::QueryConfig))
+			m_Privileges = Join(svc->GetRequiredPrivileges(), [](auto& p) { return p; });
+	}
+	return m_Privileges;
+}
+
+std::wstring const& CServicesView::ServiceItem::GetTriggers() {
+	if (!m_TriggersLoaded) {
+		m_TriggersLoaded = true;
+		// only the type and action: ServiceTrigger::TriggerSubtype points into a buffer GetTriggers has freed
+		if (auto svc = Service::Open(Info.GetName(), ServiceAccessMask::QueryConfig)) {
+			// without the subtypes, triggers of a type look the same: "Start: Network endpoint (3)"
+			std::vector<std::pair<std::wstring, int>> triggers;
+			for (auto& t : svc->GetTriggers()) {
+				auto text = FormatHelper::ServiceTriggerToString(t.Type, t.Action);
+				if (auto it = std::ranges::find(triggers, text, &std::pair<std::wstring, int>::first); it != triggers.end())
+					it->second++;
+				else
+					triggers.push_back({ std::move(text), 1 });
+			}
+			m_Triggers = Join(triggers, [](auto& t) { return t.second > 1 ? std::format(L"{} ({})", t.first, t.second) : t.first; });
+		}
+	}
+	return m_Triggers;
+}
+
 CString CServicesView::GetTitle() const {
 	return L"Services";
 }
@@ -44,17 +104,8 @@ LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 
-	auto cm = GetColumnManager(m_List);
-	cm->AddColumn(L"Name", LVCFMT_LEFT, 180, Column::Name);
-	cm->AddColumn(L"Display Name", LVCFMT_LEFT, 260, Column::DisplayName);
-	cm->AddColumn(L"State", LVCFMT_LEFT, 80, Column::State);
-	cm->AddColumn(L"Start Type", LVCFMT_LEFT, 170, Column::StartType);
-	cm->AddColumn(L"Type", LVCFMT_LEFT, 110, Column::Type);
-	cm->AddColumn(L"PID", LVCFMT_RIGHT, 60, Column::ProcessId);
-	cm->AddColumn(L"Process", LVCFMT_LEFT, 120, Column::ProcessName);
-	cm->AddColumn(L"Account", LVCFMT_LEFT, 160, Column::Account);
-	cm->AddColumn(L"Binary Path", LVCFMT_LEFT, 350, Column::BinaryPath);
-	cm->AddColumn(L"Description", LVCFMT_LEFT, 400, Column::Description);
+	static_assert(_countof(s_Columns) == (int)Column::_Count);
+	SetColumns(ColumnLayout::Parse(AppSettings::Get().ServiceColumns(), s_Columns));
 
 	for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices)) {
 		auto item = std::make_shared<ServiceItem>(svc);
@@ -63,6 +114,106 @@ LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	}
 	m_List.SetItemCount((int)m_Items.size());
 
+	return 0;
+}
+
+LRESULT CServicesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the widths and the order also change by dragging in the header
+	SaveColumns();
+	bHandled = FALSE;
+	return 0;
+}
+
+void CServicesView::OnActivate(bool active) {
+	// the Processes view handles it too
+	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	if (active)
+		m_List.SetFocus();
+}
+
+std::vector<ColumnLayout::ShownColumn> CServicesView::GetShownColumns() const {
+	auto header = m_List.GetHeader();
+	int count = header.GetItemCount();
+	std::vector<int> order(count);
+	header.GetOrderArray(count, order.data());
+	auto cm = GetColumnManager(m_List);
+	std::vector<ColumnLayout::ShownColumn> columns;
+	for (int index : order) {
+		// the header item's lParam is the column manager's index
+		HDITEM hdi{ HDI_LPARAM };
+		header.GetItem(index, &hdi);
+		columns.push_back({ (int)cm->GetColumnTag<Column>((int)hdi.lParam), m_List.GetColumnWidth(index) });
+	}
+	return columns;
+}
+
+void CServicesView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
+	ClearSort(m_List.m_hWnd);
+	// the column manager holds only the shown columns, added in display order
+	auto cm = GetColumnManager(m_List);
+	cm->Clear();
+	for (auto& c : columns) {
+		auto& def = s_Columns[c.Id];
+		cm->AddColumn(def.Name, def.Format, c.Width, (Column)c.Id);
+	}
+	m_List.Invalidate();
+}
+
+void CServicesView::SaveColumns() const {
+	auto& settings = AppSettings::Get();
+	settings.ServiceColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	settings.Save();
+}
+
+LRESULT CServicesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
+		SetColumns(*columns);
+		SaveColumns();
+	}
+	return 0;
+}
+
+LRESULT CServicesView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	// the header's NM_RCLICK doesn't get here, but its WM_CONTEXTMENU comes up through the list view, which makes
+	// itself the window, so the header is found by the position; the rows have their own menu (OnRightClickList)
+	auto header = m_List.GetHeader();
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	CRect rcHeader;
+	header.GetWindowRect(&rcHeader);
+	if ((HWND)wParam != m_List || !rcHeader.PtInRect(pt)) {
+		bHandled = FALSE;
+		return 0;
+	}
+	HDHITTESTINFO hit{};
+	hit.pt = pt;
+	header.ScreenToClient(&hit.pt);
+	if (header.HitTest(&hit) < 0)
+		return 0;
+
+	// the header item's lParam is the column manager's index
+	HDITEM hdi{ HDI_LPARAM };
+	header.GetItem(hit.iItem, &hdi);
+	m_MenuColumn = (int)GetColumnManager(m_List)->GetColumnTag<Column>((int)hdi.lParam);
+
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXT);
+	CMenuHandle popup = menu.GetSubMenu(2);
+	popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE,
+		std::format(L"&Hide \"{}\"", s_Columns[m_MenuColumn].Name).c_str());
+	popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (s_Columns[m_MenuColumn].Mandatory ? MF_GRAYED : MF_ENABLED));
+	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
+	return 0;
+}
+
+LRESULT CServicesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
+		return 0;
+
+	auto columns = GetShownColumns();
+	std::erase_if(columns, [&](auto& c) { return c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
 	return 0;
 }
 
@@ -145,6 +296,16 @@ std::wstring CServicesView::GetText(ServiceItem& item, Column column) const {
 				return config->BinaryPathName;
 			return L"";
 		case Column::Description: return item.GetDescription();
+		case Column::ErrorControl:
+			if (auto config = item.GetConfig(); config)
+				return FormatHelper::ServiceErrorControlToString(config->ErrorControl);
+			return L"";
+		case Column::Dependencies:
+			if (auto config = item.GetConfig(); config)
+				return Join(config->Dependencies, [](auto& d) { return d; });
+			return L"";
+		case Column::Privileges: return item.GetPrivileges();
+		case Column::Triggers: return item.GetTriggers();
 	}
 	return L"";
 }
@@ -193,6 +354,13 @@ int CServicesView::CompareServices(ServiceItem& s1, ServiceItem& s2, Column colu
 			if (auto result = compare(c1->StartType, c2->StartType); result)
 				return result;
 			return compare(c1->DelayedAutoStart, c2->DelayedAutoStart);
+		}
+		case Column::ErrorControl:
+		{
+			auto c1 = s1.GetConfig(), c2 = s2.GetConfig();
+			if (!c1 || !c2)
+				return compare(c1 != nullptr, c2 != nullptr);
+			return compare(c1->ErrorControl, c2->ErrorControl);
 		}
 	}
 	// the rest are text
@@ -388,12 +556,12 @@ LRESULT CServicesView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 	if (!item)
 		return 0;
 
-	// all columns, tab separated
+	// the shown columns in display order, tab separated
 	std::wstring text;
-	for (int i = 0; i <= (int)Column::Description; i++) {
-		if (i > 0)
+	for (auto& c : GetShownColumns()) {
+		if (!text.empty())
 			text += L'\t';
-		text += GetText(*item, (Column)i);
+		text += GetText(*item, (Column)c.Id);
 	}
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;

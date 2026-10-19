@@ -9,7 +9,8 @@ struct AppSettings : Settings {
 		SETTING(ActiveTab, 0, SettingType::Int32);
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
 		SETTING(PerfPage, 0, SettingType::Int32);
-		SETTING_STRING(ProcessColumns, L"");	// see CProcessesView::LoadColumns
+		SETTING_STRING(ProcessColumns, L"");	// see ColumnLayout::Parse
+		SETTING_STRING(ServiceColumns, L"");
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
@@ -18,6 +19,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(ProcessTreeMode, int)
 	DEF_SETTING(PerfPage, int)
 	DEF_SETTING_STRING(ProcessColumns)
+	DEF_SETTING_STRING(ServiceColumns)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };
