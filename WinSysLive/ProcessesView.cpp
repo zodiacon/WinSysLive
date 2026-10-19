@@ -81,7 +81,9 @@ CString CProcessesView::GetTitle() const {
 LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
-	m_hWndClient = m_Tree.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+	m_hWndClient = m_Splitter.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+	// the splitter forwards the tree's notifications (WM_NOTIFY) to this view
+	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	// the image list is the frame's, so the list view must not destroy it
 	m_Tree.GetListCtrl().ModifyStyle(0, LVS_SHAREIMAGELISTS);
 	m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
@@ -93,8 +95,17 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	m_TreeMode = AppSettings::Get().ProcessTreeMode();
 	BuildItems();
 
+	m_Details.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+	m_Details.Init(Frame());
+	m_Splitter.SetSplitterPanes(m_Tree, m_Details);
+	auto& settings = AppSettings::Get();
+	m_Splitter.SetSplitterPosPct(std::clamp(settings.ProcessSplitterPos(), 10, 90), false);
+	m_LowerPane = settings.ProcessLowerPane();
+	m_Splitter.SetSinglePaneMode(m_LowerPane ? SPLIT_PANE_NONE : SPLIT_PANE_TOP);
+
 	// enabled while active (see OnActivate)
 	Frame()->GetUI().UIEnable(ID_VIEW_PROCESSTREE, false);
+	Frame()->GetUI().UIEnable(ID_VIEW_LOWERPANE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, false);
 	Frame()->GetUI().UIEnable(ID_PROCESS_KILL, false);
 
@@ -104,6 +115,10 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 LRESULT CProcessesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	// the widths and the order also change by dragging in the header
 	SaveColumns();
+	// the splitter keeps its position while the lower pane is hidden
+	auto& settings = AppSettings::Get();
+	settings.ProcessSplitterPos(m_Splitter.GetSplitterPosPct());
+	settings.Save();
 	bHandled = FALSE;
 	return 0;
 }
@@ -320,6 +335,9 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 
 	RestoreSelection(selectedKey ? &*selectedKey : nullptr);
 	UpdateUI();
+	UpdateDetails();
+	if (m_LowerPane)
+		m_Details.Refresh();
 }
 
 HTLITEM CProcessesView::EnsureInserted(ProcessItem& item) {
@@ -565,6 +583,24 @@ LRESULT CProcessesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled
 
 LRESULT CProcessesView::OnSelectionChanged(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& /*bHandled*/) {
 	UpdateUI();
+	UpdateDetails();
+	return 0;
+}
+
+void CProcessesView::UpdateDetails() {
+	auto item = GetSelectedProcess();
+	m_Details.SetProcess(item && !item->Terminated ? item->Process : nullptr);
+}
+
+LRESULT CProcessesView::OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_LowerPane = !m_LowerPane;
+	m_Splitter.SetSinglePaneMode(m_LowerPane ? SPLIT_PANE_NONE : SPLIT_PANE_TOP);
+	if (m_LowerPane)
+		m_Details.Refresh();
+	auto& settings = AppSettings::Get();
+	settings.ProcessLowerPane(m_LowerPane);
+	settings.Save();
+	UpdateUI();
 	return 0;
 }
 
@@ -578,8 +614,11 @@ void CProcessesView::UpdateUI() {
 	auto& ui = Frame()->GetUI();
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
 	ui.UIEnable(ID_PROCESS_KILL, m_Active && CanControl(GetSelectedProcess()));
-	if (m_Active)
+	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
+	if (m_Active) {
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
+		ui.UISetCheck(ID_VIEW_LOWERPANE, m_LowerPane);
+	}
 }
 
 LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
@@ -732,14 +771,14 @@ LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
 	return 0;
 }
 
-LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
-	// the header's WM_CONTEXTMENU comes up through the list view and the TreeListView, and arrives with the
-	// TreeListView as the window, so the header is found by the position; the rows have their own menu (NM_RCLICK)
+LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	// the header's WM_CONTEXTMENU comes up through the list view, the TreeListView and the splitter, and arrives
+	// with one of those as the window, so the header is found by the position; the rows have their own menu (NM_RCLICK)
 	auto header = m_Tree.GetHeader();
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	CRect rcHeader;
 	header.GetWindowRect(&rcHeader);
-	if ((HWND)wParam != m_Tree || !rcHeader.PtInRect(pt)) {
+	if (!rcHeader.PtInRect(pt)) {
 		// includes the keyboard (-1, -1)
 		bHandled = FALSE;
 		return 0;

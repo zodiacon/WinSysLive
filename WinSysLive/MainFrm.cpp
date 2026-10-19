@@ -77,6 +77,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 void CMainFrame::InitImageList() {
 	static const UINT icons[] = {
 		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_USERS, IDI_RUN, IDI_KILL,
+		IDI_HANDLES, IDI_MODULES, IDI_THREADS,
 	};
 
 	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons) + 1, 16);
@@ -93,6 +94,7 @@ void CMainFrame::InitToolBar(bool elevated) {
 		{ ID_VIEW_REFRESH, IDI_REFRESH },
 		{ 0 },
 		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
+		{ ID_VIEW_LOWERPANE, IDI_LOWERPANE, BTNS_CHECK },
 		{ ID_PROCESS_KILL, IDI_PROCESS_KILL },
 	};
 	const int iconSize = 24;

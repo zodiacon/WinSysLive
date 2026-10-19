@@ -48,6 +48,9 @@
     <ClCompile Include="ProcessesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ProcessDetails.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ServicesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -93,6 +96,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ProcessesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessDetails.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ServicesView.h">

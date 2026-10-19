@@ -4,6 +4,8 @@
 #include <TreeListView/include/TreeListView.h>
 #include <WinSys/ProcessNetwork.h>
 #include "ColumnLayout.h"
+#include "ProcessDetails.h"
+#include <CustomSplitterWindow.h>
 
 class CProcessesView :
 	public CViewBase<CProcessesView> {
@@ -34,6 +36,7 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
+		COMMAND_ID_HANDLER(ID_VIEW_LOWERPANE, OnToggleLowerPane)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CProcessesView>, 1)
@@ -76,6 +79,7 @@ private:
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
@@ -108,10 +112,16 @@ private:
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;
 	std::wstring GetColumnText(ProcessItem& item, Column column) const;
 	void UpdateUI();
+	// the lower pane shows the selected process (none for one that exited)
+	void UpdateDetails();
 	static bool CanControl(ProcessItem const* item);
 	void ShowError(PCWSTR operation) const;
 
+	// the process list on top; the lower pane (handles, modules, threads of the selected process) can be hidden
+	CCustomHorSplitterWindow m_Splitter;
 	CTreeListViewCtrl m_Tree;
+	CProcessDetails m_Details;
+	bool m_LowerPane{ false };
 	// runs while a network column is shown
 	WinSys::ProcessNetworkTracker m_Network;
 	DWORD m_NetworkError{ 0 };	// why it didn't start

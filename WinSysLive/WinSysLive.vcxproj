@@ -342,6 +342,7 @@
     <ClCompile Include="PerfNav.cpp" />
     <ClCompile Include="PerfPages.cpp" />
     <ClCompile Include="PerfView.cpp" />
+    <ClCompile Include="ProcessDetails.cpp" />
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
     <ClCompile Include="UsersView.cpp" />
@@ -361,6 +362,7 @@
     <ClInclude Include="PerfNav.h" />
     <ClInclude Include="PerfPages.h" />
     <ClInclude Include="PerfView.h" />
+    <ClInclude Include="ProcessDetails.h" />
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
     <ClInclude Include="UsersView.h" />
