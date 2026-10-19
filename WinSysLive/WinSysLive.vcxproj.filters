@@ -120,19 +120,19 @@
     <Image Include="res\stop.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
-    <Image Include="res\process_kill.ico">
-      <Filter>Resource Files</Filter>
+    <Image Include="res\History.ico">
+      <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\tree.ico">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\process_kill.ico">
+      <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\ready.ico">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\Refresh.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\History.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

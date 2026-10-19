@@ -76,7 +76,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 void CMainFrame::InitImageList() {
 	static const UINT icons[] = {
-		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_PROCESS,
+		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_PROCESS, IDI_RUN, IDI_KILL,
 	};
 
 	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons), 16);

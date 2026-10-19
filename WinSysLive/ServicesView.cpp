@@ -149,7 +149,11 @@ std::wstring CServicesView::GetText(ServiceItem& item, Column column) const {
 	return L"";
 }
 
-int CServicesView::GetRowImage(HWND, int, int) const {
+int CServicesView::GetRowImage(HWND, int row, int) const {
+	switch (m_Items[row]->Info.GetStatusProcess().CurrentState) {
+		case ServiceState::Running: return Frame()->GetIconIndex(IDI_RUN);
+		case ServiceState::Stopped: return Frame()->GetIconIndex(IDI_KILL);	// stop.ico
+	}
 	return Frame()->GetIconIndex(IDI_SERVICES);
 }
 
