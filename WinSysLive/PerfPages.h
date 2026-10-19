@@ -44,6 +44,8 @@ struct PerfSample {
 
 	// drives with a letter; owned by CPerfView and valid for the duration of the update
 	std::vector<WinSys::DiskTracker::Volume> const* Disks{ nullptr };
+	bool HasDisks{ false };	// at least one drive has counters
+	double DiskRead{ 0 }, DiskWrite{ 0 };	// all drives, bytes per second
 
 	float CpuPercent() const {
 		return KernelCpu + UserCpu;
@@ -196,8 +198,15 @@ public:
 	void Push(double receive, double send, bool valid);	// bytes per second
 };
 
+// Read and write transfer rates, in bytes per second
+class CDiskGraph : public GraphCtrl::CGraphControl {
+public:
+	void Create(HWND hParent, std::wstring title);
+	void Push(double read, double write, bool valid);
+};
+
 //
-// Summary: total CPU, memory and network, with the system-wide figures below.
+// Summary: total CPU, memory, network and disk, with the system-wide figures below.
 //
 class CPerfSummaryPage : public CPerfPage<CPerfSummaryPage> {
 public:
@@ -215,6 +224,7 @@ private:
 	CCpuGraph m_Cpu;
 	CMemoryGraph m_Memory;
 	CNetworkGraph m_Network;
+	CDiskGraph m_Disk;
 	int64_t m_PhysicalTotal;
 };
 
@@ -307,7 +317,8 @@ public:
 	void ApplyTimeSpan(std::wstring const& text, UINT interval);
 
 private:
-	GraphCtrl::CGraphControl m_Active, m_Transfer;
+	GraphCtrl::CGraphControl m_Active;
+	CDiskGraph m_Transfer;
 	GraphCtrl::SeriesId m_ActiveSeries{ GraphCtrl::InvalidSeries };
 	GraphCtrl::CCompositionBar m_Space;
 	wchar_t m_Letter;

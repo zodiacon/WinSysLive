@@ -14,8 +14,10 @@ namespace {
 
 int CPerfNav::AddItem(std::wstring title, COLORREF color, GraphType graph) {
 	m_Items.push_back({ std::move(title), {}, color, graph });
-	if (m_hWnd)
+	if (m_hWnd) {
+		UpdateScrollBar();
 		Invalidate();
+	}
 	return (int)m_Items.size() - 1;
 }
 
@@ -23,8 +25,10 @@ void CPerfNav::InsertItem(int index, std::wstring title, COLORREF color, GraphTy
 	m_Items.insert(m_Items.begin() + index, { std::move(title), {}, color, graph });
 	if (m_Selected >= index)
 		m_Selected++;
-	if (m_hWnd)
+	if (m_hWnd) {
+		UpdateScrollBar();
 		Invalidate();
+	}
 }
 
 void CPerfNav::RemoveItem(int index) {
@@ -33,8 +37,10 @@ void CPerfNav::RemoveItem(int index) {
 		m_Selected = -1;
 	else if (m_Selected > index)
 		m_Selected--;
-	if (m_hWnd)
+	if (m_hWnd) {
+		UpdateScrollBar();
 		Invalidate();
+	}
 }
 
 void CPerfNav::SetItemValue(int index, std::wstring value) {
@@ -69,8 +75,10 @@ void CPerfNav::SelectItem(int index) {
 	if (m_hWnd && m_Selected >= 0)
 		InvalidateRect(GetItemRect(m_Selected), FALSE);
 	m_Selected = index;
-	if (m_hWnd)
+	if (m_hWnd) {
 		InvalidateRect(GetItemRect(index), FALSE);
+		EnsureVisible(index);
+	}
 	if (OnSelectionChanged)
 		OnSelectionChanged(index);
 }
@@ -97,9 +105,45 @@ CRect CPerfNav::GetItemRect(int index) const {
 	CRect rc;
 	GetClientRect(&rc);
 	int height = ItemHeight();
-	rc.top = Scale(4) + index * height;
+	rc.top = Scale(4) + index * height - m_ScrollPos;
 	rc.bottom = rc.top + height;
 	return rc;
+}
+
+void CPerfNav::UpdateScrollBar() {
+	CRect client;
+	GetClientRect(&client);
+	SCROLLINFO si = { sizeof(si), SIF_RANGE | SIF_PAGE };
+	si.nMax = 2 * Scale(4) + (int)m_Items.size() * ItemHeight() - 1;
+	si.nPage = client.Height();
+	// hides the scroll bar when everything fits; that resizes the window, and OnSize comes back here
+	SetScrollInfo(SB_VERT, &si);
+	ScrollTo(m_ScrollPos);
+}
+
+void CPerfNav::ScrollTo(int pos) {
+	CRect client;
+	GetClientRect(&client);
+	int content = 2 * Scale(4) + (int)m_Items.size() * ItemHeight();
+	pos = std::clamp(pos, 0, std::max(0, content - client.Height()));
+	if (pos != GetScrollPos(SB_VERT))
+		SetScrollPos(SB_VERT, pos);
+	if (pos == m_ScrollPos)
+		return;
+	m_ScrollPos = pos;
+	Invalidate();
+}
+
+void CPerfNav::EnsureVisible(int index) {
+	CRect client;
+	GetClientRect(&client);
+	auto rc = GetItemRect(index);
+	// the margin above the first item and below the last comes into view with them
+	int margin = index == 0 || index == (int)m_Items.size() - 1 ? Scale(4) : 0;
+	if (rc.top - margin < client.top)
+		ScrollTo(m_ScrollPos + rc.top - margin - client.top);
+	else if (rc.bottom + margin > client.bottom)
+		ScrollTo(m_ScrollPos + rc.bottom + margin - client.bottom);
 }
 
 LRESULT CPerfNav::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -120,6 +164,52 @@ LRESULT CPerfNav::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, 
 	dc.GetTextMetrics(&tm);
 	m_ValueHeight = tm.tmHeight + tm.tmExternalLeading;
 	dc.SelectFont(old);
+	return 0;
+}
+
+LRESULT CPerfNav::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	UpdateScrollBar();
+	return 0;
+}
+
+LRESULT CPerfNav::OnVScroll(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	CRect client;
+	GetClientRect(&client);
+	int line = ItemHeight() / 2;
+	switch (LOWORD(wParam)) {
+		case SB_LINEUP: ScrollTo(m_ScrollPos - line); break;
+		case SB_LINEDOWN: ScrollTo(m_ScrollPos + line); break;
+		case SB_PAGEUP: ScrollTo(m_ScrollPos - std::max(line, client.Height() - line)); break;
+		case SB_PAGEDOWN: ScrollTo(m_ScrollPos + std::max(line, client.Height() - line)); break;
+		case SB_TOP: ScrollTo(0); break;
+		case SB_BOTTOM: ScrollTo(INT_MAX); break;
+		case SB_THUMBTRACK:
+		case SB_THUMBPOSITION: {
+			// the 32 bit position; the one in wParam is 16 bit
+			SCROLLINFO si = { sizeof(si), SIF_TRACKPOS };
+			GetScrollInfo(SB_VERT, &si);
+			ScrollTo(si.nTrackPos);
+			break;
+		}
+	}
+	return 0;
+}
+
+LRESULT CPerfNav::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	UINT lines = 3;
+	::SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &lines, 0);
+	if (lines == WHEEL_PAGESCROLL) {
+		CRect client;
+		GetClientRect(&client);
+		lines = std::max(1, client.Height() / (ItemHeight() / 2));
+	}
+	m_WheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
+	// a "line" is half an item, as with the scroll bar arrows
+	int pixels = m_WheelDelta * (int)lines * (ItemHeight() / 2) / WHEEL_DELTA;
+	if (pixels) {
+		m_WheelDelta -= pixels * WHEEL_DELTA / ((int)lines * (ItemHeight() / 2));
+		ScrollTo(m_ScrollPos - pixels);
+	}
 	return 0;
 }
 

@@ -30,7 +30,7 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	m_HasMemoryLists = SystemInfo::GetMemoryListInformation().has_value();
 	m_PrevCpu = GetCpuTimes();
 
-	m_Nav.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP);
+	m_Nav.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL);
 	m_Nav.AddItem(L"Summary", PerfColors::User, CPerfNav::GraphType::None);
 	m_Nav.AddItem(L"CPU", PerfColors::User, CPerfNav::GraphType::Percent);
 	m_Nav.AddItem(L"Memory", PerfColors::Memory, CPerfNav::GraphType::Percent);
@@ -161,6 +161,13 @@ void CPerfView::SampleNetwork(PerfSample& sample) {
 void CPerfView::SampleDisks(PerfSample& sample) {
 	m_Disks.Update();
 	sample.Disks = &m_Disks.GetVolumes();
+	for (auto& v : *sample.Disks) {
+		if (!v.HasPerformance)
+			continue;
+		sample.HasDisks = true;
+		sample.DiskRead += v.ReadRate;
+		sample.DiskWrite += v.WriteRate;
+	}
 	SyncDiskPages();
 }
 

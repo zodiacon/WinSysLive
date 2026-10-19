@@ -37,6 +37,20 @@ namespace {
 			FormatBytes(s.InUse), FormatBytes(s.PhysicalTotal), s.MemoryPercent(), FormatBytes(s.Committed), FormatBytes(s.CommitLimit),
 			FormatBytes(s.Cached), FormatBytes(s.PagedPool), FormatBytes(s.NonPagedPool));
 	}
+
+	std::wstring FormatRate(double bytesPerSecond) {
+		wchar_t text[32];
+		Format::BytesPerSec((float)bytesPerSecond, text, _countof(text));
+		return text;
+	}
+
+	std::wstring DiskLine(PerfSample const& s) {
+		auto line = std::format(L"Disk: read {}    write {}    Drives: {}", FormatRate(s.DiskRead), FormatRate(s.DiskWrite), s.Disks->size());
+		auto busiest = std::ranges::max_element(*s.Disks, {}, &WinSys::DiskTracker::Volume::ActivePercent);
+		if (busiest != s.Disks->end())
+			line += std::format(L"    Busiest: {}: ({:.0f}% active)", busiest->Letter, busiest->ActivePercent);
+		return line;
+	}
 }
 
 void CCpuGraph::Create(HWND hParent) {
@@ -89,6 +103,23 @@ void CNetworkGraph::Push(double receive, double send, bool valid) {
 	PushSamples(values, _countof(values));
 }
 
+void CDiskGraph::Create(HWND hParent, std::wstring title) {
+	CGraphControl::Create(hParent, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE,
+		GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
+	AddSeries(L"Read", SeriesStyle{ PerfColors::DiskRead, PerfColors::DiskRead });
+	AddSeries(L"Write", SeriesStyle{ PerfColors::DiskWrite, PerfColors::DiskWrite });
+	SetTitle(std::move(title));
+	SetRange(0, 1024 * 1024);
+	SetAutoScale(true);
+	SetValueFormatter(Format::BytesPerSec);
+	SetHistoryLength(PerfHistoryLength);
+}
+
+void CDiskGraph::Push(double read, double write, bool valid) {
+	float values[] = { valid ? (float)read : MissingSample, valid ? (float)write : MissingSample };
+	PushSamples(values, _countof(values));
+}
+
 //
 // Summary
 //
@@ -97,40 +128,51 @@ void CPerfSummaryPage::CreateGraphs() {
 	m_Cpu.Create(m_hWnd);
 	m_Memory.Create(m_hWnd, m_PhysicalTotal);
 	m_Network.Create(m_hWnd, L"Network Throughput");
-	m_Lines.resize(3);
+	m_Disk.Create(m_hWnd, L"Disk Transfer Rate");
+	m_Lines.resize(4);
 }
 
 void CPerfSummaryPage::LayoutGraphs(CRect const& rc, int gap) {
-	int height = std::max(0, rc.Height() - 2 * gap);
-	int graphHeight = height / 3;
-	int y = rc.top;
-	m_Cpu.MoveWindow(rc.left, y, rc.Width(), graphHeight);
-	y += graphHeight + gap;
-	m_Memory.MoveWindow(rc.left, y, rc.Width(), graphHeight);
-	y += graphHeight + gap;
-	m_Network.MoveWindow(rc.left, y, rc.Width(), height - 2 * graphHeight);
+	CGraphControl* graphs[] = { &m_Cpu, &m_Memory, &m_Network, &m_Disk };
+	// two columns when there is room for them, so the graphs don't get too flat; otherwise one above the other
+	int columns = rc.Width() >= Scale(800) ? 2 : 1;
+	int rows = _countof(graphs) / columns;
+	int width = std::max(0, rc.Width() - (columns - 1) * gap);
+	int height = std::max(0, rc.Height() - (rows - 1) * gap);
+	for (int i = 0; i < _countof(graphs); i++) {
+		int row = i / columns, column = i % columns;
+		// the last row and column take the rounding remainder
+		int x = rc.left + column * (width / columns + gap), y = rc.top + row * (height / rows + gap);
+		int w = column == columns - 1 ? rc.right - x : width / columns;
+		int h = row == rows - 1 ? rc.bottom - y : height / rows;
+		graphs[i]->MoveWindow(x, y, w, h);
+	}
 }
 
 void CPerfSummaryPage::Sample(PerfSample const& sample) {
 	m_Cpu.Push(sample);
 	m_Memory.Push(sample);
 	m_Network.Push(sample.NetReceive, sample.NetSend, sample.HasNetwork);
+	m_Disk.Push(sample.DiskRead, sample.DiskWrite, sample.HasDisks);
 	if (sample.HasCpu)
 		m_Lines[0] = CpuLine(sample);
 	if (sample.HasMemory)
 		m_Lines[1] = MemoryLine(sample);
 	if (sample.HasNetwork)
 		m_Lines[2] = NetworkLine(sample);
+	if (sample.HasDisks)
+		m_Lines[3] = DiskLine(sample);
 }
 
 void CPerfSummaryPage::ApplyTheme() {
 	m_Cpu.SetTheme(m_Theme);
 	m_Memory.SetTheme(m_Theme);
 	m_Network.SetTheme(m_Theme);
+	m_Disk.SetTheme(m_Theme);
 }
 
 void CPerfSummaryPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
-	for (CGraphControl* graph : { (CGraphControl*)&m_Cpu, (CGraphControl*)&m_Memory, (CGraphControl*)&m_Network }) {
+	for (CGraphControl* graph : { (CGraphControl*)&m_Cpu, (CGraphControl*)&m_Memory, (CGraphControl*)&m_Network, (CGraphControl*)&m_Disk }) {
 		graph->SetTimeSpanText(text);
 		graph->SetExpectedInterval(interval);
 	}
@@ -389,15 +431,7 @@ void CPerfDiskPage::CreateGraphs() {
 	m_Active.SetValueFormatter(Format::Percent);
 	m_Active.SetHistoryLength(PerfHistoryLength);
 
-	m_Transfer.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE,
-		GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
-	m_Transfer.AddSeries(L"Read", SeriesStyle{ PerfColors::DiskRead, PerfColors::DiskRead });
-	m_Transfer.AddSeries(L"Write", SeriesStyle{ PerfColors::DiskWrite, PerfColors::DiskWrite });
-	m_Transfer.SetTitle(title + L" Transfer Rate");
-	m_Transfer.SetRange(0, 1024 * 1024);
-	m_Transfer.SetAutoScale(true);
-	m_Transfer.SetValueFormatter(Format::BytesPerSec);
-	m_Transfer.SetHistoryLength(PerfHistoryLength);
+	m_Transfer.Create(m_hWnd, title + L" Transfer Rate");
 
 	m_Space.Create(m_hWnd, 0, 0, 0, 0);
 	m_Space.AddSegment(L"Used", PerfColors::DiskActive);
@@ -420,24 +454,19 @@ void CPerfDiskPage::Sample(PerfSample const& sample) {
 	auto it = std::ranges::find_if(*sample.Disks, [&](auto& v) { return v.Letter == m_Letter; });
 	if (it == sample.Disks->end() || !it->HasPerformance) {
 		m_Active.PushSample(m_ActiveSeries, MissingSample);
-		float missing[] = { MissingSample, MissingSample };
-		m_Transfer.PushSamples(missing, _countof(missing));
+		m_Transfer.Push(0, 0, false);
 		return;
 	}
 
 	auto& v = *it;
 	m_Active.PushSample(m_ActiveSeries, (float)v.ActivePercent);
-	float transfer[] = { (float)v.ReadRate, (float)v.WriteRate };
-	m_Transfer.PushSamples(transfer, _countof(transfer));
+	m_Transfer.Push(v.ReadRate, v.WriteRate, true);
 	m_Space.SetTotal((float)v.TotalBytes);
 	float space[] = { (float)(v.TotalBytes - v.FreeBytes), (float)v.FreeBytes };
 	m_Space.SetValues(space, _countof(space));
 
-	wchar_t read[32], write[32];
-	Format::BytesPerSec((float)v.ReadRate, read, _countof(read));
-	Format::BytesPerSec((float)v.WriteRate, write, _countof(write));
 	m_Lines[0] = std::format(L"Active: {:.0f}%    Read: {} ({:.0f}/s)    Write: {} ({:.0f}/s)    Response time: {:.2f} ms    Queue: {}",
-		v.ActivePercent, read, v.ReadsPerSecond, write, v.WritesPerSecond, v.ResponseTime, v.QueueDepth);
+		v.ActivePercent, FormatRate(v.ReadRate), v.ReadsPerSecond, FormatRate(v.WriteRate), v.WritesPerSecond, v.ResponseTime, v.QueueDepth);
 	m_Lines[1] = std::format(L"Label: {}    File system: {}    Type: {}    Capacity: {}    Used: {}    Free: {}",
 		v.Label.empty() ? L"(none)" : v.Label, v.FileSystem, v.DriveType == DRIVE_REMOVABLE ? L"Removable" : L"Fixed",
 		FormatBytes((int64_t)v.TotalBytes), FormatBytes((int64_t)(v.TotalBytes - v.FreeBytes)), FormatBytes((int64_t)v.FreeBytes));
@@ -450,7 +479,7 @@ void CPerfDiskPage::ApplyTheme() {
 }
 
 void CPerfDiskPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
-	for (auto graph : { &m_Active, &m_Transfer }) {
+	for (CGraphControl* graph : { &m_Active, (CGraphControl*)&m_Transfer }) {
 		graph->SetTimeSpanText(text);
 		graph->SetExpectedInterval(interval);
 	}
