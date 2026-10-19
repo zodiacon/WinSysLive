@@ -83,6 +83,26 @@ BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
     END
+    POPUP "&Process"
+    BEGIN
+        MENUITEM "&Kill Process\tDel",           ID_PROCESS_KILL
+        MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
+        MENUITEM SEPARATOR
+        MENUITEM "&Suspend",                     ID_PROCESS_SUSPEND
+        MENUITEM "&Resume",                      ID_PROCESS_RESUME
+        MENUITEM SEPARATOR
+        POPUP "Set &Priority"
+        BEGIN
+            MENUITEM "&Realtime",                    ID_PRIORITY_REALTIME
+            MENUITEM "&High",                        ID_PRIORITY_HIGH
+            MENUITEM "&Above Normal",                ID_PRIORITY_ABOVENORMAL
+            MENUITEM "&Normal",                      ID_PRIORITY_NORMAL
+            MENUITEM "&Below Normal",                ID_PRIORITY_BELOWNORMAL
+            MENUITEM "&Idle",                        ID_PRIORITY_IDLE
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Open File &Location",          ID_PROCESS_GOTOFILELOCATION
+    END
     POPUP "&Options"
     BEGIN
         MENUITEM "&Dark Mode",                  ID_OPTIONS_DARKMODE
@@ -98,6 +118,8 @@ BEGIN
     POPUP "Process"
     BEGIN
         MENUITEM "&Kill Process\tDel",           ID_PROCESS_KILL
+        MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
+        MENUITEM SEPARATOR
         MENUITEM "&Suspend",                     ID_PROCESS_SUSPEND
         MENUITEM "&Resume",                      ID_PROCESS_RESUME
         MENUITEM SEPARATOR
@@ -382,6 +404,10 @@ BEGIN
     ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
     ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
+    ID_PROCESS_KILLALL      "Terminate all the processes with the selected process's image name\nKill All with the Same Name"
+    ID_PROCESS_SUSPEND      "Suspend all the threads of the selected process\nSuspend"
+    ID_PROCESS_RESUME       "Resume the threads of the selected process\nResume"
+    ID_PROCESS_GOTOFILELOCATION "Open the folder of the selected process's executable in Explorer\nOpen File Location"
     ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle Toolbar"
     ID_PANE_PROCESSES       "Processes: 00000"
     ID_PANE_THREADS         "Threads: 000,000"

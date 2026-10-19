@@ -626,10 +626,24 @@ bool CProcessesView::CanControl(ProcessItem const* item) {
 }
 
 void CProcessesView::UpdateUI() {
-	// the frame's commands (menu, toolbar) that this view handles; the rest are on the context menu (see OnRightClick)
+	// the frame's commands (menu, toolbar) that this view handles; the context menu has its own state (OnRightClick)
 	auto& ui = Frame()->GetUI();
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
-	ui.UIEnable(ID_PROCESS_KILL, m_Active && CanControl(GetSelectedProcess()));
+	auto item = GetSelectedProcess();
+	bool live = m_Active && CanControl(item);
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
+		ui.UIEnable(id, live);
+	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
+	for (int i = 0; i < _countof(s_Priorities); i++) {
+		ui.UIEnable(ID_PRIORITY_REALTIME + i, live);
+		ui.UISetRadio(ID_PRIORITY_REALTIME + i, false);
+		ui.UISetCheck(ID_PRIORITY_REALTIME + i, false);
+	}
+	// the radio check of a menu item goes with its range
+	if (live)
+		for (int i = 0; i < _countof(s_Priorities); i++)
+			if (s_Priorities[i].BasePriority == item->Process->NativeInfo->BasePriority)
+				ui.UISetRadioMenuItem(ID_PRIORITY_REALTIME + i, ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE);
 	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
 	if (m_Active) {
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
@@ -649,7 +663,7 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 	WTLHelper::InitMenu(popup, MenuItemData{ ID_PROCESS_KILL, IDI_PROCESS_KILL });
 
 	bool live = CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_GOTOFILELOCATION, MF_BYCOMMAND | (item->Process->GetImagePath().empty() ? MF_GRAYED : MF_ENABLED));
 	for (int i = 0; i < _countof(s_Priorities); i++) {
@@ -687,6 +701,37 @@ LRESULT CProcessesView::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	}
 	if (!process->Terminate())
 		AtlMessageBox(m_hWnd, L"Failed to terminate the process.", IDR_MAINFRAME, MB_ICONERROR);
+	return 0;
+}
+
+LRESULT CProcessesView::OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return 0;
+
+	// image names compare case-insensitively
+	auto name = item->Process->GetImageName();
+	std::vector<uint32_t> pids;
+	for (auto& [key, i] : m_Items)
+		if (CanControl(&i) && ::_wcsicmp(i.Process->GetImageName().c_str(), name.c_str()) == 0)
+			pids.push_back(i.Process->Id);
+
+	auto text = std::format(L"Terminate {} process{} named {}?", pids.size(), pids.size() == 1 ? L"" : L"es", name);
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+
+	int failed = 0;
+	DWORD error = ERROR_SUCCESS;
+	for (auto pid : pids) {
+		auto process = Process::OpenById(pid, ProcessAccessMask::Terminate);
+		if (!process || !process->Terminate()) {
+			if (!failed++)
+				error = ::GetLastError();
+		}
+	}
+	if (failed)
+		AtlMessageBox(m_hWnd, std::format(L"Failed to terminate {} of {} processes: {}", failed, pids.size(), Helpers::GetErrorText(error)).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
 	return 0;
 }
 
