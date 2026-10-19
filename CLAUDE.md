@@ -30,6 +30,8 @@ The include order in `pch.h` matters, and the reasons are commented there:
 3. ATL/WTL.
 4. `phnt.h` last, because it `#define`s `TOKEN_INFORMATION_CLASS` values that break `atlcom.h`.
 
+`NOMINMAX` is defined at the top of `pch.h`; phnt would define it, but too late now that `windows.h` comes first.
+
 ## Architecture
 
 - `WinSysLive.cpp`: `_tWinMain` initializes COM and `CAppModule _Module`, loads settings from the registry key `Software\ScorpioSoftware\WinSysLive`, calls `WTLHelper::InitDarkMode(...)` *before* any window is created, then runs the message loop with a single `CMainFrame`.
@@ -52,12 +54,13 @@ The include order in `pch.h` matters, and the reasons are commented there:
   - **Flat mode** rebuilds the list with every item at the top level, because TreeListView's own flat mode sorts only within each parent.
   - **Image list:** the inner list view has `LVS_SHAREIMAGELISTS` set, since the image list belongs to the frame.
 - **Services view** (`ServicesView.*`) is a plain owner-data list view built on `CVirtualListView` and `ColumnManager`, the TotalPE pattern. On each refresh it enumerates services again and merges the result by name. Each service's configuration and description cost a call to the Service Control Manager, so they're loaded on first display and cached (`ServiceItem::GetConfig`). Selection is restored by service name: `GetSaveColumnRange` returns -1 to turn off `CVirtualListView`'s own restore. Restarting a service polls with a timer rather than blocking. Double-clicking a service, or "Go to Process", calls `IMainFrame::GoToProcess`, which switches tabs and calls `IView::ShowProcess`.
+- **Performance view** (`PerfView.*`): GraphControl's `CGraphControl`, `CGraphGrid` and `CCompositionBar` from wtlhelper, included as `<GraphControl/include/...>`. Samples come from WinSys `SystemInfo`: per-processor times queried for each processor group, plus performance, basic and memory list information. They're pushed on every refresh tick, also while the tab is hidden. The view sets the per-processor grid's layout from its aspect ratio, because the grid's automatic layout is square.
 - **Painting performance:** WTLHelper installs a thread-wide `WH_CALLWNDPROCRET` hook to theme new windows. While it's installed, every `SendMessage` goes through the kernel, and that roughly doubled the time to repaint the process list. For any list with many rows or callbacks, call `SuspendHookWhilePainting(hList)` from `ViewBase.h`; it removes the hook during `WM_PAINT` (`WTLHelper::SuspendHook` really unhooks). Measured per refresh tick with the Processes tab visible: ~20 ms for the snapshot (on the UI thread) and ~60 ms for painting.
 - **Adding a tab** takes four steps:
   1. Add a value to `TabType` (`Interfaces.h`).
   2. Write `XxxView.h/.cpp`.
   3. Add a `case` to `CMainFrame::CreateView` (`ViewFactory.cpp`).
-  4. Add an entry to `CMainFrame::s_Tabs` plus an `ID_VIEW_*` command. These commands must be contiguous because the frame uses `COMMAND_RANGE_HANDLER(ID_VIEW_PROCESSES, ID_VIEW_<last>)`.
+  4. Add an entry to `CMainFrame::s_Tabs`, an `ID_VIEW_*` command (View menu item and Ctrl+N accelerator) and a `COMMAND_ID_HANDLER(ID_VIEW_*, OnViewTab)` in the frame's message map.
 
 ## Conventions
 

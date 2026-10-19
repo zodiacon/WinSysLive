@@ -46,7 +46,9 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(ID_VIEW_PAUSE, OnPause)
 		COMMAND_RANGE_HANDLER(ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000, OnUpdateInterval)
-		COMMAND_RANGE_HANDLER(ID_VIEW_PROCESSES, ID_VIEW_SERVICES, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_PROCESSES, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_SERVICES, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_PERFORMANCE, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
@@ -89,10 +91,11 @@ private:
 		UINT CommandId;
 		UINT Icon;
 	};
-	// one entry per tab, in tab order; View menu commands must be contiguous (see OnViewTab)
+	// one entry per tab, in tab order; each command also needs a COMMAND_ID_HANDLER for OnViewTab
 	static constexpr TabInfo s_Tabs[] = {
 		{ TabType::Processes, ID_VIEW_PROCESSES, IDI_PROCESSES },
 		{ TabType::Services, ID_VIEW_SERVICES, IDI_SERVICES },
+		{ TabType::Performance, ID_VIEW_PERFORMANCE, IDI_PERFORMANCE },
 	};
 
 	struct IntervalInfo {

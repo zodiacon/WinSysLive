@@ -63,6 +63,7 @@ BEGIN
     BEGIN
         MENUITEM "&Processes\tCtrl+1",          ID_VIEW_PROCESSES
         MENUITEM "&Services\tCtrl+2",           ID_VIEW_SERVICES
+        MENUITEM "P&erformance\tCtrl+3",        ID_VIEW_PERFORMANCE
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",        ID_VIEW_PROCESSTREE
         MENUITEM SEPARATOR
@@ -193,6 +194,7 @@ IDR_MAINFRAME ACCELERATORS
 BEGIN
     "1",            ID_VIEW_PROCESSES,      VIRTKEY, CONTROL
     "2",            ID_VIEW_SERVICES,       VIRTKEY, CONTROL
+    "3",            ID_VIEW_PERFORMANCE,    VIRTKEY, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL

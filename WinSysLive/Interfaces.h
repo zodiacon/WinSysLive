@@ -6,6 +6,7 @@
 enum class TabType {
 	Processes,
 	Services,
+	Performance,
 };
 
 struct IMainFrame abstract {

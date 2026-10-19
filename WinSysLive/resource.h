@@ -48,6 +48,7 @@
 #define ID_SERVICE_CONTINUE         32801
 #define ID_SERVICE_RESTART          32802
 #define ID_SERVICE_GOTOPROCESS      32803
+#define ID_VIEW_PERFORMANCE         32804
 
 // Next default values for new objects
 // 
@@ -56,6 +57,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	213
 #define _APS_NEXT_CONTROL_VALUE		1000
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32804
+#define _APS_NEXT_COMMAND_VALUE		32805
 #endif
 #endif
