@@ -42,6 +42,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	ATLASSERT(SUCCEEDED(hRes));
 
 	AtlInitCommonControls(ICC_BAR_CLASSES);	// add flags to support other controls
+	::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 
 	hRes = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));
