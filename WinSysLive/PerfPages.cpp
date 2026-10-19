@@ -21,6 +21,17 @@ namespace {
 			FormatHelper::FormatNumber(s.Handles), FormatUptime(s.Uptime));
 	}
 
+	std::wstring FormatBits(double bytesPerSecond) {
+		wchar_t text[32];
+		Format::BitsPerSec((float)(bytesPerSecond * 8), text, _countof(text));
+		return text;
+	}
+
+	std::wstring NetworkLine(PerfSample const& s) {
+		auto up = std::ranges::count_if(*s.Adapters, [](auto& a) { return a.OperStatus == WinSys::NetworkOperStatus::Up; });
+		return std::format(L"Network: receive {}    send {}    Adapters up: {}", FormatBits(s.NetReceive), FormatBits(s.NetSend), up);
+	}
+
 	std::wstring MemoryLine(PerfSample const& s) {
 		return std::format(L"Memory: {} of {} ({:.0f}%)    Commit: {} of {}    Cached: {}    Paged pool: {}    Non-paged pool: {}",
 			FormatBytes(s.InUse), FormatBytes(s.PhysicalTotal), s.MemoryPercent(), FormatBytes(s.Committed), FormatBytes(s.CommitLimit),
@@ -61,6 +72,23 @@ void CMemoryGraph::Push(PerfSample const& sample) {
 	PushSample(m_InUse, sample.HasMemory ? (float)sample.InUse : MissingSample);
 }
 
+void CNetworkGraph::Create(HWND hParent, std::wstring title) {
+	CGraphControl::Create(hParent, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE,
+		GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
+	AddSeries(L"Receive", SeriesStyle{ PerfColors::Receive, PerfColors::Receive });
+	AddSeries(L"Send", SeriesStyle{ PerfColors::Send, PerfColors::Send });
+	SetTitle(std::move(title));
+	SetRange(0, 1000);
+	SetAutoScale(true);
+	SetValueFormatter(Format::BitsPerSec);
+	SetHistoryLength(PerfHistoryLength);
+}
+
+void CNetworkGraph::Push(double receive, double send, bool valid) {
+	float values[] = { valid ? (float)(receive * 8) : MissingSample, valid ? (float)(send * 8) : MissingSample };
+	PushSamples(values, _countof(values));
+}
+
 //
 // Summary
 //
@@ -68,32 +96,41 @@ void CMemoryGraph::Push(PerfSample const& sample) {
 void CPerfSummaryPage::CreateGraphs() {
 	m_Cpu.Create(m_hWnd);
 	m_Memory.Create(m_hWnd, m_PhysicalTotal);
-	m_Lines.resize(2);
+	m_Network.Create(m_hWnd, L"Network Throughput");
+	m_Lines.resize(3);
 }
 
 void CPerfSummaryPage::LayoutGraphs(CRect const& rc, int gap) {
-	int height = std::max(0, rc.Height() - gap);
-	int cpuHeight = height / 2;
-	m_Cpu.MoveWindow(rc.left, rc.top, rc.Width(), cpuHeight);
-	m_Memory.MoveWindow(rc.left, rc.top + cpuHeight + gap, rc.Width(), height - cpuHeight);
+	int height = std::max(0, rc.Height() - 2 * gap);
+	int graphHeight = height / 3;
+	int y = rc.top;
+	m_Cpu.MoveWindow(rc.left, y, rc.Width(), graphHeight);
+	y += graphHeight + gap;
+	m_Memory.MoveWindow(rc.left, y, rc.Width(), graphHeight);
+	y += graphHeight + gap;
+	m_Network.MoveWindow(rc.left, y, rc.Width(), height - 2 * graphHeight);
 }
 
 void CPerfSummaryPage::Sample(PerfSample const& sample) {
 	m_Cpu.Push(sample);
 	m_Memory.Push(sample);
+	m_Network.Push(sample.NetReceive, sample.NetSend, sample.HasNetwork);
 	if (sample.HasCpu)
 		m_Lines[0] = CpuLine(sample);
 	if (sample.HasMemory)
 		m_Lines[1] = MemoryLine(sample);
+	if (sample.HasNetwork)
+		m_Lines[2] = NetworkLine(sample);
 }
 
 void CPerfSummaryPage::ApplyTheme() {
 	m_Cpu.SetTheme(m_Theme);
 	m_Memory.SetTheme(m_Theme);
+	m_Network.SetTheme(m_Theme);
 }
 
 void CPerfSummaryPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
-	for (CGraphControl* graph : { (CGraphControl*)&m_Cpu, (CGraphControl*)&m_Memory }) {
+	for (CGraphControl* graph : { (CGraphControl*)&m_Cpu, (CGraphControl*)&m_Memory, (CGraphControl*)&m_Network }) {
 		graph->SetTimeSpanText(text);
 		graph->SetExpectedInterval(interval);
 	}
@@ -215,4 +252,126 @@ void CPerfMemoryPage::ApplyTheme() {
 void CPerfMemoryPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 	m_Memory.SetTimeSpanText(text);
 	m_Memory.SetExpectedInterval(interval);
+}
+
+//
+// Network
+//
+
+void CPerfNetworkPage::CreateGraphs() {
+	m_Total.Create(m_hWnd, L"Network Throughput (all adapters)");
+	m_Lines.resize(1);
+}
+
+void CPerfNetworkPage::LayoutGraphs(CRect const& rc, int gap) {
+	m_GraphRect = rc;
+	m_Gap = gap;
+	Relayout();
+}
+
+void CPerfNetworkPage::Relayout() {
+	auto& rc = m_GraphRect;
+	int gap = m_Gap;
+	auto count = (int)m_Adapters.size();
+	if (count == 0) {
+		m_Total.MoveWindow(&rc);
+		return;
+	}
+
+	int totalHeight = (rc.Height() - gap) * 40 / 100;
+	m_Total.MoveWindow(rc.left, rc.top, rc.Width(), totalHeight);
+
+	// the adapters share the rest, in two columns once there are more than two
+	int columns = count > 2 ? 2 : 1, rows = (count + columns - 1) / columns;
+	int top = rc.top + totalHeight + gap;
+	int width = (rc.Width() - (columns - 1) * gap) / columns;
+	int height = std::max(0, (int)(rc.bottom - top - (rows - 1) * gap) / rows);
+	for (int i = 0; i < count; i++) {
+		int column = i % columns, row = i / columns;
+		m_Adapters[i].Graph->MoveWindow(rc.left + column * (width + gap), top + row * (height + gap), width, height);
+	}
+}
+
+void CPerfNetworkPage::SyncAdapters(std::vector<WinSys::NetworkTracker::Interface const*> const& adapters) {
+	bool changed = adapters.size() != m_Adapters.size();
+	for (size_t i = 0; !changed && i < adapters.size(); i++)
+		changed = adapters[i]->Luid != m_Adapters[i].Luid;
+
+	if (changed) {
+		// keep the graphs (and their history) of adapters that are still there
+		std::vector<Adapter> list;
+		for (auto adapter : adapters) {
+			auto it = std::find_if(m_Adapters.begin(), m_Adapters.end(), [&](auto& a) { return a.Luid == adapter->Luid; });
+			if (it != m_Adapters.end()) {
+				list.push_back(std::move(*it));
+				continue;
+			}
+			Adapter a{ adapter->Luid, {}, std::make_unique<CNetworkGraph>() };
+			a.Graph->Create(m_hWnd, {});
+			a.Graph->SetTheme(m_Theme);
+			if (m_Interval) {
+				a.Graph->SetTimeSpanText(m_TimeSpanText);
+				a.Graph->SetExpectedInterval(m_Interval);
+			}
+			list.push_back(std::move(a));
+		}
+		for (auto& a : m_Adapters) {
+			if (a.Graph && a.Graph->IsWindow())
+				a.Graph->DestroyWindow();
+		}
+		m_Adapters = std::move(list);
+		Relayout();
+	}
+
+	// the title shows the state and the link speed, which can change (Wi-Fi rates, a cable unplugged)
+	for (size_t i = 0; i < adapters.size(); i++) {
+		auto& adapter = *adapters[i];
+		std::wstring state;
+		if (!adapter.Connected) {
+			state = L"not connected";
+		}
+		else {
+			wchar_t speed[32];
+			Format::BitsPerSec((float)adapter.ReceiveLinkSpeed, speed, _countof(speed));
+			state = speed;
+		}
+		auto title = std::format(L"{} ({}) - {}", adapter.Alias, adapter.Description, state);
+		if (title != m_Adapters[i].Title) {
+			m_Adapters[i].Title = title;
+			m_Adapters[i].Graph->SetTitle(std::move(title));
+		}
+	}
+}
+
+void CPerfNetworkPage::Sample(PerfSample const& sample) {
+	m_Total.Push(sample.NetReceive, sample.NetSend, sample.HasNetwork);
+	if (!sample.HasNetwork)
+		return;
+
+	std::vector<WinSys::NetworkTracker::Interface const*> up;
+	for (auto& adapter : *sample.Adapters) {
+		if (adapter.OperStatus == WinSys::NetworkOperStatus::Up)
+			up.push_back(&adapter);
+	}
+	SyncAdapters(up);
+	for (size_t i = 0; i < up.size(); i++)
+		m_Adapters[i].Graph->Push(up[i]->ReceiveRate, up[i]->SendRate, true);
+	m_Lines[0] = NetworkLine(sample);
+}
+
+void CPerfNetworkPage::ApplyTheme() {
+	m_Total.SetTheme(m_Theme);
+	for (auto& a : m_Adapters)
+		a.Graph->SetTheme(m_Theme);
+}
+
+void CPerfNetworkPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
+	m_TimeSpanText = text;
+	m_Interval = interval;
+	m_Total.SetTimeSpanText(text);
+	m_Total.SetExpectedInterval(interval);
+	for (auto& a : m_Adapters) {
+		a.Graph->SetTimeSpanText(text);
+		a.Graph->SetExpectedInterval(interval);
+	}
 }

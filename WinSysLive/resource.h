@@ -18,6 +18,8 @@
 #define IDI_TREE                    210
 #define IDI_CONTINUE                211
 #define IDI_PROCESS_KILL            212
+#define IDI_CPU                     213
+#define IDI_CHART                   214
 //#define IDR_WINSYSLIVETYPE	129
 #define ID_OPTIONS_DARKMODE			32774
 #define ID_VIEW_PROCESSES			32775
@@ -54,7 +56,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	213
+#define _APS_NEXT_RESOURCE_VALUE	215
 #define _APS_NEXT_CONTROL_VALUE		1000
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32805

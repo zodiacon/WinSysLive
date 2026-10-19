@@ -145,6 +145,8 @@ IDI_KILL                 ICON                    "res\\stop.ico"
 IDI_TREE                 ICON                    "res\\tree.ico"
 IDI_CONTINUE             ICON                    "res\\ready.ico"
 IDI_PROCESS_KILL         ICON                    "res\\process_kill.ico"
+IDI_CPU                  ICON                    "res\\cpu.ico"
+IDI_CHART                ICON                    "res\\chart.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //

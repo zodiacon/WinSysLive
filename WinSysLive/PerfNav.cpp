@@ -12,8 +12,8 @@ namespace {
 	}
 }
 
-int CPerfNav::AddItem(std::wstring title, COLORREF color, bool hasGraph) {
-	m_Items.push_back({ std::move(title), {}, color, hasGraph });
+int CPerfNav::AddItem(std::wstring title, COLORREF color, GraphType graph) {
+	m_Items.push_back({ std::move(title), {}, color, graph });
 	if (m_hWnd)
 		Invalidate();
 	return (int)m_Items.size() - 1;
@@ -28,9 +28,9 @@ void CPerfNav::SetItemValue(int index, std::wstring value) {
 		InvalidateRect(GetItemRect(index), FALSE);
 }
 
-void CPerfNav::PushItemSample(int index, float percent) {
+void CPerfNav::PushItemSample(int index, float value) {
 	auto& item = m_Items[index];
-	item.History.push_back(std::clamp(percent, 0.0f, 100.0f));
+	item.History.push_back(item.Graph == GraphType::Percent ? std::clamp(value, 0.0f, 100.0f) : std::max(value, 0.0f));
 	if (item.History.size() > ItemHistory)
 		item.History.pop_front();
 	if (m_hWnd && IsWindowVisible())
@@ -143,7 +143,7 @@ void CPerfNav::DrawItem(CDCHandle dc, int index, CRect const& rc) {
 
 	CRect text(rc);
 	text.DeflateRect(pad + Scale(4), pad, pad, pad);
-	if (item.HasGraph) {
+	if (item.Graph != GraphType::None) {
 		CRect graph(text.left, text.top, text.left + Scale(64), text.bottom);
 		DrawGraph(dc, item, graph);
 		text.left = graph.right + pad;
@@ -166,13 +166,17 @@ void CPerfNav::DrawGraph(CDCHandle dc, Item const& item, CRect const& rc) {
 	dc.FillSolidRect(&rc, m_Theme.PlotColor);
 	auto& history = item.History;
 	if (history.size() >= 2) {
+		// an auto-scaled graph peaks at 90% of the height, so its top stays visible
+		float range = item.Graph == GraphType::Percent ? 100.0f : *std::max_element(history.begin(), history.end()) / 0.9f;
+		if (range <= 0)
+			range = 1;
 		// right-aligned, one step per sample, so the graph scrolls in from the right as history builds up
 		double step = (double)(rc.Width() - 1) / (ItemHistory - 1);
 		std::vector<POINT> points;
 		points.reserve(history.size() + 2);
 		for (size_t i = 0; i < history.size(); i++) {
 			int x = rc.right - 1 - (int)std::lround((history.size() - 1 - i) * step);
-			int y = rc.bottom - 1 - (int)std::lround(history[i] * (rc.Height() - 1) / 100.0);
+			int y = rc.bottom - 1 - (int)std::lround(history[i] * (rc.Height() - 1) / range);
 			points.push_back({ x, y });
 		}
 		auto line = points;

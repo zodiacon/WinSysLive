@@ -5,7 +5,7 @@
 #include "PerfNav.h"
 
 //
-// System-wide performance: a list of pages on the left (Summary, CPU, Memory) and the selected page on the right.
+// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network) and the selected page on the right.
 // Samples are taken on every refresh tick and handed to every page, also while the tab or the page is hidden,
 // so the history is there when it's shown.
 //
@@ -42,12 +42,13 @@ private:
 	static std::vector<CpuTimes> GetCpuTimes();
 	void SampleCpu(PerfSample& sample);
 	void SampleMemory(PerfSample& sample);
+	void SampleNetwork(PerfSample& sample);
 	void UpdateNav(PerfSample const& sample);
 	void UpdateTimeSpan();
 	void ShowPage(int index);
 	void Layout();
 
-	enum NavItem { SummaryItem, CpuItem, MemoryItem };
+	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem };
 
 	CPerfNav m_Nav;
 	std::vector<std::unique_ptr<IPerfPage>> m_Pages;	// in NavItem order
@@ -58,4 +59,5 @@ private:
 	// the memory lists (modified, standby, free) may need elevation; without them, the composition is in use/available
 	bool m_HasMemoryLists{ false };
 	int m_Interval{ 0 };	// the update interval the time span text was built for
+	WinSys::NetworkTracker m_Network;
 };

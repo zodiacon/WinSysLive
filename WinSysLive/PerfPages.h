@@ -3,6 +3,7 @@
 #include <GraphControl/include/GraphControl.h>
 #include <GraphControl/include/GraphGrid.h>
 #include <GraphControl/include/CompositionBar.h>
+#include <WinSys/Network.h>
 
 // samples kept by the graphs
 const size_t PerfHistoryLength = 120;
@@ -11,6 +12,8 @@ namespace PerfColors {
 	const COLORREF Kernel = RGB(214, 94, 94);
 	const COLORREF User = RGB(17, 125, 187);
 	const COLORREF Memory = RGB(139, 92, 196);
+	const COLORREF Receive = RGB(214, 140, 40);
+	const COLORREF Send = RGB(60, 160, 90);
 }
 
 //
@@ -29,6 +32,11 @@ struct PerfSample {
 	size_t Processes{ 0 };
 	int64_t Threads{ 0 }, Handles{ 0 };
 	uint64_t Uptime{ 0 };	// seconds
+
+	// network adapters, rates in bytes per second; owned by CPerfView and valid for the duration of the update
+	std::vector<WinSys::NetworkTracker::Interface> const* Adapters{ nullptr };
+	bool HasNetwork{ false };
+	double NetReceive{ 0 }, NetSend{ 0 };
 
 	float CpuPercent() const {
 		return KernelCpu + UserCpu;
@@ -174,8 +182,15 @@ private:
 	GraphCtrl::SeriesId m_InUse{ GraphCtrl::InvalidSeries };
 };
 
+// Receive and send throughput, in bits per second (adapters are rated in bits)
+class CNetworkGraph : public GraphCtrl::CGraphControl {
+public:
+	void Create(HWND hParent, std::wstring title);
+	void Push(double receive, double send, bool valid);	// bytes per second
+};
+
 //
-// Summary: total CPU and memory, with the system-wide figures below.
+// Summary: total CPU, memory and network, with the system-wide figures below.
 //
 class CPerfSummaryPage : public CPerfPage<CPerfSummaryPage> {
 public:
@@ -192,6 +207,7 @@ public:
 private:
 	CCpuGraph m_Cpu;
 	CMemoryGraph m_Memory;
+	CNetworkGraph m_Network;
 	int64_t m_PhysicalTotal;
 };
 
@@ -236,4 +252,35 @@ private:
 	GraphCtrl::CCompositionBar m_Composition;
 	int64_t m_PhysicalTotal;
 	bool m_HasMemoryLists;
+};
+
+//
+// Network: total throughput and a graph per adapter that is up. Adapters come and go (a cable plugged in, Wi-Fi
+// connecting), so their graphs are created and destroyed as the list changes.
+//
+class CPerfNetworkPage : public CPerfPage<CPerfNetworkPage> {
+public:
+	DECLARE_WND_CLASS_EX(L"WinSysLivePerfNetwork", CS_HREDRAW | CS_VREDRAW, -1)
+
+	void CreateGraphs();
+	void LayoutGraphs(CRect const& rc, int gap);
+	void Sample(PerfSample const& sample);
+	void ApplyTheme();
+	void ApplyTimeSpan(std::wstring const& text, UINT interval);
+
+private:
+	struct Adapter {
+		uint64_t Luid;
+		std::wstring Title;
+		std::unique_ptr<CNetworkGraph> Graph;
+	};
+	void SyncAdapters(std::vector<WinSys::NetworkTracker::Interface const*> const& adapters);
+	void Relayout();
+
+	CNetworkGraph m_Total;
+	std::vector<Adapter> m_Adapters;	// in the order the system lists them
+	std::wstring m_TimeSpanText;
+	UINT m_Interval{ 0 };
+	CRect m_GraphRect;	// from the last LayoutGraphs, for laying out again when adapters change
+	int m_Gap{ 0 };
 };

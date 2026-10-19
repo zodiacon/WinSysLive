@@ -31,19 +31,22 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	m_PrevCpu = GetCpuTimes();
 
 	m_Nav.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP);
-	m_Nav.AddItem(L"Summary", PerfColors::User, false);
-	m_Nav.AddItem(L"CPU", PerfColors::User, true);
-	m_Nav.AddItem(L"Memory", PerfColors::Memory, true);
+	m_Nav.AddItem(L"Summary", PerfColors::User, CPerfNav::GraphType::None);
+	m_Nav.AddItem(L"CPU", PerfColors::User, CPerfNav::GraphType::Percent);
+	m_Nav.AddItem(L"Memory", PerfColors::Memory, CPerfNav::GraphType::Percent);
+	m_Nav.AddItem(L"Network", PerfColors::Receive, CPerfNav::GraphType::AutoScale);
 
 	m_Pages.push_back(std::make_unique<CPerfSummaryPage>(m_PhysicalTotal));
 	m_Pages.push_back(std::make_unique<CPerfCpuPage>(m_PrevCpu.size()));
 	m_Pages.push_back(std::make_unique<CPerfMemoryPage>(m_PhysicalTotal, m_HasMemoryLists));
+	m_Pages.push_back(std::make_unique<CPerfNetworkPage>());
 	for (auto& page : m_Pages)
 		page->CreatePage(m_hWnd);
 
 	UpdateTimeSpan();
 	PerfSample sample;
 	SampleMemory(sample);
+	SampleNetwork(sample);	// the first update sets the baseline: all rates are 0
 	for (auto& page : m_Pages)
 		page->Update(sample, false);
 	UpdateNav(sample);
@@ -75,6 +78,7 @@ void CPerfView::OnRefresh(bool active) {
 	PerfSample sample;
 	SampleCpu(sample);
 	SampleMemory(sample);
+	SampleNetwork(sample);
 	for (int i = 0; i < (int)m_Pages.size(); i++)
 		m_Pages[i]->Update(sample, active && i == m_Page);
 	UpdateNav(sample);
@@ -145,6 +149,13 @@ void CPerfView::SampleMemory(PerfSample& sample) {
 	sample.NonPagedPool = (int64_t)perf->NonPagedPoolPages * page;
 }
 
+void CPerfView::SampleNetwork(PerfSample& sample) {
+	sample.HasNetwork = m_Network.Update();
+	sample.Adapters = &m_Network.GetInterfaces();
+	sample.NetReceive = m_Network.GetTotalReceiveRate();
+	sample.NetSend = m_Network.GetTotalSendRate();
+}
+
 void CPerfView::UpdateNav(PerfSample const& sample) {
 	if (sample.HasCpu) {
 		m_Nav.PushItemSample(CpuItem, sample.CpuPercent());
@@ -154,6 +165,13 @@ void CPerfView::UpdateNav(PerfSample const& sample) {
 		m_Nav.PushItemSample(MemoryItem, sample.MemoryPercent());
 		m_Nav.SetItemValue(MemoryItem, std::format(L"{} / {} ({:.0f}%)",
 			FormatBytes(sample.InUse), FormatBytes(sample.PhysicalTotal), sample.MemoryPercent()));
+	}
+	if (sample.HasNetwork) {
+		wchar_t receive[32], send[32];
+		Format::BitsPerSec((float)(sample.NetReceive * 8), receive, _countof(receive));
+		Format::BitsPerSec((float)(sample.NetSend * 8), send, _countof(send));
+		m_Nav.PushItemSample(NetworkItem, (float)(sample.NetReceive + sample.NetSend));
+		m_Nav.SetItemValue(NetworkItem, std::format(L"R: {}  S: {}", receive, send));
 	}
 	if (sample.HasCpu || sample.HasMemory) {
 		m_Nav.SetItemValue(SummaryItem, std::format(L"CPU {:.0f}%    Memory {:.0f}%", sample.CpuPercent(), sample.MemoryPercent()));

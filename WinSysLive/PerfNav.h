@@ -6,15 +6,17 @@
 
 //
 // The list of pages on the left of the Performance tab, in the style of Task Manager: each entry shows its title,
-// its current value and, for a resource, a small graph of the recent history (0-100).
+// its current value and, for a resource, a small graph of the recent history: 0-100, or scaled to its own peak.
 //
 class CPerfNav : public CWindowImpl<CPerfNav> {
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLivePerfNav", CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, -1)
 
-	int AddItem(std::wstring title, COLORREF color, bool hasGraph);
+	enum class GraphType { None, Percent, AutoScale };
+
+	int AddItem(std::wstring title, COLORREF color, GraphType graph);
 	void SetItemValue(int index, std::wstring value);
-	void PushItemSample(int index, float percent);
+	void PushItemSample(int index, float value);
 	int GetItemCount() const;
 
 	int GetSelectedIndex() const;
@@ -47,7 +49,7 @@ private:
 	struct Item {
 		std::wstring Title, Value;
 		COLORREF Color;
-		bool HasGraph;
+		GraphType Graph;
 		std::deque<float> History;
 	};
 
