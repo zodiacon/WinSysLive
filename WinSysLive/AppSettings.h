@@ -13,6 +13,7 @@ struct AppSettings : Settings {
 		SETTING(ProcessSplitterPos, 60, SettingType::Int32);	// percent of the height for the process list
 		SETTING_STRING(ProcessColumns, L"");	// see ColumnLayout::Parse
 		SETTING_STRING(ServiceColumns, L"");
+		SETTING_STRING(ThreadColumns, L"");
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
@@ -24,6 +25,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(ProcessSplitterPos, int)
 	DEF_SETTING_STRING(ProcessColumns)
 	DEF_SETTING_STRING(ServiceColumns)
+	DEF_SETTING_STRING(ThreadColumns)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };

@@ -3,6 +3,8 @@
 #include "ThreadsPage.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
+#include "AppSettings.h"
+#include "resource.h"
 
 using namespace WinSys;
 
@@ -29,30 +31,27 @@ namespace {
 		return reason < _countof(names) ? names[reason] : L"";
 	}
 
-	const struct {
-		PCWSTR Name;
-		int Width;
-		int Format;
-	} s_Columns[] = {	// in CThreadsPage::Column order
-		{ L"TID", 70, LVCFMT_RIGHT },
-		{ L"CPU (%)", 70, LVCFMT_RIGHT },
-		{ L"CPU Time", 100, LVCFMT_RIGHT },
-		{ L"Kernel Time", 100, LVCFMT_RIGHT },
-		{ L"User Time", 100, LVCFMT_RIGHT },
-		{ L"Cycles", 130, LVCFMT_RIGHT },
-		{ L"Cycles Delta", 110, LVCFMT_RIGHT },
-		{ L"State", 90, LVCFMT_LEFT },
-		{ L"Wait Reason", 120, LVCFMT_LEFT },
-		{ L"Priority", 60, LVCFMT_RIGHT },
-		{ L"Base Priority", 80, LVCFMT_RIGHT },
-		{ L"Ideal CPU", 70, LVCFMT_RIGHT },
-		{ L"I/O Priority", 80, LVCFMT_LEFT },
-		{ L"Memory Priority", 100, LVCFMT_RIGHT },
-		{ L"Context Switches", 110, LVCFMT_RIGHT },
-		{ L"Context Switch Delta", 120, LVCFMT_RIGHT },
-		{ L"Service", 140, LVCFMT_LEFT },
-		{ L"Start Address", 140, LVCFMT_RIGHT },
-		{ L"Created", 150, LVCFMT_LEFT },
+	// in CThreadsPage::Column order; the keys are stored in the ThreadColumns setting
+	const ColumnLayout::ColumnDef s_Columns[] = {
+		{ L"TID", L"Id", 70, LVCFMT_RIGHT, true, true },
+		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
+		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, true },
+		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, true },
+		{ L"User Time", L"UserTime", 100, LVCFMT_RIGHT, true },
+		{ L"Cycles", L"Cycles", 130, LVCFMT_RIGHT, true },
+		{ L"Cycles Delta", L"CyclesDelta", 110, LVCFMT_RIGHT, true },
+		{ L"State", L"State", 90, LVCFMT_LEFT, true },
+		{ L"Wait Reason", L"WaitReason", 120, LVCFMT_LEFT, true },
+		{ L"Priority", L"Priority", 60, LVCFMT_RIGHT, true },
+		{ L"Base Priority", L"BasePriority", 80, LVCFMT_RIGHT, true },
+		{ L"Ideal CPU", L"IdealCpu", 70, LVCFMT_RIGHT, true },
+		{ L"I/O Priority", L"IoPriority", 80, LVCFMT_LEFT, true },
+		{ L"Memory Priority", L"MemoryPriority", 100, LVCFMT_RIGHT, true },
+		{ L"Context Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, true },
+		{ L"Context Switch Delta", L"ContextSwitchDelta", 120, LVCFMT_RIGHT, true },
+		{ L"Service", L"Service", 140, LVCFMT_LEFT, true },
+		{ L"Start Address", L"StartAddress", 140, LVCFMT_RIGHT, true },
+		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
 	};
 
 	std::unique_ptr<Thread> OpenThread(uint32_t tid) {
@@ -71,10 +70,100 @@ LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
 	SuspendHookWhilePainting(m_List);
 
+	SetColumns(ColumnLayout::Parse(AppSettings::Get().ThreadColumns(), s_Columns));
+	return 0;
+}
+
+LRESULT CThreadsPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the widths and the order also change by dragging in the header
+	SaveColumns();
+	bHandled = FALSE;
+	return 0;
+}
+
+std::vector<ColumnLayout::ShownColumn> CThreadsPage::GetShownColumns() const {
+	auto header = m_List.GetHeader();
+	int count = header.GetItemCount();
+	std::vector<int> order(count);
+	header.GetOrderArray(count, order.data());
 	auto cm = GetColumnManager(m_List);
-	for (int i = 0; i < _countof(s_Columns); i++) {
-		auto& c = s_Columns[i];
-		cm->AddColumn(c.Name, c.Format, c.Width, (Column)i);
+	std::vector<ColumnLayout::ShownColumn> columns;
+	for (int index : order) {
+		// the header item's lParam is the column manager's index
+		HDITEM hdi{ HDI_LPARAM };
+		header.GetItem(index, &hdi);
+		columns.push_back({ (int)cm->GetColumnTag<Column>((int)hdi.lParam), m_List.GetColumnWidth(index) });
+	}
+	return columns;
+}
+
+void CThreadsPage::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
+	ClearSort(m_List.m_hWnd);
+	// the column manager holds only the shown columns, added in display order
+	auto cm = GetColumnManager(m_List);
+	cm->Clear();
+	for (auto& c : columns) {
+		auto& def = s_Columns[c.Id];
+		cm->AddColumn(def.Name, def.Format, c.Width, (Column)c.Id);
+	}
+	m_List.Invalidate();
+}
+
+void CThreadsPage::SaveColumns() const {
+	auto& settings = AppSettings::Get();
+	settings.ThreadColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	settings.Save();
+}
+
+LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	// the header's WM_CONTEXTMENU comes up through the list view, so the header is found by the position
+	auto header = m_List.GetHeader();
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	CRect rcHeader;
+	header.GetWindowRect(&rcHeader);
+	if (!rcHeader.PtInRect(pt)) {
+		bHandled = FALSE;
+		return 0;
+	}
+	HDHITTESTINFO hit{};
+	hit.pt = pt;
+	header.ScreenToClient(&hit.pt);
+	int& column = m_MenuColumn;
+	column = -1;
+	if (header.HitTest(&hit) >= 0) {
+		HDITEM hdi{ HDI_LPARAM };
+		header.GetItem(hit.iItem, &hdi);
+		column = (int)GetColumnManager(m_List)->GetColumnTag<Column>((int)hdi.lParam);
+	}
+
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXT);
+	CMenuHandle popup = menu.GetSubMenu(2);
+	if (column >= 0)
+		popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE, std::format(L"&Hide \"{}\"", s_Columns[column].Name).c_str());
+	popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (column >= 0 && !s_Columns[column].Mandatory ? MF_ENABLED : MF_GRAYED));
+	// the commands come to this page (OnHideColumn, OnSelectColumns): through the frame, Select Columns would go to the
+	// active view (the process list). They're posted, not returned (TPM_RETURNCMD), so the dialog doesn't run inside the
+	// header's right-button handling, where it didn't paint
+	::TrackPopupMenuEx(popup, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
+	return 0;
+}
+
+LRESULT CThreadsPage::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
+		return 0;
+	auto columns = GetShownColumns();
+	std::erase_if(columns, [&](auto& c) { return c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	return 0;
+}
+
+LRESULT CThreadsPage::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
+		SetColumns(*columns);
+		SaveColumns();
 	}
 	return 0;
 }

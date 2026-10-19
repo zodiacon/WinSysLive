@@ -3,13 +3,16 @@
 #include <VirtualListView.h>
 #include <WinSys/Keys.h>
 #include <WinSys/Thread.h>
+#include "ColumnLayout.h"
+#include "resource.h"
 
 //
 // The Threads tab of the Processes view's lower pane: the threads of the selected process, read from the
 // frame's snapshot (which has every process's threads after its entry) on every refresh. CPU, cycles and the
 // context switch delta come from the previous refresh's values, kept per thread. The values the snapshot
 // doesn't have (ideal CPU, I/O and memory priority, cycles, service) are queried through a handle to each
-// thread, opened once while its process is shown.
+// thread, opened once while its process is shown. The columns are chosen from the header's context menu and kept
+// in the ThreadColumns setting.
 //
 class CThreadsPage :
 	public CWindowImpl<CThreadsPage>,
@@ -29,6 +32,10 @@ public:
 
 	BEGIN_MSG_MAP(CThreadsPage)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
@@ -77,6 +84,10 @@ private:
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -84,9 +95,16 @@ private:
 	std::wstring GetText(ThreadRow const& row, Column column) const;
 	void SelectThread(uint32_t tid);
 
+	// the shown columns in display order (the header's order, which the user can change by dragging)
+	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
+	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
+	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
+	void SaveColumns() const;
+
 	CListViewCtrl m_List;
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::vector<ThreadRow> m_Rows;	// in display order
 	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Threads;	// node-based: ThreadRow::Service stays valid
 	LARGE_INTEGER m_PrevTime{};	// of the previous refresh (QPC), 0 if none
+	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 };
