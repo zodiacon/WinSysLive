@@ -8,12 +8,14 @@ struct AppSettings : Settings {
 		SETTING(UpdateInterval, 1000, SettingType::Int32);
 		SETTING(ActiveTab, 0, SettingType::Int32);
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
+		SETTING(PerfPage, 0, SettingType::Int32);
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
 	DEF_SETTING(UpdateInterval, int)
 	DEF_SETTING(ActiveTab, int)
 	DEF_SETTING(ProcessTreeMode, int)
+	DEF_SETTING(PerfPage, int)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };

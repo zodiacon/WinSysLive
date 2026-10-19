@@ -1,13 +1,13 @@
 #pragma once
 
 #include "ViewBase.h"
-#include <GraphControl/include/GraphControl.h>
-#include <GraphControl/include/GraphGrid.h>
-#include <GraphControl/include/CompositionBar.h>
+#include "PerfPages.h"
+#include "PerfNav.h"
 
 //
-// System-wide CPU and memory graphs. Samples are taken on every refresh tick, also while the tab is hidden,
-// so the history is there when the tab is shown.
+// System-wide performance: a list of pages on the left (Summary, CPU, Memory) and the selected page on the right.
+// Samples are taken on every refresh tick and handed to every page, also while the tab or the page is hidden,
+// so the history is there when it's shown.
 //
 class CPerfView :
 	public CViewBase<CPerfView> {
@@ -15,13 +15,14 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
 
 	BEGIN_MSG_MAP(CPerfView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
-		MESSAGE_HANDLER(WM_PAINT, OnPaint)
+		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		CHAIN_MSG_MAP(CViewBase<CPerfView>)
 	ALT_MSG_MAP(1)
@@ -31,7 +32,7 @@ public:
 private:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-	LRESULT OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 	struct CpuTimes {
@@ -39,28 +40,22 @@ private:
 	};
 	// per logical processor, across all processor groups
 	static std::vector<CpuTimes> GetCpuTimes();
-	void SampleCpu();
-	void SampleMemory();
+	void SampleCpu(PerfSample& sample);
+	void SampleMemory(PerfSample& sample);
+	void UpdateNav(PerfSample const& sample);
 	void UpdateTimeSpan();
+	void ShowPage(int index);
 	void Layout();
 
-	GraphCtrl::CGraphControl m_Cpu;
-	GraphCtrl::CGraphGrid m_Cores;
-	GraphCtrl::CGraphControl m_Memory;
-	GraphCtrl::CCompositionBar m_Composition;
-	GraphCtrl::SeriesId m_KernelSeries{ GraphCtrl::InvalidSeries }, m_UserSeries{ GraphCtrl::InvalidSeries };
-	GraphCtrl::SeriesId m_InUseSeries{ GraphCtrl::InvalidSeries };
-	CFont m_Font;
-	int m_LineHeight{ 0 };
+	enum NavItem { SummaryItem, CpuItem, MemoryItem };
+
+	CPerfNav m_Nav;
+	std::vector<std::unique_ptr<IPerfPage>> m_Pages;	// in NavItem order
+	int m_Page{ -1 };
 
 	std::vector<CpuTimes> m_PrevCpu;
 	int64_t m_PhysicalTotal{ 0 }, m_PageSize{ 0 };
-	// the memory lists (modified, standby, free) need elevation; without them, the composition is in use/available
+	// the memory lists (modified, standby, free) may need elevation; without them, the composition is in use/available
 	bool m_HasMemoryLists{ false };
 	int m_Interval{ 0 };	// the update interval the time span text was built for
-
-	// the summary below the graphs
-	std::wstring m_Summary[2];
-	CRect m_SummaryRect;
-	GraphCtrl::GraphTheme m_Theme;
 };

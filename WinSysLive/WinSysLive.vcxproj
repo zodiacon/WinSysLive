@@ -337,6 +337,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="PerfNav.cpp" />
+    <ClCompile Include="PerfPages.cpp" />
     <ClCompile Include="PerfView.cpp" />
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
@@ -351,6 +353,8 @@
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="PerfNav.h" />
+    <ClInclude Include="PerfPages.h" />
     <ClInclude Include="PerfView.h" />
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
