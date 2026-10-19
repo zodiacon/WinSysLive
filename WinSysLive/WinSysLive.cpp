@@ -3,8 +3,11 @@
 
 #include "pch.h"
 #include "MainFrm.h"
+#include "WTLHelper.h"
+#include "AppSettings.h"
 
 CAppModule _Module;
+AppSettings _Settings;
 
 int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	CMessageLoop theLoop;
@@ -17,7 +20,16 @@ int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 		return 0;
 	}
 
-	wndMain.ShowWindow(nCmdShow);
+	// restore the last position, but never start minimized
+	if (auto wp = AppSettings::Get().GetBinary<WINDOWPLACEMENT>(AppSettings::MainWindowPlacement); wp) {
+		auto placement = *wp;
+		if (placement.showCmd == SW_SHOWMINIMIZED || placement.showCmd == SW_MINIMIZE)
+			placement.showCmd = SW_SHOWNORMAL;
+		wndMain.SetWindowPlacement(&placement);
+	}
+	else {
+		wndMain.ShowWindow(nCmdShow);
+	}
 
 	int nRet = theLoop.Run();
 
@@ -33,6 +45,11 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 
 	hRes = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));
+
+	if (AppSettings::Get().Load(L"Software\\ScorpioSoftware\\WinSysLive"))
+		WTLHelper::InitDarkMode(AppSettings::Get().DarkMode() ? DarkModeKind::Dark : DarkModeKind::Light);
+	else
+		WTLHelper::InitDarkMode();
 
 	int nRet = Run(lpstrCmdLine, nCmdShow);
 

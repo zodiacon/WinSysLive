@@ -55,37 +55,61 @@ IDR_MAINFRAME MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
-        MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
-        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
-        MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
-        MENUITEM SEPARATOR
-        MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
-        MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
-        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
+        MENUITEM "Run as &Administrator",        ID_FILE_RUNASADMIN
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
-    POPUP "&Edit"
-    BEGIN
-        MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
-        MENUITEM SEPARATOR
-        MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
-        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
-        MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
-    END
     POPUP "&View"
     BEGIN
+        MENUITEM "&Processes\tCtrl+1",          ID_VIEW_PROCESSES
+        MENUITEM "&Services\tCtrl+2",           ID_VIEW_SERVICES
+        MENUITEM SEPARATOR
+        MENUITEM "Process &Tree\tCtrl+T",        ID_VIEW_PROCESSTREE
+        MENUITEM SEPARATOR
+        MENUITEM "&Refresh\tF5",                 ID_VIEW_REFRESH
+        MENUITEM "&Pause Updates\tSpace",        ID_VIEW_PAUSE
+        POPUP "&Update Interval"
+        BEGIN
+            MENUITEM "0.5 Seconds",                  ID_UPDATEINTERVAL_500
+            MENUITEM "1 Second",                     ID_UPDATEINTERVAL_1000
+            MENUITEM "2 Seconds",                    ID_UPDATEINTERVAL_2000
+            MENUITEM "5 Seconds",                    ID_UPDATEINTERVAL_5000
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
     END
-    POPUP "&Window"
+    POPUP "&Options"
     BEGIN
-        MENUITEM "&Close\tCtrl+F4",             ID_WINDOW_CLOSE
-        MENUITEM "Close &All",                  ID_WINDOW_CLOSE_ALL
+        MENUITEM "&Dark Mode",                  ID_OPTIONS_DARKMODE
     END
     POPUP "&Help"
     BEGIN
         MENUITEM "&About WinSysLive",              ID_APP_ABOUT
+    END
+END
+
+IDR_CONTEXT MENU
+BEGIN
+    POPUP "Process"
+    BEGIN
+        MENUITEM "&Kill Process\tDel",           ID_PROCESS_KILL
+        MENUITEM "&Suspend",                     ID_PROCESS_SUSPEND
+        MENUITEM "&Resume",                      ID_PROCESS_RESUME
+        MENUITEM SEPARATOR
+        POPUP "&Priority"
+        BEGIN
+            MENUITEM "&Realtime",                    ID_PRIORITY_REALTIME
+            MENUITEM "&High",                        ID_PRIORITY_HIGH
+            MENUITEM "&Above Normal",                ID_PRIORITY_ABOVENORMAL
+            MENUITEM "&Normal",                      ID_PRIORITY_NORMAL
+            MENUITEM "&Below Normal",                ID_PRIORITY_BELOWNORMAL
+            MENUITEM "&Idle",                        ID_PRIORITY_IDLE
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Open File &Location",          ID_PROCESS_GOTOFILELOCATION
+        MENUITEM SEPARATOR
+        MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
     END
 END
 
@@ -97,6 +121,14 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\WinSysLive.ico"
+IDI_PROCESSES            ICON                    "res\\processes.ico"
+IDI_SERVICES             ICON                    "res\\services.ico"
+IDI_PERFORMANCE          ICON                    "res\\perf.ico"
+IDI_PROCESS              ICON                    "res\\process.ico"
+IDI_RUN                  ICON                    "res\\Running.ico"
+IDI_PAUSE                ICON                    "res\\Waiting.ico"
+IDI_REFRESH              ICON                    "res\\History.ico"
+IDI_KILL                 ICON                    "res\\stop.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -144,20 +176,13 @@ END
 
 IDR_MAINFRAME ACCELERATORS 
 BEGIN
-    "N",            ID_FILE_NEW,            VIRTKEY, CONTROL
-    "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL
-    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL
-    "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL
-    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL
-    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL
+    "1",            ID_VIEW_PROCESSES,      VIRTKEY, CONTROL
+    "2",            ID_VIEW_SERVICES,       VIRTKEY, CONTROL
+    VK_F5,          ID_VIEW_REFRESH,        VIRTKEY
+    VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY
+    "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
-    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL
-    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT
-    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT
-    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL
-    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT
-    VK_F6,          ID_NEXT_PANE,           VIRTKEY 
-    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT
+    VK_DELETE,      ID_PROCESS_KILL,        VIRTKEY
 END
 
 
@@ -262,6 +287,15 @@ END
 STRINGTABLE 
 BEGIN
     ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+    ID_FILE_RUNASADMIN      "Restart with administrator rights\nRun as Administrator"
+    ID_VIEW_REFRESH         "Update all views now\nRefresh (F5)"
+    ID_VIEW_PAUSE           "Stop or resume periodic updates\nPause/Resume Updates (Space)"
+    ID_VIEW_PROCESSTREE     "Show processes as a tree or a flat list\nProcess Tree (Ctrl+T)"
+    ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
+    ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle Toolbar"
+    ID_PANE_PROCESSES       "Processes: 00000"
+    ID_PANE_CPU             "CPU: 100.0%  "
+    ID_PANE_ELEVATION       "Standard User  "
 END
 
 STRINGTABLE 

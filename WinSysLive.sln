@@ -1,9 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.10.12217.157 stable
+VisualStudioVersion = 18.10.12217.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinSysLive", "WinSysLive\WinSysLive.vcxproj", "{6D11D378-0001-0184-DC8F-E1F48C946EFB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WTLHelper", "wtlhelper\WTLHelper\WTLHelper.vcxproj", "{AE53419F-A769-4548-8E15-E311904DF7DF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinSys", "winsys\WinSys\WinSys.vcxproj", "{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GraphControl", "wtlhelper\GraphControl\GraphControl.vcxproj", "{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TreeListView", "wtlhelper\TreeListView\TreeListView.vcxproj", "{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +29,38 @@ Global
 		{6D11D378-0001-0184-DC8F-E1F48C946EFB}.Release|ARM64.Build.0 = Release|ARM64
 		{6D11D378-0001-0184-DC8F-E1F48C946EFB}.Release|x64.ActiveCfg = Release|x64
 		{6D11D378-0001-0184-DC8F-E1F48C946EFB}.Release|x64.Build.0 = Release|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Debug|ARM64.Build.0 = Debug|ARM64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Debug|x64.ActiveCfg = Debug|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Debug|x64.Build.0 = Debug|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Release|ARM64.ActiveCfg = Release|ARM64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Release|ARM64.Build.0 = Release|ARM64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Release|x64.ActiveCfg = Release|x64
+		{AE53419F-A769-4548-8E15-E311904DF7DF}.Release|x64.Build.0 = Release|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Debug|ARM64.ActiveCfg = Debug|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Debug|ARM64.Build.0 = Debug|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Debug|x64.ActiveCfg = Debug|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Debug|x64.Build.0 = Debug|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Release|ARM64.ActiveCfg = Release|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Release|ARM64.Build.0 = Release|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Release|x64.ActiveCfg = Release|x64
+		{C8CEB891-1E94-4CE1-9497-5D09C6F75EF4}.Release|x64.Build.0 = Release|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Debug|ARM64.ActiveCfg = Debug|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Debug|ARM64.Build.0 = Debug|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Debug|x64.ActiveCfg = Debug|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Debug|x64.Build.0 = Debug|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Release|ARM64.ActiveCfg = Release|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Release|ARM64.Build.0 = Release|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Release|x64.ActiveCfg = Release|x64
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771}.Release|x64.Build.0 = Release|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Debug|ARM64.ActiveCfg = Debug|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Debug|ARM64.Build.0 = Debug|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Debug|x64.ActiveCfg = Debug|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Debug|x64.Build.0 = Debug|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|ARM64.ActiveCfg = Release|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|ARM64.Build.0 = Release|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|x64.ActiveCfg = Release|x64
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

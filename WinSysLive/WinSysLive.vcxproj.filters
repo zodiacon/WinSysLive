@@ -13,6 +13,12 @@
       <UniqueIdentifier>{e9a9a90f-44b0-41f5-a9fe-dcba382a00ae}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;jpg;jpeg;jpe;manifest</Extensions>
     </Filter>
+    <Filter Include="Views">
+      <UniqueIdentifier>{529c454c-fed3-4e9c-8ed8-0ccfc7264859}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Icons">
+      <UniqueIdentifier>{4cf926cd-ca2f-4f8a-9fb3-28f9f5ac6804}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -24,10 +30,25 @@
     <ClCompile Include="MainFrm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="View.cpp">
+    <ClCompile Include="AboutDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AboutDlg.cpp">
+    <ClCompile Include="PerfView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessesView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="ServicesView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="ViewFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessInfoEx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FormatHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,17 +56,38 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MainFrm.h">
+    <ClInclude Include="AppSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="View.h">
+    <ClInclude Include="MainFrm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AboutDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="PerfView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ServicesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ViewBase.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessInfoEx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FormatHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -55,7 +97,31 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\WinSysLive.ico">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\perf.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\process.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\processes.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\services.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Waiting.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Running.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\stop.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\History.ico">
+      <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>
 </Project>
