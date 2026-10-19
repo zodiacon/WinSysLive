@@ -38,8 +38,11 @@ public:
 
 private:
 	enum class Column {
-		Name, Id, CPU, CpuTime, KernelTime, UserTime, PrivateBytes, WorkingSet, Threads, Handles, Session, User, Priority, StartTime,
-		Architecture, Virtualization, JobId, IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive, Description, ImagePath, CommandLine,
+		Name, Id, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
+		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults,
+		Threads, PeakThreads, Handles, GdiObjects, UserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
+		Architecture, IntegrityLevel, Protection, Virtualization, JobId, IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
+		Description, ImagePath, CommandLine,
 		_Count
 	};
 
@@ -49,6 +52,10 @@ private:
 		int Image{ -1 };
 		int NewTicks{ 0 };			// > 0: still highlighted as new
 		bool Terminated{ false };	// highlighted for one update, then removed
+		// changes since the previous update (0 on the first)
+		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
+		uint64_t PrevContextSwitches{ 0 };
+		int64_t PrevPrivateBytes{ -1 };	// -1: no previous update yet
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -79,6 +86,9 @@ private:
 	bool ShowsNetwork() const;
 	// the job's ID when the snapshot has it (elevated), else 1 for a process in a job and 0 for one not in a job
 	static uint32_t GetJobId(ProcessInfoEx& process);
+	// the process total when elevated; otherwise the sum over its current threads (exited threads' are lost)
+	static uint64_t GetContextSwitches(ProcessInfoEx const& process);
+	void UpdateDeltas(ProcessItem& item);
 
 	void BuildItems();
 	HTLITEM EnsureInserted(ProcessItem& item);

@@ -2,9 +2,11 @@
 
 #include <WinSys/ProcessManager.h>
 #include <WinSys/Enums.h>
+#include <WinSys/Processes.h>
 
-// Per-process data the views need beyond what WinSys provides. Each value is computed on first use and cached,
-// as getting it means opening the process (and for the user name, an account lookup).
+// Per-process data the views need beyond what WinSys provides. Most values are computed on first use and cached,
+// as getting them means opening the process (and for the user name, an account lookup). Values that change
+// (GUI objects, memory and I/O priority) are queried on every call through a handle opened once.
 struct ProcessInfoEx : WinSys::ProcessInfo {
 	const std::wstring& GetImagePath();		// Win32 path
 	const std::wstring& GetUser();			// DOMAIN\user
@@ -14,8 +16,25 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	WinSys::VirtualizationState GetVirtualization();
 	// whether the process is in a job; for when the snapshot has no job ID (not elevated)
 	bool IsInJob();
+	WinSys::IntegrityLevel GetIntegrityLevel();	// Error if unknown
+	WinSys::ProcessProtection GetProtection();	// Level 0: not protected (or unknown)
+
+	// current values; -1 (IoPriority::Unknown) if the process can't be opened
+	int GetMemoryPriority();
+	WinSys::IoPriority GetIoPriority();
+	int GetGdiObjects();
+	int GetUserObjects();
 
 private:
+	// opened once with limited query access; nullptr if that fails
+	WinSys::Process* GetProcess();
+
+	std::unique_ptr<WinSys::Process> m_Process;
+	bool m_ProcessDone{ false };
+	WinSys::IntegrityLevel m_Integrity{ WinSys::IntegrityLevel::Error };
+	WinSys::ProcessProtection m_Protection{};
+	bool m_IntegrityDone{ false }, m_ProtectionDone{ false };
+
 	std::wstring m_ImagePath, m_User, m_CommandLine, m_Description;
 	PCWSTR m_Architecture{ L"" };
 	WinSys::VirtualizationState m_Virtualization{ WinSys::VirtualizationState::Unknown };

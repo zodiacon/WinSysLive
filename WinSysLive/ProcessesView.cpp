@@ -29,22 +29,37 @@ namespace {
 		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false },
 		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, false },
 		{ L"User Time", L"UserTime", 100, LVCFMT_RIGHT, false },
+		{ L"CPU Cycles", L"CpuCycles", 170, LVCFMT_RIGHT, false },
+		{ L"Context Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, false },
+		{ L"Context Switch Delta", L"ContextSwitchDelta", 110, LVCFMT_RIGHT, false },
 		{ L"Private Bytes", L"PrivateBytes", 100, LVCFMT_RIGHT, true },
+		{ L"Private Bytes Delta", L"PrivateBytesDelta", 100, LVCFMT_RIGHT, false },
+		{ L"Peak Private Bytes", L"PeakPrivateBytes", 110, LVCFMT_RIGHT, false },
 		{ L"Working Set", L"WorkingSet", 100, LVCFMT_RIGHT, true },
+		{ L"Peak Working Set", L"PeakWorkingSet", 110, LVCFMT_RIGHT, false },
+		{ L"Virtual Size", L"VirtualSize", 120, LVCFMT_RIGHT, false },
+		{ L"Page Faults", L"PageFaults", 100, LVCFMT_RIGHT, false },
 		{ L"Threads", L"Threads", 60, LVCFMT_RIGHT, true },
+		{ L"Peak Threads", L"PeakThreads", 80, LVCFMT_RIGHT, false },
 		{ L"Handles", L"Handles", 70, LVCFMT_RIGHT, true },
+		{ L"GDI Objects", L"GdiObjects", 80, LVCFMT_RIGHT, false },
+		{ L"User Objects", L"UserObjects", 80, LVCFMT_RIGHT, false },
 		{ L"Session", L"Session", 60, LVCFMT_RIGHT, true },
 		{ L"User Name", L"User", 180, LVCFMT_LEFT, true },
 		{ L"Priority", L"Priority", 90, LVCFMT_LEFT, true },
+		{ L"Memory Priority", L"MemoryPriority", 100, LVCFMT_RIGHT, false },
+		{ L"I/O Priority", L"IoPriority", 80, LVCFMT_LEFT, false },
 		{ L"Start Time", L"StartTime", 150, LVCFMT_LEFT, true },
 		{ L"Architecture", L"Architecture", 80, LVCFMT_LEFT, false },
+		{ L"Integrity Level", L"IntegrityLevel", 90, LVCFMT_LEFT, false },
+		{ L"Protection", L"Protection", 130, LVCFMT_LEFT, false },
 		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false },
 		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false },
 		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false },
 		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false },
 		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false },
-		{ L"Network Send Bytes", L"NetworkSend", 120, LVCFMT_RIGHT, false },
-		{ L"Network Receive Bytes", L"NetworkReceive", 120, LVCFMT_RIGHT, false },
+		{ L"Network Send Bytes", L"NetworkSend", 140, LVCFMT_RIGHT, false },
+		{ L"Network Receive Bytes", L"NetworkReceive", 140, LVCFMT_RIGHT, false },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true },
@@ -159,6 +174,31 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 
 bool CProcessesView::ShowsNetwork() const {
 	return std::ranges::contains(m_Columns, Column::NetworkSend) || std::ranges::contains(m_Columns, Column::NetworkReceive);
+}
+
+uint64_t CProcessesView::GetContextSwitches(ProcessInfoEx const& process) {
+	if (process.ExtendedInfo)
+		return process.ExtendedInfo->ContextSwitches;
+	// the snapshot is SystemExtendedProcessInformation: the threads are SYSTEM_EXTENDED_THREAD_INFORMATION
+	auto info = process.NativeInfo;
+	auto threads = reinterpret_cast<SYSTEM_EXTENDED_THREAD_INFORMATION const*>(info->Threads);
+	uint64_t total = 0;
+	for (ULONG i = 0; i < info->NumberOfThreads; i++)
+		total += threads[i].ThreadInfo.ContextSwitches;
+	return total;
+}
+
+void CProcessesView::UpdateDeltas(ProcessItem& item) {
+	auto& p = *item.Process;
+	auto switches = GetContextSwitches(p);
+	auto privateBytes = (int64_t)p.NativeInfo->PrivatePageCount;
+	if (item.PrevPrivateBytes >= 0) {
+		// without the process total, threads that exited take their switches with them
+		item.ContextSwitchDelta = switches >= item.PrevContextSwitches ? int64_t(switches - item.PrevContextSwitches) : 0;
+		item.PrivateBytesDelta = privateBytes - item.PrevPrivateBytes;
+	}
+	item.PrevContextSwitches = switches;
+	item.PrevPrivateBytes = privateBytes;
 }
 
 uint32_t CProcessesView::GetJobId(ProcessInfoEx& process) {
@@ -300,6 +340,10 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	for (auto item : added)
 		EnsureInserted(*item);
 
+	for (auto& [key, item] : m_Items)
+		if (!item.Terminated)
+			UpdateDeltas(item);
+
 	// values change on every update, so the order may too
 	if (m_SortColumn >= 0)
 		Sort();
@@ -391,6 +435,32 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::CpuTime: return FormatHelper::FormatTimeSpan(info->KernelTime.QuadPart + info->UserTime.QuadPart);
 		case Column::KernelTime: return FormatHelper::FormatTimeSpan(info->KernelTime.QuadPart);
 		case Column::UserTime: return FormatHelper::FormatTimeSpan(info->UserTime.QuadPart);
+		case Column::CpuCycles: return FormatHelper::FormatNumber(info->CycleTime);
+		case Column::ContextSwitches: return FormatHelper::FormatNumber(GetContextSwitches(p));
+		case Column::ContextSwitchDelta: return item.ContextSwitchDelta ? FormatHelper::FormatNumber(item.ContextSwitchDelta) : L"";
+		case Column::PrivateBytesDelta:
+			// in KB, like Private Bytes; rounded towards zero, so changes under 1 KB show as nothing
+			return item.PrivateBytesDelta / 1024 ? FormatHelper::FormatNumber(item.PrivateBytesDelta / 1024) + L" K" : L"";
+		case Column::PeakPrivateBytes: return FormatHelper::FormatSize(info->PeakPagefileUsage);
+		case Column::PeakWorkingSet: return FormatHelper::FormatSize(info->PeakWorkingSetSize);
+		case Column::VirtualSize: return FormatHelper::FormatSize(info->VirtualSize);
+		case Column::PageFaults: return FormatHelper::FormatNumber(info->PageFaultCount);
+		case Column::PeakThreads: return FormatHelper::FormatNumber(info->NumberOfThreadsHighWatermark);
+		case Column::GdiObjects: {
+			auto count = p.GetGdiObjects();
+			return count > 0 ? FormatHelper::FormatNumber(count) : L"";
+		}
+		case Column::UserObjects: {
+			auto count = p.GetUserObjects();
+			return count > 0 ? FormatHelper::FormatNumber(count) : L"";
+		}
+		case Column::MemoryPriority: {
+			auto priority = p.GetMemoryPriority();
+			return priority >= 0 ? std::to_wstring(priority) : L"";
+		}
+		case Column::IoPriority: return FormatHelper::IoPriorityToString(p.GetIoPriority());
+		case Column::IntegrityLevel: return FormatHelper::IntegrityLevelToString(p.GetIntegrityLevel());
+		case Column::Protection: return FormatHelper::ProtectionToString(p.GetProtection());
 		case Column::PrivateBytes: return FormatHelper::FormatSize(info->PrivatePageCount);
 		case Column::WorkingSet: return FormatHelper::FormatSize(info->WorkingSetSize);
 		case Column::Threads: return FormatHelper::FormatNumber(info->NumberOfThreads);
@@ -486,6 +556,21 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::CpuTime: return compare(i1->KernelTime.QuadPart + i1->UserTime.QuadPart, i2->KernelTime.QuadPart + i2->UserTime.QuadPart);
 		case Column::KernelTime: return compare(i1->KernelTime.QuadPart, i2->KernelTime.QuadPart);
 		case Column::UserTime: return compare(i1->UserTime.QuadPart, i2->UserTime.QuadPart);
+		case Column::CpuCycles: return compare(i1->CycleTime, i2->CycleTime);
+		case Column::ContextSwitches: return compare(GetContextSwitches(p1), GetContextSwitches(p2));
+		case Column::ContextSwitchDelta: return compare(item1.ContextSwitchDelta, item2.ContextSwitchDelta);
+		case Column::PrivateBytesDelta: return compare(item1.PrivateBytesDelta, item2.PrivateBytesDelta);
+		case Column::PeakPrivateBytes: return compare(i1->PeakPagefileUsage, i2->PeakPagefileUsage);
+		case Column::PeakWorkingSet: return compare(i1->PeakWorkingSetSize, i2->PeakWorkingSetSize);
+		case Column::VirtualSize: return compare(i1->VirtualSize, i2->VirtualSize);
+		case Column::PageFaults: return compare(i1->PageFaultCount, i2->PageFaultCount);
+		case Column::PeakThreads: return compare(i1->NumberOfThreadsHighWatermark, i2->NumberOfThreadsHighWatermark);
+		case Column::GdiObjects: return compare(p1.GetGdiObjects(), p2.GetGdiObjects());
+		case Column::UserObjects: return compare(p1.GetUserObjects(), p2.GetUserObjects());
+		case Column::MemoryPriority: return compare(p1.GetMemoryPriority(), p2.GetMemoryPriority());
+		case Column::IoPriority: return compare(p1.GetIoPriority(), p2.GetIoPriority());
+		case Column::IntegrityLevel: return compare(p1.GetIntegrityLevel(), p2.GetIntegrityLevel());
+		case Column::Protection: return compare(p1.GetProtection().Level, p2.GetProtection().Level);
 		case Column::PrivateBytes: return compare(i1->PrivatePageCount, i2->PrivatePageCount);
 		case Column::WorkingSet: return compare(i1->WorkingSetSize, i2->WorkingSetSize);
 		case Column::Threads: return compare(i1->NumberOfThreads, i2->NumberOfThreads);

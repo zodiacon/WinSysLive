@@ -83,10 +83,20 @@ const std::wstring& ProcessInfoEx::GetDescription() {
 	return m_Description;
 }
 
+Process* ProcessInfoEx::GetProcess() {
+	if (!m_ProcessDone) {
+		m_ProcessDone = true;
+		// the Idle process (0) can't be opened
+		if (Id != 0)
+			m_Process = Process::OpenById(Id);
+	}
+	return m_Process.get();
+}
+
 PCWSTR ProcessInfoEx::GetArchitecture() {
 	if (!m_ArchitectureDone) {
 		m_ArchitectureDone = true;
-		if (auto process = Process::OpenById(Id); process)
+		if (auto process = GetProcess())
 			m_Architecture = process->IsWow64Process() ? L"32-bit" : L"64-bit";
 	}
 	return m_Architecture;
@@ -95,7 +105,7 @@ PCWSTR ProcessInfoEx::GetArchitecture() {
 VirtualizationState ProcessInfoEx::GetVirtualization() {
 	if (!m_VirtualizationDone) {
 		m_VirtualizationDone = true;
-		if (auto process = Process::OpenById(Id); process)
+		if (auto process = GetProcess())
 			m_Virtualization = process->GetVirtualizationState();
 	}
 	return m_Virtualization;
@@ -104,8 +114,46 @@ VirtualizationState ProcessInfoEx::GetVirtualization() {
 bool ProcessInfoEx::IsInJob() {
 	if (!m_InJobDone) {
 		m_InJobDone = true;
-		if (auto process = Process::OpenById(Id); process)
+		if (auto process = GetProcess())
 			m_InJob = process->IsInJob();
 	}
 	return m_InJob;
+}
+
+IntegrityLevel ProcessInfoEx::GetIntegrityLevel() {
+	if (!m_IntegrityDone) {
+		m_IntegrityDone = true;
+		if (auto process = GetProcess())
+			m_Integrity = process->GetIntegrityLevel();
+	}
+	return m_Integrity;
+}
+
+ProcessProtection ProcessInfoEx::GetProtection() {
+	if (!m_ProtectionDone) {
+		m_ProtectionDone = true;
+		if (auto process = GetProcess())
+			m_Protection = process->GetProtection();
+	}
+	return m_Protection;
+}
+
+int ProcessInfoEx::GetMemoryPriority() {
+	auto process = GetProcess();
+	return process ? process->GetMemoryPriority() : -1;
+}
+
+IoPriority ProcessInfoEx::GetIoPriority() {
+	auto process = GetProcess();
+	return process ? process->GetIoPriority() : IoPriority::Unknown;
+}
+
+int ProcessInfoEx::GetGdiObjects() {
+	auto process = GetProcess();
+	return process ? (int)process->GetGdiObjectCount() : -1;
+}
+
+int ProcessInfoEx::GetUserObjects() {
+	auto process = GetProcess();
+	return process ? (int)process->GetUserObjectCount() : -1;
 }

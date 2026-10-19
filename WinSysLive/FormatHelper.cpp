@@ -57,6 +57,52 @@ std::wstring FormatHelper::FormatDateTime(int64_t time) {
 	return std::wstring(date) + L" " + timeText;
 }
 
+PCWSTR FormatHelper::IntegrityLevelToString(WinSys::IntegrityLevel level) {
+	using enum WinSys::IntegrityLevel;
+	switch (level) {
+		case Untrusted: return L"Untrusted";
+		case Low: return L"Low";
+		case Medium: return L"Medium";
+		case MediumPlus: return L"Medium+";
+		case High: return L"High";
+		case System: return L"System";
+		case Protected: return L"Protected";
+	}
+	return L"";
+}
+
+std::wstring FormatHelper::ProtectionToString(WinSys::ProcessProtection protection) {
+	// PS_PROTECTED_TYPE: 1 is light, 2 full
+	if (protection.Type == 0)
+		return L"";
+
+	using enum WinSys::ProcessProtectionSigner;
+	PCWSTR signer = L"";
+	switch (protection.Signer) {
+		case Authenticode: signer = L"Authenticode"; break;
+		case CodeGen: signer = L"CodeGen"; break;
+		case Antimalware: signer = L"Antimalware"; break;
+		case Lsa: signer = L"Lsa"; break;
+		case Windows: signer = L"Windows"; break;
+		case WinTcb: signer = L"WinTcb"; break;
+		case WinSystem: signer = L"WinSystem"; break;
+		case App: signer = L"App"; break;
+	}
+	return std::format(L"{} ({}){}", protection.Type == 1 ? L"PPL" : L"PP", signer, protection.Audit ? L" Audit" : L"");
+}
+
+PCWSTR FormatHelper::IoPriorityToString(WinSys::IoPriority priority) {
+	using enum WinSys::IoPriority;
+	switch (priority) {
+		case VeryLow: return L"Very Low";
+		case Low: return L"Low";
+		case Normal: return L"Normal";
+		case High: return L"High";
+		case Critical: return L"Critical";
+	}
+	return L"";
+}
+
 std::wstring FormatHelper::FormatPriority(int basePriority) {
 	switch (basePriority) {
 		case 0: return L"";

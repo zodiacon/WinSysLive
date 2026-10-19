@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WinSys/ServiceManager.h>
+#include <WinSys/Processes.h>
 
 struct FormatHelper abstract final {
 	// with thousands separators
@@ -15,6 +16,10 @@ struct FormatHelper abstract final {
 	static std::wstring FormatCpu(int32_t cpu);
 	// FILETIME units, shown in local time; empty for zero
 	static std::wstring FormatDateTime(int64_t time);
+	static PCWSTR IntegrityLevelToString(WinSys::IntegrityLevel level);
+	// "PPL (WinTcb)", "PP (Windows)"; empty when not protected
+	static std::wstring ProtectionToString(WinSys::ProcessProtection protection);
+	static PCWSTR IoPriorityToString(WinSys::IoPriority priority);
 	// kernel base priority (as in SYSTEM_PROCESS_INFORMATION) to a priority class name
 	static std::wstring FormatPriority(int basePriority);
 
