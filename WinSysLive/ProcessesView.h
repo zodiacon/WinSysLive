@@ -107,7 +107,6 @@ private:
 	static int CALLBACK CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam);
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;
 	std::wstring GetColumnText(ProcessItem& item, Column column) const;
-	int GetProcessIcon(ProcessInfoEx& process);
 	void UpdateUI();
 	static bool CanControl(ProcessItem const* item);
 	void ShowError(PCWSTR operation) const;
@@ -118,7 +117,6 @@ private:
 	DWORD m_NetworkError{ 0 };	// why it didn't start
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid
-	std::unordered_map<std::wstring, int> m_Icons;	// image path (lowercase) to image list index
 	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)
 	int m_SortColumn{ -1 };	// a Column, or -1
 	bool m_SortAscending{ true };

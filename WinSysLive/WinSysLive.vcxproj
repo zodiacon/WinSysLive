@@ -344,6 +344,7 @@
     <ClCompile Include="PerfView.cpp" />
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
+    <ClCompile Include="UsersView.cpp" />
     <ClCompile Include="ViewFactory.cpp" />
     <ClCompile Include="ProcessInfoEx.cpp" />
     <ClCompile Include="FormatHelper.cpp" />
@@ -362,6 +363,7 @@
     <ClInclude Include="PerfView.h" />
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
+    <ClInclude Include="UsersView.h" />
     <ClInclude Include="ViewBase.h" />
     <ClInclude Include="Interfaces.h" />
     <ClInclude Include="ProcessInfoEx.h" />

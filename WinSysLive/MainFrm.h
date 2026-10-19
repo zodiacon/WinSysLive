@@ -49,6 +49,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_SERVICES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_PERFORMANCE, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_USERS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
@@ -83,6 +84,7 @@ private:
 	BOOL ShowContextMenu(HMENU hMenu, POINT const& pt, DWORD flags) override;
 	HIMAGELIST GetImageList() const override;
 	int GetIconIndex(UINT iconId) const override;
+	int GetProcessIcon(ProcessInfoEx& process) override;
 	ProcessManager& GetProcessManager() override;
 	void GoToProcess(uint32_t pid) override;
 
@@ -96,6 +98,7 @@ private:
 		{ TabType::Processes, ID_VIEW_PROCESSES, IDI_PROCESSES },
 		{ TabType::Services, ID_VIEW_SERVICES, IDI_SERVICES },
 		{ TabType::Performance, ID_VIEW_PERFORMANCE, IDI_PERFORMANCE },
+		{ TabType::Users, ID_VIEW_USERS, IDI_USERS },
 	};
 
 	struct IntervalInfo {
@@ -131,6 +134,7 @@ private:
 	int m_PauseImage{ -1 }, m_RunImage{ -1 };	// the pause button shows the action it performs
 	CImageListManaged m_Images;
 	std::unordered_map<UINT, int> m_IconIndices;
+	std::unordered_map<std::wstring, int> m_ProcessIcons;	// image path (lowercase) to image list index
 	std::vector<IView*> m_Views;	// index == tab index
 	ProcessManager m_ProcessManager;
 	int m_ActivePage{ -1 };

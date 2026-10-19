@@ -20,6 +20,7 @@
 #define IDI_PROCESS_KILL            212
 #define IDI_CPU                     213
 #define IDI_CHART                   214
+#define IDI_USERS                   216
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
 #define IDC_MOVEUP                  1001
@@ -59,14 +60,18 @@
 #define ID_VIEW_PERFORMANCE         32804
 #define ID_VIEW_SELECTCOLUMNS       32805
 #define ID_COLUMN_HIDE              32806
+#define ID_VIEW_USERS               32807
+#define ID_USER_DISCONNECT          32808
+#define ID_USER_LOGOFF              32809
+#define ID_USER_GOTOPROCESS         32810
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	216
+#define _APS_NEXT_RESOURCE_VALUE	217
 #define _APS_NEXT_CONTROL_VALUE		1005
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32807
+#define _APS_NEXT_COMMAND_VALUE		32811
 #endif
 #endif

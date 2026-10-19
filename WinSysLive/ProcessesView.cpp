@@ -329,7 +329,7 @@ HTLITEM CProcessesView::EnsureInserted(ProcessItem& item) {
 	auto parent = FindParent(item);
 	auto hParent = parent ? EnsureInserted(*parent) : TLV_ROOT;
 	if (item.Image < 0)
-		item.Image = GetProcessIcon(*item.Process);
+		item.Image = Frame()->GetProcessIcon(*item.Process);
 	item.Item = m_Tree.InsertItem(hParent, TLV_LAST, LPSTR_TEXTCALLBACK, item.Image, reinterpret_cast<LPARAM>(&item));
 	return item.Item;
 }
@@ -461,28 +461,6 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::CommandLine: return p.GetCommandLine();
 	}
 	return L"";
-}
-
-int CProcessesView::GetProcessIcon(ProcessInfoEx& process) {
-	auto defaultIcon = Frame()->GetIconIndex(IDI_PROCESS);
-	auto& path = process.GetImagePath();
-	if (path.empty())
-		return defaultIcon;
-
-	CString key(path.c_str());
-	key.MakeLower();
-	if (auto it = m_Icons.find((PCWSTR)key); it != m_Icons.end())
-		return it->second;
-
-	HICON hIcon = nullptr;
-	::ExtractIconEx(path.c_str(), 0, nullptr, &hIcon, 1);
-	int index = defaultIcon;
-	if (hIcon) {
-		index = ImageList_AddIcon(Frame()->GetImageList(), hIcon);
-		::DestroyIcon(hIcon);
-	}
-	m_Icons.insert({ (PCWSTR)key, index });
-	return index;
 }
 
 LRESULT CProcessesView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {

@@ -7,6 +7,7 @@ enum class TabType {
 	Processes,
 	Services,
 	Performance,
+	Users,
 };
 
 struct IMainFrame abstract {
@@ -18,6 +19,8 @@ struct IMainFrame abstract {
 	// shared 16x16 image list with the app's icons (views should use LVS_SHAREIMAGELISTS)
 	virtual HIMAGELIST GetImageList() const = 0;
 	virtual int GetIconIndex(UINT iconId) const = 0;
+	// the process's icon in the image list (from its executable, cached by path), or the default process icon
+	virtual int GetProcessIcon(ProcessInfoEx& process) = 0;
 
 	// snapshot updated by the frame on every refresh tick, before IView::OnRefresh is called
 	virtual ProcessManager& GetProcessManager() = 0;

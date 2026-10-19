@@ -76,7 +76,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 void CMainFrame::InitImageList() {
 	static const UINT icons[] = {
-		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_RUN, IDI_KILL,
+		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_USERS, IDI_RUN, IDI_KILL,
 	};
 
 	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons) + 1, 16);
@@ -373,6 +373,28 @@ HIMAGELIST CMainFrame::GetImageList() const {
 int CMainFrame::GetIconIndex(UINT iconId) const {
 	auto it = m_IconIndices.find(iconId);
 	return it == m_IconIndices.end() ? -1 : it->second;
+}
+
+int CMainFrame::GetProcessIcon(ProcessInfoEx& process) {
+	auto defaultIcon = GetIconIndex(IDI_PROCESS);
+	auto& path = process.GetImagePath();
+	if (path.empty())
+		return defaultIcon;
+
+	CString key(path.c_str());
+	key.MakeLower();
+	if (auto it = m_ProcessIcons.find((PCWSTR)key); it != m_ProcessIcons.end())
+		return it->second;
+
+	HICON hIcon = nullptr;
+	::ExtractIconEx(path.c_str(), 0, nullptr, &hIcon, 1);
+	int index = defaultIcon;
+	if (hIcon) {
+		index = m_Images.AddIcon(hIcon);
+		::DestroyIcon(hIcon);
+	}
+	m_ProcessIcons.insert({ (PCWSTR)key, index });
+	return index;
 }
 
 ProcessManager& CMainFrame::GetProcessManager() {
