@@ -7,31 +7,47 @@
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
+#include "ColumnsDlg.h"
+#include <ranges>
 
 using namespace WinSys;
 
 namespace {
 	struct ColumnInfo {
 		PCWSTR Name;
+		PCWSTR Key;	// stored in the ProcessColumns setting, so it must not change
 		int Width;
 		int Format;
+		bool Default;	// shown until the user chooses otherwise
 	};
 
 	// in CProcessesView::Column order
 	const ColumnInfo s_Columns[] = {
-		{ L"Name", 220, LVCFMT_LEFT },
-		{ L"PID", 70, LVCFMT_RIGHT },
-		{ L"CPU (%)", 70, LVCFMT_RIGHT },
-		{ L"Private Bytes", 100, LVCFMT_RIGHT },
-		{ L"Working Set", 100, LVCFMT_RIGHT },
-		{ L"Threads", 60, LVCFMT_RIGHT },
-		{ L"Handles", 70, LVCFMT_RIGHT },
-		{ L"Session", 60, LVCFMT_RIGHT },
-		{ L"User Name", 180, LVCFMT_LEFT },
-		{ L"Priority", 90, LVCFMT_LEFT },
-		{ L"Start Time", 150, LVCFMT_LEFT },
-		{ L"Image Path", 300, LVCFMT_LEFT },
-		{ L"Command Line", 400, LVCFMT_LEFT },
+		{ L"Name", L"Name", 220, LVCFMT_LEFT, true },
+		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true },
+		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
+		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false },
+		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, false },
+		{ L"User Time", L"UserTime", 100, LVCFMT_RIGHT, false },
+		{ L"Private Bytes", L"PrivateBytes", 100, LVCFMT_RIGHT, true },
+		{ L"Working Set", L"WorkingSet", 100, LVCFMT_RIGHT, true },
+		{ L"Threads", L"Threads", 60, LVCFMT_RIGHT, true },
+		{ L"Handles", L"Handles", 70, LVCFMT_RIGHT, true },
+		{ L"Session", L"Session", 60, LVCFMT_RIGHT, true },
+		{ L"User Name", L"User", 180, LVCFMT_LEFT, true },
+		{ L"Priority", L"Priority", 90, LVCFMT_LEFT, true },
+		{ L"Start Time", L"StartTime", 150, LVCFMT_LEFT, true },
+		{ L"Architecture", L"Architecture", 80, LVCFMT_LEFT, false },
+		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false },
+		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false },
+		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false },
+		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false },
+		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false },
+		{ L"Network Send Bytes", L"NetworkSend", 120, LVCFMT_RIGHT, false },
+		{ L"Network Receive Bytes", L"NetworkReceive", 120, LVCFMT_RIGHT, false },
+		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
+		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true },
+		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true },
 	};
 
 	// ID_PRIORITY_* order
@@ -65,20 +81,135 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	m_Tree.SetCallbackMode(true);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
 
-	for (int i = 0; i < _countof(s_Columns); i++) {
-		auto& c = s_Columns[i];
-		m_Tree.InsertColumn(i, c.Name, c.Width, c.Format);
-		m_Tree.SetColumnSortable(i, true);
-	}
+	SetColumns(LoadColumns());
 
 	m_TreeMode = AppSettings::Get().ProcessTreeMode();
 	BuildItems();
 
 	// enabled while active (see OnActivate)
 	Frame()->GetUI().UIEnable(ID_VIEW_PROCESSTREE, false);
+	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, false);
 	Frame()->GetUI().UIEnable(ID_PROCESS_KILL, false);
 
 	return 0;
+}
+
+LRESULT CProcessesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the widths and the order also change by dragging in the header
+	SaveColumns();
+	bHandled = FALSE;
+	return 0;
+}
+
+std::vector<CProcessesView::ShownColumn> CProcessesView::GetShownColumns() const {
+	int count = (int)m_Columns.size();
+	std::vector<int> order(count);
+	m_Tree.GetHeader().GetOrderArray(count, order.data());
+	std::vector<ShownColumn> columns;
+	for (int index : order)
+		columns.push_back({ m_Columns[index], m_Tree.GetColumnWidth(index) });
+	return columns;
+}
+
+void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
+	ATLASSERT(std::ranges::count(columns, Column::Name, &ShownColumn::Id) == 1);
+	ATLASSERT(std::ranges::count(columns, Column::Id, &ShownColumn::Id) == 1);
+	auto sortDirection = m_Tree.GetSortDirection();
+	m_Tree.SetSortColumn(-1, 0);
+	// Name stays list column 0, which draws the tree; the others are inserted after it,
+	// and the header's order array puts them all in the requested order
+	while (m_Tree.GetColumnCount() > 1)
+		m_Tree.DeleteColumn(m_Tree.GetColumnCount() - 1);
+	m_Columns = { Column::Name };
+	for (auto& c : columns)
+		if (c.Id != Column::Name)
+			m_Columns.push_back(c.Id);
+
+	for (int i = 0; i < (int)m_Columns.size(); i++) {
+		auto& info = s_Columns[(int)m_Columns[i]];
+		int width = std::ranges::find(columns, m_Columns[i], &ShownColumn::Id)->Width;
+		if (i == 0 && m_Tree.GetColumnCount() == 1)
+			m_Tree.SetColumnWidth(0, width);
+		else
+			m_Tree.InsertColumn(i, info.Name, width, info.Format);
+		m_Tree.SetColumnSortable(i, true);
+	}
+
+	std::vector<int> order;
+	for (auto& c : columns)
+		order.push_back((int)(std::ranges::find(m_Columns, c.Id) - m_Columns.begin()));
+	m_Tree.GetHeader().SetOrderArray((int)order.size(), order.data());
+
+	// the sort stays if its column is still shown
+	auto sorted = std::ranges::find(m_Columns, (Column)m_SortColumn);
+	if (m_SortColumn >= 0 && sorted != m_Columns.end())
+		m_Tree.SetSortColumn((int)(sorted - m_Columns.begin()), sortDirection);
+	else
+		m_SortColumn = -1;
+
+	// the network trace costs a little all the time, so it only runs while it's needed
+	if (ShowsNetwork()) {
+		if (!m_Network.Start(L"WinSysLive Network"))
+			m_NetworkError = ::GetLastError();
+	}
+	else
+		m_Network.Stop();
+	m_Tree.Invalidate();
+}
+
+bool CProcessesView::ShowsNetwork() const {
+	return std::ranges::contains(m_Columns, Column::NetworkSend) || std::ranges::contains(m_Columns, Column::NetworkReceive);
+}
+
+uint32_t CProcessesView::GetJobId(ProcessInfoEx& process) {
+	if (process.ExtendedInfo)
+		return process.ExtendedInfo->JobObjectId;
+	return process.IsInJob() ? 1 : 0;
+}
+
+std::vector<CProcessesView::ShownColumn> CProcessesView::LoadColumns() {
+	// "Key:width,Key:width...", in display order; unknown keys are skipped
+	std::vector<ShownColumn> columns;
+	auto text = AppSettings::Get().ProcessColumns();
+	for (auto part : std::views::split(std::wstring_view(text), L',')) {
+		std::wstring_view entry(part.begin(), part.end());
+		auto colon = entry.find(L':');
+		if (colon == entry.npos)
+			continue;
+		auto key = entry.substr(0, colon);
+		auto info = std::ranges::find_if(s_Columns, [&](auto& c) { return key == c.Key; });
+		if (info == std::end(s_Columns))
+			continue;
+		auto id = (Column)(info - std::begin(s_Columns));
+		int width = _wtoi(std::wstring(entry.substr(colon + 1)).c_str());
+		if (width > 0 && !std::ranges::contains(columns, id, &ShownColumn::Id))
+			columns.push_back({ id, width });
+	}
+	if (!std::ranges::contains(columns, Column::Name, &ShownColumn::Id)) {
+		// nothing saved, or nothing usable
+		columns.clear();
+		for (int i = 0; i < _countof(s_Columns); i++)
+			if (s_Columns[i].Default)
+				columns.push_back({ (Column)i, s_Columns[i].Width });
+	}
+	// the PID is always shown too
+	if (!std::ranges::contains(columns, Column::Id, &ShownColumn::Id)) {
+		auto name = std::ranges::find(columns, Column::Name, &ShownColumn::Id);
+		columns.insert(name + 1, { Column::Id, s_Columns[(int)Column::Id].Width });
+	}
+	return columns;
+}
+
+void CProcessesView::SaveColumns() const {
+	std::wstring text;
+	for (auto& c : GetShownColumns()) {
+		if (!text.empty())
+			text += L',';
+		text += std::format(L"{}:{}", s_Columns[(int)c.Id].Key, c.Width);
+	}
+	auto& settings = AppSettings::Get();
+	settings.ProcessColumns(text);
+	settings.Save();
 }
 
 void CProcessesView::OnActivate(bool active) {
@@ -212,6 +343,7 @@ void CProcessesView::RemoveItem(ProcessItem& item) {
 	for (auto d : descendants)
 		d->Item = nullptr;
 
+	m_Network.RemoveProcess(item.Process->Id);
 	m_Items.erase(item.Process->Key);
 	for (auto d : descendants)
 		EnsureInserted(*d);
@@ -243,7 +375,8 @@ void CProcessesView::RestoreSelection(ProcessOrThreadKey const* key) {
 LRESULT CProcessesView::OnGetDispInfo(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto di = reinterpret_cast<NMTLVDISPINFO*>(hdr);
 	auto& item = *reinterpret_cast<ProcessItem*>(m_Tree.GetItemData(di->hItem));
-	wcsncpy_s(di->pszText, di->cchTextMax, GetColumnText(item, (Column)di->iSubItem).c_str(), _TRUNCATE);
+	if (di->iSubItem < (int)m_Columns.size())
+		wcsncpy_s(di->pszText, di->cchTextMax, GetColumnText(item, m_Columns[di->iSubItem]).c_str(), _TRUNCATE);
 	return 0;
 }
 
@@ -255,6 +388,9 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::Name: return p.GetImageName();
 		case Column::Id: return std::to_wstring(p.Id);
 		case Column::CPU: return p.Id == 0 || !item.Terminated ? FormatHelper::FormatCpu(p.CPU) : L"";
+		case Column::CpuTime: return FormatHelper::FormatTimeSpan(info->KernelTime.QuadPart + info->UserTime.QuadPart);
+		case Column::KernelTime: return FormatHelper::FormatTimeSpan(info->KernelTime.QuadPart);
+		case Column::UserTime: return FormatHelper::FormatTimeSpan(info->UserTime.QuadPart);
 		case Column::PrivateBytes: return FormatHelper::FormatSize(info->PrivatePageCount);
 		case Column::WorkingSet: return FormatHelper::FormatSize(info->WorkingSetSize);
 		case Column::Threads: return FormatHelper::FormatNumber(info->NumberOfThreads);
@@ -263,6 +399,25 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::User: return p.GetUser();
 		case Column::Priority: return FormatHelper::FormatPriority(info->BasePriority);
 		case Column::StartTime: return FormatHelper::FormatDateTime(p.Key.Created);
+		case Column::Architecture: return p.Id == 0 ? L"" : p.GetArchitecture();
+		case Column::Virtualization:
+			switch (p.GetVirtualization()) {
+				case VirtualizationState::NotAllowed: return L"Not allowed";
+				case VirtualizationState::Enabled: return L"Enabled";
+				case VirtualizationState::Disabled: return L"Disabled";
+			}
+			return L"";
+		case Column::JobId: {
+			auto job = GetJobId(p);
+			// without the snapshot's job ID, only membership is known
+			return job == 0 ? L"" : p.ExtendedInfo ? std::to_wstring(job) : L"Yes";
+		}
+		case Column::IoRead: return FormatHelper::FormatBytes(info->ReadTransferCount.QuadPart);
+		case Column::IoWrite: return FormatHelper::FormatBytes(info->WriteTransferCount.QuadPart);
+		case Column::IoOther: return FormatHelper::FormatBytes(info->OtherTransferCount.QuadPart);
+		case Column::NetworkSend: return FormatHelper::FormatBytes(m_Network.GetCounters(p.Id).Sent);
+		case Column::NetworkReceive: return FormatHelper::FormatBytes(m_Network.GetCounters(p.Id).Received);
+		case Column::Description: return p.GetDescription();
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
 	}
@@ -293,7 +448,7 @@ int CProcessesView::GetProcessIcon(ProcessInfoEx& process) {
 
 LRESULT CProcessesView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto ns = reinterpret_cast<NMTLVSORT*>(hdr);
-	m_SortColumn = ns->iSubItem;
+	m_SortColumn = (int)m_Columns[ns->iSubItem];
 	m_SortAscending = ns->iDirection > 0;
 
 	auto selected = GetSelectedProcess();
@@ -322,12 +477,15 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 	auto i1 = p1.NativeInfo, i2 = p2.NativeInfo;
 
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
-	auto compareText = [](std::wstring const& a, std::wstring const& b) { return ::_wcsicmp(a.c_str(), b.c_str()); };
+	auto compareText = [](std::wstring_view a, std::wstring_view b) { return ::_wcsicmp(std::wstring(a).c_str(), std::wstring(b).c_str()); };
 
 	switch ((Column)m_SortColumn) {
 		case Column::Name: return compareText(p1.GetImageName(), p2.GetImageName());
 		case Column::Id: return compare(p1.Id, p2.Id);
 		case Column::CPU: return compare(p1.CPU, p2.CPU);
+		case Column::CpuTime: return compare(i1->KernelTime.QuadPart + i1->UserTime.QuadPart, i2->KernelTime.QuadPart + i2->UserTime.QuadPart);
+		case Column::KernelTime: return compare(i1->KernelTime.QuadPart, i2->KernelTime.QuadPart);
+		case Column::UserTime: return compare(i1->UserTime.QuadPart, i2->UserTime.QuadPart);
 		case Column::PrivateBytes: return compare(i1->PrivatePageCount, i2->PrivatePageCount);
 		case Column::WorkingSet: return compare(i1->WorkingSetSize, i2->WorkingSetSize);
 		case Column::Threads: return compare(i1->NumberOfThreads, i2->NumberOfThreads);
@@ -336,6 +494,15 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::User: return compareText(p1.GetUser(), p2.GetUser());
 		case Column::Priority: return compare(i1->BasePriority, i2->BasePriority);
 		case Column::StartTime: return compare(p1.Key.Created, p2.Key.Created);
+		case Column::Architecture: return compareText(p1.GetArchitecture(), p2.GetArchitecture());
+		case Column::Virtualization: return compare(p1.GetVirtualization(), p2.GetVirtualization());
+		case Column::JobId: return compare(GetJobId(p1), GetJobId(p2));
+		case Column::IoRead: return compare(i1->ReadTransferCount.QuadPart, i2->ReadTransferCount.QuadPart);
+		case Column::IoWrite: return compare(i1->WriteTransferCount.QuadPart, i2->WriteTransferCount.QuadPart);
+		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);
+		case Column::NetworkSend: return compare(m_Network.GetCounters(p1.Id).Sent, m_Network.GetCounters(p2.Id).Sent);
+		case Column::NetworkReceive: return compare(m_Network.GetCounters(p1.Id).Received, m_Network.GetCounters(p2.Id).Received);
+		case Column::Description: return compareText(p1.GetDescription(), p2.GetDescription());
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
 	}
@@ -378,6 +545,7 @@ void CProcessesView::UpdateUI() {
 	// the frame's commands (menu, toolbar) that this view handles; the rest are on the context menu (see OnRightClick)
 	auto& ui = Frame()->GetUI();
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
+	ui.UIEnable(ID_VIEW_SELECTCOLUMNS, m_Active);
 	ui.UIEnable(ID_PROCESS_KILL, m_Active && CanControl(GetSelectedProcess()));
 	if (m_Active)
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
@@ -491,12 +659,12 @@ LRESULT CProcessesView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	if (!item)
 		return 0;
 
-	// all columns, tab separated
+	// the shown columns in display order, tab separated
 	std::wstring text;
-	for (int i = 0; i < (int)Column::_Count; i++) {
-		if (i > 0)
+	for (auto& c : GetShownColumns()) {
+		if (!text.empty())
 			text += L'\t';
-		text += GetColumnText(*item, (Column)i);
+		text += GetColumnText(*item, c.Id);
 	}
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;
@@ -508,5 +676,44 @@ LRESULT CProcessesView::OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	// flat mode puts every process at the top level, so sorting covers all of them
 	BuildItems();
 	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto shown = GetShownColumns();
+	std::vector<CColumnsDlg::Item> items, defaults;
+	for (auto& c : shown)
+		items.push_back({ (int)c.Id, s_Columns[(int)c.Id].Name, true, c.Id == Column::Name || c.Id == Column::Id });
+	for (int i = 0; i < _countof(s_Columns); i++) {
+		if (!std::ranges::contains(shown, (Column)i, &ShownColumn::Id))
+			items.push_back({ i, s_Columns[i].Name, false });
+		defaults.push_back({ i, s_Columns[i].Name, s_Columns[i].Default, i == (int)Column::Name || i == (int)Column::Id });
+	}
+	std::ranges::stable_partition(defaults, &CColumnsDlg::Item::Visible);
+
+	CColumnsDlg dlg(std::move(items), std::move(defaults));
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+
+	// columns that stay keep their width
+	std::vector<ShownColumn> columns;
+	for (auto& item : dlg.GetItems()) {
+		if (!item.Visible)
+			break;
+		auto id = (Column)item.Id;
+		auto current = std::ranges::find(shown, id, &ShownColumn::Id);
+		columns.push_back({ id, current != shown.end() ? current->Width : s_Columns[item.Id].Width });
+	}
+	SetColumns(columns);
+	SaveColumns();
+	if (ShowsNetwork() && !m_Network.IsRunning()) {
+		if (m_NetworkError == ERROR_ACCESS_DENIED)
+			AtlMessageBox(m_hWnd, L"The network columns need administrator rights, and stay empty until WinSysLive runs elevated (File > Run as Administrator).",
+				IDR_MAINFRAME, MB_ICONINFORMATION);
+		else {
+			::SetLastError(m_NetworkError);
+			ShowError(L"Starting network monitoring");
+		}
+	}
 	return 0;
 }

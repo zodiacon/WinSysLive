@@ -12,6 +12,26 @@ std::wstring FormatHelper::FormatSize(int64_t bytes) {
 	return FormatNumber(bytes >> 10) + L" K";
 }
 
+std::wstring FormatHelper::FormatBytes(uint64_t bytes) {
+	if (bytes == 0)
+		return L"";
+	if (bytes < 1024)
+		return std::format(L"{} B", bytes);
+	static PCWSTR const units[] = { L"KB", L"MB", L"GB", L"TB", L"PB" };
+	double value = bytes / 1024.0;
+	int unit = 0;
+	while (value >= 1024 && unit < _countof(units) - 1) {
+		value /= 1024;
+		unit++;
+	}
+	return std::format(L"{:.1f} {}", value, units[unit]);
+}
+
+std::wstring FormatHelper::FormatTimeSpan(int64_t time) {
+	auto ms = time / 10000;
+	return std::format(L"{}:{:02}:{:02}.{:03}", ms / 3600000, ms / 60000 % 60, ms / 1000 % 60, ms % 1000);
+}
+
 std::wstring FormatHelper::FormatCpu(int32_t cpu) {
 	if (cpu <= 0)
 		return L"";

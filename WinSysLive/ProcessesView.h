@@ -2,6 +2,7 @@
 
 #include "ViewBase.h"
 #include <TreeListView/include/TreeListView.h>
+#include <WinSys/ProcessNetwork.h>
 
 class CProcessesView :
 	public CViewBase<CProcessesView> {
@@ -16,6 +17,7 @@ public:
 
 	BEGIN_MSG_MAP(CProcessesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
 		NOTIFY_CODE_HANDLER(TLVN_SELCHANGED, OnSelectionChanged)
@@ -30,12 +32,14 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
+		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		CHAIN_MSG_MAP_ALT(CViewBase<CProcessesView>, 1)
 	END_MSG_MAP()
 
 private:
 	enum class Column {
-		Name, Id, CPU, PrivateBytes, WorkingSet, Threads, Handles, Session, User, Priority, StartTime, ImagePath, CommandLine,
+		Name, Id, CPU, CpuTime, KernelTime, UserTime, PrivateBytes, WorkingSet, Threads, Handles, Session, User, Priority, StartTime,
+		Architecture, Virtualization, JobId, IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive, Description, ImagePath, CommandLine,
 		_Count
 	};
 
@@ -48,6 +52,7 @@ private:
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnGetDispInfo(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSort(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectionChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
@@ -60,6 +65,20 @@ private:
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	struct ShownColumn {
+		Column Id;
+		int Width;
+	};
+	// the shown columns in display order (the header's order, which the user can change by dragging)
+	std::vector<ShownColumn> GetShownColumns() const;
+	void SetColumns(std::vector<ShownColumn> const& columns);
+	static std::vector<ShownColumn> LoadColumns();
+	void SaveColumns() const;
+	bool ShowsNetwork() const;
+	// the job's ID when the snapshot has it (elevated), else 1 for a process in a job and 0 for one not in a job
+	static uint32_t GetJobId(ProcessInfoEx& process);
 
 	void BuildItems();
 	HTLITEM EnsureInserted(ProcessItem& item);
@@ -78,9 +97,13 @@ private:
 	void ShowError(PCWSTR operation) const;
 
 	CTreeListViewCtrl m_Tree;
+	// runs while a network column is shown
+	WinSys::ProcessNetworkTracker m_Network;
+	DWORD m_NetworkError{ 0 };	// why it didn't start
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid
 	std::unordered_map<std::wstring, int> m_Icons;	// image path (lowercase) to image list index
-	int m_SortColumn{ -1 };
+	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)
+	int m_SortColumn{ -1 };	// a Column, or -1
 	bool m_SortAscending{ true };
 	bool m_TreeMode{ true };
 	bool m_Active{ false };

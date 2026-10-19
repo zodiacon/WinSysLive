@@ -66,6 +66,7 @@ BEGIN
         MENUITEM "P&erformance\tCtrl+3",        ID_VIEW_PERFORMANCE
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",        ID_VIEW_PROCESSTREE
+        MENUITEM "Select &Columns...",          ID_VIEW_SELECTCOLUMNS
         MENUITEM SEPARATOR
         MENUITEM "&Refresh\tF5",                 ID_VIEW_REFRESH
         MENUITEM "&Pause Updates\tSpace",        ID_VIEW_PAUSE
@@ -153,6 +154,21 @@ IDI_CHART                ICON                    "res\\chart.ico"
 // Dialog
 //
 
+IDD_COLUMNS DIALOGEX 0, 0, 230, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Select Columns"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Choose the columns to show and their order:",IDC_STATIC,7,7,216,9
+    EDITTEXT        IDC_FILTER,7,19,160,13,ES_AUTOHSCROLL
+    CONTROL         "",IDC_COLUMNS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,7,37,160,157
+    PUSHBUTTON      "Move &Up",IDC_MOVEUP,173,37,50,14
+    PUSHBUTTON      "Move &Down",IDC_MOVEDOWN,173,55,50,14
+    PUSHBUTTON      "De&faults",IDC_DEFAULTS,173,79,50,14
+    DEFPUSHBUTTON   "OK",IDOK,119,199,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,173,199,50,14
+END
+
 IDD_ABOUTBOX DIALOG  0, 0, 187, 102
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
@@ -176,6 +192,14 @@ END
 #ifdef APSTUDIO_INVOKED
 GUIDELINES DESIGNINFO 
 BEGIN
+    IDD_COLUMNS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 223
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 213
+    END
+
     IDD_ABOUTBOX, DIALOG
     BEGIN
         LEFTMARGIN, 7
@@ -310,6 +334,7 @@ BEGIN
     ID_VIEW_REFRESH         "Update all views now\nRefresh (F5)"
     ID_VIEW_PAUSE           "Stop or resume periodic updates\nPause/Resume Updates (Space)"
     ID_VIEW_PROCESSTREE     "Show processes as a tree or a flat list\nProcess Tree (Ctrl+T)"
+    ID_VIEW_SELECTCOLUMNS   "Choose the columns of the process list and their order\nSelect Columns"
     ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
     ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle Toolbar"
     ID_PANE_PROCESSES       "Processes: 00000"

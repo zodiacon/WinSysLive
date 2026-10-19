@@ -7,6 +7,10 @@ struct FormatHelper abstract final {
 	static std::wstring FormatNumber(int64_t value);
 	// in KB, as Task Manager shows memory
 	static std::wstring FormatSize(int64_t bytes);
+	// B, KB, MB, GB...; empty for zero
+	static std::wstring FormatBytes(uint64_t bytes);
+	// 100 ns units, as h:mm:ss.mmm
+	static std::wstring FormatTimeSpan(int64_t time);
 	// ProcessInfo::CPU units (1/10000 of a percent); empty for zero
 	static std::wstring FormatCpu(int32_t cpu);
 	// FILETIME units, shown in local time; empty for zero

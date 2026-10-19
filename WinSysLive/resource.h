@@ -20,6 +20,12 @@
 #define IDI_PROCESS_KILL            212
 #define IDI_CPU                     213
 #define IDI_CHART                   214
+#define IDD_COLUMNS                 215
+#define IDC_COLUMNS                 1000
+#define IDC_MOVEUP                  1001
+#define IDC_MOVEDOWN                1002
+#define IDC_DEFAULTS                1003
+#define IDC_FILTER                  1004
 //#define IDR_WINSYSLIVETYPE	129
 #define ID_OPTIONS_DARKMODE			32774
 #define ID_VIEW_PROCESSES			32775
@@ -51,14 +57,15 @@
 #define ID_SERVICE_RESTART          32802
 #define ID_SERVICE_GOTOPROCESS      32803
 #define ID_VIEW_PERFORMANCE         32804
+#define ID_VIEW_SELECTCOLUMNS       32805
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	215
-#define _APS_NEXT_CONTROL_VALUE		1000
+#define _APS_NEXT_RESOURCE_VALUE	216
+#define _APS_NEXT_CONTROL_VALUE		1005
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32805
+#define _APS_NEXT_COMMAND_VALUE		32806
 #endif
 #endif
