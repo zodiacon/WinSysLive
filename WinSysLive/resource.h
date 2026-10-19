@@ -59,6 +59,13 @@
 #define IDC_PROC_SESSION            1013
 #define IDC_PROC_STARTED            1014
 #define IDC_PROC_PLACEHOLDER        1015
+#define IDC_PROC_ASLR               1016
+#define IDC_PROC_CFG                1017
+#define IDC_PROC_CET                1018
+#define IDC_PROC_DEP                1019
+#define IDC_PROC_SIGNATURE          1020
+#define IDC_PROC_VERIFY             1021
+#define IDC_PROC_KILL               1022
 #define ID_VIEW_PROPERTIES          32814
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
@@ -112,7 +119,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE	244
-#define _APS_NEXT_CONTROL_VALUE		1016
+#define _APS_NEXT_CONTROL_VALUE		1023
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32815
 #endif

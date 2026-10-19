@@ -16,11 +16,12 @@ struct ProcessProperties {
 };
 
 //
-// The General page: identity and origin of the process
+// The General page: identity and origin of the process, its security mitigations and signature. Its controls follow
+// the page's size through the dialog's AFX_DIALOG_LAYOUT resource (CDynamicDialogLayout)
 //
 class CProcGeneralPage :
 	public CPropertyPageImpl<CProcGeneralPage>,
-	public CDialogResize<CProcGeneralPage> {
+	public CDynamicDialogLayout<CProcGeneralPage> {
 public:
 	enum { IDD = IDD_PROC_GENERAL };
 
@@ -28,21 +29,11 @@ public:
 
 	BEGIN_MSG_MAP(CProcGeneralPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-		CHAIN_MSG_MAP(CDialogResize<CProcGeneralPage>)
+		COMMAND_ID_HANDLER(IDC_PROC_VERIFY, OnVerify)
+		COMMAND_ID_HANDLER(IDC_PROC_KILL, OnKill)
+		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcGeneralPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcGeneralPage>)
 	END_MSG_MAP()
-
-	BEGIN_DLGRESIZE_MAP(CProcGeneralPage)
-		DLGRESIZE_CONTROL(IDC_PROC_NAME, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_DESCRIPTION, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_PATH, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_COMMANDLINE, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_PID, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_PARENT, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_USER, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_SESSION, DLSZ_SIZE_X)
-		DLGRESIZE_CONTROL(IDC_PROC_STARTED, DLSZ_SIZE_X)
-	END_DLGRESIZE_MAP()
 
 // Handler prototypes (uncomment arguments if needed):
 //	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
@@ -51,6 +42,13 @@ public:
 
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVerify(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	// ASLR, CFG, CET and DEP, from the process's mitigation policies (and the image's header, for ASLR)
+	void ShowMitigations();
+	// the process, if it's still the one the sheet is for (its ID may have been reused)
+	wil::unique_handle OpenProcess(DWORD access) const;
 
 	ProcessProperties const& m_Props;
 	HICON m_hIcon;	// the sheet's

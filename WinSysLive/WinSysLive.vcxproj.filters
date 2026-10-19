@@ -93,6 +93,9 @@
     <ClCompile Include="ProcessPages.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="Signature.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -168,6 +171,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ProcessPages.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="Signature.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
   </ItemGroup>

@@ -332,6 +332,7 @@
     <ClCompile Include="ColumnsDlg.cpp" />
     <ClCompile Include="ProcessSheet.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
+    <ClCompile Include="Signature.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -364,6 +365,7 @@
     <ClInclude Include="ColumnsDlg.h" />
     <ClInclude Include="ProcessSheet.h" />
     <ClInclude Include="ProcessPages.h" />
+    <ClInclude Include="Signature.h" />
     <ClInclude Include="AppSettings.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="resource.h" />
@@ -389,6 +391,34 @@
     <ResourceCompile Include="WinSysLive.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\chart.ico" />
+    <Image Include="res\color_wheel.ico" />
+    <Image Include="res\cpu.ico" />
+    <Image Include="res\desktop.ico" />
+    <Image Include="res\device.ico" />
+    <Image Include="res\directx.ico" />
+    <Image Include="res\DLL.ico" />
+    <Image Include="res\EnvironmentVariables.ico" />
+    <Image Include="res\etw.ico" />
+    <Image Include="res\event.ico" />
+    <Image Include="res\file.ico" />
+    <Image Include="res\folder.ico" />
+    <Image Include="res\handle.ico" />
+    <Image Include="res\key.ico" />
+    <Image Include="res\lower-pane.ico" />
+    <Image Include="res\Memory.ico" />
+    <Image Include="res\message.ico" />
+    <Image Include="res\mutex.ico" />
+    <Image Include="res\Object.ico" />
+    <Image Include="res\port.ico" />
+    <Image Include="res\section.ico" />
+    <Image Include="res\semaphore.ico" />
+    <Image Include="res\session.ico" />
+    <Image Include="res\thread.ico" />
+    <Image Include="res\timer.ico" />
+    <Image Include="res\token.ico" />
+    <Image Include="res\Users.ico" />
+    <Image Include="res\windowstation.ico" />
     <Image Include="res\WinSysLive.ico" />
     <Image Include="res\processes.ico" />
     <Image Include="res\services.ico" />

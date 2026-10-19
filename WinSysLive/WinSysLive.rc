@@ -13,13 +13,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+// English (United States) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -51,11 +49,11 @@ END
 // Menu
 //
 
-IDR_MAINFRAME MENU 
+IDR_MAINFRAME MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "Run as &Administrator",        ID_FILE_RUNASADMIN
+        MENUITEM "Run as &Administrator",       ID_FILE_RUNASADMIN
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
@@ -66,20 +64,20 @@ BEGIN
         MENUITEM "P&erformance\tCtrl+3",        ID_VIEW_PERFORMANCE
         MENUITEM "&Users\tCtrl+4",              ID_VIEW_USERS
         MENUITEM SEPARATOR
-        MENUITEM "Process &Tree\tCtrl+T",        ID_VIEW_PROCESSTREE
-        MENUITEM "&Lower Pane\tCtrl+L",          ID_VIEW_LOWERPANE
+        MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
+        MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
         MENUITEM "Select &Columns...",          ID_VIEW_SELECTCOLUMNS
         MENUITEM SEPARATOR
         MENUITEM "P&roperties...\tAlt+Enter",   ID_VIEW_PROPERTIES
         MENUITEM SEPARATOR
-        MENUITEM "&Refresh\tF5",                 ID_VIEW_REFRESH
-        MENUITEM "&Pause Updates\tSpace",        ID_VIEW_PAUSE
+        MENUITEM "&Refresh\tF5",                ID_VIEW_REFRESH
+        MENUITEM "&Pause Updates\tSpace",       ID_VIEW_PAUSE
         POPUP "&Update Interval"
         BEGIN
-            MENUITEM "0.5 Seconds",                  ID_UPDATEINTERVAL_500
-            MENUITEM "1 Second",                     ID_UPDATEINTERVAL_1000
-            MENUITEM "2 Seconds",                    ID_UPDATEINTERVAL_2000
-            MENUITEM "5 Seconds",                    ID_UPDATEINTERVAL_5000
+            MENUITEM "0.5 Seconds",                 ID_UPDATEINTERVAL_500
+            MENUITEM "1 Second",                    ID_UPDATEINTERVAL_1000
+            MENUITEM "2 Seconds",                   ID_UPDATEINTERVAL_2000
+            MENUITEM "5 Seconds",                   ID_UPDATEINTERVAL_5000
         END
         MENUITEM SEPARATOR
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
@@ -87,23 +85,23 @@ BEGIN
     END
     POPUP "&Process"
     BEGIN
-        MENUITEM "&Kill Process\tDel",           ID_PROCESS_KILL
+        MENUITEM "&Kill Process\tDel",          ID_PROCESS_KILL
         MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
         MENUITEM SEPARATOR
-        MENUITEM "&Suspend",                     ID_PROCESS_SUSPEND
-        MENUITEM "&Resume",                      ID_PROCESS_RESUME
+        MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
+        MENUITEM "&Resume",                     ID_PROCESS_RESUME
         MENUITEM SEPARATOR
         POPUP "Set &Priority"
         BEGIN
-            MENUITEM "&Realtime",                    ID_PRIORITY_REALTIME
-            MENUITEM "&High",                        ID_PRIORITY_HIGH
-            MENUITEM "&Above Normal",                ID_PRIORITY_ABOVENORMAL
-            MENUITEM "&Normal",                      ID_PRIORITY_NORMAL
-            MENUITEM "&Below Normal",                ID_PRIORITY_BELOWNORMAL
-            MENUITEM "&Idle",                        ID_PRIORITY_IDLE
+            MENUITEM "&Realtime",                   ID_PRIORITY_REALTIME
+            MENUITEM "&High",                       ID_PRIORITY_HIGH
+            MENUITEM "&Above Normal",               ID_PRIORITY_ABOVENORMAL
+            MENUITEM "&Normal",                     ID_PRIORITY_NORMAL
+            MENUITEM "&Below Normal",               ID_PRIORITY_BELOWNORMAL
+            MENUITEM "&Idle",                       ID_PRIORITY_IDLE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Open File &Location",          ID_PROCESS_GOTOFILELOCATION
+        MENUITEM "Open File &Location",         ID_PROCESS_GOTOFILELOCATION
     END
     POPUP "&Options"
     BEGIN
@@ -111,7 +109,7 @@ BEGIN
     END
     POPUP "&Help"
     BEGIN
-        MENUITEM "&About WinSysLive",              ID_APP_ABOUT
+        MENUITEM "&About WinSysLive",           ID_APP_ABOUT
     END
 END
 
@@ -119,56 +117,57 @@ IDR_CONTEXT MENU
 BEGIN
     POPUP "Process"
     BEGIN
-        MENUITEM "&Kill Process\tDel",           ID_PROCESS_KILL
+        MENUITEM "&Kill Process\tDel",          ID_PROCESS_KILL
         MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
         MENUITEM SEPARATOR
-        MENUITEM "&Suspend",                     ID_PROCESS_SUSPEND
-        MENUITEM "&Resume",                      ID_PROCESS_RESUME
+        MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
+        MENUITEM "&Resume",                     ID_PROCESS_RESUME
         MENUITEM SEPARATOR
         POPUP "&Priority"
         BEGIN
-            MENUITEM "&Realtime",                    ID_PRIORITY_REALTIME
-            MENUITEM "&High",                        ID_PRIORITY_HIGH
-            MENUITEM "&Above Normal",                ID_PRIORITY_ABOVENORMAL
-            MENUITEM "&Normal",                      ID_PRIORITY_NORMAL
-            MENUITEM "&Below Normal",                ID_PRIORITY_BELOWNORMAL
-            MENUITEM "&Idle",                        ID_PRIORITY_IDLE
+            MENUITEM "&Realtime",                   ID_PRIORITY_REALTIME
+            MENUITEM "&High",                       ID_PRIORITY_HIGH
+            MENUITEM "&Above Normal",               ID_PRIORITY_ABOVENORMAL
+            MENUITEM "&Normal",                     ID_PRIORITY_NORMAL
+            MENUITEM "&Below Normal",               ID_PRIORITY_BELOWNORMAL
+            MENUITEM "&Idle",                       ID_PRIORITY_IDLE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Open File &Location",          ID_PROCESS_GOTOFILELOCATION
+        MENUITEM "Open File &Location",         ID_PROCESS_GOTOFILELOCATION
         MENUITEM SEPARATOR
-        MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
         MENUITEM SEPARATOR
         MENUITEM "P&roperties...\tAlt+Enter",   ID_VIEW_PROPERTIES
     END
     POPUP "Service"
     BEGIN
-        MENUITEM "&Start",                       ID_SERVICE_START
-        MENUITEM "S&top",                        ID_SERVICE_STOP
-        MENUITEM "&Pause",                       ID_SERVICE_PAUSE
-        MENUITEM "&Continue",                    ID_SERVICE_CONTINUE
-        MENUITEM "&Restart",                     ID_SERVICE_RESTART
+        MENUITEM "&Start",                      ID_SERVICE_START
+        MENUITEM "S&top",                       ID_SERVICE_STOP
+        MENUITEM "&Pause",                      ID_SERVICE_PAUSE
+        MENUITEM "&Continue",                   ID_SERVICE_CONTINUE
+        MENUITEM "&Restart",                    ID_SERVICE_RESTART
         MENUITEM SEPARATOR
-        MENUITEM "&Go to Process",               ID_SERVICE_GOTOPROCESS
+        MENUITEM "&Go to Process",              ID_SERVICE_GOTOPROCESS
         MENUITEM SEPARATOR
-        MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
     END
     POPUP "Column"
     BEGIN
-        MENUITEM "&Hide Column",                 ID_COLUMN_HIDE
+        MENUITEM "&Hide Column",                ID_COLUMN_HIDE
         MENUITEM SEPARATOR
-        MENUITEM "Select &Columns...",           ID_VIEW_SELECTCOLUMNS
+        MENUITEM "Select &Columns...",          ID_VIEW_SELECTCOLUMNS
     END
     POPUP "User"
     BEGIN
-        MENUITEM "&Disconnect",                  ID_USER_DISCONNECT
-        MENUITEM "&Log Off",                     ID_USER_LOGOFF
+        MENUITEM "&Disconnect",                 ID_USER_DISCONNECT
+        MENUITEM "&Log Off",                    ID_USER_LOGOFF
         MENUITEM SEPARATOR
-        MENUITEM "&Go to Process",               ID_USER_GOTOPROCESS
+        MENUITEM "&Go to Process",              ID_USER_GOTOPROCESS
         MENUITEM SEPARATOR
-        MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
     END
 END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -178,77 +177,130 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\WinSysLive.ico"
-IDI_PROCESSES            ICON                    "res\\processes.ico"
-IDI_SERVICES             ICON                    "res\\services.ico"
-IDI_PERFORMANCE          ICON                    "res\\perf.ico"
-IDI_PROCESS              ICON                    "res\\process.ico"
-IDI_RUN                  ICON                    "res\\Running.ico"
-IDI_PAUSE                ICON                    "res\\Waiting.ico"
-IDI_REFRESH              ICON                    "res\\Refresh.ico"
-IDI_KILL                 ICON                    "res\\stop.ico"
-IDI_TREE                 ICON                    "res\\tree.ico"
-IDI_CONTINUE             ICON                    "res\\ready.ico"
-IDI_PROCESS_KILL         ICON                    "res\\process_kill.ico"
-IDI_CPU                  ICON                    "res\\cpu.ico"
-IDI_CHART                ICON                    "res\\chart.ico"
-IDI_USERS                ICON                    "res\\Users.ico"
-IDI_HANDLES              ICON                    "res\\handle.ico"
-IDI_MODULES              ICON                    "res\\DLL.ico"
-IDI_THREADS              ICON                    "res\\thread.ico"
-IDI_LOWERPANE            ICON                    "res\\lower-pane.ico"
-IDI_OBJECT               ICON                    "res\\Object.ico"
-IDI_GRAPHICS             ICON                    "res\\color_wheel.ico"
-IDI_FILE                 ICON                    "res\\file.ico"
-IDI_DESKTOP              ICON                    "res\\desktop.ico"
-IDI_DEVICE               ICON                    "res\\device.ico"
-IDI_EVENT                ICON                    "res\\event.ico"
-IDI_KEY                  ICON                    "res\\key.ico"
-IDI_ALPC                 ICON                    "res\\message.ico"
-IDI_MUTEX                ICON                    "res\\mutex.ico"
-IDI_SEMAPHORE            ICON                    "res\\semaphore.ico"
-IDI_TIMER                ICON                    "res\\timer.ico"
-IDI_DIRECTX              ICON                    "res\\directx.ico"
-IDI_ETW                  ICON                    "res\\etw.ico"
-IDI_DIRECTORY            ICON                    "res\\folder.ico"
-IDI_PORT                 ICON                    "res\\port.ico"
-IDI_SECTION              ICON                    "res\\section.ico"
-IDI_SESSION              ICON                    "res\\session.ico"
-IDI_TOKEN                ICON                    "res\\token.ico"
-IDI_WINSTA               ICON                    "res\\windowstation.ico"
-IDI_MEMORY               ICON                    "res\\Memory.ico"
-IDI_ENVIRONMENT          ICON                    "res\\EnvironmentVariables.ico"
+
+IDI_PROCESSES           ICON                    "res\\processes.ico"
+
+IDI_SERVICES            ICON                    "res\\services.ico"
+
+IDI_PERFORMANCE         ICON                    "res\\perf.ico"
+
+IDI_PROCESS             ICON                    "res\\process.ico"
+
+IDI_RUN                 ICON                    "res\\Running.ico"
+
+IDI_PAUSE               ICON                    "res\\Waiting.ico"
+
+IDI_REFRESH             ICON                    "res\\Refresh.ico"
+
+IDI_KILL                ICON                    "res\\stop.ico"
+
+IDI_TREE                ICON                    "res\\tree.ico"
+
+IDI_CONTINUE            ICON                    "res\\ready.ico"
+
+IDI_PROCESS_KILL        ICON                    "res\\process_kill.ico"
+
+IDI_CPU                 ICON                    "res\\cpu.ico"
+
+IDI_CHART               ICON                    "res\\chart.ico"
+
+IDI_USERS               ICON                    "res\\Users.ico"
+
+IDI_HANDLES             ICON                    "res\\handle.ico"
+
+IDI_MODULES             ICON                    "res\\DLL.ico"
+
+IDI_THREADS             ICON                    "res\\thread.ico"
+
+IDI_LOWERPANE           ICON                    "res\\lower-pane.ico"
+
+IDI_OBJECT              ICON                    "res\\Object.ico"
+
+IDI_GRAPHICS            ICON                    "res\\color_wheel.ico"
+
+IDI_FILE                ICON                    "res\\file.ico"
+
+IDI_DESKTOP             ICON                    "res\\desktop.ico"
+
+IDI_DEVICE              ICON                    "res\\device.ico"
+
+IDI_EVENT               ICON                    "res\\event.ico"
+
+IDI_KEY                 ICON                    "res\\key.ico"
+
+IDI_ALPC                ICON                    "res\\message.ico"
+
+IDI_MUTEX               ICON                    "res\\mutex.ico"
+
+IDI_SEMAPHORE           ICON                    "res\\semaphore.ico"
+
+IDI_TIMER               ICON                    "res\\timer.ico"
+
+IDI_DIRECTX             ICON                    "res\\directx.ico"
+
+IDI_ETW                 ICON                    "res\\etw.ico"
+
+IDI_DIRECTORY           ICON                    "res\\folder.ico"
+
+IDI_PORT                ICON                    "res\\port.ico"
+
+IDI_SECTION             ICON                    "res\\section.ico"
+
+IDI_SESSION             ICON                    "res\\session.ico"
+
+IDI_TOKEN               ICON                    "res\\token.ico"
+
+IDI_WINSTA              ICON                    "res\\windowstation.ico"
+
+IDI_MEMORY              ICON                    "res\\Memory.ico"
+
+IDI_ENVIRONMENT         ICON                    "res\\EnvironmentVariables.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
-IDD_PROC_GENERAL DIALOGEX 0, 0, 330, 230
+IDD_PROC_GENERAL DIALOGEX 0, 0, 330, 232
 STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CAPTION
 CAPTION "General"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    ICON            "",IDC_PROC_ICON,7,7,20,20,SS_ICON
+    ICON            "",IDC_PROC_ICON,7,7,20,20
     LTEXT           "",IDC_PROC_NAME,36,8,287,10,SS_NOPREFIX | SS_ENDELLIPSIS
     LTEXT           "",IDC_PROC_DESCRIPTION,36,19,287,10,SS_NOPREFIX | SS_ENDELLIPSIS
-    LTEXT           "Image path:",IDC_STATIC,7,40,60,9
-    EDITTEXT        IDC_PROC_PATH,70,38,253,13,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Command line:",IDC_STATIC,7,57,60,9
-    EDITTEXT        IDC_PROC_COMMANDLINE,70,55,253,40,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
-    LTEXT           "Process ID:",IDC_STATIC,7,103,60,9
-    EDITTEXT        IDC_PROC_PID,70,101,253,13,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Parent:",IDC_STATIC,7,120,60,9
-    EDITTEXT        IDC_PROC_PARENT,70,118,253,13,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "User:",IDC_STATIC,7,137,60,9
-    EDITTEXT        IDC_PROC_USER,70,135,253,13,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Session:",IDC_STATIC,7,154,60,9
-    EDITTEXT        IDC_PROC_SESSION,70,152,253,13,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Started:",IDC_STATIC,7,171,60,9
-    EDITTEXT        IDC_PROC_STARTED,70,169,253,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Image path:",IDC_STATIC,7,38,50,9
+    EDITTEXT        IDC_PROC_PATH,60,36,263,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Command line:",IDC_STATIC,7,55,50,9
+    EDITTEXT        IDC_PROC_COMMANDLINE,60,53,263,28,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    LTEXT           "Process ID:",IDC_STATIC,7,89,50,9
+    EDITTEXT        IDC_PROC_PID,60,87,62,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Parent:",IDC_STATIC,130,89,26,9
+    EDITTEXT        IDC_PROC_PARENT,158,87,165,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "User:",IDC_STATIC,7,106,50,9
+    EDITTEXT        IDC_PROC_USER,60,104,185,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Session:",IDC_STATIC,253,106,30,9
+    EDITTEXT        IDC_PROC_SESSION,288,104,35,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Started:",IDC_STATIC,7,123,50,9
+    EDITTEXT        IDC_PROC_STARTED,60,121,124,13,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Security",IDC_STATIC,7,140,316,62
+    LTEXT           "ASLR:",IDC_STATIC,15,153,24,9
+    LTEXT           "",IDC_PROC_ASLR,41,153,121,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "CFG:",IDC_STATIC,170,153,22,9
+    LTEXT           "",IDC_PROC_CFG,194,153,122,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "DEP:",IDC_STATIC,15,166,24,9
+    LTEXT           "",IDC_PROC_DEP,41,166,121,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "CET:",IDC_STATIC,170,166,22,9
+    LTEXT           "",IDC_PROC_CET,194,166,122,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "Signature:",IDC_STATIC,15,183,36,9
+    LTEXT           "",IDC_PROC_SIGNATURE,53,183,209,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Verify",IDC_PROC_VERIFY,268,180,48,14
+    PUSHBUTTON      "&Kill Process",IDC_PROC_KILL,7,210,60,14
 END
 
 IDD_PROC_PAGE DIALOGEX 0, 0, 330, 230
-STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CAPTION
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPCHILDREN | WS_CAPTION
 CAPTION "Page"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
@@ -270,19 +322,16 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,173,199,50,14
 END
 
-IDD_ABOUTBOX DIALOG  0, 0, 187, 102
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_ABOUTBOX DIALOG 0, 0, 187, 102
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
 FONT 9, "Segoe UI"
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,130,81,50,14
-    CTEXT           "WinSysLive Application v1.0\n\n(c) Copyright 2026",IDC_STATIC,25,57,78,
-                    32
+    CTEXT           "WinSysLive Application v1.0\n\n(c) Copyright 2026",IDC_STATIC,25,57,78,32
     ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,20
     GROUPBOX        "",IDC_STATIC,7,7,115,88
 END
-
-
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -291,8 +340,12 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO 
+GUIDELINES DESIGNINFO
 BEGIN
+    IDD_PROC_PAGE, DIALOG
+    BEGIN
+    END
+
     IDD_COLUMNS, DIALOG
     BEGIN
         LEFTMARGIN, 7
@@ -317,18 +370,18 @@ END
 // Accelerator
 //
 
-IDR_MAINFRAME ACCELERATORS 
+IDR_MAINFRAME ACCELERATORS
 BEGIN
     "1",            ID_VIEW_PROCESSES,      VIRTKEY, CONTROL
     "2",            ID_VIEW_SERVICES,       VIRTKEY, CONTROL
     "3",            ID_VIEW_PERFORMANCE,    VIRTKEY, CONTROL
     "4",            ID_VIEW_USERS,          VIRTKEY, CONTROL
-    VK_F5,          ID_VIEW_REFRESH,        VIRTKEY
-    VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY
+    VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
+    VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
     "L",            ID_VIEW_LOWERPANE,      VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
-    VK_DELETE,      ID_PROCESS_KILL,        VIRTKEY
+    VK_DELETE,      ID_PROCESS_KILL,        VIRTKEY 
     VK_RETURN,      ID_VIEW_PROPERTIES,     VIRTKEY, ALT
 END
 
@@ -355,33 +408,79 @@ BEGIN
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "WinSysLive Module\0"
-            VALUE "FileVersion", "1, 0, 0, 1\0"
-            VALUE "InternalName", "WinSysLive\0"
-            VALUE "LegalCopyright", "Copyright 2026\0"
-            VALUE "OriginalFilename", "WinSysLive.exe\0"
-            VALUE "ProductName", "WinSysLive Module\0"
-            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "FileDescription", "WinSysLive Module"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "WinSysLive"
+            VALUE "LegalCopyright", "Copyright 2026"
+            VALUE "OriginalFilename", "WinSysLive.exe"
+            VALUE "ProductName", "WinSysLive Module"
+            VALUE "ProductVersion", "1, 0, 0, 1"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
-        VALUE "Translation", 0x0409, 0x04B0
+        VALUE "Translation", 0x409, 1200
     END
 END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_PROC_GENERAL AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    0, 0, 100, 100,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 100, 0,
+    0, 100, 0, 0,
+    0, 100, 100, 0,
+    100, 100, 0, 0,
+    100, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 100, 0,
+    0, 100, 0, 0,
+    0, 100, 50, 0,
+    50, 100, 0, 0,
+    50, 100, 50, 0,
+    0, 100, 0, 0,
+    0, 100, 50, 0,
+    50, 100, 0, 0,
+    50, 100, 50, 0,
+    0, 100, 0, 0,
+    0, 100, 100, 0,
+    100, 100, 0, 0,
+    0, 100, 0, 0
+END
+
+IDD_PROC_PAGE AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // String Table
 //
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
-    IDR_MAINFRAME	"WinSysLive"
+    IDR_MAINFRAME           "WinSysLive"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_FILE_NEW             "Create a new document\nNew"
     ID_FILE_OPEN            "Open an existing document\nOpen"
@@ -394,19 +493,19 @@ BEGIN
     ID_FILE_PRINT_PREVIEW   "Display full pages\nPrint Preview"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
     ID_APP_EXIT             "Quit the application; prompts to save documents\nExit"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
     ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_WINDOW_NEW           "Open another window for the active document\nNew Window"
     ID_WINDOW_ARRANGE       "Arrange icons at the bottom of the window\nArrange Icons"
@@ -416,7 +515,7 @@ BEGIN
     ID_WINDOW_SPLIT         "Split the active window into panes\nSplit"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_EDIT_CLEAR           "Erase the selection\nErase"
     ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
@@ -431,30 +530,43 @@ BEGIN
     ID_EDIT_REDO            "Redo the previously undone action\nRedo"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
-    ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
-    ID_FILE_RUNASADMIN      "Restart with administrator rights\nRun as Administrator"
-    ID_VIEW_REFRESH         "Update all views now\nRefresh (F5)"
-    ID_VIEW_PAUSE           "Stop or resume periodic updates\nPause/Resume Updates (Space)"
-    ID_VIEW_PROCESSTREE     "Show processes as a tree or a flat list\nProcess Tree (Ctrl+T)"
-    ID_VIEW_SELECTCOLUMNS   "Choose the columns of the list and their order\nSelect Columns"
-    ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
-    ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
-    ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
-    ID_VIEW_PROPERTIES      "Show the properties of the selected process\nProperties (Alt+Enter)"
-    ID_PROCESS_KILLALL      "Terminate all the processes with the selected process's image name\nKill All with the Same Name"
-    ID_PROCESS_SUSPEND      "Suspend all the threads of the selected process\nSuspend"
-    ID_PROCESS_RESUME       "Resume the threads of the selected process\nResume"
-    ID_PROCESS_GOTOFILELOCATION "Open the folder of the selected process's executable in Explorer\nOpen File Location"
     ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle Toolbar"
-    ID_PANE_PROCESSES       "Processes: 00000"
-    ID_PANE_THREADS         "Threads: 000,000"
-    ID_PANE_CPU             "CPU: 100.0%  "
-    ID_PANE_ELEVATION       "Standard User  "
+    ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+    ID_VIEW_REFRESH         "Update all views now\nRefresh (F5)"
 END
 
-STRINGTABLE 
+STRINGTABLE
+BEGIN
+    ID_FILE_RUNASADMIN      "Restart with administrator rights\nRun as Administrator"
+    ID_VIEW_PAUSE           "Stop or resume periodic updates\nPause/Resume Updates (Space)"
+END
+
+STRINGTABLE
+BEGIN
+    ID_PANE_PROCESSES       "Processes: 00000"
+    ID_PANE_CPU             "CPU: 100.0%  "
+    ID_PANE_ELEVATION       "Standard User  "
+    ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
+    ID_PROCESS_SUSPEND      "Suspend all the threads of the selected process\nSuspend"
+    ID_PROCESS_RESUME       "Resume the threads of the selected process\nResume"
+    ID_PROCESS_GOTOFILELOCATION 
+                            "Open the folder of the selected process's executable in Explorer\nOpen File Location"
+    ID_VIEW_PROCESSTREE     "Show processes as a tree or a flat list\nProcess Tree (Ctrl+T)"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_SELECTCOLUMNS   "Choose the columns of the list and their order\nSelect Columns"
+    ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
+    ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
+    ID_PANE_THREADS         "Threads: 000,000"
+    ID_PROCESS_KILLALL      "Terminate all the processes with the selected process's image name\nKill All with the Same Name"
+    ID_VIEW_PROPERTIES      "Show the properties of the selected process\nProperties (Alt+Enter)"
+END
+
+STRINGTABLE
 BEGIN
     ATL_IDS_SCSIZE          "Change the window size"
     ATL_IDS_SCMOVE          "Change the window position"
@@ -465,22 +577,24 @@ BEGIN
     ATL_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ATL_IDS_SCRESTORE       "Restore the window to normal size"
     ATL_IDS_SCTASKLIST      "Activate Task List"
     ATL_IDS_MDICHILD        "Activate this window"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ATL_IDS_IDLEMESSAGE     "Ready"
+END
+
+STRINGTABLE
+BEGIN
     ATL_IDS_MRU_FILE        "Open this document"
 END
 
-#endif    // English (U.S.) resources
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef APSTUDIO_INVOKED
-#endif    // not APSTUDIO_INVOKED
