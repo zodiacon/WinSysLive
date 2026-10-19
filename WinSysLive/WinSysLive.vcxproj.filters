@@ -54,6 +54,9 @@
     <ClCompile Include="ServicesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ThreadsPage.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="UsersView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -102,6 +105,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ServicesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadsPage.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="UsersView.h">

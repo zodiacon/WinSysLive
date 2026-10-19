@@ -38,18 +38,9 @@ void CProcessDetails::Init(IMainFrame* frame) {
 		{ L"Size", 100, LVCFMT_RIGHT },
 		{ L"Path", 400, LVCFMT_LEFT },
 	};
-	static const ColumnInfo threads[] = {
-		{ L"TID", 70, LVCFMT_RIGHT },
-		{ L"CPU (%)", 70, LVCFMT_RIGHT },
-		{ L"State", 100, LVCFMT_LEFT },
-		{ L"Wait Reason", 120, LVCFMT_LEFT },
-		{ L"Priority", 70, LVCFMT_RIGHT },
-		{ L"Context Switches", 120, LVCFMT_RIGHT },
-		{ L"Start Address", 160, LVCFMT_RIGHT },
-	};
 	m_Handles = CreateList(handles);
 	m_Modules = CreateList(modules);
-	m_Threads = CreateList(threads);
+	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	AddPage(m_Handles, L"Handles", frame->GetIconIndex(IDI_HANDLES));
 	AddPage(m_Modules, L"Modules", frame->GetIconIndex(IDI_MODULES));
 	AddPage(m_Threads, L"Threads", frame->GetIconIndex(IDI_THREADS));
@@ -61,9 +52,7 @@ void CProcessDetails::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
 	if (process == m_Process)
 		return;
 	m_Process = std::move(process);
-	// the pages' contents come next; until then they're empty
-	for (auto list : { &m_Handles, &m_Modules, &m_Threads })
-		list->SetItemCount(0);
+	m_Threads.SetProcess(m_Process);
 }
 
 ProcessInfoEx* CProcessDetails::GetProcess() const {
@@ -71,4 +60,5 @@ ProcessInfoEx* CProcessDetails::GetProcess() const {
 }
 
 void CProcessDetails::Refresh() {
+	m_Threads.Refresh();
 }

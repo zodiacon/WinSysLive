@@ -2,13 +2,14 @@
 
 #include <NativeCustomTabView.h>
 #include <span>
+#include "ThreadsPage.h"
 
 struct IMainFrame;
 
 //
 // The lower pane of the Processes view: tabs with the handles, modules and threads of the selected process.
-// The pages are list views; SetProcess tells the pane which process to show, Refresh is called on every
-// refresh tick while the pane is shown.
+// SetProcess tells the pane which process to show, Refresh is called on every refresh tick while the pane is shown.
+// Threads is a page of its own (CThreadsPage); Handles and Modules are still empty list views.
 //
 class CProcessDetails : public CNativeCustomTabViewImpl<CProcessDetails> {
 public:
@@ -34,6 +35,7 @@ private:
 	CListViewCtrl CreateList(std::span<ColumnInfo const> columns);
 
 	IMainFrame* m_Frame{ nullptr };
-	CListViewCtrl m_Handles, m_Modules, m_Threads;
+	CListViewCtrl m_Handles, m_Modules;
+	CThreadsPage m_Threads;
 	std::shared_ptr<ProcessInfoEx> m_Process;
 };
