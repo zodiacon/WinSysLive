@@ -802,3 +802,47 @@ LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
 	}
 	return 0;
 }
+
+LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	// the header's WM_CONTEXTMENU comes up through the list view and the TreeListView, and arrives with the
+	// TreeListView as the window, so the header is found by the position; the rows have their own menu (NM_RCLICK)
+	auto header = m_Tree.GetHeader();
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	CRect rcHeader;
+	header.GetWindowRect(&rcHeader);
+	if ((HWND)wParam != m_Tree || !rcHeader.PtInRect(pt)) {
+		// includes the keyboard (-1, -1)
+		bHandled = FALSE;
+		return 0;
+	}
+
+	HDHITTESTINFO hit{};
+	hit.pt = pt;
+	header.ScreenToClient(&hit.pt);
+	header.HitTest(&hit);
+	m_MenuColumn = hit.iItem >= 0 && hit.iItem < (int)m_Columns.size() ? (int)m_Columns[hit.iItem] : -1;
+
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXT);
+	CMenuHandle popup = menu.GetSubMenu(2);
+	if (m_MenuColumn >= 0)
+		popup.ModifyMenu(ID_COLUMN_HIDE, MF_BYCOMMAND | MF_STRING, ID_COLUMN_HIDE,
+			std::format(L"&Hide \"{}\"", s_Columns[m_MenuColumn].Name).c_str());
+	// Name and PID are always shown
+	bool canHide = m_MenuColumn >= 0 && m_MenuColumn != (int)Column::Name && m_MenuColumn != (int)Column::Id;
+	popup.EnableMenuItem(ID_COLUMN_HIDE, MF_BYCOMMAND | (canHide ? MF_ENABLED : MF_GRAYED));
+	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
+	return 0;
+}
+
+LRESULT CProcessesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (m_MenuColumn < 0 || m_MenuColumn == (int)Column::Name || m_MenuColumn == (int)Column::Id)
+		return 0;
+
+	auto columns = GetShownColumns();
+	std::erase_if(columns, [&](auto& c) { return (int)c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	return 0;
+}

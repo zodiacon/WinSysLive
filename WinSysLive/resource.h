@@ -58,6 +58,7 @@
 #define ID_SERVICE_GOTOPROCESS      32803
 #define ID_VIEW_PERFORMANCE         32804
 #define ID_VIEW_SELECTCOLUMNS       32805
+#define ID_COLUMN_HIDE              32806
 
 // Next default values for new objects
 // 
@@ -66,6 +67,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	216
 #define _APS_NEXT_CONTROL_VALUE		1005
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32806
+#define _APS_NEXT_COMMAND_VALUE		32807
 #endif
 #endif

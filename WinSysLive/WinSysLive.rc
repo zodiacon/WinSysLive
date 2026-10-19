@@ -125,6 +125,12 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",                ID_EDIT_COPY
     END
+    POPUP "Column"
+    BEGIN
+        MENUITEM "&Hide Column",                 ID_COLUMN_HIDE
+        MENUITEM SEPARATOR
+        MENUITEM "Select &Columns...",           ID_VIEW_SELECTCOLUMNS
+    END
 END
 
 /////////////////////////////////////////////////////////////////////////////
@@ -335,6 +341,7 @@ BEGIN
     ID_VIEW_PAUSE           "Stop or resume periodic updates\nPause/Resume Updates (Space)"
     ID_VIEW_PROCESSTREE     "Show processes as a tree or a flat list\nProcess Tree (Ctrl+T)"
     ID_VIEW_SELECTCOLUMNS   "Choose the columns of the process list and their order\nSelect Columns"
+    ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
     ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle Toolbar"
     ID_PANE_PROCESSES       "Processes: 00000"

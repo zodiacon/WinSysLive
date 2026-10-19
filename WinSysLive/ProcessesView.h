@@ -18,6 +18,7 @@ public:
 	BEGIN_MSG_MAP(CProcessesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
 		NOTIFY_CODE_HANDLER(TLVN_SELCHANGED, OnSelectionChanged)
@@ -33,6 +34,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
+		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CProcessesView>, 1)
 	END_MSG_MAP()
 
@@ -60,6 +62,7 @@ private:
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnGetDispInfo(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSort(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectionChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
@@ -73,6 +76,7 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	struct ShownColumn {
 		Column Id;
@@ -110,6 +114,7 @@ private:
 	// runs while a network column is shown
 	WinSys::ProcessNetworkTracker m_Network;
 	DWORD m_NetworkError{ 0 };	// why it didn't start
+	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid
 	std::unordered_map<std::wstring, int> m_Icons;	// image path (lowercase) to image list index
 	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)
