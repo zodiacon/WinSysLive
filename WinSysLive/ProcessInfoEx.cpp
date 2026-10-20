@@ -146,6 +146,16 @@ IoPriority ProcessInfoEx::GetIoPriority() {
 	return process ? process->GetIoPriority() : IoPriority::Unknown;
 }
 
+std::optional<bool> ProcessInfoEx::GetEfficiencyMode() {
+	auto process = GetProcess();
+	if (!process)
+		return std::nullopt;
+	PROCESS_POWER_THROTTLING_STATE state{ PROCESS_POWER_THROTTLING_CURRENT_VERSION };
+	if (!::GetProcessInformation(process->Handle(), ProcessPowerThrottling, &state, sizeof(state)))
+		return std::nullopt;
+	return (state.ControlMask & state.StateMask & PROCESS_POWER_THROTTLING_EXECUTION_SPEED) != 0;
+}
+
 int ProcessInfoEx::GetGdiObjects() {
 	auto process = GetProcess();
 	return process ? (int)process->GetGdiObjectCount() : -1;

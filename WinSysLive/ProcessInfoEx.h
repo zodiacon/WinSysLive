@@ -28,6 +28,8 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	WinSys::IoPriority GetIoPriority();
 	int GetGdiObjects();
 	int GetUserObjects();
+	// EcoQoS (Task Manager's efficiency mode): execution speed throttled; nothing if it can't be queried
+	std::optional<bool> GetEfficiencyMode();
 
 private:
 	// opened once with limited query access; nullptr if that fails

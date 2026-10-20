@@ -48,6 +48,10 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_SUSPEND, OnSuspend)
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
 		COMMAND_RANGE_HANDLER(ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE, OnSetPriority)
+		COMMAND_RANGE_HANDLER(ID_IOPRIORITY_VERYLOW, ID_IOPRIORITY_HIGH, OnSetIoPriority)
+		COMMAND_RANGE_HANDLER(ID_MEMPRIORITY_VERYLOW, ID_MEMPRIORITY_NORMAL, OnSetMemoryPriority)
+		COMMAND_ID_HANDLER(ID_PROCESS_AFFINITY, OnSetAffinity)
+		COMMAND_ID_HANDLER(ID_PROCESS_EFFICIENCY, OnEfficiencyMode)
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_PROCESS_MINIDUMP, OnCreateDump)
 		COMMAND_ID_HANDLER(ID_PROCESS_FULLDUMP, OnCreateDump)
@@ -102,6 +106,10 @@ private:
 	LRESULT OnSuspend(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetPriority(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSetIoPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSetMemoryPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSetAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -163,6 +171,9 @@ private:
 	// the lower pane shows the selected process (none for one that exited)
 	void UpdateDetails();
 	static bool CanControl(ProcessItem const* item);
+	// the selected process opened with the access (and PROCESS_QUERY_LIMITED_INFORMATION), if it can be controlled;
+	// null (after saying why) otherwise
+	wil::unique_handle OpenSelected(DWORD access) const;
 	void ShowError(PCWSTR operation) const;
 
 	// the process list on top; the lower pane (handles, modules, threads of the selected process) can be hidden

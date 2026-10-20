@@ -343,6 +343,7 @@ exit /b 0</Command>
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp" />
     <ClCompile Include="ColumnLayout.cpp" />
+    <ClCompile Include="Connections.cpp" />
     <ClCompile Include="ObjectNames.cpp" />
     <ClCompile Include="FilterBox.cpp" />
     <ClCompile Include="ProcessColors.cpp" />
@@ -356,6 +357,7 @@ exit /b 0</Command>
     <ClCompile Include="ServicesPage.cpp" />
     <ClCompile Include="Symbols.cpp" />
     <ClCompile Include="StackDlg.cpp" />
+    <ClCompile Include="AffinityDlg.cpp" />
     <ClCompile Include="FindHandleDlg.cpp" />
     <ClCompile Include="SymbolSettingsDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
@@ -375,6 +377,7 @@ exit /b 0</Command>
     <ClCompile Include="ProcessDetails.cpp" />
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
+    <ClCompile Include="NetworkView.cpp" />
     <ClCompile Include="AccessMask.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
@@ -389,6 +392,7 @@ exit /b 0</Command>
   <ItemGroup>
     <ClInclude Include="AboutDlg.h" />
     <ClInclude Include="ColumnLayout.h" />
+    <ClInclude Include="Connections.h" />
     <ClInclude Include="ObjectNames.h" />
     <ClInclude Include="FilterBox.h" />
     <ClInclude Include="ProcessColors.h" />
@@ -402,6 +406,7 @@ exit /b 0</Command>
     <ClInclude Include="ServicesPage.h" />
     <ClInclude Include="Symbols.h" />
     <ClInclude Include="StackDlg.h" />
+    <ClInclude Include="AffinityDlg.h" />
     <ClInclude Include="FindHandleDlg.h" />
     <ClInclude Include="SymbolSettingsDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
@@ -416,6 +421,7 @@ exit /b 0</Command>
     <ClInclude Include="ProcessDetails.h" />
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
+    <ClInclude Include="NetworkView.h" />
     <ClInclude Include="AccessMask.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />

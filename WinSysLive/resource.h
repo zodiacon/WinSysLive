@@ -151,6 +151,24 @@
 #define ID_PROCESS_MINIDUMP         32826
 #define ID_PROCESS_FULLDUMP         32827
 #define ID_FIND_HANDLE              32828
+// I/O priority hints 0..3, memory priorities 1..5, in order
+#define ID_IOPRIORITY_VERYLOW       32829
+#define ID_IOPRIORITY_LOW           32830
+#define ID_IOPRIORITY_NORMAL        32831
+#define ID_IOPRIORITY_HIGH          32832
+#define ID_MEMPRIORITY_VERYLOW      32833
+#define ID_MEMPRIORITY_LOW          32834
+#define ID_MEMPRIORITY_MEDIUM       32835
+#define ID_MEMPRIORITY_BELOWNORMAL  32836
+#define ID_MEMPRIORITY_NORMAL       32837
+#define ID_PROCESS_AFFINITY         32838
+#define ID_PROCESS_EFFICIENCY       32839
+#define ID_VIEW_NETWORK             32840
+#define ID_NETWORK_GOTOPROCESS      32841
+#define IDD_AFFINITY                260
+#define IDC_AFF_AREA                1140
+#define IDC_AFF_ALL                 1141
+#define IDC_AFF_NONE                1142
 #define IDD_FIND_HANDLE             259
 #define IDC_FIND_TEXT               1133
 #define IDC_FIND_SEARCH             1134
@@ -263,9 +281,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	260
-#define _APS_NEXT_CONTROL_VALUE		1140
+#define _APS_NEXT_RESOURCE_VALUE	261
+#define _APS_NEXT_CONTROL_VALUE		1143
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32829
+#define _APS_NEXT_COMMAND_VALUE		32842
 #endif
 #endif

@@ -11,6 +11,8 @@
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
 #include "ColumnLayout.h"
+#include "AffinityDlg.h"
+#include <WinSys/SecurityHelper.h>
 #include <ranges>
 
 using namespace WinSys;
@@ -849,6 +851,20 @@ void CProcessesView::UpdateUI() {
 		for (int i = 0; i < _countof(s_Priorities); i++)
 			if (s_Priorities[i].BasePriority == item->Process->NativeInfo->BasePriority)
 				ui.UISetRadioMenuItem(ID_PRIORITY_REALTIME + i, ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE);
+	// the I/O and memory priorities and the efficiency mode are queried (through ProcessInfoEx's handle)
+	int io = live ? (int)item->Process->GetIoPriority() : -1, memory = live ? item->Process->GetMemoryPriority() : -1;
+	for (UINT id = ID_IOPRIORITY_VERYLOW; id <= ID_MEMPRIORITY_NORMAL; id++) {
+		ui.UIEnable(id, live);
+		ui.UISetRadio(id, false);
+		ui.UISetCheck(id, false);
+	}
+	if (io >= 0 && io <= ID_IOPRIORITY_HIGH - ID_IOPRIORITY_VERYLOW)
+		ui.UISetRadioMenuItem(ID_IOPRIORITY_VERYLOW + io, ID_IOPRIORITY_VERYLOW, ID_IOPRIORITY_HIGH);
+	if (memory >= 1 && memory <= ID_MEMPRIORITY_NORMAL - ID_MEMPRIORITY_VERYLOW + 1)
+		ui.UISetRadioMenuItem(ID_MEMPRIORITY_VERYLOW + memory - 1, ID_MEMPRIORITY_VERYLOW, ID_MEMPRIORITY_NORMAL);
+	ui.UIEnable(ID_PROCESS_AFFINITY, live);
+	ui.UIEnable(ID_PROCESS_EFFICIENCY, live);
+	ui.UISetCheck(ID_PROCESS_EFFICIENCY, live && item->Process->GetEfficiencyMode().value_or(false));
 	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
 	ui.UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, m_Active);
 	ui.UIEnable(ID_KILL, m_Active && CanKill());
@@ -886,6 +902,16 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 		popup.EnableMenuItem(ID_PRIORITY_REALTIME + i, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 		if (s_Priorities[i].BasePriority == item->Process->NativeInfo->BasePriority)
 			popup.CheckMenuRadioItem(ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE, ID_PRIORITY_REALTIME + i, MF_BYCOMMAND);
+	}
+	for (UINT id = ID_IOPRIORITY_VERYLOW; id <= ID_PROCESS_EFFICIENCY; id++)
+		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
+	if (live) {
+		int io = (int)item->Process->GetIoPriority(), memory = item->Process->GetMemoryPriority();
+		if (io >= 0 && io <= ID_IOPRIORITY_HIGH - ID_IOPRIORITY_VERYLOW)
+			popup.CheckMenuRadioItem(ID_IOPRIORITY_VERYLOW, ID_IOPRIORITY_HIGH, ID_IOPRIORITY_VERYLOW + io, MF_BYCOMMAND);
+		if (memory >= 1 && memory <= ID_MEMPRIORITY_NORMAL - ID_MEMPRIORITY_VERYLOW + 1)
+			popup.CheckMenuRadioItem(ID_MEMPRIORITY_VERYLOW, ID_MEMPRIORITY_NORMAL, ID_MEMPRIORITY_VERYLOW + memory - 1, MF_BYCOMMAND);
+		popup.CheckMenuItem(ID_PROCESS_EFFICIENCY, MF_BYCOMMAND | (item->Process->GetEfficiencyMode().value_or(false) ? MF_CHECKED : MF_UNCHECKED));
 	}
 
 	// ptAction is relative to the inner list view
@@ -1044,6 +1070,88 @@ LRESULT CProcessesView::OnSetPriority(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 	return 0;
 }
 
+wil::unique_handle CProcessesView::OpenSelected(DWORD access) const {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return {};
+	wil::unique_handle hProcess(::OpenProcess(access | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, item->Process->Id));
+	if (!hProcess)
+		ShowError(L"Opening the process");
+	return hProcess;
+}
+
+LRESULT CProcessesView::OnSetIoPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
+	if (!hProcess)
+		return 0;
+	// IO_PRIORITY_HINT: very low (0) to high (3); high takes SeIncreaseBasePriorityPrivilege, which an elevated token has
+	// but not enabled
+	ULONG hint = wID - ID_IOPRIORITY_VERYLOW;
+	if (wID == ID_IOPRIORITY_HIGH)
+		SecurityHelper::EnablePrivilege(SE_INC_BASE_PRIORITY_NAME, true);
+	auto status = ::NtSetInformationProcess(hProcess.get(), ProcessIoPriority, &hint, sizeof(hint));
+	if (!NT_SUCCESS(status)) {
+		::SetLastError(::RtlNtStatusToDosError(status));
+		ShowError(L"Setting the I/O priority");
+	}
+	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnSetMemoryPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
+	if (!hProcess)
+		return 0;
+	// MEMORY_PRIORITY_VERY_LOW (1) to MEMORY_PRIORITY_NORMAL (5)
+	MEMORY_PRIORITY_INFORMATION info{ ULONG(wID - ID_MEMPRIORITY_VERYLOW + 1) };
+	if (!::SetProcessInformation(hProcess.get(), ProcessMemoryPriority, &info, sizeof(info)))
+		ShowError(L"Setting the memory priority");
+	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnSetAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
+	if (!hProcess)
+		return 0;
+	DWORD_PTR mask, systemMask;
+	if (!::GetProcessAffinityMask(hProcess.get(), &mask, &systemMask)) {
+		ShowError(L"Getting the affinity");
+		return 0;
+	}
+	if (mask == 0) {
+		// its threads are in more than one processor group: there's no single mask
+		AtlMessageBox(m_hWnd, L"The process runs in more than one processor group; its affinity can't be set as one mask.",
+			IDR_MAINFRAME, MB_ICONINFORMATION);
+		return 0;
+	}
+	auto& p = *GetSelectedProcess()->Process;
+	CAffinityDlg dlg(std::format(L"{} ({})", p.GetImageName(), p.Id), mask, systemMask);
+	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !::SetProcessAffinityMask(hProcess.get(), dlg.GetMask()))
+		ShowError(L"Setting the affinity");
+	return 0;
+}
+
+LRESULT CProcessesView::OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
+	if (!hProcess)
+		return 0;
+	// as Task Manager does it: EcoQoS and the idle priority class; off, the system decides again, at normal priority
+	bool on = !item->Process->GetEfficiencyMode().value_or(false);
+	PROCESS_POWER_THROTTLING_STATE state{ PROCESS_POWER_THROTTLING_CURRENT_VERSION };
+	state.ControlMask = on ? PROCESS_POWER_THROTTLING_EXECUTION_SPEED : 0;
+	state.StateMask = on ? PROCESS_POWER_THROTTLING_EXECUTION_SPEED : 0;
+	if (!::SetProcessInformation(hProcess.get(), ProcessPowerThrottling, &state, sizeof(state))) {
+		ShowError(L"Setting the efficiency mode");
+		return 0;
+	}
+	if (!::SetPriorityClass(hProcess.get(), on ? IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS))
+		ShowError(L"Setting the priority");
+	UpdateUI();
+	return 0;
+}
+
 LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	auto item = GetSelectedProcess();
 	if (!item || item->Terminated)
@@ -1104,6 +1212,7 @@ LRESULT CProcessesView::OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWnd
 	auto fileName = std::format(L"{}_{}_{:04}{:02}{:02}_{:02}{:02}{:02}{}.dmp", name, p.Id, now.wYear, now.wMonth, now.wDay,
 		now.wHour, now.wMinute, now.wSecond, full ? L"_full" : L"");
 	COMDLG_FILTERSPEC const types[] = { { L"Dump Files", L"*.dmp" }, { L"All Files", L"*.*" } };
+	SuspendResumeHook sr;
 	CShellFileSaveDialog dlg(fileName.c_str(), FOS_OVERWRITEPROMPT | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST, L"dmp", types, _countof(types));
 	if (dlg.DoModal(m_hWnd) != IDOK)
 		return 0;

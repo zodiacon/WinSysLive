@@ -36,6 +36,9 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Connections.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ObjectNames.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -67,6 +70,9 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ServicesView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ThreadsPage.cpp">
@@ -103,6 +109,9 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="StackDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="AffinityDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="FindHandleDlg.cpp">
@@ -147,6 +156,9 @@
     <ClInclude Include="ColumnLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Connections.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="ObjectNames.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -178,6 +190,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ServicesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ThreadsPage.h">
@@ -220,6 +235,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="StackDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="AffinityDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="FindHandleDlg.h">

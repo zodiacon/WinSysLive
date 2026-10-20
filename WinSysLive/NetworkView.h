@@ -1,0 +1,80 @@
+#pragma once
+
+#include "resource.h"
+#include "ViewBase.h"
+#include "FilterBox.h"
+#include "Connections.h"
+#include <VirtualListView.h>
+
+//
+// The Network tab: every process's TCP connections and UDP endpoints (Connections), read again on every refresh tick
+// (also while hidden, so the highlighting stays right) and merged: new ones green for two refreshes, closed ones red
+// once. The process column has the process's icon (the frame's, from IMainFrame::GetProcessIcon). The filter box
+// matches the process, PID, protocol, addresses, ports and state. Double-click or Go to Process selects the process;
+// Copy copies the selected row. The selection is kept by connection.
+//
+class CNetworkView :
+	public CViewBase<CNetworkView>,
+	public CVirtualListView<CNetworkView> {
+public:
+	using CViewBase::CViewBase;
+
+	CString GetTitle() const override;
+	void OnActivate(bool active) override;
+	void OnRefresh(bool active) override;
+	void OnFontChanged(HFONT font) override;
+
+	// CVirtualListView
+	CString GetColumnText(HWND, int row, int col) const;
+	int GetRowImage(HWND, int row, int col) const;
+	void DoSort(SortInfo const* si);
+	int GetSaveColumnRange(HWND, int&) const;
+	bool OnRightClickList(HWND, int row, int col, POINT const& pt);
+	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt);
+
+	BEGIN_MSG_MAP(CNetworkView)
+		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
+		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
+		CHAIN_MSG_MAP(CVirtualListView<CNetworkView>)
+		CHAIN_MSG_MAP(CViewBase<CNetworkView>)
+	ALT_MSG_MAP(1)
+		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
+		COMMAND_ID_HANDLER(ID_NETWORK_GOTOPROCESS, OnGoToProcess)
+		CHAIN_MSG_MAP_ALT(CViewBase<CNetworkView>, 1)
+	END_MSG_MAP()
+
+// Handler prototypes (uncomment arguments if needed):
+//	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+//	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+//	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
+
+private:
+	enum class Column { Process, Pid, Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, Created, _Count };
+	using Connection = Connections::Connection;
+
+	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	std::wstring GetText(Connection const& c, Column column) const;
+	std::wstring GetProcessName(uint32_t pid) const;
+	bool Matches(Connection const& c) const;
+	// the list's rows: the connections that match the filter, sorted as the list is; selected: the connection to select
+	void ShowRows(std::optional<Connections::Key> const& selected);
+	std::optional<Connections::Key> GetSelectedKey() const;
+	Connection const* GetSelected() const;
+	void SelectConnection(Connections::Key const* key);
+	void UpdateStatus();
+
+	CListViewCtrl m_List;
+	CFilterBox m_Filter;	// in the view's rebar
+	std::vector<Connection> m_All;	// the last merge: every connection, the closed ones once more
+	std::vector<Connection const*> m_Rows;	// into m_All: the list's rows, in display order
+	bool m_Loaded{ false };	// read at least once: later connections are new
+	bool m_Active{ false };
+};
