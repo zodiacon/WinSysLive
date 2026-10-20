@@ -51,9 +51,9 @@ namespace {
 		return text;
 	}
 
-	FileVersionInfo const& VersionOf(ModuleInfo const& m) {
+	WinSys::FileVersionInfo const& VersionOf(ModuleInfo const& m) {
 		// data files (.mui, fonts...) aren't images; their version resource isn't worth the file I/O
-		static FileVersionInfo const none;
+		static WinSys::FileVersionInfo const none;
 		return m.Type == MapType::Image ? GetCachedVersionInfo(m.Path) : none;
 	}
 }

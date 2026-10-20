@@ -55,6 +55,9 @@ BEGIN
     BEGIN
         MENUITEM "Run as &Administrator",       ID_FILE_RUNASADMIN
         MENUITEM SEPARATOR
+        MENUITEM "&Export List...\tCtrl+S",     ID_FILE_EXPORT
+        MENUITEM "&Copy All Rows\tCtrl+Shift+C", ID_EDIT_COPYALL
+        MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
     POPUP "&View"
@@ -121,6 +124,7 @@ BEGIN
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
         MENUITEM SEPARATOR
+        MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
         POPUP "Create &Dump"
         BEGIN
             MENUITEM "&Minidump...",                ID_PROCESS_MINIDUMP
@@ -189,6 +193,7 @@ BEGIN
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
         MENUITEM SEPARATOR
+        MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
         POPUP "Create &Dump"
         BEGIN
             MENUITEM "&Minidump...",                ID_PROCESS_MINIDUMP
@@ -584,6 +589,18 @@ BEGIN
     PUSHBUTTON      "Close",IDCANCEL,423,239,50,14
 END
 
+IDD_WAITCHAIN DIALOGEX 0, 0, 480, 260
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Wait Chain"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_WAITCHAIN_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,466,222
+    LTEXT           "",IDC_WAITCHAIN_STATUS,7,242,280,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_WAITCHAIN_REFRESH,305,239,50,14
+    PUSHBUTTON      "&Copy",IDC_WAITCHAIN_COPY,364,239,50,14
+    PUSHBUTTON      "Close",IDCANCEL,423,239,50,14
+END
+
 IDD_COLUMNS DIALOGEX 0, 0, 230, 220
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Select Columns"
@@ -710,6 +727,8 @@ END
 
 IDR_MAINFRAME ACCELERATORS
 BEGIN
+    "S",            ID_FILE_EXPORT,         VIRTKEY, CONTROL
+    "C",            ID_EDIT_COPYALL,        VIRTKEY, SHIFT, CONTROL
     "1",            ID_VIEW_PROCESSES,      VIRTKEY, CONTROL
     "2",            ID_VIEW_SERVICES,       VIRTKEY, CONTROL
     "3",            ID_VIEW_PERFORMANCE,    VIRTKEY, CONTROL
@@ -1018,6 +1037,10 @@ BEGIN
     ID_PROCESS_AFFINITY     "Choose the processors the selected process may run on\nSet Affinity"
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
+    ID_THREAD_WAITCHAIN     "Show what the selected thread waits for, and who owns that\nWait Chain"
+    ID_PROCESS_WAITCHAIN    "Show what the selected process's threads wait for, deadlocks first\nAnalyze Wait Chain"
+    ID_FILE_EXPORT          "Save the list with the focus (or the tab's list) as a CSV or tab-separated file\nExport List (Ctrl+S)"
+    ID_EDIT_COPYALL         "Copy every row of the list with the focus (or the tab's list), tab separated\nCopy All Rows"
     ID_VIEW_DRIVERS         "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nDrivers"
     ID_DRIVER_PROPERTIES    "Show the properties of the selected driver's file\nProperties"
     ID_DRIVER_GOTOFILELOCATION "Open the folder of the selected driver's file\nOpen File Location"

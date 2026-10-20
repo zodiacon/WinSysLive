@@ -2,6 +2,7 @@
 #include "JobPage.h"
 #include "FormatHelper.h"
 #include <WinSys/Handles.h>
+#include <WinSys/Job.h>
 #include <WinSys/Helpers.h>
 #include <unordered_set>
 
@@ -80,41 +81,6 @@ namespace {
 		return rate % 100 ? std::format(L"{:.2f}%", rate / 100.0) : std::format(L"{}%", rate / 100);
 	}
 
-	std::wstring GetObjectName(HANDLE h) {
-		BYTE buffer[1024];
-		ULONG len;
-		if (!NT_SUCCESS(::NtQueryObject(h, ObjectNameInformation, buffer, sizeof(buffer), &len)))
-			return L"";
-		auto name = reinterpret_cast<UNICODE_STRING const*>(buffer);
-		return std::wstring(name->Buffer, name->Length / sizeof(WCHAR));
-	}
-
-	DWORD GetActiveProcesses(HANDLE hJob) {
-		JOBOBJECT_BASIC_ACCOUNTING_INFORMATION info;
-		return ::QueryInformationJobObject(hJob, (JOBOBJECTINFOCLASS)JobObjectBasicAccountingInformation, &info, sizeof(info), nullptr)
-			? info.ActiveProcesses : 0;
-	}
-
-	// the IDs of the job's processes; empty if they can't be read
-	std::vector<uint32_t> GetJobProcesses(HANDLE hJob) {
-		DWORD count = 64;
-		for (int i = 0; i < 4; i++) {
-			auto size = sizeof(JOBOBJECT_BASIC_PROCESS_ID_LIST) + count * sizeof(ULONG_PTR);
-			auto buffer = std::make_unique<BYTE[]>(size);
-			auto list = reinterpret_cast<JOBOBJECT_BASIC_PROCESS_ID_LIST*>(buffer.get());
-			if (::QueryInformationJobObject(hJob, (JOBOBJECTINFOCLASS)JobObjectBasicProcessIdList, list, (DWORD)size, nullptr)) {
-				std::vector<uint32_t> ids;
-				for (DWORD n = 0; n < list->NumberOfProcessIdsInList; n++)
-					ids.push_back((uint32_t)list->ProcessIdList[n]);
-				return ids;
-			}
-			if (::GetLastError() != ERROR_MORE_DATA)
-				break;
-			// processes are added between the calls
-			count = list->NumberOfAssignedProcesses + 64;
-		}
-		return {};
-	}
 }
 
 CProcJobPage::CProcJobPage(ProcessProperties const& props, ProcessSnapshot const& snapshot) : m_Props(props), m_Snapshot(snapshot) {
@@ -169,78 +135,19 @@ void CProcJobPage::FindJobs() {
 		return;
 	}
 
-	// the system's handle table; the size needed grows between calls
-	ULONG size = 1 << 22;
-	std::unique_ptr<BYTE[]> buffer;
-	NTSTATUS st = STATUS_INFO_LENGTH_MISMATCH;
-	for (int i = 0; i < 6 && st == STATUS_INFO_LENGTH_MISMATCH; i++) {
-		buffer = std::make_unique<BYTE[]>(size);
-		ULONG len = 0;
-		st = ::NtQuerySystemInformation(SystemExtendedHandleInformation, buffer.get(), size, &len);
-		if (st == STATUS_INFO_LENGTH_MISMATCH)
-			size = (std::max)(size * 2, len + (1 << 20));
-	}
-	if (!NT_SUCCESS(st)) {
-		status(L"Can't read the handle table: " + WinSys::Helpers::GetErrorText(::RtlNtStatusToDosError(st)));
+	// the process's jobs (the job and its ancestors, for nested jobs), innermost first; when two have as many processes,
+	// their order isn't known and the jobs aren't labeled
+	bool ordered = true;
+	auto jobs = WinSys::JobInfo::FindProcessJobs(hProcess.get(), &ordered);
+	if (!jobs) {
+		status(L"Can't read the handle table: " + WinSys::Helpers::GetErrorText(::GetLastError()));
 		return;
 	}
-
-	auto table = reinterpret_cast<SYSTEM_HANDLE_INFORMATION_EX const*>(buffer.get());
-	std::unordered_map<USHORT, bool> isJobType;
-	std::unordered_map<ULONG_PTR, wil::unique_handle> owners;	// opened for duplicating; null if they can't be
-	std::unordered_set<void*> seen;	// job objects already checked (their addresses are known only when elevated)
-	auto self = ::GetCurrentProcess();
-	for (ULONG_PTR i = 0; i < table->NumberOfHandles; i++) {
-		auto& entry = table->Handles[i];
-		auto [type, added] = isJobType.try_emplace(entry.ObjectTypeIndex, false);
-		if (added)
-			type->second = WinSys::ObjectTypes::GetName(entry.ObjectTypeIndex) == L"Job";
-		if (!type->second || (entry.Object && seen.contains(entry.Object)))
-			continue;
-
-		auto pid = (ULONG_PTR)entry.UniqueProcessId;
-		auto owner = owners.find(pid);
-		if (owner == owners.end())
-			owner = owners.emplace(pid, wil::unique_handle(::OpenProcess(PROCESS_DUP_HANDLE, FALSE, (DWORD)pid))).first;
-		if (!owner->second)
-			continue;
-		wil::unique_handle hJob;
-		if (!::DuplicateHandle(owner->second.get(), entry.HandleValue, self, hJob.addressof(), JOB_OBJECT_QUERY, FALSE, 0))
-			continue;
-		if (entry.Object)
-			seen.insert(entry.Object);
-
-		BOOL inJob = FALSE;
-		if (!::IsProcessInJob(hProcess.get(), hJob.get(), &inJob) || !inJob)
-			continue;
-		// another handle to a job already found (when the addresses aren't known)
-		if (std::ranges::any_of(m_Jobs, [&](auto& job) { return ::NtCompareObjects(job.Handle.get(), hJob.get()) == STATUS_SUCCESS; }))
-			continue;
-		Job job;
-		job.Name = GetObjectName(hJob.get());
-		SILOOBJECT_BASIC_INFORMATION silo;
-		job.Silo = NT_SUCCESS(::NtQueryInformationJobObject(hJob.get(), (JOBOBJECTINFOCLASS)JobObjectSiloBasicInformation,
-			&silo, sizeof(silo), nullptr));
-		job.Handle = std::move(hJob);
-		m_Jobs.push_back(std::move(job));
-	}
-
+	m_Jobs = std::move(*jobs);
 	if (m_Jobs.empty()) {
 		status(L"The process is in a job, but no handle to it could be opened (most need administrator rights).");
 		return;
 	}
-
-	// a job's ancestors hold its processes and more, so the innermost job has the fewest. Nothing documented gives a
-	// job's parent, so when two jobs have as many processes, their order isn't known and the jobs aren't labeled.
-	std::vector<std::pair<DWORD, size_t>> order;
-	for (size_t i = 0; i < m_Jobs.size(); i++)
-		order.emplace_back(GetActiveProcesses(m_Jobs[i].Handle.get()), i);
-	std::ranges::stable_sort(order);
-	bool ordered = std::ranges::adjacent_find(order, [](auto& a, auto& b) { return a.first == b.first; }) == order.end();
-	std::vector<Job> jobs;
-	for (auto& [count, i] : order)
-		jobs.push_back(std::move(m_Jobs[i]));
-	m_Jobs = std::move(jobs);
 
 	std::vector<std::wstring> texts;
 	for (size_t i = 0; i < m_Jobs.size(); i++) {
@@ -447,7 +354,7 @@ void CProcJobPage::ShowStatistics(HANDLE hJob) {
 
 void CProcJobPage::ShowProcesses(HANDLE hJob, ProcessSnapshot const& snapshot) {
 	std::vector<Row> rows;
-	for (auto pid : GetJobProcesses(hJob)) {
+	for (auto pid : WinSys::JobInfo::GetProcessIds(hJob)) {
 		Row row{ (LPARAM)pid };
 		auto& texts = row.Texts;
 		auto p = snapshot.Find(pid);

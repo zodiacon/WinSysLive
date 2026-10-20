@@ -152,8 +152,8 @@ void CProcGeneralPage::ShowMitigations() {
 LRESULT CProcGeneralPage::OnVerify(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CWaitCursor wait;
 	SetDlgItemText(IDC_PROC_SIGNATURE, L"Verifying...");
-	auto info = VerifySignature(m_Props.ImagePath.c_str());
-	SetDlgItemText(IDC_PROC_SIGNATURE, info.ToString().c_str());
+	auto info = WinSys::FileSignature::Verify(m_Props.ImagePath.c_str());
+	SetDlgItemText(IDC_PROC_SIGNATURE, FormatSignature(info).c_str());
 	return 0;
 }
 
@@ -290,20 +290,10 @@ namespace {
 		return std::format(L"{}{}{} ({})", typeName, *signerName ? L", " : L"", signerName, sid.AsString());
 	}
 
-	// an AppContainer's package (its moniker), with the SID. The lookup is exported by kernelbase.dll but declared in
-	// no SDK header
+	// an AppContainer's package moniker (WinSys Sid::AppContainerMoniker) and SID
 	std::wstring FormatAppContainer(WinSys::Sid const& sid) {
-		using LookupMoniker = HRESULT(WINAPI*)(PSID, PWSTR*);
-		using FreeMemory = BOOLEAN(WINAPI*)(PVOID);
-		static auto hKernelBase = ::GetModuleHandle(L"kernelbase");
-		static auto lookup = reinterpret_cast<LookupMoniker>(::GetProcAddress(hKernelBase, "AppContainerLookupMoniker"));
-		static auto free = reinterpret_cast<FreeMemory>(::GetProcAddress(hKernelBase, "AppContainerFreeMemory"));
-		PWSTR moniker = nullptr;
-		if (!sid || !lookup || !free || FAILED(lookup((PSID)sid, &moniker)) || !moniker)
-			return FormatSid(sid);
-		auto text = std::format(L"{} ({})", moniker, sid.AsString());
-		free(moniker);
-		return text;
+		auto moniker = sid ? sid.AppContainerMoniker() : L"";
+		return moniker.empty() ? FormatSid(sid) : std::format(L"{} ({})", moniker, sid.AsString());
 	}
 
 	PCWSTR YesNo(bool value) {

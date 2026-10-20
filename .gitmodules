@@ -1,6 +1,6 @@
 [submodule "wtlhelper"]
 	path = wtlhelper
-	url = https://github.com/zodiacon/wtlhelper.git
+	url = https://github.com/zodiacon/WTLHelper.git
 [submodule "winsys"]
 	path = winsys
-	url = https://github.com/zodiacon/winsys.git
+	url = https://github.com/zodiacon/WinSys.git

@@ -8,6 +8,7 @@
 #include <WTLHelper.h>
 #include <IconHelper.h>
 #include "StackDlg.h"
+#include "WaitChainDlg.h"
 #include <WinSys/Helpers.h>
 
 using namespace WinSys;
@@ -162,6 +163,14 @@ LRESULT CThreadsPage::OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 	return 0;
 }
 
+LRESULT CThreadsPage::OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedThread()) {
+		CWaitChainDlg dlg(m_Pid, m_ProcessName, { row->Key.Id });
+		dlg.DoModal(m_hWnd);
+	}
+	return 0;
+}
+
 bool CThreadsPage::CanTerminateSelected() const {
 	return GetSelectedThread() && CanControl();
 }
@@ -267,6 +276,7 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		CMenu menu;
 		menu.CreatePopupMenu();
 		menu.AppendMenu(MF_STRING, ID_THREAD_STACK, L"&Stack...");
+		menu.AppendMenu(MF_STRING, ID_THREAD_WAITCHAIN, L"&Wait Chain...");
 		menu.AppendMenu(MF_SEPARATOR);
 		UINT control = CanControl() ? MF_STRING : MF_STRING | MF_GRAYED;
 		bool suspended = IsSuspended(*GetSelectedThread());

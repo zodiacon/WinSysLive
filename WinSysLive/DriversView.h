@@ -16,7 +16,7 @@
 // The Drivers tab: the kernel's loaded modules (WinSys KernelModules: the kernel, the HAL, drivers), read again on every
 // refresh tick (also while hidden, so the highlighting stays right): new ones green for two refreshes, unloaded ones red
 // once. Their bases need elevation. The version strings come from the files (GetCachedVersionInfo, as they're shown);
-// the signatures are verified on a worker thread once the tab is first shown (VerifySignature: WinVerifyTrust, no
+// the signatures are verified on a worker thread once the tab is first shown (WinSys FileSignature: WinVerifyTrust, no
 // revocation checks), which posts WM_DRIVER_SIGNED as each is done. The filter box matches the name, path,
 // description and company. Double-click or Properties opens the file's properties; Copy copies the selected row.
 //
@@ -28,6 +28,9 @@ public:
 	~CDriversView();
 
 	CString GetTitle() const override;
+	HWND GetExportList() override {
+		return m_List;
+	}
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
@@ -78,7 +81,7 @@ private:
 		std::mutex Lock;
 		std::condition_variable_any Wake;
 		std::deque<std::wstring> Pending;	// paths
-		std::unordered_map<std::wstring, SignatureInfo> Results;	// by lowercase path
+		std::unordered_map<std::wstring, WinSys::SignatureInfo> Results;	// by lowercase path
 		HWND Notify{ nullptr };
 	};
 

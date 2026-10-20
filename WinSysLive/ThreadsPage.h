@@ -63,6 +63,7 @@ public:
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_SYMBOLS_RESOLVED, OnSymbolsResolved)
 		COMMAND_ID_HANDLER(ID_THREAD_STACK, OnStack)
+		COMMAND_ID_HANDLER(ID_THREAD_WAITCHAIN, OnWaitChain)
 		COMMAND_ID_HANDLER(ID_THREAD_TERMINATE, OnThreadControl)
 		COMMAND_ID_HANDLER(ID_THREAD_SUSPEND, OnThreadControl)
 		COMMAND_ID_HANDLER(ID_THREAD_RESUME, OnThreadControl)
@@ -128,6 +129,7 @@ private:
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSymbolsResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnGetTipText(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);

@@ -147,7 +147,7 @@ void CDriversView::VerifyThread(std::stop_token stop, std::shared_ptr<Signatures
 			path = std::move(signatures->Pending.front());
 			signatures->Pending.pop_front();
 		}
-		auto info = VerifySignature(path.c_str());
+		auto info = WinSys::FileSignature::Verify(path.c_str());
 		if (stop.stop_requested())
 			break;
 		{
@@ -174,7 +174,7 @@ std::wstring CDriversView::GetSignatureText(std::wstring const& path) const {
 	std::lock_guard lock(m_Signatures->Lock);
 	auto it = m_Signatures->Results.find(Lowercase(path));
 	if (it != m_Signatures->Results.end())
-		return it->second.ToString();
+		return FormatSignature(it->second);
 	return m_Verifier.joinable() ? L"Verifying..." : L"";
 }
 

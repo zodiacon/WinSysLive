@@ -357,6 +357,8 @@ exit /b 0</Command>
     <ClCompile Include="ServicesPage.cpp" />
     <ClCompile Include="Symbols.cpp" />
     <ClCompile Include="StackDlg.cpp" />
+    <ClCompile Include="ListExport.cpp" />
+    <ClCompile Include="WaitChainDlg.cpp" />
     <ClCompile Include="AffinityDlg.cpp" />
     <ClCompile Include="FindHandleDlg.cpp" />
     <ClCompile Include="SymbolSettingsDlg.cpp" />
@@ -380,7 +382,6 @@ exit /b 0</Command>
     <ClCompile Include="NetworkView.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="DriversView.cpp" />
-    <ClCompile Include="AccessMask.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
     <ClCompile Include="ThreadsPage.cpp" />
@@ -408,6 +409,8 @@ exit /b 0</Command>
     <ClInclude Include="ServicesPage.h" />
     <ClInclude Include="Symbols.h" />
     <ClInclude Include="StackDlg.h" />
+    <ClInclude Include="ListExport.h" />
+    <ClInclude Include="WaitChainDlg.h" />
     <ClInclude Include="AffinityDlg.h" />
     <ClInclude Include="FindHandleDlg.h" />
     <ClInclude Include="SymbolSettingsDlg.h" />
@@ -426,7 +429,6 @@ exit /b 0</Command>
     <ClInclude Include="NetworkView.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="DriversView.h" />
-    <ClInclude Include="AccessMask.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />
     <ClInclude Include="ThreadsPage.h" />

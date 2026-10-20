@@ -12,6 +12,7 @@
 #include <WTLHelper.h>
 #include "ColumnLayout.h"
 #include "AffinityDlg.h"
+#include "WaitChainDlg.h"
 #include <WinSys/DotNet.h>
 #include <ranges>
 
@@ -851,7 +852,7 @@ void CProcessesView::UpdateUI() {
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
 	auto item = GetSelectedProcess();
 	bool live = m_Active && CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
 	ui.UIEnable(ID_VIEW_PROPERTIES, m_Active && item && !item->Terminated);
@@ -907,7 +908,7 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 	WTLHelper::InitMenu(popup, icons, _countof(icons));
 
 	bool live = CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_GOTOFILELOCATION, MF_BYCOMMAND | (item->Process->GetImagePath().empty() ? MF_GRAYED : MF_ENABLED));
 	popup.EnableMenuItem(ID_VIEW_PROPERTIES, MF_BYCOMMAND | (item->Terminated ? MF_GRAYED : MF_ENABLED));
@@ -1190,6 +1191,21 @@ LRESULT CProcessesView::OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, H
 
 	auto args = std::format(L"/select,\"{}\"", item->Process->GetImagePath());
 	::ShellExecute(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+	return 0;
+}
+
+LRESULT CProcessesView::OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return 0;
+	// the threads from the snapshot (SYSTEM_EXTENDED_THREAD_INFORMATION, as in GetContextSwitches)
+	auto& p = *item->Process;
+	auto threads = reinterpret_cast<SYSTEM_EXTENDED_THREAD_INFORMATION const*>(p.NativeInfo->Threads);
+	std::vector<uint32_t> tids;
+	for (ULONG i = 0; i < p.NativeInfo->NumberOfThreads; i++)
+		tids.push_back(HandleToULong(threads[i].ThreadInfo.ClientId.UniqueThread));
+	CWaitChainDlg dlg(p.Id, p.GetImageName(), std::move(tids));
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

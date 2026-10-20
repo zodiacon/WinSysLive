@@ -2,7 +2,7 @@
 #include "ProcessInfoEx.h"
 #include "Interfaces.h"
 #include "HandlesPage.h"
-#include "AccessMask.h"
+#include <WinSys/AccessMask.h>
 #include "AppSettings.h"
 #include "ViewBase.h"
 #include "HandleIcons.h"
@@ -219,7 +219,7 @@ std::wstring CHandlesPage::GetText(HandleRow const& row, Column column) const {
 		case Column::Name: return GetName(*row.Data, row.Closed);
 		case Column::Address: return h.Object ? std::format(L"0x{:X}", (ULONG_PTR)h.Object) : L"";
 		case Column::Access: return std::format(L"0x{:08X}", h.Access);
-		case Column::DecodedAccess: return AccessMask::Decode(ObjectTypes::GetName(h.TypeIndex), h.Access);
+		case Column::DecodedAccess: return AccessMaskDecoder::Decode(ObjectTypes::GetName(h.TypeIndex), h.Access);
 		case Column::Attributes:
 		{
 			std::wstring text;

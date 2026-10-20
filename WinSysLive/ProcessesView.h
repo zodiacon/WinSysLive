@@ -18,6 +18,15 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	HWND GetExportList() override {
+		return m_Tree.GetListCtrl();
+	}
+	std::optional<std::wstring> GetTreeColumnText(HWND hList, int row) override {
+		if (hList != m_Tree.GetListCtrl())
+			return std::nullopt;
+		auto item = m_Tree.GetVisibleItem(row);
+		return item ? m_Tree.GetCellText(item, 0) : std::wstring();
+	}
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
@@ -55,6 +64,7 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_EFFICIENCY, OnEfficiencyMode)
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_PROCESS_MINIDUMP, OnCreateDump)
+		COMMAND_ID_HANDLER(ID_PROCESS_WAITCHAIN, OnWaitChain)
 		COMMAND_ID_HANDLER(ID_PROCESS_FULLDUMP, OnCreateDump)
 		COMMAND_ID_HANDLER(ID_VIEW_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
@@ -117,6 +127,7 @@ private:
 	LRESULT OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);

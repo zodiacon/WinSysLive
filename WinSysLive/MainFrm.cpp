@@ -11,6 +11,8 @@
 #include "ProcessColorsDlg.h"
 #include "SymbolSettingsDlg.h"
 #include "FormatHelper.h"
+#include "ListExport.h"
+#include <ClipboardHelper.h>
 #include "WTLHelper.h"
 #include <IconHelper.h>
 #include <ToolbarHelper.h>
@@ -62,6 +64,9 @@ BOOL CMainFrame::OnIdle() {
 	// the active view's commands may depend on the focus, which changes without telling the views
 	if (m_ActivePage >= 0 && m_ActivePage < (int)m_Views.size())
 		m_Views[m_ActivePage]->OnFrameIdle();
+	bool list = GetExportList() != nullptr;
+	UIEnable(ID_FILE_EXPORT, list);
+	UIEnable(ID_EDIT_COPYALL, list);
 	UIUpdateToolBar();
 	return FALSE;
 }
@@ -624,6 +629,57 @@ LRESULT CMainFrame::OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 		// the engine resolves again what's shown (the property sheets' lists on their next refresh)
 		SymbolEngine::Get().SetSearchPath(BuildSymbolSearchPath(CSymbolSettingsDlg::LoadOptions()));
 		RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
+	}
+	return 0;
+}
+
+HWND CMainFrame::GetExportList() {
+	if (m_ActivePage < 0 || m_ActivePage >= (int)m_Views.size())
+		return nullptr;
+	auto view = m_Views[m_ActivePage];
+	auto focus = ::GetFocus();
+	WCHAR className[32];
+	if (focus && ::IsChild(view->GetHwnd(), focus) && ::GetClassName(focus, className, _countof(className))
+		&& ::_wcsicmp(className, WC_LISTVIEW) == 0)
+		return focus;
+	return view->GetExportList();
+}
+
+std::vector<std::vector<std::wstring>> CMainFrame::GetExportRows(HWND hList) {
+	auto view = m_Views[m_ActivePage];
+	// a TreeListView's tree column comes from the view
+	if (view->GetTreeColumnText(hList, 0))
+		return ListExport::GetRows(hList, [&](int row) { return view->GetTreeColumnText(hList, row).value_or(L""); });
+	return ListExport::GetRows(hList);
+}
+
+LRESULT CMainFrame::OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto hList = GetExportList();
+	if (!hList)
+		return 0;
+	// read before the dialog: the list goes on changing while it's open
+	auto rows = GetExportRows(hList);
+	CString title = m_Views[m_ActivePage]->GetTitle();
+	CFileDialog dlg(FALSE, L"csv", title + L".csv", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
+		L"CSV Files (*.csv)\0*.csv\0Text Files, Tab Separated (*.txt)\0*.txt\0", m_hWnd);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	std::wstring path = dlg.m_szFileName;
+	bool tabs = dlg.m_ofn.nFilterIndex == 2;
+	if (!ListExport::Save(path, tabs ? ListExport::ToText(rows) : ListExport::ToCsv(rows))) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to write {}: {}", path, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	SetStatusText(0, std::format(L"{} rows exported to {}", rows.size() - 1, path).c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnCopyAllRows(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto hList = GetExportList()) {
+		auto rows = GetExportRows(hList);
+		ClipboardHelper::CopyText(m_hWnd, ListExport::ToText(rows).c_str());
+		SetStatusText(0, std::format(L"{} rows copied", rows.size() - 1).c_str());
 	}
 	return 0;
 }

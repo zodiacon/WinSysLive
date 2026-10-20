@@ -87,9 +87,6 @@
     <ClCompile Include="ModulesPage.cpp">
       <Filter>Views</Filter>
     </ClCompile>
-    <ClCompile Include="AccessMask.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
     <ClCompile Include="HandlesPage.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -115,6 +112,12 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="StackDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="ListExport.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="WaitChainDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="AffinityDlg.cpp">
@@ -213,9 +216,6 @@
     <ClInclude Include="ModulesPage.h">
       <Filter>Views</Filter>
     </ClInclude>
-    <ClInclude Include="AccessMask.h">
-      <Filter>Views</Filter>
-    </ClInclude>
     <ClInclude Include="HandlesPage.h">
       <Filter>Views</Filter>
     </ClInclude>
@@ -247,6 +247,12 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="StackDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ListExport.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="WaitChainDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="AffinityDlg.h">

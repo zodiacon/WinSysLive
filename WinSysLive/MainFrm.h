@@ -74,6 +74,8 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVESYMBOLS, OnResolveSymbols)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SYMBOLSETTINGS, OnSymbolSettings)
 		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
+		COMMAND_ID_HANDLER(ID_FILE_EXPORT, OnExportList)
+		COMMAND_ID_HANDLER(ID_EDIT_COPYALL, OnCopyAllRows)
 		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
@@ -109,6 +111,8 @@ public:
 	LRESULT OnResolveSymbols(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCopyAllRows(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -180,6 +184,10 @@ private:
 	// the window back from the tray (or minimized), in front
 	void RestoreWindow();
 	void ShowTrayMenu();
+	// the list Export List and Copy All Rows act on: a list view of the active view's with the focus, else the view's
+	// main list; nullptr if there's none
+	HWND GetExportList();
+	std::vector<std::vector<std::wstring>> GetExportRows(HWND hList);
 
 	enum { TimerId = 1 };
 

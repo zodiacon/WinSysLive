@@ -30,30 +30,6 @@ namespace {
 			list.InsertColumn(i++, name, LVCFMT_LEFT, ::MulDiv(width, dpi, 96));
 	}
 
-	std::wstring ReadServiceDll(std::wstring const& key) {
-		// expanded: REG_EXPAND_SZ, as it usually is
-		WCHAR path[MAX_PATH * 2];
-		DWORD size = sizeof(path);
-		auto base = L"SYSTEM\\CurrentControlSet\\Services\\" + key;
-		for (auto subkey : { L"\\Parameters", L"" }) {
-			size = sizeof(path);
-			if (::RegGetValue(HKEY_LOCAL_MACHINE, (base + subkey).c_str(), L"ServiceDll", RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
-				nullptr, path, &size) == ERROR_SUCCESS)
-				return path;
-		}
-		return L"";
-	}
-
-	// the DLL a shared service (svchost.exe) runs, from its registry key; a user service instance ("Name_1a2b3c")
-	// may only have it in its template's key
-	std::wstring GetServiceDll(std::wstring const& name, ServiceType type) {
-		auto dll = ReadServiceDll(name);
-		if (dll.empty() && (type & ServiceType::UserServiceInstance) == ServiceType::UserServiceInstance)
-			if (auto underscore = name.rfind(L'_'); underscore != std::wstring::npos)
-				dll = ReadServiceDll(name.substr(0, underscore));
-		return dll;
-	}
-
 	std::wstring ControlsAcceptedToString(ServiceControlsAccepted controls) {
 		static const std::pair<ServiceControlsAccepted, PCWSTR> names[] = {
 			{ ServiceControlsAccepted::Stop, L"Stop" },
@@ -214,11 +190,11 @@ CProcServicesPage::ServiceData CProcServicesPage::ReadService(std::wstring const
 		add(L"Error control", FormatHelper::ServiceErrorControlToString(config->ErrorControl));
 		add(L"Command line", config->BinaryPathName);
 	}
-	data.Dll = GetServiceDll(name, status.Type);
+	data.Dll = ServiceManager::GetServiceDll(name, status.Type);
 	if (!data.Dll.empty()) {
 		add(L"Service DLL", data.Dll);
 		// on the sheet's thread: GetCachedVersionInfo belongs to the UI thread
-		auto version = ReadVersionInfo(data.Dll);
+		auto version = WinSys::FileVersion::Read(data.Dll);
 		if (!version.Description.empty())
 			add(L"DLL description", version.Description);
 		if (!version.Company.empty())

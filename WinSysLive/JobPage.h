@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wil/resource.h>
+#include <WinSys/Job.h>
 #include "ProcessPages.h"
 
 //
@@ -40,12 +41,6 @@ private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnJobChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
-	struct Job {
-		wil::unique_handle Handle;	// JOB_OBJECT_QUERY
-		std::wstring Name;	// empty if unnamed
-		bool Silo{ false };
-	};
-
 	// fills m_Jobs and the combo box; the status line says why there's no job
 	void FindJobs();
 	void ShowJob(ProcessSnapshot const& snapshot);
@@ -57,7 +52,7 @@ private:
 	ProcessSnapshot const& m_Snapshot;
 	CComboBox m_JobList;
 	CListViewCtrl m_Limits, m_Stats, m_Processes;
-	std::vector<Job> m_Jobs;	// innermost first
+	std::vector<WinSys::ProcessJob> m_Jobs;	// innermost first (WinSys JobInfo::FindProcessJobs)
 	std::unordered_map<uint32_t, std::wstring> m_Names;	// the processes' image names, for when the snapshot is gone
 	bool m_Loaded{ false };
 	bool m_Selected{ false };	// the sheet's process was selected in the list

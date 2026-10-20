@@ -15,6 +15,15 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	HWND GetExportList() override {
+		return m_Tree.GetListCtrl();
+	}
+	std::optional<std::wstring> GetTreeColumnText(HWND hList, int row) override {
+		if (hList != m_Tree.GetListCtrl())
+			return std::nullopt;
+		auto item = m_Tree.GetVisibleItem(row);
+		return item ? m_Tree.GetCellText(item, 0) : std::wstring();
+	}
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
