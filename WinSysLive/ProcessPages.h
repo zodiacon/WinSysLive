@@ -2,10 +2,12 @@
 
 #include <VirtualListView.h>
 #include "ThreadsPage.h"
+#include "PerfPages.h"
 #include "resource.h"
 
 namespace WinSys {
 	class Token;
+	class ProcessNetworkTracker;
 }
 
 //
@@ -139,24 +141,103 @@ private:
 };
 
 //
-// The Threads page: the lower pane's Threads tab (CThreadsPage), fed from a snapshot of the page's own (the frame's
-// belongs to the UI thread), taken every UpdateInterval while the page is shown. Its columns start as the lower
-// pane's; changes to them aren't saved. When the process exits, the last threads stay shown.
+// A snapshot of the processes (SystemExtendedProcessInformation, which has each process's threads after it), taken by
+// the sheet on every tick for its pages, as the frame's belongs to the UI thread
+//
+class ProcessSnapshot {
+public:
+	explicit ProcessSnapshot(ProcessProperties const& props);
+
+	void Take();
+	// the process's entry in the last snapshot, valid until the next Take; nullptr if the snapshot failed or the
+	// process is gone
+	[[nodiscard]] SYSTEM_PROCESS_INFORMATION const* Process() const;
+	// the process is gone (or its ID belongs to another process now)
+	[[nodiscard]] bool Exited() const;
+	// of the last snapshot (QPC)
+	[[nodiscard]] int64_t Time() const;
+
+private:
+	ProcessProperties const& m_Props;
+	std::unique_ptr<BYTE[]> m_Buffer;
+	ULONG m_BufferSize{ 1 << 20 };
+	SYSTEM_PROCESS_INFORMATION const* m_Process{ nullptr };
+	bool m_Exited{ false };
+	int64_t m_Time{ 0 };
+};
+
+//
+// The Performance page: graphs of the process's CPU, memory, I/O and network use, and their current values below them,
+// from the sheet's snapshots and the shared network tracker (which needs elevation). The page is created with the
+// sheet (PSP_PREMATURE), so the graphs have history from the moment it opened. The graphs are in two columns when the
+// page is wide enough, unless the One column check box is checked.
+//
+class CProcPerformancePage : public CPropertyPageImpl<CProcPerformancePage> {
+public:
+	enum { IDD = IDD_PROC_PERFORMANCE };
+
+	explicit CProcPerformancePage(ProcessProperties const& props);
+
+	void OnSample(ProcessSnapshot const& snapshot);
+
+	BEGIN_MSG_MAP(CProcPerformancePage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		COMMAND_ID_HANDLER(IDC_PERF_VERTICAL, OnVertical)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CProcPerformancePage>)
+	END_MSG_MAP()
+
+// Handler prototypes (uncomment arguments if needed):
+//	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+//	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+//	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVertical(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	void Layout(int cx, int cy);
+
+	// the cumulative values the rates are computed from
+	struct Counters {
+		int64_t Time;	// QPC
+		int64_t KernelTime, UserTime;
+		int64_t Read, Write, Other;
+		uint64_t Received{ 0 }, Sent{ 0 };
+	};
+
+	ProcessProperties const& m_Props;
+	CCpuGraph m_Cpu;
+	GraphCtrl::CGraphControl m_Memory, m_Io;
+	CNetworkGraph m_Network;
+	std::shared_ptr<WinSys::ProcessNetworkTracker> m_NetworkTracker;
+	DWORD m_NetworkError{ 0 };	// why there's no tracker
+	std::optional<Counters> m_Prev;
+	bool m_Exited{ false };
+	bool m_Vertical{ false };	// the graphs one above the other, whatever the width (the One column check box)
+	CSize m_ButtonSize;	// the template's
+};
+
+//
+// The Threads page: the lower pane's Threads tab (CThreadsPage), fed from the sheet's snapshots while the page is shown.
+// Its columns start as the lower pane's; changes to them aren't saved. When the process exits, the last threads stay
+// shown.
 //
 class CProcThreadsPage : public CPropertyPageImpl<CProcThreadsPage> {
 public:
 	enum { IDD = IDD_PROC_THREADS };
 
-	explicit CProcThreadsPage(ProcessProperties const& props);
+	CProcThreadsPage(ProcessProperties const& props, ProcessSnapshot const& snapshot);
 
-	// CPropertyPageImpl (_WTL_NEW_PAGE_NOTIFY_HANDLERS, WTL's default): 0 allows the activation, FALSE the deactivation
+	void OnSample(ProcessSnapshot const& snapshot);
+
+	// CPropertyPageImpl (_WTL_NEW_PAGE_NOTIFY_HANDLERS, WTL's default): 0 allows the activation
 	int OnSetActive();
-	BOOL OnKillActive();
 
 	BEGIN_MSG_MAP(CProcThreadsPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
-		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcThreadsPage>)
 	END_MSG_MAP()
 
@@ -168,16 +249,9 @@ public:
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
-	// takes a snapshot and shows the process's threads from it; stops the timer once the process is gone
-	void Refresh();
-
-	ProcessProperties const& m_Props;
+	ProcessSnapshot const& m_Snapshot;
 	CThreadsPage m_Threads;
-	std::unique_ptr<BYTE[]> m_Buffer;	// the snapshot
-	ULONG m_BufferSize{ 1 << 20 };
-	bool m_Exited{ false };
 };
 
 //

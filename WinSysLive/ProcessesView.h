@@ -102,6 +102,8 @@ private:
 	static std::vector<ColumnLayout::ShownColumn> ToLayout(std::vector<ShownColumn> const& columns);
 	void SaveColumns() const;
 	bool ShowsNetwork() const;
+	// zero without the tracker
+	WinSys::ProcessNetworkTracker::Counters NetworkCounters(uint32_t pid) const;
 	// the job's ID when the snapshot has it (elevated), else 1 for a process in a job and 0 for one not in a job
 	static uint32_t GetJobId(ProcessInfoEx& process);
 	// the process total when elevated; otherwise the sum over its current threads (exited threads' are lost)
@@ -134,7 +136,7 @@ private:
 	// (arrows held down, type-ahead) doesn't enumerate the handles or modules of every process on the way
 	enum { DetailsTimerId = 1, DetailsDelay = 150 };
 	// runs while a network column is shown
-	WinSys::ProcessNetworkTracker m_Network;
+	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;	// while a network column is shown (NetworkTracking)
 	DWORD m_NetworkError{ 0 };	// why it didn't start
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid

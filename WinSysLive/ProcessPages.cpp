@@ -2,6 +2,7 @@
 #include "ProcessPages.h"
 #include "FormatHelper.h"
 #include "Signature.h"
+#include "NetworkTracking.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/Processes.h>
 #include <WinSys/Token.h>
@@ -525,7 +526,241 @@ void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
 		: std::format(L"Groups ({}) and capabilities ({}):", groups.size(), capabilities.size())).c_str());
 }
 
-CProcThreadsPage::CProcThreadsPage(ProcessProperties const& props) : m_Props(props) {
+ProcessSnapshot::ProcessSnapshot(ProcessProperties const& props) : m_Props(props) {
+}
+
+void ProcessSnapshot::Take() {
+	m_Process = nullptr;
+	if (m_Exited)
+		return;
+	// the size needed grows between calls
+	NTSTATUS status = STATUS_INFO_LENGTH_MISMATCH;
+	for (int i = 0; i < 4 && status == STATUS_INFO_LENGTH_MISMATCH; i++) {
+		if (!m_Buffer)
+			m_Buffer = std::make_unique<BYTE[]>(m_BufferSize);
+		LARGE_INTEGER now;
+		::QueryPerformanceCounter(&now);
+		m_Time = now.QuadPart;
+		ULONG len = 0;
+		status = ::NtQuerySystemInformation(SystemExtendedProcessInformation, m_Buffer.get(), m_BufferSize, &len);
+		if (status == STATUS_INFO_LENGTH_MISMATCH) {
+			m_BufferSize = (std::max)(m_BufferSize * 2, len + (1 << 16));
+			m_Buffer.reset();
+		}
+	}
+	if (!NT_SUCCESS(status))
+		return;
+
+	// the process, unless its ID now belongs to another one
+	auto p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(m_Buffer.get());
+	for (;;) {
+		if (HandleToULong(p->UniqueProcessId) == m_Props.Id && p->CreateTime.QuadPart == m_Props.CreateTime) {
+			m_Process = p;
+			return;
+		}
+		if (p->NextEntryOffset == 0)
+			break;
+		p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(reinterpret_cast<BYTE const*>(p) + p->NextEntryOffset);
+	}
+	m_Exited = true;
+}
+
+SYSTEM_PROCESS_INFORMATION const* ProcessSnapshot::Process() const {
+	return m_Process;
+}
+
+bool ProcessSnapshot::Exited() const {
+	return m_Exited;
+}
+
+int64_t ProcessSnapshot::Time() const {
+	return m_Time;
+}
+
+namespace {
+	std::wstring FormatRate(double bytesPerSecond) {
+		wchar_t text[32];
+		GraphCtrl::Format::BytesPerSec((float)bytesPerSecond, text, _countof(text));
+		return text;
+	}
+
+	std::wstring FormatBitRate(double bytesPerSecond) {
+		wchar_t text[32];
+		GraphCtrl::Format::BitsPerSec((float)(bytesPerSecond * 8), text, _countof(text));
+		return text;
+	}
+
+	// the graphs' time span, as the Performance tab's: they show PerfHistoryLength samples
+	std::wstring TimeSpanText(int interval) {
+		auto seconds = PerfHistoryLength * interval / 1000;
+		return seconds % 60 == 0 ? std::format(L"{} minutes", seconds / 60) : std::format(L"{} seconds", seconds);
+	}
+}
+
+CProcPerformancePage::CProcPerformancePage(ProcessProperties const& props) : m_Props(props) {
+	SetIconId(m_psp, IDI_PERFORMANCE);
+	// created with the sheet, so the graphs have history when the page is first shown
+	m_psp.dwFlags |= PSP_PREMATURE;
+}
+
+LRESULT CProcPerformancePage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	using namespace GraphCtrl;
+
+	m_Cpu.Create(m_hWnd);
+	m_Memory.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
+	m_Memory.AddSeries(L"Private", SeriesStyle{ PerfColors::Memory, PerfColors::Memory });
+	m_Memory.AddSeries(L"Working set", SeriesStyle{ PerfColors::User, PerfColors::User });
+	m_Memory.SetTitle(L"Memory");
+	m_Memory.SetRange(0, 1 << 20);
+	m_Memory.SetAutoScale(true);
+	m_Memory.SetValueFormatter(Format::Bytes);
+	m_Memory.SetHistoryLength(PerfHistoryLength);
+
+	m_Io.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
+	m_Io.AddSeries(L"Read", SeriesStyle{ PerfColors::DiskRead, PerfColors::DiskRead });
+	m_Io.AddSeries(L"Write", SeriesStyle{ PerfColors::DiskWrite, PerfColors::DiskWrite });
+	m_Io.AddSeries(L"Other", SeriesStyle{ PerfColors::IoOther, PerfColors::IoOther });
+	m_Io.SetTitle(L"I/O Transfer Rate");
+	m_Io.SetRange(0, 1 << 20);
+	m_Io.SetAutoScale(true);
+	m_Io.SetValueFormatter(Format::BytesPerSec);
+	m_Io.SetHistoryLength(PerfHistoryLength);
+
+	// the counters start with the tracker: a process's traffic before then isn't known
+	m_NetworkTracker = NetworkTracking::Acquire();
+	if (!m_NetworkTracker)
+		m_NetworkError = ::GetLastError();
+	m_Network.Create(m_hWnd, !m_NetworkTracker ? L"Network Throughput (not available)" : L"Network Throughput");
+
+	auto theme = WTLHelper::IsDarkMode() ? GraphTheme::Dark() : GraphTheme::Light();
+	auto timeSpan = TimeSpanText(m_Props.UpdateInterval);
+	for (CGraphControl* graph : { (CGraphControl*)&m_Cpu, &m_Memory, &m_Io, (CGraphControl*)&m_Network }) {
+		graph->SetTheme(theme);
+		graph->SetTimeSpanText(timeSpan);
+		graph->SetExpectedInterval(m_Props.UpdateInterval);
+	}
+
+	CRect rc;
+	GetDlgItem(IDC_PERF_VERTICAL).GetWindowRect(&rc);
+	m_ButtonSize = rc.Size();
+	GetClientRect(&rc);
+	Layout(rc.Width(), rc.Height());
+	return TRUE;
+}
+
+LRESULT CProcPerformancePage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	Layout(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	return 0;
+}
+
+LRESULT CProcPerformancePage::OnVertical(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Vertical = IsDlgButtonChecked(IDC_PERF_VERTICAL) == BST_CHECKED;
+	CRect rc;
+	GetClientRect(&rc);
+	Layout(rc.Width(), rc.Height());
+	return 0;
+}
+
+void CProcPerformancePage::Layout(int cx, int cy) {
+	if (!m_Cpu.IsWindow())
+		return;
+	// the other pages' margins; the text lines at the bottom, the check box at their right, the graphs above them
+	CRect units(0, 0, 7, 11);
+	MapDialogRect(&units);
+	int margin = units.right, lineHeight = units.bottom, gap = units.right / 2;
+	// centered on the last line
+	GetDlgItem(IDC_PERF_VERTICAL).SetWindowPos(nullptr, cx - margin - m_ButtonSize.cx, cy - margin - (lineHeight + m_ButtonSize.cy) / 2, 0, 0,
+		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	UINT const lines[] = { IDC_PERF_CPU, IDC_PERF_MEMORY, IDC_PERF_IO };
+	int y = cy - margin - _countof(lines) * lineHeight;
+	for (auto id : lines) {
+		GetDlgItem(id).SetWindowPos(nullptr, margin, y, (std::max)(0, int(cx - 2 * margin - m_ButtonSize.cx - gap)), lineHeight,
+			SWP_NOZORDER | SWP_NOACTIVATE);
+		y += lineHeight;
+	}
+
+	CRect area(margin, margin, cx - margin, cy - margin - _countof(lines) * lineHeight - gap);
+	GraphCtrl::CGraphControl* graphs[] = { &m_Cpu, &m_Memory, &m_Io, &m_Network };
+	// two columns when there is room for them, so the graphs don't get too flat, unless asked for one
+	int columns = !m_Vertical && area.Width() >= ::MulDiv(560, ::GetDpiForWindow(m_hWnd), 96) ? 2 : 1;
+	int rows = _countof(graphs) / columns;
+	int width = (std::max)(0, area.Width() - (columns - 1) * gap), height = (std::max)(0, area.Height() - (rows - 1) * gap);
+	for (int i = 0; i < _countof(graphs); i++) {
+		int row = i / columns, column = i % columns;
+		// the last row and column take the rounding remainder
+		int x = area.left + column * (width / columns + gap), top = area.top + row * (height / rows + gap);
+		int w = column == columns - 1 ? area.right - x : width / columns;
+		int h = row == rows - 1 ? area.bottom - top : height / rows;
+		graphs[i]->MoveWindow(x, top, (std::max)(0, w), (std::max)(0, h));
+	}
+}
+
+void CProcPerformancePage::OnSample(ProcessSnapshot const& snapshot) {
+	if (!m_Cpu.IsWindow() || m_Exited)
+		return;
+	auto p = snapshot.Process();
+	if (!p) {
+		if (snapshot.Exited()) {
+			m_Exited = true;
+			SetDlgItemText(IDC_PERF_CPU, L"The process has exited.");
+		}
+		return;
+	}
+
+	Counters now{ snapshot.Time(), p->KernelTime.QuadPart, p->UserTime.QuadPart,
+		p->ReadTransferCount.QuadPart, p->WriteTransferCount.QuadPart, p->OtherTransferCount.QuadPart };
+	if (m_NetworkTracker) {
+		auto net = m_NetworkTracker->GetCounters(m_Props.Id);
+		now.Received = net.Received;
+		now.Sent = net.Sent;
+	}
+
+	// the rates, from the previous sample
+	PerfSample cpu;	// what CCpuGraph takes
+	double read = 0, write = 0, other = 0, received = 0, sent = 0;
+	bool rates = m_Prev && now.Time > m_Prev->Time;
+	if (rates) {
+		static const int64_t frequency = [] { LARGE_INTEGER f; ::QueryPerformanceFrequency(&f); return f.QuadPart; }();
+		static const int processors = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+		auto& prev = *m_Prev;
+		double seconds = double(now.Time - prev.Time) / frequency;
+		// the CPU times are in 100 ns units; percent of all processors
+		double total = seconds * 10'000'000 * processors / 100;
+		cpu.HasCpu = true;
+		cpu.KernelCpu = float((now.KernelTime - prev.KernelTime) / total);
+		cpu.UserCpu = float((now.UserTime - prev.UserTime) / total);
+		read = (now.Read - prev.Read) / seconds;
+		write = (now.Write - prev.Write) / seconds;
+		other = (now.Other - prev.Other) / seconds;
+		received = now.Received >= prev.Received ? (now.Received - prev.Received) / seconds : 0;
+		sent = now.Sent >= prev.Sent ? (now.Sent - prev.Sent) / seconds : 0;
+	}
+	m_Prev = now;
+
+	m_Cpu.Push(cpu);
+	float memory[] = { (float)p->PrivatePageCount, (float)p->WorkingSetSize };
+	m_Memory.PushSamples(memory, _countof(memory));
+	float io[] = { rates ? (float)read : GraphCtrl::MissingSample, rates ? (float)write : GraphCtrl::MissingSample,
+		rates ? (float)other : GraphCtrl::MissingSample };
+	m_Io.PushSamples(io, _countof(io));
+	m_Network.Push(received, sent, rates && m_NetworkTracker);
+
+	auto cpuTime = p->KernelTime.QuadPart + p->UserTime.QuadPart;
+	SetDlgItemText(IDC_PERF_CPU, std::format(L"CPU: {}    CPU time: {} (kernel {})    Threads: {}    Handles: {}",
+		cpu.HasCpu ? std::format(L"{:.2f}% (kernel {:.2f}%)", cpu.CpuPercent(), cpu.KernelCpu) : std::wstring(L"-"),
+		FormatHelper::FormatTimeSpan(cpuTime), FormatHelper::FormatTimeSpan(p->KernelTime.QuadPart),
+		FormatHelper::FormatNumber(p->NumberOfThreads), FormatHelper::FormatNumber(p->HandleCount)).c_str());
+	SetDlgItemText(IDC_PERF_MEMORY, std::format(L"Private: {} (peak {})    Working set: {} (peak {})    Virtual size: {}",
+		FormatHelper::FormatBytes(p->PrivatePageCount), FormatHelper::FormatBytes(p->PeakPagefileUsage),
+		FormatHelper::FormatBytes(p->WorkingSetSize), FormatHelper::FormatBytes(p->PeakWorkingSetSize),
+		FormatHelper::FormatBytes(p->VirtualSize)).c_str());
+	auto network = m_NetworkTracker ? std::format(L"Network: receive {}, send {}", FormatBitRate(received), FormatBitRate(sent))
+		: m_NetworkError == ERROR_ACCESS_DENIED ? std::wstring(L"Network: needs administrator rights") : std::wstring(L"Network: not available");
+	SetDlgItemText(IDC_PERF_IO, std::format(L"I/O: read {}, write {}, other {}    {}",
+		FormatRate(read), FormatRate(write), FormatRate(other), network).c_str());
+}
+
+CProcThreadsPage::CProcThreadsPage(ProcessProperties const& props, ProcessSnapshot const& snapshot) : m_Snapshot(snapshot) {
 	SetIconId(m_psp, IDI_THREADS);
 	m_Threads.UseColumns(props.ThreadColumns);
 }
@@ -548,59 +783,15 @@ LRESULT CProcThreadsPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam
 }
 
 int CProcThreadsPage::OnSetActive() {
-	Refresh();
-	if (!m_Exited)
-		SetTimer(1, m_Props.UpdateInterval, nullptr);
+	// the sheet's last snapshot; the sheet feeds the page only while it's active
+	OnSample(m_Snapshot);
 	return 0;
 }
 
-BOOL CProcThreadsPage::OnKillActive() {
-	// a snapshot costs a few milliseconds: none while the page is hidden
-	KillTimer(1);
-	return FALSE;
-}
-
-LRESULT CProcThreadsPage::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
-	if (id != 1) {
-		bHandled = FALSE;
-		return 0;
-	}
-	Refresh();
-	if (m_Exited)
-		KillTimer(1);
-	return 0;
-}
-
-void CProcThreadsPage::Refresh() {
-	if (m_Exited)
-		return;
-	// the threads come with the processes; the size needed grows between calls
-	NTSTATUS status = STATUS_INFO_LENGTH_MISMATCH;
-	for (int i = 0; i < 4 && status == STATUS_INFO_LENGTH_MISMATCH; i++) {
-		if (!m_Buffer)
-			m_Buffer = std::make_unique<BYTE[]>(m_BufferSize);
-		ULONG len = 0;
-		status = ::NtQuerySystemInformation(SystemExtendedProcessInformation, m_Buffer.get(), m_BufferSize, &len);
-		if (status == STATUS_INFO_LENGTH_MISMATCH) {
-			m_BufferSize = (std::max)(m_BufferSize * 2, len + (1 << 16));
-			m_Buffer.reset();
-		}
-	}
-	if (!NT_SUCCESS(status))
-		return;
-
-	// the process, unless its ID now belongs to another one
-	auto p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(m_Buffer.get());
-	for (;;) {
-		if (HandleToULong(p->UniqueProcessId) == m_Props.Id && p->CreateTime.QuadPart == m_Props.CreateTime) {
-			m_Threads.Update(p);
-			return;
-		}
-		if (p->NextEntryOffset == 0)
-			break;
-		p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(reinterpret_cast<BYTE const*>(p) + p->NextEntryOffset);
-	}
-	m_Exited = true;
+void CProcThreadsPage::OnSample(ProcessSnapshot const& snapshot) {
+	// once the process is gone, its last threads stay
+	if (auto p = snapshot.Process(); p && m_Threads)
+		m_Threads.Update(p, snapshot.Time());
 }
 
 CProcPlaceholderPage::CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring text) :

@@ -31,8 +31,9 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
 	// takes the threads from the frame's current snapshot
 	void Refresh();
-	// takes the threads from a snapshot's (SystemExtendedProcessInformation) entry of the process; nullptr: no process
-	void Update(SYSTEM_PROCESS_INFORMATION const* info);
+	// takes the threads from a snapshot's (SystemExtendedProcessInformation) entry of the process; nullptr: no process.
+	// time: the snapshot's (QPC), for the rates; 0 for now. The same snapshot twice is ignored
+	void Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time = 0);
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;

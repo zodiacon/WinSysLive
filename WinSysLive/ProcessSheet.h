@@ -7,7 +7,7 @@
 //
 // A process's properties: a modeless, resizable property sheet with tab icons, run on a thread of its own (see
 // ShowProcessProperties), so a slow page doesn't hold up the main window and the main window's refreshes don't hold
-// up the sheet. It has no owner, and a taskbar button of its own. The Job page is added only for a process in a job,
+// up the sheet. It takes a snapshot of the processes every UpdateInterval for the Performance and Threads pages. It has no owner, and a taskbar button of its own. The Job page is added only for a process in a job,
 // the Services page only for a process hosting services.
 //
 class CProcessSheet :
@@ -19,14 +19,22 @@ public:
 	void OnSheetInitialized();
 
 	BEGIN_MSG_MAP(CProcessSheet)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		CHAIN_MSG_MAP(BaseSheet)
 	END_MSG_MAP()
 
 private:
+	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+
+	// takes a snapshot for the pages: the Performance page gets every one, the Threads page only while it's active
+	void Sample();
+
 	ProcessProperties m_Props;
+	ProcessSnapshot m_Snapshot{ m_Props };
 	std::wstring m_Title;
 	CIcon m_Icon, m_SmallIcon;	// the process's, or the system's application icon
 	std::unique_ptr<CProcGeneralPage> m_General;
+	std::unique_ptr<CProcPerformancePage> m_Performance;
 	std::unique_ptr<CProcEnvironmentPage> m_Environment;
 	std::unique_ptr<CProcTokenPage> m_Token;
 	std::unique_ptr<CProcThreadsPage> m_Threads;

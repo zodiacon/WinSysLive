@@ -90,6 +90,7 @@
     <ClCompile Include="ProcessSheet.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="NetworkTracking.cpp" />
     <ClCompile Include="ProcessPages.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -170,6 +171,7 @@
     <ClInclude Include="ProcessSheet.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="NetworkTracking.h" />
     <ClInclude Include="ProcessPages.h">
       <Filter>Dialogs</Filter>
     </ClInclude>

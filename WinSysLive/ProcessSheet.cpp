@@ -9,6 +9,8 @@
 using namespace WinSys;
 
 namespace {
+	const UINT_PTR SampleTimerId = 1;
+
 	bool IsInJob(uint32_t pid) {
 		wil::unique_handle hProcess(::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
 		BOOL inJob = FALSE;
@@ -43,13 +45,14 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 		auto& page = m_Pages.emplace_back(std::make_unique<CProcPlaceholderPage>(title, icon, std::move(text)));
 		AddPage(*page);
 	};
-	add(L"Performance", IDI_PERFORMANCE, L"CPU, memory and I/O over time.");
+	m_Performance = std::make_unique<CProcPerformancePage>(m_Props);
+	AddPage(*m_Performance);
 	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
 	AddPage(*m_Environment);
 	add(L"Memory", IDI_MEMORY, L"The process's address space: regions, their protection and usage.");
 	m_Token = std::make_unique<CProcTokenPage>(m_Props);
 	AddPage(*m_Token);
-	m_Threads = std::make_unique<CProcThreadsPage>(m_Props);
+	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Threads);
 	if (IsInJob(m_Props.Id))
 		add(L"Job", IDI_PROCESSES, L"The job the process is in: its limits and its processes.");
@@ -79,6 +82,27 @@ void CProcessSheet::OnSheetInitialized() {
 
 	// the controls are themed by WTLHelper's hook (InitThread), the title bar is not
 	DarkMode::setDarkTitleBarEx(m_hWnd, true);
+
+	Sample();
+	SetTimer(SampleTimerId, m_Props.UpdateInterval, nullptr);
+}
+
+LRESULT CProcessSheet::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id != SampleTimerId) {
+		bHandled = FALSE;
+		return 0;
+	}
+	Sample();
+	return 0;
+}
+
+void CProcessSheet::Sample() {
+	m_Snapshot.Take();
+	m_Performance->OnSample(m_Snapshot);
+	if (m_Threads->IsWindow() && GetActivePage() == m_Threads->m_hWnd)
+		m_Threads->OnSample(m_Snapshot);
+	if (m_Snapshot.Exited())
+		KillTimer(SampleTimerId);
 }
 
 namespace {

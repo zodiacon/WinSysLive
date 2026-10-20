@@ -182,13 +182,18 @@ void CThreadsPage::Refresh() {
 	Update(m_Process ? m_Process->NativeInfo : nullptr);
 }
 
-void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info) {
+void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) {
+	if (time && time == m_PrevTime.QuadPart)
+		return;
 	int selected = m_List.GetSelectedIndex();
 	uint32_t selectedTid = selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Key.Id : 0;
 
 	m_Rows.clear();
 	LARGE_INTEGER now;
-	::QueryPerformanceCounter(&now);
+	if (time)
+		now.QuadPart = time;
+	else
+		::QueryPerformanceCounter(&now);
 	if (info) {
 		static const int64_t frequency = [] { LARGE_INTEGER f; ::QueryPerformanceFrequency(&f); return f.QuadPart; }();
 		static const int processors = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);

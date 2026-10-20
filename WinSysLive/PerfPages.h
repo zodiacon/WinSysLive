@@ -18,6 +18,7 @@ namespace PerfColors {
 	const COLORREF DiskActive = RGB(64, 168, 160);
 	const COLORREF DiskRead = RGB(60, 140, 210);
 	const COLORREF DiskWrite = RGB(220, 120, 60);
+	const COLORREF IoOther = RGB(150, 150, 150);
 }
 
 //

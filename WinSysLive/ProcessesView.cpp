@@ -4,6 +4,7 @@
 #include "ProcessSheet.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
+#include "NetworkTracking.h"
 #include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
@@ -172,12 +173,16 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 
 	// the network trace costs a little all the time, so it only runs while it's needed
 	if (ShowsNetwork()) {
-		if (!m_Network.Start(L"WinSysLive Network"))
+		if (!m_Network && !(m_Network = NetworkTracking::Acquire()))
 			m_NetworkError = ::GetLastError();
 	}
 	else
-		m_Network.Stop();
+		m_Network.reset();
 	m_Tree.Invalidate();
+}
+
+WinSys::ProcessNetworkTracker::Counters CProcessesView::NetworkCounters(uint32_t pid) const {
+	return m_Network ? m_Network->GetCounters(pid) : WinSys::ProcessNetworkTracker::Counters{};
 }
 
 bool CProcessesView::ShowsNetwork() const {
@@ -375,7 +380,8 @@ void CProcessesView::RemoveItem(ProcessItem& item) {
 	for (auto d : descendants)
 		d->Item = nullptr;
 
-	m_Network.RemoveProcess(item.Process->Id);
+	if (m_Network)
+		m_Network->RemoveProcess(item.Process->Id);
 	m_Items.erase(item.Process->Key);
 	for (auto d : descendants)
 		EnsureInserted(*d);
@@ -473,8 +479,8 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::IoRead: return FormatHelper::FormatBytes(info->ReadTransferCount.QuadPart);
 		case Column::IoWrite: return FormatHelper::FormatBytes(info->WriteTransferCount.QuadPart);
 		case Column::IoOther: return FormatHelper::FormatBytes(info->OtherTransferCount.QuadPart);
-		case Column::NetworkSend: return FormatHelper::FormatBytes(m_Network.GetCounters(p.Id).Sent);
-		case Column::NetworkReceive: return FormatHelper::FormatBytes(m_Network.GetCounters(p.Id).Received);
+		case Column::NetworkSend: return FormatHelper::FormatBytes(NetworkCounters(p.Id).Sent);
+		case Column::NetworkReceive: return FormatHelper::FormatBytes(NetworkCounters(p.Id).Received);
 		case Column::Description: return p.GetDescription();
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
@@ -551,8 +557,8 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::IoRead: return compare(i1->ReadTransferCount.QuadPart, i2->ReadTransferCount.QuadPart);
 		case Column::IoWrite: return compare(i1->WriteTransferCount.QuadPart, i2->WriteTransferCount.QuadPart);
 		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);
-		case Column::NetworkSend: return compare(m_Network.GetCounters(p1.Id).Sent, m_Network.GetCounters(p2.Id).Sent);
-		case Column::NetworkReceive: return compare(m_Network.GetCounters(p1.Id).Received, m_Network.GetCounters(p2.Id).Received);
+		case Column::NetworkSend: return compare(NetworkCounters(p1.Id).Sent, NetworkCounters(p2.Id).Sent);
+		case Column::NetworkReceive: return compare(NetworkCounters(p1.Id).Received, NetworkCounters(p2.Id).Received);
 		case Column::Description: return compareText(p1.GetDescription(), p2.GetDescription());
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
@@ -858,7 +864,7 @@ LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
 		columns.push_back({ (Column)c.Id, c.Width });
 	SetColumns(columns);
 	SaveColumns();
-	if (ShowsNetwork() && !m_Network.IsRunning()) {
+	if (ShowsNetwork() && !m_Network) {
 		if (m_NetworkError == ERROR_ACCESS_DENIED)
 			AtlMessageBox(m_hWnd, L"The network columns need administrator rights, and stay empty until WinSysLive runs elevated (File > Run as Administrator).",
 				IDR_MAINFRAME, MB_ICONINFORMATION);

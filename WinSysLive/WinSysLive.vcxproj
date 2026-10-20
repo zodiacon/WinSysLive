@@ -331,6 +331,7 @@
     <ClCompile Include="ColumnLayout.cpp" />
     <ClCompile Include="ColumnsDlg.cpp" />
     <ClCompile Include="ProcessSheet.cpp" />
+    <ClCompile Include="NetworkTracking.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="MainFrm.cpp" />
@@ -364,6 +365,7 @@
     <ClInclude Include="ColumnLayout.h" />
     <ClInclude Include="ColumnsDlg.h" />
     <ClInclude Include="ProcessSheet.h" />
+    <ClInclude Include="NetworkTracking.h" />
     <ClInclude Include="ProcessPages.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="AppSettings.h" />
