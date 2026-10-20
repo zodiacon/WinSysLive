@@ -33,8 +33,10 @@ private:
 //
 // The Memory page: the process's address space (VirtualQueryEx) in a tree on the left, each allocation's first region
 // with the allocation's other regions as its children, and the bytes of the selected committed region in a read-only
-// hex view on the right, read from the process as they're shown (ProcessMemoryBuffer). The map is read when the page
-// is first shown and on Refresh.
+// hex view on the right, read from the process as they're shown (ProcessMemoryBuffer). The Details column names a
+// mapping's file, and the regions holding the PEB and the threads' TEBs and stacks (with the 32-bit ones of a WOW64
+// process). The map is read when the page is first shown and on Refresh. The Hex View check box shows or hides the hex
+// view (hidden when the page opens); while it's hidden, no bytes are read.
 //
 class CProcMemoryPage : public CPropertyPageImpl<CProcMemoryPage> {
 public:
@@ -49,6 +51,7 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		COMMAND_ID_HANDLER(IDC_MEM_REFRESH, OnRefresh)
+		COMMAND_ID_HANDLER(IDC_MEM_HEXVIEW, OnToggleHexView)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SELCHANGED, OnSelChanged)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcMemoryPage>)
@@ -67,18 +70,28 @@ private:
 
 	struct Region {
 		MEMORY_BASIC_INFORMATION Info;
-		std::wstring Details;	// a mapping's file, on its allocation's first region
+		std::wstring Details;	// a mapping's file, on its allocation's first region; what the region holds (PEB, TEB, stack)
 	};
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleHexView(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGetDispInfo(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSelChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
 	// reads the address space; the region at the given address is selected afterwards, if there is one
 	void Load(void const* select = nullptr);
+	// names the regions holding the PEB, and each thread's TEB and stack, in their Details
+	void LabelProcessStructures();
+	// the region at the address, or nullptr
+	Region* FindRegion(ULONG_PTR address);
+	// adds the text to the region's Details
+	static void AddDetails(Region& region, std::wstring const& text);
+	// the region's bytes in the hex view, while it's shown
 	void ShowBytes(Region const* region);
+	// the selected region, or nullptr
+	Region const* GetSelectedRegion() const;
 	void Layout(int cx, int cy);
 	std::wstring GetText(Region const& region, Column column) const;
 
@@ -91,6 +104,7 @@ private:
 	std::vector<Region> m_Regions;	// in address order; the tree's item data are indices
 	std::unique_ptr<IBufferManager> m_Bytes;	// the hex view's
 	std::wstring m_Summary;	// of the map, in the status line
-	CSize m_ButtonSize;	// the template's
+	CSize m_ButtonSize, m_CheckSize;	// the template's
+	bool m_ShowHex{ false };
 	bool m_Loaded{ false };
 };

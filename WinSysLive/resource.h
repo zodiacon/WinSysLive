@@ -114,6 +114,7 @@
 #define IDC_PERF_VERTICAL           1063
 #define IDC_MEM_STATUS              1064
 #define IDC_MEM_REFRESH             1065
+#define IDC_MEM_HEXVIEW             1119
 #define IDC_JOB_JOBS                1066
 #define IDC_JOB_STATUS              1067
 #define IDC_JOB_LIMITS_LABEL        1068
@@ -228,7 +229,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE	255
-#define _APS_NEXT_CONTROL_VALUE		1119
+#define _APS_NEXT_CONTROL_VALUE		1120
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32819
 #endif

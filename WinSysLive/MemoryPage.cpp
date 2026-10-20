@@ -4,6 +4,7 @@
 #include "ViewBase.h"
 #include <WinSys/Helpers.h>
 #include <WTLHelper.h>
+#include <map>
 
 namespace {
 	// in Column order
@@ -194,7 +195,7 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 
 	// the splitter forwards the tree's notifications to the page
 	m_Splitter.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT);
-	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_TABSTOP, WS_EX_CLIENTEDGE);
+	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_TABSTOP, 0);
 	m_Tree.SetCallbackMode(true);
 	m_Tree.SetExtendedStyle(m_Tree.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
@@ -203,7 +204,7 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 		m_Tree.InsertColumn(i, s_Columns[i].Name, ::MulDiv(s_Columns[i].Width, dpi, 96), s_Columns[i].Format);
 
 	m_Hex.SetFont(CMemoryHexView::FontName, CMemoryHexView::FontSize);
-	m_Hex.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP, WS_EX_CLIENTEDGE);
+	m_Hex.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP | WS_BORDER, 0);
 	m_Hex.SetReadOnly(true);
 	m_Hex.SetOptions(HexControlOptions::DisableUndoRedo | HexControlOptions::GrayOutZeros);
 	auto& colors = m_Hex.GetColors();
@@ -216,10 +217,14 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	}
 
 	m_Splitter.SetSplitterPanes(m_Tree, m_Hex);
+	// the hex view starts hidden (the Hex View check box)
+	m_Splitter.SetSinglePaneMode(SPLIT_PANE_LEFT);
 
 	CRect rc;
 	GetDlgItem(IDC_MEM_REFRESH).GetWindowRect(&rc);
 	m_ButtonSize = rc.Size();
+	GetDlgItem(IDC_MEM_HEXVIEW).GetWindowRect(&rc);
+	m_CheckSize = rc.Size();
 	GetClientRect(&rc);
 	Layout(rc.Width(), rc.Height());
 	return TRUE;
@@ -233,18 +238,22 @@ LRESULT CProcMemoryPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 void CProcMemoryPage::Layout(int cx, int cy) {
 	if (!m_Splitter.IsWindow())
 		return;
-	// the other pages' margins; the button at the bottom right, the status line at its left, the panes above them
+	// the other pages' margins; the button at the bottom right, the check box and the status line at its left, the panes
+	// above them
 	CRect units(0, 0, 7, 4);
 	MapDialogRect(&units);
 	int margin = units.right, gap = units.bottom;
 	int bottom = cy - margin;
 	GetDlgItem(IDC_MEM_REFRESH).SetWindowPos(nullptr, cx - margin - m_ButtonSize.cx, bottom - m_ButtonSize.cy, 0, 0,
 		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	int checkLeft = cx - margin - m_ButtonSize.cx - 2 * gap - m_CheckSize.cx;
+	GetDlgItem(IDC_MEM_HEXVIEW).SetWindowPos(nullptr, checkLeft, bottom - (m_ButtonSize.cy + m_CheckSize.cy) / 2, 0, 0,
+		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 	CWindow status(GetDlgItem(IDC_MEM_STATUS));
 	CRect rc;
 	status.GetWindowRect(&rc);
 	status.SetWindowPos(nullptr, margin, bottom - (m_ButtonSize.cy + rc.Height()) / 2,
-		(std::max)(0, int(cx - 2 * margin - m_ButtonSize.cx - gap)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+		(std::max)(0, int(checkLeft - margin - gap)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 	m_Splitter.SetWindowPos(nullptr, margin, margin, (std::max)(0, cx - 2 * margin),
 		(std::max)(0, int(bottom - m_ButtonSize.cy - gap - margin)), SWP_NOZORDER | SWP_NOACTIVATE);
 }
@@ -318,6 +327,7 @@ void CProcMemoryPage::Load(void const* select) {
 		m_Regions.push_back(std::move(region));
 		address = (BYTE const*)mbi.BaseAddress + mbi.RegionSize;
 	}
+	LabelProcessStructures();
 
 	// an allocation's first region is a top-level item, its other regions (which follow it) its children
 	m_Tree.BeginUpdate();
@@ -350,6 +360,116 @@ void CProcMemoryPage::Load(void const* select) {
 	}
 }
 
+CProcMemoryPage::Region* CProcMemoryPage::FindRegion(ULONG_PTR address) {
+	// the regions are in address order, and contiguous
+	auto it = std::ranges::upper_bound(m_Regions, address, {}, [](Region const& r) { return (ULONG_PTR)r.Info.BaseAddress; });
+	if (it == m_Regions.begin())
+		return nullptr;
+	auto& region = *--it;
+	return address < (ULONG_PTR)region.Info.BaseAddress + region.Info.RegionSize ? &region : nullptr;
+}
+
+void CProcMemoryPage::AddDetails(Region& region, std::wstring const& text) {
+	if (!region.Details.empty())
+		region.Details += L", ";
+	region.Details += text;
+}
+
+void CProcMemoryPage::LabelProcessStructures() {
+	auto hProcess = m_hProcess.get();
+	// what an allocation's other regions hold, for its first region (the tree's collapsed item): the PEB and the
+	// TEBs share an allocation
+	struct Contents {
+		bool Peb{ false }, Peb32{ false };
+		int Tebs{ 0 }, Tebs32{ 0 };
+	};
+	std::map<void const*, Contents> contents;
+	enum class Kind { Peb, Peb32, Teb, Teb32 };
+	auto label = [&](ULONG_PTR address, Kind kind, std::wstring const& text) {
+		auto region = FindRegion(address);
+		if (!region)
+			return;
+		AddDetails(*region, text);
+		if (region->Info.BaseAddress != region->Info.AllocationBase) {
+			auto& c = contents[region->Info.AllocationBase];
+			switch (kind) {
+				case Kind::Peb: c.Peb = true; break;
+				case Kind::Peb32: c.Peb32 = true; break;
+				case Kind::Teb: c.Tebs++; break;
+				case Kind::Teb32: c.Tebs32++; break;
+			}
+		}
+	};
+	// a stack's whole reservation: the committed part, the guard page and the rest the stack can grow into
+	auto labelStack = [&](ULONG_PTR stackBase, std::wstring const& text) {
+		auto top = FindRegion(stackBase - 1);
+		if (!top || top->Info.State == MEM_FREE)
+			return;
+		for (auto& r : m_Regions)
+			if (r.Info.State != MEM_FREE && r.Info.AllocationBase == top->Info.AllocationBase)
+				AddDetails(r, text);
+	};
+
+	PROCESS_BASIC_INFORMATION pbi;
+	if (NT_SUCCESS(::NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), nullptr)) && pbi.PebBaseAddress)
+		label((ULONG_PTR)pbi.PebBaseAddress, Kind::Peb, L"PEB");
+	// a WOW64 process also has a 32-bit PEB, and its threads 32-bit TEBs and stacks
+	ULONG_PTR peb32 = 0;
+	if (NT_SUCCESS(::NtQueryInformationProcess(hProcess, ProcessWow64Information, &peb32, sizeof(peb32), nullptr)) && peb32)
+		label(peb32, Kind::Peb32, L"PEB (32-bit)");
+
+	// the threads' TEBs, in thread ID order
+	std::vector<std::pair<ULONG, ULONG_PTR>> tebs;
+	HANDLE hThread = nullptr;
+	for (;;) {
+		// NtGetNextThread continues from the previous handle, so that one closes only after the call
+		HANDLE hNext;
+		auto status = ::NtGetNextThread(hProcess, hThread, THREAD_QUERY_LIMITED_INFORMATION, 0, 0, &hNext);
+		if (hThread)
+			::NtClose(hThread);
+		if (!NT_SUCCESS(status))
+			break;
+		hThread = hNext;
+		THREAD_BASIC_INFORMATION tbi;
+		if (NT_SUCCESS(::NtQueryInformationThread(hThread, ThreadBasicInformation, &tbi, sizeof(tbi), nullptr)) && tbi.TebBaseAddress)
+			tebs.push_back({ HandleToULong(tbi.ClientId.UniqueThread), (ULONG_PTR)tbi.TebBaseAddress });
+	}
+	std::ranges::sort(tebs);
+
+	for (auto [tid, teb] : tebs) {
+		label(teb, Kind::Teb, std::format(L"TEB (thread {})", tid));
+		// the stack's bounds are at the start of the TEB (NT_TIB); reading them needs PROCESS_VM_READ
+		NT_TIB tib;
+		if (m_CanRead && ::ReadProcessMemory(hProcess, (void const*)teb, &tib, sizeof(tib), nullptr) && tib.StackBase)
+			labelStack((ULONG_PTR)tib.StackBase, std::format(L"Stack (thread {})", tid));
+		if (peb32) {
+			// WOW64 puts the 32-bit TEB two pages after the 64-bit one
+			auto teb32 = teb + 0x2000;
+			label(teb32, Kind::Teb32, std::format(L"TEB (32-bit, thread {})", tid));
+			NT_TIB32 tib32;
+			if (m_CanRead && ::ReadProcessMemory(hProcess, (void const*)teb32, &tib32, sizeof(tib32), nullptr) && tib32.StackBase)
+				labelStack(tib32.StackBase, std::format(L"Stack (32-bit, thread {})", tid));
+		}
+	}
+
+	for (auto& [base, c] : contents) {
+		auto first = FindRegion((ULONG_PTR)base);
+		if (!first)
+			continue;
+		auto tebs = [](int count, PCWSTR bitness) {
+			return count == 1 ? std::format(L"TEB{}", bitness) : std::format(L"TEBs{} of {} threads", bitness, count);
+		};
+		if (c.Peb)
+			AddDetails(*first, L"PEB");
+		if (c.Peb32)
+			AddDetails(*first, L"PEB (32-bit)");
+		if (c.Tebs)
+			AddDetails(*first, tebs(c.Tebs, L""));
+		if (c.Tebs32)
+			AddDetails(*first, tebs(c.Tebs32, L" (32-bit)"));
+	}
+}
+
 LRESULT CProcMemoryPage::OnGetDispInfo(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto di = reinterpret_cast<NMTLVDISPINFO*>(hdr);
 	auto index = (size_t)m_Tree.GetItemData(di->hItem);
@@ -372,6 +492,19 @@ std::wstring CProcMemoryPage::GetText(Region const& region, Column column) const
 	return L"";
 }
 
+LRESULT CProcMemoryPage::OnToggleHexView(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_ShowHex = IsDlgButtonChecked(IDC_MEM_HEXVIEW) == BST_CHECKED;
+	m_Splitter.SetSinglePaneMode(m_ShowHex ? SPLIT_PANE_NONE : SPLIT_PANE_LEFT);
+	ShowBytes(GetSelectedRegion());
+	return 0;
+}
+
+CProcMemoryPage::Region const* CProcMemoryPage::GetSelectedRegion() const {
+	auto item = m_Tree.GetSelectedItem();
+	auto index = item ? (size_t)m_Tree.GetItemData(item) : SIZE_MAX;
+	return index < m_Regions.size() ? &m_Regions[index] : nullptr;
+}
+
 LRESULT CProcMemoryPage::OnSelChanged(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto item = reinterpret_cast<NMTLVITEMCHANGE*>(hdr)->hItemNew;
 	auto index = item ? (size_t)m_Tree.GetItemData(item) : SIZE_MAX;
@@ -383,7 +516,8 @@ void CProcMemoryPage::ShowBytes(Region const* region) {
 	m_Hex.SetBufferManager(nullptr);
 	m_Bytes.reset();
 	std::wstring note;
-	if (region) {
+	// nothing is read while the hex view is hidden
+	if (region && m_ShowHex) {
 		auto& info = region->Info;
 		if (!IsReadable(info))
 			note = info.State != MEM_COMMIT ? L"Not committed: no bytes to show" : L"Not readable (no access or guard pages)";
