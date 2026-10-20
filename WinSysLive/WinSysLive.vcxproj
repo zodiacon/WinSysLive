@@ -354,6 +354,7 @@ exit /b 0</Command>
     <ClCompile Include="ServicesPage.cpp" />
     <ClCompile Include="Symbols.cpp" />
     <ClCompile Include="StackDlg.cpp" />
+    <ClCompile Include="SymbolSettingsDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="MainFrm.cpp" />
@@ -396,6 +397,7 @@ exit /b 0</Command>
     <ClInclude Include="ServicesPage.h" />
     <ClInclude Include="Symbols.h" />
     <ClInclude Include="StackDlg.h" />
+    <ClInclude Include="SymbolSettingsDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="AppSettings.h" />

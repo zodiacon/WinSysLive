@@ -42,6 +42,10 @@ struct IView abstract {
 	virtual void OnFontChanged(HFONT /*font*/) {}
 	// the ProcessColors setting changed (Options > Process Colors)
 	virtual void OnProcessColorsChanged() {}
+	// the active view, when the frame's message loop is idle: to update commands that depend on the focus
+	virtual void OnFrameIdle() {}
+	// the toolbar tooltip of a command whose text depends on the view's state; empty: the command's string resource
+	virtual std::wstring GetCommandTip(UINT /*id*/) const { return {}; }
 	// views listing processes select the process (see IMainFrame::GoToProcess)
 	virtual void ShowProcess(uint32_t /*pid*/) {}
 };

@@ -9,7 +9,7 @@
 #include "MainFrm.h"
 #include "AppSettings.h"
 #include "ProcessColorsDlg.h"
-#include "Symbols.h"
+#include "SymbolSettingsDlg.h"
 #include "FormatHelper.h"
 #include "WTLHelper.h"
 #include <IconHelper.h>
@@ -30,7 +30,28 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	return m_Tabs.PreTranslateMessage(pMsg);
 }
 
+LRESULT CMainFrame::OnToolTipText(int idCtrl, LPNMHDR hdr, BOOL& bHandled) {
+	// the toolbar's commands whose tooltips the active view words (Kill: what it acts on); the rest are the string
+	// resources' (CFrameWindowImpl)
+	auto di = reinterpret_cast<NMTTDISPINFOW*>(hdr);
+	if ((di->uFlags & TTF_IDISHWND) || idCtrl != ID_KILL) {
+		bHandled = FALSE;
+		return 0;
+	}
+	if (m_ActivePage >= 0 && m_ActivePage < (int)m_Views.size())
+		m_TipText = m_Views[m_ActivePage]->GetCommandTip(idCtrl);
+	if (m_TipText.empty())
+		m_TipText = L"Kill (Del)";
+	// never with TTF_DI_SETITEM (as CFrameWindowImpl's handler sets it), so the tooltip asks every time: the text a
+	// view gives depends on its state
+	di->lpszText = m_TipText.data();
+	return 0;
+}
+
 BOOL CMainFrame::OnIdle() {
+	// the active view's commands may depend on the focus, which changes without telling the views
+	if (m_ActivePage >= 0 && m_ActivePage < (int)m_Views.size())
+		m_Views[m_ActivePage]->OnFrameIdle();
 	UIUpdateToolBar();
 	return FALSE;
 }
@@ -75,6 +96,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	if (settings.Font().lfFaceName[0])
 		ApplyFont();
 	UIEnable(ID_OPTIONS_DEFAULTFONT, settings.Font().lfFaceName[0] != 0);
+	SymbolEngine::Get().SetSearchPath(BuildSymbolSearchPath(CSymbolSettingsDlg::LoadOptions()));
 	SymbolEngine::Get().Enable(settings.ResolveSymbols());
 	UISetCheck(ID_OPTIONS_RESOLVESYMBOLS, settings.ResolveSymbols());
 
@@ -109,7 +131,7 @@ void CMainFrame::InitToolBar(bool elevated) {
 		{ 0 },
 		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
 		{ ID_VIEW_LOWERPANE, IDI_LOWERPANE, BTNS_CHECK },
-		{ ID_PROCESS_KILL, IDI_PROCESS_KILL },
+		{ ID_KILL, IDI_DELETE },	// the process, thread or handle selected in the list with the focus
 	};
 	const int iconSize = 24;
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
@@ -138,6 +160,10 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_FILE_RUNASADMIN, 0, hShield },
 		{ ID_VIEW_PAUSE, IDI_PAUSE },
 		{ ID_VIEW_REFRESH, IDI_REFRESH },
+		// as in the process and thread context menus
+		{ ID_PROCESS_KILL, IDI_DELETE },
+		{ ID_PROCESS_SUSPEND, IDI_PAUSE },
+		{ ID_PROCESS_RESUME, IDI_RUN },
 	};
 	for (auto& tab : s_Tabs)
 		commands.push_back({ (int)tab.CommandId, (int)tab.Icon });
@@ -402,6 +428,16 @@ LRESULT CMainFrame::OnResolveSymbols(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 	SymbolEngine::Get().Enable(resolve);
 	UISetCheck(id, resolve);
 	RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
+	return 0;
+}
+
+LRESULT CMainFrame::OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CSymbolSettingsDlg dlg;
+	if (dlg.DoModal(m_hWnd) == IDOK) {
+		// the engine resolves again what's shown (the property sheets' lists on their next refresh)
+		SymbolEngine::Get().SetSearchPath(BuildSymbolSearchPath(CSymbolSettingsDlg::LoadOptions()));
+		RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
+	}
 	return 0;
 }
 

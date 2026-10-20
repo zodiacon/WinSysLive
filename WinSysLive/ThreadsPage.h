@@ -39,6 +39,9 @@ public:
 		// a hidden page's header isn't all repainted otherwise
 		m_List.GetHeader().Invalidate();
 	}
+	// the Kill command (the toolbar, Del) while the page has the focus: terminates the selected thread, after asking
+	bool CanTerminateSelected() const;
+	void TerminateSelected();
 	// takes the threads from a snapshot's (SystemExtendedProcessInformation) entry of the process; nullptr: no process.
 	// time: the snapshot's (QPC), for the rates; 0 for now. The same snapshot twice is ignored
 	void Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time = 0);

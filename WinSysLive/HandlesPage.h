@@ -27,6 +27,10 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
 	// enumerates the handles again
 	void Refresh();
+	// the Kill command (the toolbar, Del) while the page has the focus: closes the selected handle in its process,
+	// after asking. Not the app's own handles
+	bool CanCloseSelected() const;
+	void CloseSelected();
 	void SetListFont(HFONT font) {
 		m_List.SetFont(font);
 		// a hidden page's header isn't all repainted otherwise
@@ -92,6 +96,7 @@ private:
 	// the icon for an object type (files depend on the name)
 	static UINT GetTypeIcon(std::wstring const& type);
 	void SelectHandle(uint64_t value);
+	HandleRow const* GetSelectedRow() const;
 	bool ShowsAddresses() const;
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);

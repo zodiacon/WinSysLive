@@ -18,6 +18,12 @@ struct AppSettings : Settings {
 		SETTING_STRING(ModuleColumns, L"");
 		SETTING_STRING(HandleColumns, L"");
 		SETTING(ResolveSymbols, 1, SettingType::Bool);
+		// the Symbol Settings (see SymbolPathOptions)
+		SETTING(SymbolUseEnvPath, 1, SettingType::Bool);
+		SETTING(SymbolServerEnabled, 1, SettingType::Bool);
+		SETTING_STRING(SymbolServerUrl, L"https://msdl.microsoft.com/download/symbols");
+		SETTING_STRING(SymbolCache, L"");	// empty: TotalPE's symbol cache
+		SETTING_STRING(SymbolExtraPaths, L"");
 		SETTING_STRING(ProcessColors, L"");	// see ProcessColors::Load
 		// the views' font, its height at 96 DPI; no face name: the default font
 		SETTING(Font, LOGFONT{}, SettingType::Binary);
@@ -38,6 +44,11 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(HandleColumns)
 	DEF_SETTING_STRING(ProcessColors)
 	DEF_SETTING(ResolveSymbols, int)
+	DEF_SETTING(SymbolUseEnvPath, int)
+	DEF_SETTING(SymbolServerEnabled, int)
+	DEF_SETTING_STRING(SymbolServerUrl)
+	DEF_SETTING_STRING(SymbolCache)
+	DEF_SETTING_STRING(SymbolExtraPaths)
 	DEF_SETTING(Font, LOGFONT)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";

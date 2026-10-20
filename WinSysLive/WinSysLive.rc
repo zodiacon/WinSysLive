@@ -86,7 +86,7 @@ BEGIN
     END
     POPUP "&Process"
     BEGIN
-        MENUITEM "&Kill Process\tDel",          ID_PROCESS_KILL
+        MENUITEM "&Kill Process",               ID_PROCESS_KILL
         MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
         MENUITEM SEPARATOR
         MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
@@ -113,6 +113,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Process &Colors...",          ID_OPTIONS_PROCESSCOLORS
         MENUITEM "Resolve &Symbols",            ID_OPTIONS_RESOLVESYMBOLS
+        MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
     END
     POPUP "&Help"
     BEGIN
@@ -124,7 +125,7 @@ IDR_CONTEXT MENU
 BEGIN
     POPUP "Process"
     BEGIN
-        MENUITEM "&Kill Process\tDel",          ID_PROCESS_KILL
+        MENUITEM "&Kill Process",               ID_PROCESS_KILL
         MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
         MENUITEM SEPARATOR
         MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
@@ -467,6 +468,28 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_SVC_REFRESH,273,208,50,14
 END
 
+IDD_SYMBOLS DIALOGEX 0, 0, 320, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Symbol Settings"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "Use the _NT_SYMBOL_&PATH environment variable:",IDC_SYM_USE_ENV,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,7,250,10
+    LTEXT           "",IDC_SYM_ENV_VALUE,19,19,294,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    CONTROL         "Use a symbol &server (unless _NT_SYMBOL_PATH has one)",IDC_SYM_USE_SERVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,35,250,10
+    LTEXT           "Symbol server &URL:",IDC_STATIC,19,49,120,8
+    EDITTEXT        IDC_SYM_SERVER_URL,19,59,294,14,ES_AUTOHSCROLL
+    LTEXT           "Download &cache directory (empty: TotalPE's symbol cache):",IDC_STATIC,7,79,250,8
+    EDITTEXT        IDC_SYM_CACHE,7,89,252,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Browse...",IDC_SYM_BROWSE,263,89,50,14
+    LTEXT           "&Additional symbol paths (searched first; separate with ;):",IDC_STATIC,7,109,250,8
+    EDITTEXT        IDC_SYM_EXTRA,7,119,306,14,ES_AUTOHSCROLL
+    LTEXT           "Resulting symbol path:",IDC_STATIC,7,139,120,8
+    EDITTEXT        IDC_SYM_PREVIEW,7,149,306,40,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "&Defaults",IDC_DEFAULTS,7,199,50,14
+    DEFPUSHBUTTON   "OK",IDOK,207,199,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,263,199,50,14
+END
+
 IDD_STACK DIALOGEX 0, 0, 480, 260
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Stack"
@@ -606,7 +629,7 @@ BEGIN
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
     "L",            ID_VIEW_LOWERPANE,      VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
-    VK_DELETE,      ID_PROCESS_KILL,        VIRTKEY 
+    VK_DELETE,      ID_KILL,                VIRTKEY 
     VK_RETURN,      ID_VIEW_PROPERTIES,     VIRTKEY, ALT
 END
 
@@ -883,7 +906,8 @@ BEGIN
     ID_PANE_PROCESSES       "Processes: 00000"
     ID_PANE_CPU             "CPU: 100.0%  "
     ID_PANE_ELEVATION       "Standard User  "
-    ID_PROCESS_KILL         "Terminate the selected process\nKill Process (Del)"
+    ID_PROCESS_KILL         "Terminate the selected process\nKill Process"
+    ID_KILL                 "Terminate the selected process or thread, or close the selected handle: the list with the focus decides\nKill (Del)"
     ID_PROCESS_SUSPEND      "Suspend all the threads of the selected process\nSuspend"
     ID_PROCESS_RESUME       "Resume the threads of the selected process\nResume"
     ID_PROCESS_GOTOFILELOCATION 

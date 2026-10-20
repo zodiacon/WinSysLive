@@ -99,6 +99,9 @@
     <ClCompile Include="StackDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="SymbolSettingsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="ProcessSheet.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -202,6 +205,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="StackDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="SymbolSettingsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ProcessSheet.h">

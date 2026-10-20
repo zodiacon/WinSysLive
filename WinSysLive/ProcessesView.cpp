@@ -153,6 +153,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	Frame()->GetUI().UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, false);
 	Frame()->GetUI().UIEnable(ID_PROCESS_KILL, false);
+	Frame()->GetUI().UIEnable(ID_KILL, false);
 
 	return 0;
 }
@@ -779,6 +780,7 @@ void CProcessesView::UpdateUI() {
 				ui.UISetRadioMenuItem(ID_PRIORITY_REALTIME + i, ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE);
 	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
 	ui.UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, m_Active);
+	ui.UIEnable(ID_KILL, m_Active && CanKill());
 	if (m_Active) {
 		ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, m_KeepSelectionVisible);
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
@@ -795,7 +797,13 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 	CMenu menu;
 	menu.LoadMenu(IDR_CONTEXT);
 	CMenuHandle popup = menu.GetSubMenu(0);
-	WTLHelper::InitMenu(popup, MenuItemData{ ID_PROCESS_KILL, IDI_PROCESS_KILL });
+	// as in the Process menu and the thread context menu
+	MenuItemData const icons[] = {
+		{ ID_PROCESS_KILL, IDI_DELETE },
+		{ ID_PROCESS_SUSPEND, IDI_PAUSE },
+		{ ID_PROCESS_RESUME, IDI_RUN },
+	};
+	WTLHelper::InitMenu(popup, icons, _countof(icons));
 
 	bool live = CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
@@ -838,6 +846,59 @@ LRESULT CProcessesView::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	}
 	if (!process->Terminate())
 		AtlMessageBox(m_hWnd, L"Failed to terminate the process.", IDR_MAINFRAME, MB_ICONERROR);
+	return 0;
+}
+
+CProcessesView::KillTarget CProcessesView::GetKillTarget() const {
+	// the lower pane's pages, while it's shown; anything else in the view (the tree) is the process
+	auto focus = ::GetFocus();
+	if (m_LowerPane && focus && (focus == m_Details.m_hWnd || m_Details.IsChild(focus))) {
+		auto& details = const_cast<CProcessDetails&>(m_Details);
+		auto& threads = details.GetThreadsPage();
+		if (focus == threads.m_hWnd || threads.IsChild(focus))
+			return KillTarget::Thread;
+		auto& handles = details.GetHandlesPage();
+		if (focus == handles.m_hWnd || handles.IsChild(focus))
+			return KillTarget::Handle;
+		// the Modules page, or the tabs
+		return KillTarget::None;
+	}
+	return KillTarget::Process;
+}
+
+bool CProcessesView::CanKill() const {
+	auto& details = const_cast<CProcessDetails&>(m_Details);
+	switch (GetKillTarget()) {
+		case KillTarget::Process: return CanControl(GetSelectedProcess());
+		case KillTarget::Thread: return details.GetThreadsPage().CanTerminateSelected();
+		case KillTarget::Handle: return details.GetHandlesPage().CanCloseSelected();
+	}
+	return false;
+}
+
+std::wstring CProcessesView::GetCommandTip(UINT id) const {
+	if (id != ID_KILL)
+		return {};
+	switch (GetKillTarget()) {
+		case KillTarget::Process: return L"Kill Process (Del)";
+		case KillTarget::Thread: return L"Terminate Thread (Del)";
+		case KillTarget::Handle: return L"Close Handle (Del)";
+	}
+	return L"Kill (Del)";
+}
+
+void CProcessesView::OnFrameIdle() {
+	Frame()->GetUI().UIEnable(ID_KILL, m_Active && CanKill());
+}
+
+LRESULT CProcessesView::OnKillFocused(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& bHandled) {
+	if (!CanKill())
+		return 0;
+	switch (GetKillTarget()) {
+		case KillTarget::Process: return OnKill(0, ID_PROCESS_KILL, nullptr, bHandled);
+		case KillTarget::Thread: m_Details.GetThreadsPage().TerminateSelected(); break;
+		case KillTarget::Handle: m_Details.GetHandlesPage().CloseSelected(); break;
+	}
 	return 0;
 }
 

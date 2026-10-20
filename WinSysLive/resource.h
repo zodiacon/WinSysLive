@@ -145,6 +145,17 @@
 #define IDD_STACK                   255
 #define IDI_STACK                   256
 #define IDI_DELETE                  257
+#define IDD_SYMBOLS                 258
+#define ID_OPTIONS_SYMBOLSETTINGS   32824
+#define ID_KILL                     32825
+#define IDC_SYM_USE_ENV             1124
+#define IDC_SYM_ENV_VALUE           1125
+#define IDC_SYM_USE_SERVER          1126
+#define IDC_SYM_SERVER_URL          1127
+#define IDC_SYM_CACHE               1128
+#define IDC_SYM_BROWSE              1129
+#define IDC_SYM_EXTRA               1130
+#define IDC_SYM_PREVIEW             1131
 #define IDC_STACK_LIST              1120
 #define IDC_STACK_STATUS            1121
 #define IDC_STACK_REFRESH           1122
@@ -240,9 +251,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	258
-#define _APS_NEXT_CONTROL_VALUE		1124
+#define _APS_NEXT_RESOURCE_VALUE	259
+#define _APS_NEXT_CONTROL_VALUE		1132
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32824
+#define _APS_NEXT_COMMAND_VALUE		32826
 #endif
 #endif

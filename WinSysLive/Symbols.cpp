@@ -42,20 +42,18 @@ namespace {
 		return len > 0 && len <= _countof(expanded) ? expanded : text;
 	}
 
-	// TotalPE's symbol cache: its setting, else its default
-	std::wstring TotalPECache() {
-		CRegKey key;
-		if (key.Open(HKEY_CURRENT_USER, L"Software\\ScorpioSoftware\\TotalPE", KEY_READ) == ERROR_SUCCESS) {
-			WCHAR value[MAX_PATH];
-			ULONG chars = _countof(value);
-			if (key.QueryStringValue(L"SymbolCache", value, &chars) == ERROR_SUCCESS && value[0])
-				return ExpandEnvironment(value);
-		}
-		return ExpandEnvironment(L"%LOCALAPPDATA%\\TotalPE\\Symbols");
+	std::wstring Trim(std::wstring const& text, PCWSTR chars = L" \t\r\n;") {
+		auto first = text.find_first_not_of(chars);
+		return first == std::wstring::npos ? L"" : text.substr(first, text.find_last_not_of(chars) - first + 1);
 	}
 
-	// whether a symbol path element keeps downloaded files locally: cache*dir, or srv*dir*server
-	bool HasCache(std::wstring const& path) {
+	// whether a symbol path has a symbol server (srv*..., symsrv*...), and whether it keeps downloaded files locally
+	// (cache*dir, or srv*dir*server)
+	struct PathParts {
+		bool Server{ false }, Cache{ false };
+	};
+	PathParts Analyze(std::wstring const& path) {
+		PathParts parts;
 		size_t start = 0;
 		while (start <= path.size()) {
 			auto end = path.find(L';', start);
@@ -63,29 +61,19 @@ namespace {
 			auto lower = element;
 			::CharLowerBuff(lower.data(), (DWORD)lower.size());
 			if (lower.starts_with(L"cache*"))
-				return true;
+				parts.Cache = true;
 			if (lower.starts_with(L"srv*") || lower.starts_with(L"symsrv*")) {
+				parts.Server = true;
 				// srv*server has no cache; srv*cache*server and symsrv*symsrv.dll*cache*server have
 				auto stars = std::ranges::count(element, L'*');
 				if (stars >= (lower.starts_with(L"srv*") ? 2 : 3))
-					return true;
+					parts.Cache = true;
 			}
 			if (end == std::wstring::npos)
 				break;
 			start = end + 1;
 		}
-		return false;
-	}
-
-	std::wstring BuildSearchPath() {
-		WCHAR env[4096];
-		auto len = ::GetEnvironmentVariable(L"_NT_SYMBOL_PATH", env, _countof(env));
-		if (len > 0 && len < _countof(env)) {
-			std::wstring path(env);
-			// downloads go to TotalPE's cache, unless the path names one
-			return HasCache(path) ? path : std::format(L"cache*{};{}", TotalPECache(), path);
-		}
-		return std::format(L"srv*{}*https://msdl.microsoft.com/download/symbols", TotalPECache());
+		return parts;
 	}
 
 	// "\SystemRoot\system32\ntoskrnl.exe", "\??\C:\..." to a Win32 path
@@ -124,6 +112,52 @@ std::wstring FormatAddress(uint64_t address) {
 	return std::format(L"0x{:X}", address);
 }
 
+std::wstring TotalPESymbolCache() {
+	CRegKey key;
+	if (key.Open(HKEY_CURRENT_USER, L"Software\\ScorpioSoftware\\TotalPE", KEY_READ) == ERROR_SUCCESS) {
+		WCHAR value[MAX_PATH];
+		ULONG chars = _countof(value);
+		if (key.QueryStringValue(L"SymbolCache", value, &chars) == ERROR_SUCCESS && value[0])
+			return ExpandEnvironment(value);
+	}
+	return ExpandEnvironment(L"%LOCALAPPDATA%\\TotalPE\\Symbols");
+}
+
+std::wstring GetEnvironmentSymbolPath() {
+	WCHAR env[4096];
+	auto len = ::GetEnvironmentVariable(L"_NT_SYMBOL_PATH", env, _countof(env));
+	return len > 0 && len < _countof(env) ? Trim(env) : L"";
+}
+
+std::wstring BuildSymbolSearchPath(SymbolPathOptions const& options) {
+	std::wstring path;
+	auto add = [&](std::wstring const& part) {
+		if (part.empty())
+			return;
+		if (!path.empty())
+			path += L';';
+		path += part;
+	};
+	auto cache = Trim(options.Cache, L" \t\r\n");
+	cache = cache.empty() ? TotalPESymbolCache() : ExpandEnvironment(cache);
+
+	// local locations first, so the servers are only asked for what they don't have
+	add(Trim(options.ExtraPaths));
+	PathParts env;
+	if (options.UseEnvironment) {
+		auto envPath = GetEnvironmentSymbolPath();
+		env = Analyze(envPath);
+		// its server's downloads go to the cache, unless it names one
+		if (env.Server && !env.Cache)
+			add(L"cache*" + cache);
+		add(envPath);
+	}
+	auto server = Trim(options.ServerUrl, L" \t\r\n");
+	if (options.UseServer && !env.Server && !server.empty())
+		add(std::format(L"srv*{}*{}", cache, server));
+	return path;
+}
+
 struct SymbolEngine::Impl {
 	struct ProcessKey {
 		uint32_t Pid;
@@ -155,6 +189,8 @@ struct SymbolEngine::Impl {
 
 	// guarded by Lock
 	std::mutex Lock;
+	std::wstring Path;			// the search path
+	bool PathChanged{ false };	// the sessions are to be closed, so new ones use the new path
 	std::condition_variable Wake;
 	std::deque<std::variant<ResolveWork, StackWork>> Queue;
 	std::map<AddressKey, std::wstring> Cache;
@@ -200,6 +236,13 @@ struct SymbolEngine::Impl {
 			}
 			if (!Initialized)
 				Initialize();
+			bool pathChanged;
+			{
+				std::lock_guard lock(Lock);
+				pathChanged = std::exchange(PathChanged, false);
+			}
+			if (pathChanged)
+				CloseSessions();
 
 			if (auto resolve = std::get_if<ResolveWork>(&work)) {
 				auto text = Resolve(resolve->Key);
@@ -217,10 +260,7 @@ struct SymbolEngine::Impl {
 					capture.release();
 			}
 		}
-		for (auto& [key, session] : Sessions)
-			::SymCleanup(session.Process.get());
-		if (KernelLoaded)
-			::SymCleanup(KernelSession);
+		CloseSessions();
 	}
 
 	void Initialize() {
@@ -231,9 +271,20 @@ struct SymbolEngine::Impl {
 			SYMOPT_LOAD_LINES | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_OMAP_FIND_NEAREST);
 	}
 
-	std::wstring const& SearchPath() {
-		static std::wstring const path = BuildSearchPath();
-		return path;
+	std::wstring SearchPath() {
+		std::lock_guard lock(Lock);
+		return Path;
+	}
+
+	// after a path change: modules already loaded keep what they found with the old path
+	void CloseSessions() {
+		for (auto& [key, session] : Sessions)
+			::SymCleanup(session.Process.get());
+		Sessions.clear();
+		if (KernelLoaded) {
+			::SymCleanup(KernelSession);
+			KernelLoaded = false;
+		}
 	}
 
 	// the process's session, opened if needed; nullptr (with the last error set) if it can't be opened, or the ID is
@@ -518,6 +569,17 @@ std::optional<std::wstring> SymbolEngine::Lookup(uint32_t pid, int64_t created, 
 
 void SymbolEngine::CaptureStack(uint32_t pid, int64_t created, uint32_t tid, HWND notify) {
 	GetImpl().Post(Impl::StackWork{ { pid, created }, tid, notify, m_Enabled });
+}
+
+void SymbolEngine::SetSearchPath(std::wstring path) {
+	auto& impl = GetImpl();
+	std::lock_guard lock(impl.Lock);
+	if (path == impl.Path)
+		return;
+	impl.Path = std::move(path);
+	impl.PathChanged = true;
+	// resolved again with the new path, as they're shown
+	impl.Cache.clear();
 }
 
 void SymbolEngine::Shutdown() {

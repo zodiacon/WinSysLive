@@ -32,6 +32,10 @@ public:
 	// CNativeCustomTabViewImpl
 	void OnPageActivated(int page);
 
+	// for the Kill command, which acts on the page with the focus
+	CThreadsPage& GetThreadsPage() { return m_Threads; }
+	CHandlesPage& GetHandlesPage() { return m_Handles; }
+
 	// no message map of its own: the base's has an ALT_MSG_MAP(1) section that it routes messages to
 
 private:

@@ -172,6 +172,54 @@ void CHandlesPage::Refresh() {
 	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 }
 
+CHandlesPage::HandleRow const* CHandlesPage::GetSelectedRow() const {
+	int selected = m_List.GetSelectedIndex();
+	return selected >= 0 && selected < (int)m_Rows.size() && !m_Rows[selected].Closed ? &m_Rows[selected] : nullptr;
+}
+
+bool CHandlesPage::CanCloseSelected() const {
+	// closing the app's own handles could break it
+	return m_hProcess && m_Process && m_Process->Id != ::GetCurrentProcessId() && GetSelectedRow();
+}
+
+void CHandlesPage::CloseSelected() {
+	auto row = GetSelectedRow();
+	if (!row || !CanCloseSelected())
+		return;
+	auto& entry = row->Data->Entry;
+	auto type = ObjectTypes::GetName(entry.TypeIndex);
+	auto name = GetName(*row->Data, false);
+	auto question = std::format(L"Close handle 0x{:X} ({}{}{}) in {} ({})?\n\nThe process may fail when it uses the handle.",
+		entry.Value, type, name.empty() ? L"" : L": ", name, m_Process->GetImageName(), m_Process->Id);
+	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return;
+
+	// the handle value may have been closed and reused since the last refresh: the object's type tells
+	auto source = (HANDLE)(ULONG_PTR)entry.Value;
+	wil::unique_handle copy;
+	bool same = false;
+	if (::DuplicateHandle(m_hProcess.get(), source, ::GetCurrentProcess(), copy.addressof(), 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+		BYTE buffer[1024];
+		if (NT_SUCCESS(::NtQueryObject(copy.get(), ObjectTypeInformation, buffer, sizeof(buffer), nullptr))) {
+			auto& info = *reinterpret_cast<OBJECT_TYPE_INFORMATION const*>(buffer);
+			same = type == std::wstring_view(info.TypeName.Buffer, info.TypeName.Length / sizeof(WCHAR));
+		}
+	}
+	if (!same) {
+		AtlMessageBox(m_hWnd, L"The handle isn't there anymore (or is another object's now).", IDR_MAINFRAME, MB_ICONWARNING);
+		Refresh();
+		return;
+	}
+	copy.reset();
+	if (!::DuplicateHandle(m_hProcess.get(), source, nullptr, nullptr, 0, FALSE, DUPLICATE_CLOSE_SOURCE)) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to close the handle: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return;
+	}
+	// shown as closed
+	Refresh();
+}
+
 void CHandlesPage::SelectHandle(uint64_t value) {
 	// the list view keeps the selection by index, which the new rows and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);

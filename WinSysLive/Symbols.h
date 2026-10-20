@@ -28,8 +28,8 @@ struct StackCapture {
 // from the Debugging Tools), so the symbol server works; without them, the system's dbghelp.dll is used, which can't
 // download symbols.
 //
-// The search path is _NT_SYMBOL_PATH, with TotalPE's symbol cache added if it names no cache of its own; without it,
-// the Microsoft symbol server, cached in TotalPE's symbol cache.
+// The search path comes from the UI thread (SetSearchPath, built by BuildSymbolSearchPath from the Symbol Settings); a
+// new path closes the sessions and forgets the resolved addresses, so they're resolved again with it.
 //
 class SymbolEngine final {
 public:
@@ -49,6 +49,9 @@ public:
 	// WM_STACK_CAPTURED
 	void CaptureStack(uint32_t pid, int64_t created, uint32_t tid, HWND notify);
 
+	// the DbgHelp search path; until it's set, symbols are looked up beside the images only
+	void SetSearchPath(std::wstring path);
+
 	// stops the engine's thread, before the app exits
 	void Shutdown();
 
@@ -67,3 +70,22 @@ private:
 
 // "0x7FF812345678", the way the lists show addresses
 std::wstring FormatAddress(uint64_t address);
+
+// where symbols are looked for (the Symbol Settings)
+struct SymbolPathOptions {
+	bool UseEnvironment{ true };	// _NT_SYMBOL_PATH, if it's set
+	bool UseServer{ true };			// a symbol server, unless _NT_SYMBOL_PATH (in use) names one
+	std::wstring ServerUrl{ DefaultSymbolServer };
+	std::wstring Cache;				// downloads; empty: TotalPE's symbol cache
+	std::wstring ExtraPaths;		// searched first; separated by semicolons
+
+	static constexpr PCWSTR DefaultSymbolServer = L"https://msdl.microsoft.com/download/symbols";
+};
+
+// the DbgHelp search path: the extra paths, then _NT_SYMBOL_PATH (with "cache*" the cache added if it has a server
+// but no cache of its own), then "srv*" the cache "*" the server, if _NT_SYMBOL_PATH has none
+std::wstring BuildSymbolSearchPath(SymbolPathOptions const& options);
+// TotalPE's symbol cache (its SymbolCache setting, else its default), expanded
+std::wstring TotalPESymbolCache();
+// _NT_SYMBOL_PATH, or empty if it isn't set
+std::wstring GetEnvironmentSymbolPath();

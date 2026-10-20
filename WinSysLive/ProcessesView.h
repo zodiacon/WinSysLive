@@ -21,6 +21,8 @@ public:
 	void OnFontChanged(HFONT font) override;
 	void OnProcessColorsChanged() override;
 	void ShowProcess(uint32_t pid) override;
+	void OnFrameIdle() override;
+	std::wstring GetCommandTip(UINT id) const override;
 
 	BEGIN_MSG_MAP(CProcessesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -36,6 +38,7 @@ public:
 		CHAIN_MSG_MAP(CViewBase<CProcessesView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILL, OnKill)
+		COMMAND_ID_HANDLER(ID_KILL, OnKillFocused)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILLALL, OnKillAll)
 		COMMAND_ID_HANDLER(ID_PROCESS_SUSPEND, OnSuspend)
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
@@ -84,6 +87,7 @@ private:
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnKillFocused(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSuspend(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -136,6 +140,10 @@ private:
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;
 	std::wstring GetColumnText(ProcessItem& item, Column column) const;
 	void UpdateUI();
+	// what the Kill command (the toolbar, Del) acts on: the list with the focus
+	enum class KillTarget { Process, Thread, Handle, None };
+	KillTarget GetKillTarget() const;
+	bool CanKill() const;
 	// the lower pane shows the selected process (none for one that exited)
 	void UpdateDetails();
 	static bool CanControl(ProcessItem const* item);

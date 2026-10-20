@@ -162,6 +162,14 @@ LRESULT CThreadsPage::OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 	return 0;
 }
 
+bool CThreadsPage::CanTerminateSelected() const {
+	return GetSelectedThread() && CanControl();
+}
+
+void CThreadsPage::TerminateSelected() {
+	SendMessage(WM_COMMAND, ID_THREAD_TERMINATE);
+}
+
 bool CThreadsPage::IsSuspended(ThreadRow const& row) {
 	return row.State == 5 && (row.WaitReason == 5 || row.WaitReason == 12);
 }
