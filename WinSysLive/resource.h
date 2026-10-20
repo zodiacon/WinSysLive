@@ -53,6 +53,8 @@
 #define IDD_PROC_THREADS            246
 #define IDD_PROC_PERFORMANCE        247
 #define IDD_PROC_MEMORY             248
+#define IDD_PROC_JOB                249
+#define IDI_JOB                     250
 #define IDC_PROC_ICON               1005
 #define IDC_PROC_NAME               1006
 #define IDC_PROC_DESCRIPTION        1007
@@ -113,6 +115,15 @@
 #define IDC_PERF_VERTICAL           1063
 #define IDC_MEM_STATUS              1064
 #define IDC_MEM_REFRESH             1065
+#define IDC_JOB_JOBS                1066
+#define IDC_JOB_STATUS              1067
+#define IDC_JOB_LIMITS_LABEL        1068
+#define IDC_JOB_LIMITS              1069
+#define IDC_JOB_STATS_LABEL         1070
+#define IDC_JOB_STATS               1071
+#define IDC_JOB_PROCS_LABEL         1072
+#define IDC_JOB_PROCESSES           1073
+#define IDC_JOB_NAME                1074
 #define ID_VIEW_PROPERTIES          32814
 #define ID_OPTIONS_FONT             32815
 #define ID_OPTIONS_DEFAULTFONT      32816
@@ -167,8 +178,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	249
-#define _APS_NEXT_CONTROL_VALUE		1066
+#define _APS_NEXT_RESOURCE_VALUE	251
+#define _APS_NEXT_CONTROL_VALUE		1075
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32817
 #endif

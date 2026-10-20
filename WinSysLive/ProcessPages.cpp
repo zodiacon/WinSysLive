@@ -567,6 +567,19 @@ SYSTEM_PROCESS_INFORMATION const* ProcessSnapshot::Process() const {
 	return m_Process;
 }
 
+SYSTEM_PROCESS_INFORMATION const* ProcessSnapshot::Find(uint32_t pid) const {
+	if (!m_Process)
+		return nullptr;
+	auto p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(m_Buffer.get());
+	for (;;) {
+		if (HandleToULong(p->UniqueProcessId) == pid)
+			return p;
+		if (p->NextEntryOffset == 0)
+			return nullptr;
+		p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(reinterpret_cast<BYTE const*>(p) + p->NextEntryOffset);
+	}
+}
+
 bool ProcessSnapshot::Exited() const {
 	return m_Exited;
 }

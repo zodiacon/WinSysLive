@@ -55,8 +55,10 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Token);
 	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Threads);
-	if (IsInJob(m_Props.Id))
-		add(L"Job", IDI_PROCESSES, L"The job the process is in: its limits and its processes.");
+	if (IsInJob(m_Props.Id)) {
+		m_Job = std::make_unique<CProcJobPage>(m_Props, m_Snapshot);
+		AddPage(*m_Job);
+	}
 	if (auto services = GetHostedServices(m_Props.Id); !services.empty()) {
 		std::wstring text = L"The services this process hosts:";
 		for (auto& name : services)
@@ -102,6 +104,8 @@ void CProcessSheet::Sample() {
 	m_Performance->OnSample(m_Snapshot);
 	if (m_Threads->IsWindow() && GetActivePage() == m_Threads->m_hWnd)
 		m_Threads->OnSample(m_Snapshot);
+	if (m_Job && m_Job->IsWindow() && GetActivePage() == m_Job->m_hWnd)
+		m_Job->OnSample(m_Snapshot);
 	if (m_Snapshot.Exited())
 		KillTimer(SampleTimerId);
 }

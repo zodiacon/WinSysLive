@@ -156,6 +156,9 @@ public:
 	// the process's entry in the last snapshot, valid until the next Take; nullptr if the snapshot failed or the
 	// process is gone
 	[[nodiscard]] SYSTEM_PROCESS_INFORMATION const* Process() const;
+	// another process's entry in the last snapshot, valid until the next Take; nullptr if it isn't there, or if the
+	// sheet's process is gone (the sheet takes no more snapshots then)
+	[[nodiscard]] SYSTEM_PROCESS_INFORMATION const* Find(uint32_t pid) const;
 	// the process is gone (or its ID belongs to another process now)
 	[[nodiscard]] bool Exited() const;
 	// of the last snapshot (QPC)

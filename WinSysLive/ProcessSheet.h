@@ -4,11 +4,12 @@
 #include <IconPropertySheet.h>
 #include "ProcessPages.h"
 #include "MemoryPage.h"
+#include "JobPage.h"
 
 //
 // A process's properties: a modeless, resizable property sheet with tab icons, run on a thread of its own (see
 // ShowProcessProperties), so a slow page doesn't hold up the main window and the main window's refreshes don't hold
-// up the sheet. It takes a snapshot of the processes every UpdateInterval for the Performance and Threads pages. It has no owner, and a taskbar button of its own. The Job page is added only for a process in a job,
+// up the sheet. It takes a snapshot of the processes every UpdateInterval for the Performance, Threads and Job pages. It has no owner, and a taskbar button of its own. The Job page is added only for a process in a job,
 // the Services page only for a process hosting services.
 //
 class CProcessSheet :
@@ -27,7 +28,8 @@ public:
 private:
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
-	// takes a snapshot for the pages: the Performance page gets every one, the Threads page only while it's active
+	// takes a snapshot for the pages: the Performance page gets every one, the Threads and Job pages only while they're
+	// active
 	void Sample();
 
 	ProcessProperties m_Props;
@@ -40,6 +42,7 @@ private:
 	std::unique_ptr<CProcMemoryPage> m_Memory;
 	std::unique_ptr<CProcTokenPage> m_Token;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
+	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job
 	std::vector<std::unique_ptr<CProcPlaceholderPage>> m_Pages;
 };
 
