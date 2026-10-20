@@ -6,6 +6,7 @@
 #include "ProcessSheet.h"
 #include "WTLHelper.h"
 #include "AppSettings.h"
+#include "Symbols.h"
 
 CAppModule _Module;
 AppSettings _Settings;
@@ -36,6 +37,7 @@ int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 
 	// the property sheets run on threads of their own
 	CloseProcessProperties();
+	SymbolEngine::Get().Shutdown();
 
 	_Module.RemoveMessageLoop();
 	return nRet;

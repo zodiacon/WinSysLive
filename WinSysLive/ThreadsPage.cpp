@@ -7,6 +7,8 @@
 #include "resource.h"
 #include <WTLHelper.h>
 #include <IconHelper.h>
+#include "StackDlg.h"
+#include <WinSys/Helpers.h>
 
 using namespace WinSys;
 
@@ -52,7 +54,7 @@ namespace {
 		{ L"Context Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, true },
 		{ L"Context Switch Delta", L"ContextSwitchDelta", 120, LVCFMT_RIGHT, true },
 		{ L"Service", L"Service", 140, LVCFMT_LEFT, true },
-		{ L"Start Address", L"StartAddress", 140, LVCFMT_RIGHT, true },
+		{ L"Start Address", L"StartAddress", 260, LVCFMT_LEFT, true },	// its symbol, once resolved
 		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
 	};
 
@@ -87,6 +89,131 @@ LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	SuspendHookWhilePainting(m_List);
 
 	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().ThreadColumns(), s_Columns));
+
+	// a tool for the whole list, whose text depends on the cell under the mouse (OnGetTipText)
+	m_Tip.Create(m_hWnd, nullptr, nullptr, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP);
+	CToolInfo ti(TTF_IDISHWND | TTF_SUBCLASS, m_hWnd, (UINT_PTR)m_List.m_hWnd, nullptr, LPSTR_TEXTCALLBACK);
+	m_Tip.AddTool(&ti);
+	::SetWindowSubclass(m_List, ListSubclassProc, 0, (DWORD_PTR)this);
+	return 0;
+}
+
+LRESULT CALLBACK CThreadsPage::ListSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data) {
+	auto page = reinterpret_cast<CThreadsPage*>(data);
+	switch (msg) {
+		case WM_MOUSEMOVE:
+			if (auto cell = page->CellAt({ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); cell != page->m_TipCell) {
+				page->m_TipCell = cell;
+				// hidden; shown again (with the new cell's text) after the usual delay
+				page->m_Tip.Pop();
+			}
+			break;
+		case WM_NCDESTROY:
+			::RemoveWindowSubclass(hWnd, ListSubclassProc, 0);
+			break;
+	}
+	return ::DefSubclassProc(hWnd, msg, wParam, lParam);
+}
+
+std::pair<int, int> CThreadsPage::CellAt(CPoint pt) const {
+	LVHITTESTINFO hti{ pt };
+	if (m_List.SubItemHitTest(&hti) < 0 || hti.iItem >= (int)m_Rows.size())
+		return { -1, -1 };
+	return { hti.iItem, (int)GetColumnManager(m_List)->GetColumnTag<Column>(hti.iSubItem) };
+}
+
+LRESULT CThreadsPage::OnGetTipText(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_Tip) {
+		bHandled = FALSE;
+		return 0;
+	}
+	auto di = reinterpret_cast<NMTTDISPINFO*>(hdr);
+	CPoint pt;
+	::GetCursorPos(&pt);
+	m_List.ScreenToClient(&pt);
+	m_TipCell = CellAt(pt);
+	auto [row, column] = m_TipCell;
+	m_TipText.clear();
+	// the address, where the column shows its symbol instead
+	if (row >= 0 && column == (int)Column::StartAddress) {
+		auto address = (ULONG_PTR)m_Rows[row].StartAddress;
+		if (GetText(m_Rows[row], Column::StartAddress) != FormatAddress(address))
+			m_TipText = FormatAddress(address);
+	}
+	di->lpszText = m_TipText.data();
+	return 0;
+}
+
+LRESULT CThreadsPage::OnSymbolsResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	return 0;
+}
+
+CThreadsPage::ThreadRow const* CThreadsPage::GetSelectedThread() const {
+	int selected = m_List.GetSelectedIndex();
+	return selected >= 0 && selected < (int)m_Rows.size() && !m_Rows[selected].Exited ? &m_Rows[selected] : nullptr;
+}
+
+LRESULT CThreadsPage::OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedThread()) {
+		CStackDlg dlg(m_Pid, m_Created, row->Key.Id, m_ProcessName);
+		dlg.DoModal(m_hWnd);
+	}
+	return 0;
+}
+
+bool CThreadsPage::IsSuspended(ThreadRow const& row) {
+	return row.State == 5 && (row.WaitReason == 5 || row.WaitReason == 12);
+}
+
+bool CThreadsPage::CanControl() const {
+	return m_Pid > 4 && m_Pid != ::GetCurrentProcessId();
+}
+
+LRESULT CThreadsPage::OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto row = GetSelectedThread();
+	if (!row || !CanControl())
+		return 0;
+	auto tid = row->Key.Id;
+	PCWSTR verb = wID == ID_THREAD_TERMINATE ? L"Terminate" : wID == ID_THREAD_SUSPEND ? L"Suspend" : L"Resume";
+	auto question = std::format(L"{} thread {} of {} ({})?", verb, tid, m_ProcessName, m_Pid);
+	if (wID == ID_THREAD_TERMINATE)
+		question += L"\n\nTerminating a thread can leave the process in an inconsistent state.";
+	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME,
+		MB_OKCANCEL | (wID == ID_THREAD_RESUME ? MB_ICONQUESTION : MB_ICONWARNING | MB_DEFBUTTON2)) != IDOK)
+		return 0;
+
+	// the thread ID may belong to another thread by now: the row's creation time tells
+	wil::unique_handle hThread(::OpenThread((wID == ID_THREAD_TERMINATE ? THREAD_TERMINATE : THREAD_SUSPEND_RESUME)
+		| THREAD_QUERY_LIMITED_INFORMATION, FALSE, tid));
+	bool ok = false;
+	if (hThread) {
+		FILETIME created, exited, kernel, user;
+		if (::GetThreadTimes(hThread.get(), &created, &exited, &kernel, &user)
+			&& (int64_t)ULARGE_INTEGER{ created.dwLowDateTime, created.dwHighDateTime }.QuadPart != row->Key.Created)
+			::SetLastError(ERROR_INVALID_PARAMETER);
+		else if (wID == ID_THREAD_TERMINATE)
+			ok = ::TerminateThread(hThread.get(), 1);
+		else if (wID == ID_THREAD_SUSPEND)
+			ok = ::SuspendThread(hThread.get()) != (DWORD)-1;
+		else
+			ok = ::ResumeThread(hThread.get()) != (DWORD)-1;
+	}
+	if (!ok)
+		AtlMessageBox(m_hWnd, std::format(L"Failed to {} the thread: {}", verb, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	// the state shows with the next refresh
+	return 0;
+}
+
+LRESULT CThreadsPage::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+	// posted, so the dialog doesn't run inside the list's mouse handling
+	if (GetSelectedThread())
+		PostMessage(WM_COMMAND, ID_THREAD_STACK);
 	return 0;
 }
 
@@ -118,7 +245,37 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
 	if (!column) {
-		bHandled = FALSE;
+		// a row's: its stack
+		if (!GetSelectedThread()) {
+			bHandled = FALSE;
+			return 0;
+		}
+		if (pt.x == -1 && pt.y == -1) {
+			// from the keyboard: at the selected row
+			CRect rc;
+			m_List.GetItemRect(m_List.GetSelectedIndex(), &rc, LVIR_LABEL);
+			m_List.ClientToScreen(&rc);
+			pt = { rc.left, rc.bottom };
+		}
+		CMenu menu;
+		menu.CreatePopupMenu();
+		menu.AppendMenu(MF_STRING, ID_THREAD_STACK, L"&Stack...");
+		menu.AppendMenu(MF_SEPARATOR);
+		UINT control = CanControl() ? MF_STRING : MF_STRING | MF_GRAYED;
+		bool suspended = IsSuspended(*GetSelectedThread());
+		if (suspended)
+			menu.AppendMenu(control, ID_THREAD_RESUME, L"&Resume");
+		else
+			menu.AppendMenu(control, ID_THREAD_SUSPEND, L"S&uspend");
+		menu.AppendMenu(control, ID_THREAD_TERMINATE, L"&Terminate");
+		// the icons, as the frame's menus have them
+		MenuItemData const icons[] = {
+			{ ID_THREAD_STACK, IDI_STACK },
+			{ suspended ? ID_THREAD_RESUME : ID_THREAD_SUSPEND, suspended ? IDI_RUN : IDI_PAUSE },
+			{ ID_THREAD_TERMINATE, IDI_DELETE },
+		};
+		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons));
+		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}
 	m_MenuColumn = *column;
@@ -189,6 +346,14 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 	uint32_t selectedTid = selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Key.Id : 0;
 
 	m_Rows.clear();
+	if (info) {
+		m_Pid = HandleToULong(info->UniqueProcessId);
+		m_Created = info->CreateTime.QuadPart;
+		m_ProcessName.assign(info->ImageName.Buffer ? info->ImageName.Buffer : L"", info->ImageName.Length / sizeof(WCHAR));
+		// a full snapshot (the frame's, when elevated) has the full path: the file name is enough
+		if (auto slash = m_ProcessName.rfind(L'\\'); slash != std::wstring::npos)
+			m_ProcessName.erase(0, slash + 1);
+	}
 	LARGE_INTEGER now;
 	if (time)
 		now.QuadPart = time;
@@ -326,7 +491,13 @@ std::wstring CThreadsPage::GetText(ThreadRow const& row, Column column) const {
 		case Column::ContextSwitches: return FormatHelper::FormatNumber(row.ContextSwitches);
 		case Column::ContextSwitchDelta: return row.ContextSwitchDelta > 0 ? FormatHelper::FormatNumber(row.ContextSwitchDelta) : L"";
 		case Column::Service: return row.Service ? *row.Service : L"";
-		case Column::StartAddress: return std::format(L"0x{:X}", (ULONG_PTR)row.StartAddress);
+		case Column::StartAddress:
+		{
+			// the symbol once it's resolved (WM_SYMBOLS_RESOLVED repaints), else the address
+			auto address = (ULONG_PTR)row.StartAddress;
+			auto symbol = SymbolEngine::Get().Lookup(m_Pid, m_Created, address, m_hWnd);
+			return symbol && !symbol->empty() ? *symbol : FormatAddress(address);
+		}
 		case Column::Created: return FormatHelper::FormatDateTime(row.Key.Created);
 	}
 	return L"";

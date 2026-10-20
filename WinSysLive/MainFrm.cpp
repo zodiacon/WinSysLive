@@ -9,6 +9,7 @@
 #include "MainFrm.h"
 #include "AppSettings.h"
 #include "ProcessColorsDlg.h"
+#include "Symbols.h"
 #include "FormatHelper.h"
 #include "WTLHelper.h"
 #include <IconHelper.h>
@@ -74,6 +75,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	if (settings.Font().lfFaceName[0])
 		ApplyFont();
 	UIEnable(ID_OPTIONS_DEFAULTFONT, settings.Font().lfFaceName[0] != 0);
+	SymbolEngine::Get().Enable(settings.ResolveSymbols());
+	UISetCheck(ID_OPTIONS_RESOLVESYMBOLS, settings.ResolveSymbols());
 
 	SetUpdateInterval(settings.UpdateInterval());
 
@@ -387,6 +390,18 @@ LRESULT CMainFrame::OnProcessColors(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 	ProcessColors::Save(dlg.GetEntries());
 	for (auto view : m_Views)
 		view->OnProcessColorsChanged();
+	return 0;
+}
+
+LRESULT CMainFrame::OnResolveSymbols(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	bool resolve = !settings.ResolveSymbols();
+	settings.ResolveSymbols(resolve);
+	settings.Save();
+	// the engine is shared with the property sheets' threads, whose lists show the change on their next refresh
+	SymbolEngine::Get().Enable(resolve);
+	UISetCheck(id, resolve);
+	RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
 	return 0;
 }
 

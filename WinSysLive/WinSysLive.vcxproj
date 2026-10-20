@@ -326,6 +326,20 @@
       </DllDataFileName>
     </Midl>
   </ItemDefinitionGroup>
+  <!-- every configuration: DbgHelp, delay-loaded so the symbol engine loads the exe folder's copy (with symsrv.dll,
+       which the system's lacks) before the first call; both are copied from the Debugging Tools after the build -->
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalDependencies>dbghelp.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>dbghelp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(WindowsSdkDir)Debuggers\$(PlatformTarget)\dbghelp.dll" "$(OutDir)" &gt;nul
+xcopy /y /d "$(WindowsSdkDir)Debuggers\$(PlatformTarget)\symsrv.dll" "$(OutDir)" &gt;nul
+exit /b 0</Command>
+      <Message>Copying dbghelp.dll and symsrv.dll from the Debugging Tools</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp" />
     <ClCompile Include="ColumnLayout.cpp" />
@@ -338,6 +352,8 @@
     <ClCompile Include="MemoryPage.cpp" />
     <ClCompile Include="JobPage.cpp" />
     <ClCompile Include="ServicesPage.cpp" />
+    <ClCompile Include="Symbols.cpp" />
+    <ClCompile Include="StackDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="MainFrm.cpp" />
@@ -378,6 +394,8 @@
     <ClInclude Include="MemoryPage.h" />
     <ClInclude Include="JobPage.h" />
     <ClInclude Include="ServicesPage.h" />
+    <ClInclude Include="Symbols.h" />
+    <ClInclude Include="StackDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="AppSettings.h" />

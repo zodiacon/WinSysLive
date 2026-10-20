@@ -36,6 +36,9 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Symbols.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ProcessColors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -93,6 +96,9 @@
     <ClCompile Include="ColumnsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="StackDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="ProcessSheet.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -127,6 +133,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Symbols.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ProcessColors.h">
@@ -190,6 +199,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ColumnsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="StackDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ProcessSheet.h">

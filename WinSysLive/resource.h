@@ -137,6 +137,18 @@
 #define ID_OPTIONS_DEFAULTFONT      32816
 #define ID_OPTIONS_PROCESSCOLORS    32817
 #define ID_VIEW_KEEPSELECTIONVISIBLE 32818
+#define ID_OPTIONS_RESOLVESYMBOLS   32819
+#define ID_THREAD_STACK             32820
+#define ID_THREAD_TERMINATE         32821
+#define ID_THREAD_SUSPEND           32822
+#define ID_THREAD_RESUME            32823
+#define IDD_STACK                   255
+#define IDI_STACK                   256
+#define IDI_DELETE                  257
+#define IDC_STACK_LIST              1120
+#define IDC_STACK_STATUS            1121
+#define IDC_STACK_REFRESH           1122
+#define IDC_STACK_COPY              1123
 #define IDI_NETWORK                 253
 #define IDD_PROC_TCPIP              254
 #define IDC_TCPIP_LIST              1115
@@ -228,9 +240,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	255
-#define _APS_NEXT_CONTROL_VALUE		1120
+#define _APS_NEXT_RESOURCE_VALUE	258
+#define _APS_NEXT_CONTROL_VALUE		1124
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32819
+#define _APS_NEXT_COMMAND_VALUE		32824
 #endif
 #endif

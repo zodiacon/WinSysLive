@@ -112,6 +112,7 @@ BEGIN
         MENUITEM "Default F&ont",               ID_OPTIONS_DEFAULTFONT
         MENUITEM SEPARATOR
         MENUITEM "Process &Colors...",          ID_OPTIONS_PROCESSCOLORS
+        MENUITEM "Resolve &Symbols",            ID_OPTIONS_RESOLVESYMBOLS
     END
     POPUP "&Help"
     BEGIN
@@ -265,6 +266,10 @@ IDI_ENVIRONMENT         ICON                    "res\\EnvironmentVariables.ico"
 IDI_JOB                 ICON                    "res\\job.ico"
 
 IDI_NETWORK             ICON                    "res\\network.ico"
+
+IDI_STACK               ICON                    "res\\stack.ico"
+
+IDI_DELETE              ICON                    "res\\delete.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -460,6 +465,18 @@ BEGIN
     PUSHBUTTON      "&Start",IDC_SVC_START,155,208,50,14,WS_DISABLED
     PUSHBUTTON      "S&top",IDC_SVC_STOP,211,208,50,14,WS_DISABLED
     PUSHBUTTON      "&Refresh",IDC_SVC_REFRESH,273,208,50,14
+END
+
+IDD_STACK DIALOGEX 0, 0, 480, 260
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Stack"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_STACK_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,466,222
+    LTEXT           "",IDC_STACK_STATUS,7,242,280,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_STACK_REFRESH,305,239,50,14
+    PUSHBUTTON      "&Copy",IDC_STACK_COPY,364,239,50,14
+    PUSHBUTTON      "Close",IDCANCEL,423,239,50,14
 END
 
 IDD_COLUMNS DIALOGEX 0, 0, 230, 220

@@ -4,6 +4,7 @@
 #include <WinSys/Keys.h>
 #include <WinSys/Thread.h>
 #include "ColumnLayout.h"
+#include "Symbols.h"
 #include "resource.h"
 
 struct ProcessInfoEx;
@@ -16,7 +17,9 @@ struct ProcessInfoEx;
 // doesn't have (ideal CPU, I/O and memory priority, cycles, service) are queried through a handle to each
 // thread, opened once while its process is shown. New threads are highlighted for a while, exited ones are shown
 // (with their last values) for one refresh. The columns are chosen from the header's context menu and kept in the
-// ThreadColumns setting.
+// ThreadColumns setting. The start addresses show their symbols (SymbolEngine) once resolved, with the address in a
+// tooltip; Stack (a row's context menu, or a double-click) shows a thread's stack (CStackDlg). The context menu also
+// suspends, resumes and terminates the thread, after asking.
 //
 class CThreadsPage :
 	public CWindowImpl<CThreadsPage>,
@@ -55,7 +58,14 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
+		MESSAGE_HANDLER(WM_SYMBOLS_RESOLVED, OnSymbolsResolved)
+		COMMAND_ID_HANDLER(ID_THREAD_STACK, OnStack)
+		COMMAND_ID_HANDLER(ID_THREAD_TERMINATE, OnThreadControl)
+		COMMAND_ID_HANDLER(ID_THREAD_SUSPEND, OnThreadControl)
+		COMMAND_ID_HANDLER(ID_THREAD_RESUME, OnThreadControl)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
+		NOTIFY_CODE_HANDLER(TTN_GETDISPINFO, OnGetTipText)
 		CHAIN_MSG_MAP(CVirtualListView<CThreadsPage>)
 	END_MSG_MAP()
 
@@ -113,8 +123,24 @@ private:
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnSymbolsResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnGetTipText(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+
+	// the list's mouse moves: the tooltip asks for its text again when the mouse moves to another cell
+	static LRESULT CALLBACK ListSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR data);
+	// the row and Column under the point (list client coordinates), or -1s
+	std::pair<int, int> CellAt(CPoint pt) const;
 
 	std::wstring GetText(ThreadRow const& row, Column column) const;
+	// the selected row, if it's a thread that's still there
+	ThreadRow const* GetSelectedThread() const;
+	// waiting because it's suspended (KWAIT_REASON Suspended or WrSuspended)
+	static bool IsSuspended(ThreadRow const& row);
+	// not the app's own threads (suspending one could hang the app), nor the Idle and System processes'
+	bool CanControl() const;
 	void SelectThread(uint32_t tid);
 
 	// the shown columns in display order (the header's order, which the user can change by dragging)
@@ -124,6 +150,13 @@ private:
 	void SaveColumns() const;
 
 	CListViewCtrl m_List;
+	CToolTipCtrl m_Tip;	// the start address of a row showing its symbol
+	std::wstring m_TipText;
+	std::pair<int, int> m_TipCell{ -1, -1 };	// row and Column the tooltip is for
+	// the process the threads are of, for symbols and stacks
+	uint32_t m_Pid{ 0 };
+	int64_t m_Created{ 0 };
+	std::wstring m_ProcessName;
 	CImageList m_Images;	// the thread state icons, owned by the list
 	std::unordered_map<UINT, int> m_IconIndices;	// IDI_* to their index in m_Images
 	std::optional<std::wstring> m_Columns;	// see UseColumns
