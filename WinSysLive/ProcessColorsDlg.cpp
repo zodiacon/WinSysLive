@@ -2,7 +2,7 @@
 #include "ProcessColorsDlg.h"
 
 namespace {
-	const int Rows = IDC_PCOLOR_ENABLE8 - IDC_PCOLOR_ENABLE1 + 1;
+	const int Rows = IDC_PCOLOR_ENABLE10 - IDC_PCOLOR_ENABLE1 + 1;
 }
 
 CProcessColorsDlg::CProcessColorsDlg(std::vector<ProcessColors::Entry> entries) : m_Entries(std::move(entries)), m_Defaults(ProcessColors::Defaults()) {
@@ -35,11 +35,11 @@ void CProcessColorsDlg::UpdateDefaultButton(int row) {
 }
 
 bool CProcessColorsDlg::IsDarkSwatch(UINT id) {
-	return id >= IDC_PCOLOR_DARK1 && id <= IDC_PCOLOR_DARK8;
+	return id >= IDC_PCOLOR_DARK1 && id <= IDC_PCOLOR_DARK10;
 }
 
 COLORREF* CProcessColorsDlg::ColorOf(UINT id) {
-	if (id >= IDC_PCOLOR_LIGHT1 && id <= IDC_PCOLOR_LIGHT8)
+	if (id >= IDC_PCOLOR_LIGHT1 && id <= IDC_PCOLOR_LIGHT10)
 		return &m_Entries[id - IDC_PCOLOR_LIGHT1].Light;
 	if (IsDarkSwatch(id))
 		return &m_Entries[id - IDC_PCOLOR_DARK1].Dark;

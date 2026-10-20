@@ -43,7 +43,28 @@ int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	return nRet;
 }
 
+// started as Task Manager (Options > Replace Task Manager: Windows passes taskmgr.exe's path) while an instance runs:
+// that one comes to the front (from the tray too), as Task Manager does
+static bool ActivateRunningInstance(PCWSTR cmdLine) {
+	std::wstring args(cmdLine ? cmdLine : L"");
+	::CharLowerBuff(args.data(), (DWORD)args.size());
+	if (args.find(L"taskmgr.exe") == std::wstring::npos)
+		return false;
+	auto hWnd = ::FindWindow(CMainFrame::WindowClassName, nullptr);
+	if (!hWnd)
+		return false;
+	// this process may set the foreground window (the user just started it), the running one may not
+	DWORD pid = 0;
+	::GetWindowThreadProcessId(hWnd, &pid);
+	::AllowSetForegroundWindow(pid);
+	::PostMessage(hWnd, CMainFrame::ActivateMessage, 0, 0);
+	return true;
+}
+
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow) {
+	if (ActivateRunningInstance(lpstrCmdLine))
+		return 0;
+
 	HRESULT hRes = ::CoInitialize(nullptr);
 	ATLASSERT(SUCCEEDED(hRes));
 

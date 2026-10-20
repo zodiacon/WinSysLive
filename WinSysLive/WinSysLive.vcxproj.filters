@@ -75,6 +75,12 @@
     <ClCompile Include="NetworkView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="TrayIcon.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="DriversView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ThreadsPage.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -193,6 +199,12 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="NetworkView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayIcon.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="DriversView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ThreadsPage.h">

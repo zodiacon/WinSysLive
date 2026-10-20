@@ -15,6 +15,7 @@
 #include <IconHelper.h>
 #include <ToolbarHelper.h>
 #include <WinSys/SecurityHelper.h>
+#include <WinSys/Helpers.h>
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	// keys that edit text belong to an edit control with the focus (a filter box, a label being edited), not to the
@@ -111,6 +112,175 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	SetUpdateInterval(settings.UpdateInterval());
 
+	// an elevated instance still gets these from the shell and a second, non-elevated instance (UIPI)
+	::ChangeWindowMessageFilterEx(m_hWnd, s_TaskbarCreated, MSGFLT_ALLOW, nullptr);
+	::ChangeWindowMessageFilterEx(m_hWnd, ActivateMessage, MSGFLT_ALLOW, nullptr);
+	ShowTrayIcon(settings.TrayIcon());
+	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
+	UIEnable(ID_OPTIONS_MINIMIZETOTRAY, settings.TrayIcon());
+	if (settings.AlwaysOnTop())
+		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
+	// changing it writes to HKLM
+	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
+	UIEnable(ID_OPTIONS_REPLACETASKMANAGER, elevated);
+
+	return 0;
+}
+
+void CMainFrame::ShowTrayIcon(bool show) {
+	if (show && !m_Tray.IsShown()) {
+		m_Tray.SetTip(L"WinSysLive");
+		m_Tray.Add(m_hWnd, WM_TRAYICON);
+	}
+	else if (!show) {
+		m_Tray.Remove();
+		// a window hidden in the tray would have no way back
+		if (!IsWindowVisible())
+			RestoreWindow();
+	}
+	UISetCheck(ID_OPTIONS_TRAYICON, show);
+}
+
+void CMainFrame::RestoreWindow() {
+	if (!IsWindowVisible())
+		ShowWindow(SW_SHOW);
+	if (IsIconic())
+		ShowWindow(SW_RESTORE);
+	SetForegroundWindow(m_hWnd);
+}
+
+LRESULT CMainFrame::OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
+	// minimized to the tray: the window goes from the taskbar, the icon brings it back
+	if (wParam == SIZE_MINIMIZED && m_Tray.IsShown() && AppSettings::Get().MinimizeToTray())
+		ShowWindow(SW_HIDE);
+	bHandled = FALSE;	// the frame's layout
+	return 0;
+}
+
+LRESULT CMainFrame::OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	switch ((UINT)lParam) {
+		case WM_LBUTTONUP:
+			// the click made the taskbar the foreground window, so there's no telling whether the window was in front:
+			// it comes back, or to the front (the menu's Hide sends it away)
+			RestoreWindow();
+			break;
+
+		case WM_RBUTTONUP:
+			ShowTrayMenu();
+			break;
+	}
+	return 0;
+}
+
+void CMainFrame::ShowTrayMenu() {
+	CMenu menu;
+	menu.CreatePopupMenu();
+	bool shown = IsWindowVisible() && !IsIconic();
+	menu.AppendMenu(MF_STRING, ID_TRAY_SHOW, shown ? L"&Hide WinSysLive" : L"&Show WinSysLive");
+	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING | (m_Paused ? MF_CHECKED : 0), ID_VIEW_PAUSE, L"&Pause Updates");
+	menu.AppendMenu(MF_STRING | (AppSettings::Get().AlwaysOnTop() ? MF_CHECKED : 0), ID_OPTIONS_ALWAYSONTOP, L"Always on &Top");
+	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING, ID_APP_EXIT, L"E&xit");
+	menu.SetMenuDefaultItem(ID_TRAY_SHOW);
+
+	// so the menu closes when the user clicks elsewhere
+	SetForegroundWindow(m_hWnd);
+	POINT pt;
+	::GetCursorPos(&pt);
+	ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
+	PostMessage(WM_NULL);
+}
+
+LRESULT CMainFrame::OnTrayShow(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (IsWindowVisible() && !IsIconic())
+		ShowWindow(SW_MINIMIZE);	// to the tray, with Minimize to Tray
+	else
+		RestoreWindow();
+	return 0;
+}
+
+LRESULT CMainFrame::OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// Explorer restarted, without the icons
+	if (AppSettings::Get().TrayIcon()) {
+		m_Tray.Remove();
+		ShowTrayIcon(true);
+	}
+	return 0;
+}
+
+LRESULT CMainFrame::OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	RestoreWindow();
+	return 0;
+}
+
+LRESULT CMainFrame::OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	bool show = !settings.TrayIcon();
+	settings.TrayIcon(show);
+	settings.Save();
+	ShowTrayIcon(show);
+	UIEnable(ID_OPTIONS_MINIMIZETOTRAY, show);
+	return 0;
+}
+
+LRESULT CMainFrame::OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	settings.MinimizeToTray(!settings.MinimizeToTray());
+	settings.Save();
+	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
+	return 0;
+}
+
+LRESULT CMainFrame::OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	bool top = !settings.AlwaysOnTop();
+	settings.AlwaysOnTop(top);
+	settings.Save();
+	SetWindowPos(top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	UISetCheck(ID_OPTIONS_ALWAYSONTOP, top);
+	return 0;
+}
+
+namespace {
+	PCWSTR const TaskManagerOptionsKey = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\taskmgr.exe";
+
+	std::wstring ExePath() {
+		WCHAR path[MAX_PATH];
+		::GetModuleFileName(nullptr, path, _countof(path));
+		return path;
+	}
+
+	std::wstring Lowercase(std::wstring text) {
+		::CharLowerBuff(text.data(), (DWORD)text.size());
+		return text;
+	}
+}
+
+bool CMainFrame::IsTaskManagerReplaced() {
+	CRegKey key;
+	if (key.Open(HKEY_LOCAL_MACHINE, TaskManagerOptionsKey, KEY_QUERY_VALUE) != ERROR_SUCCESS)
+		return false;
+	WCHAR value[MAX_PATH * 2];
+	ULONG chars = _countof(value);
+	if (key.QueryStringValue(L"Debugger", value, &chars) != ERROR_SUCCESS)
+		return false;
+	// another tool's (Process Explorer's) isn't this one
+	return Lowercase(value).find(Lowercase(ExePath())) != std::wstring::npos;
+}
+
+LRESULT CMainFrame::OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// Windows starts the "debugger" instead of taskmgr.exe (Ctrl+Shift+Esc too), with taskmgr's path as an argument
+	bool replace = !IsTaskManagerReplaced();
+	CRegKey key;
+	auto error = key.Create(HKEY_LOCAL_MACHINE, TaskManagerOptionsKey, nullptr, 0, KEY_SET_VALUE | KEY_QUERY_VALUE);
+	if (error == ERROR_SUCCESS)
+		error = replace ? key.SetStringValue(L"Debugger", std::format(L"\"{}\"", ExePath()).c_str()) : key.DeleteValue(L"Debugger");
+	if (error != ERROR_SUCCESS)
+		AtlMessageBox(m_hWnd, std::format(L"Failed to {} Task Manager: {}", replace ? L"replace" : L"restore",
+			WinSys::Helpers::GetErrorText(error)).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
 	return 0;
 }
 
@@ -218,6 +388,7 @@ void CMainFrame::CreateTabs() {
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	KillTimer(TimerId);
 	SaveSettings();
+	m_Tray.Remove();
 
 	// the views delete themselves as their windows are destroyed, and the tab view activates pages while
 	// removing them (TBVN_PAGEACTIVATED), so stop talking to the views now
@@ -266,6 +437,13 @@ void CMainFrame::UpdateStatusBar() {
 	if (auto idle = m_ProcessManager.GetProcessById(0); idle) {
 		auto cpu = std::clamp(100.0 - idle->CPU / 10000.0, 0.0, 100.0);
 		m_StatusBar.SetPaneText(ID_PANE_CPU, std::format(L"CPU: {:.1f}%", cpu).c_str());
+		if (m_Tray.IsShown()) {
+			MEMORYSTATUSEX memory{ sizeof(memory) };
+			::GlobalMemoryStatusEx(&memory);
+			m_Tray.AddSample((float)cpu);
+			m_Tray.SetTip(std::format(L"WinSysLive\nCPU: {:.1f}%\nMemory: {}%", cpu, memory.dwMemoryLoad));
+			m_Tray.Update();
+		}
 	}
 }
 

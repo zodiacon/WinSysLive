@@ -149,6 +149,8 @@ private:
 	void UpdateDeltas(ProcessItem& item);
 	// the kinds that don't change (secure, protected, immersive, job); Service and DotNet are set separately
 	void SetFixedKinds(ProcessItem& item) const;
+	static bool IsSuspended(ProcessInfoEx const& process);
+	void UpdateSuspended(ProcessItem& item);
 	// the PIDs hosting running services; false if they're unchanged
 	bool UpdateServicePids();
 	// sets DotNet on the processes the CLR has started in (see UpdateDotNet in the .cpp)
@@ -197,6 +199,7 @@ private:
 	DWORD m_NetworkError{ 0 };	// why it didn't start
 	std::vector<ProcessColors::Entry> m_Colors;	// the ProcessColors setting
 	std::unordered_set<uint32_t> m_ServicePids;
+	std::wstring m_CurrentUser;	// DOMAIN\user, for the Own kind
 	// refreshes left to enumerate the services again; set when processes start, as a service host is a new process
 	int m_ServiceRechecks{ 0 };
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1

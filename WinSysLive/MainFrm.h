@@ -10,6 +10,7 @@
 #include <TabViewHelper.h>
 #include "Interfaces.h"
 #include "FindHandleDlg.h"
+#include "TrayIcon.h"
 
 // tabs are fixed, so no close button; the image list is the frame's shared one
 class CMainTabView : public CNativeCustomTabViewImpl<CMainTabView> {
@@ -29,16 +30,27 @@ class CMainFrame :
 	public CMessageFilter,
 	public CIdleHandler {
 public:
-	DECLARE_FRAME_WND_CLASS(NULL, IDR_MAINFRAME)
+	// a fixed class name, so a second instance started as Task Manager finds the first (ActivateMessage)
+	static constexpr PCWSTR WindowClassName = L"WinSysLiveFrame";
+	DECLARE_FRAME_WND_CLASS(WindowClassName, IDR_MAINFRAME)
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	virtual BOOL OnIdle();
+
+	// posted by another instance to bring this one's window back (from the tray too)
+	static inline UINT const ActivateMessage = ::RegisterWindowMessage(L"WinSysLive.Activate");
+	// the notification icon's mouse messages
+	static constexpr UINT WM_TRAYICON = WM_APP + 0x130;
 
 	BEGIN_MSG_MAP(CMainFrame)
 		COMMAND_TABVIEW_HANDLER(m_Tabs, 1)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_TRAYICON, OnTrayIcon)
+		MESSAGE_HANDLER(s_TaskbarCreated, OnTaskbarCreated)
+		MESSAGE_HANDLER(ActivateMessage, OnActivateMessage)
 		NOTIFY_CODE_HANDLER(TBVN_PAGEACTIVATED, OnPageActivated)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipText)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
@@ -53,6 +65,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_PERFORMANCE, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_USERS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_NETWORK, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_DRIVERS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
@@ -61,6 +74,11 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVESYMBOLS, OnResolveSymbols)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SYMBOLSETTINGS, OnSymbolSettings)
 		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
+		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
+		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
+		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
+		COMMAND_ID_HANDLER(ID_OPTIONS_REPLACETASKMANAGER, OnReplaceTaskManager)
+		COMMAND_ID_HANDLER(ID_TRAY_SHOW, OnTrayShow)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
 	END_MSG_MAP()
@@ -91,6 +109,18 @@ public:
 	LRESULT OnResolveSymbols(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnTrayShow(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	// Options > Replace Task Manager: the Debugger value of taskmgr.exe's Image File Execution Options names this exe
+	static bool IsTaskManagerReplaced();
 
 private:
 	// IMainFrame
@@ -116,6 +146,7 @@ private:
 		{ TabType::Performance, ID_VIEW_PERFORMANCE, IDI_PERFORMANCE },
 		{ TabType::Users, ID_VIEW_USERS, IDI_USERS },
 		{ TabType::Network, ID_VIEW_NETWORK, IDI_NETWORK },
+		{ TabType::Drivers, ID_VIEW_DRIVERS, IDI_DEVICE },
 	};
 
 	struct IntervalInfo {
@@ -144,6 +175,11 @@ private:
 	void SetUpdateInterval(int interval);
 	void SetPaused(bool paused);
 	void SaveSettings();
+	// the tray icon as the TrayIcon setting has it
+	void ShowTrayIcon(bool show);
+	// the window back from the tray (or minimized), in front
+	void RestoreWindow();
+	void ShowTrayMenu();
 
 	enum { TimerId = 1 };
 
@@ -158,6 +194,8 @@ private:
 	std::wstring m_TipText;	// a toolbar tooltip from the active view (OnToolTipText)
 	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
+	CTrayIcon m_Tray;
+	static inline UINT const s_TaskbarCreated = ::RegisterWindowMessage(L"TaskbarCreated");
 	ProcessManager m_ProcessManager;
 	int m_ActivePage{ -1 };
 	bool m_Paused{ false };

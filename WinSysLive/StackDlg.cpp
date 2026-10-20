@@ -16,6 +16,8 @@ LRESULT CStackDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_List.InsertColumn(1, L"Address", LVCFMT_RIGHT, width(130));
 	m_List.InsertColumn(2, L"Symbol", LVCFMT_LEFT, width(380));
 	m_List.InsertColumn(3, L"Source", LVCFMT_LEFT, width(300));
+	m_List.InsertColumn(4, L"Module", LVCFMT_LEFT, width(300));
+	m_List.InsertColumn(5, L"Symbols", LVCFMT_LEFT, width(300));
 
 	DlgResize_Init(true, true);
 	CenterWindow(GetParent());
@@ -42,6 +44,8 @@ LRESULT CStackDlg::OnStackCaptured(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 		m_List.SetItemText(n, 1, (f.Is32Bit ? std::format(L"0x{:08X}", f.Address) : FormatAddress(f.Address)).c_str());
 		m_List.SetItemText(n, 2, f.Symbol.c_str());
 		m_List.SetItemText(n, 3, f.Source.c_str());
+		m_List.SetItemText(n, 4, f.Module.c_str());
+		m_List.SetItemText(n, 5, GetSymbolsText(f).c_str());
 	}
 	m_List.SetRedraw(TRUE);
 
@@ -54,9 +58,47 @@ LRESULT CStackDlg::OnStackCaptured(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 			text += std::format(L" ({} of them 32-bit, after the native ones)", frames32);
 		if (!SymbolEngine::Get().IsEnabled())
 			text += L"    Symbols aren't resolved (Options > Resolve Symbols)";
+		else {
+			// the modules whose frames show exports or offsets only: their PDBs weren't found (or downloaded)
+			std::vector<std::wstring> missing;
+			for (auto& f : m_Frames) {
+				if (f.Module.empty() || (f.Symbols != WinSys::ModuleSymbolsKind::Exports && f.Symbols != WinSys::ModuleSymbolsKind::None))
+					continue;
+				auto slash = f.Module.rfind(L'\\');
+				auto name = slash == std::wstring::npos ? f.Module : f.Module.substr(slash + 1);
+				if (std::ranges::find(missing, name) == missing.end())
+					missing.push_back(std::move(name));
+			}
+			if (!missing.empty()) {
+				text += L"    No PDB for: ";
+				for (size_t i = 0; i < missing.size(); i++)
+					text += (i ? L", " : L"") + missing[i];
+			}
+		}
 		SetDlgItemText(IDC_STACK_STATUS, text.c_str());
 	}
 	GetDlgItem(IDC_STACK_COPY).EnableWindow(!m_Frames.empty());
+	return 0;
+}
+
+std::wstring CStackDlg::GetSymbolsText(StackFrame const& frame) {
+	if (frame.Module.empty())
+		return L"";
+	using enum WinSys::ModuleSymbolsKind;
+	switch (frame.Symbols) {
+		case Pdb: case Other: return frame.SymbolFile.empty() ? L"Loaded" : frame.SymbolFile;
+		case Exports: return L"Exports only (no PDB)";
+		case None: return L"None";
+	}
+	return L"Not loaded";
+}
+
+LRESULT CStackDlg::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	auto index = reinterpret_cast<NMITEMACTIVATE*>(hdr)->iItem;
+	if (index < 0 || index >= (int)m_Frames.size() || m_Frames[index].Module.empty())
+		return 0;
+	// the module's folder, with the file selected
+	::ShellExecute(m_hWnd, L"open", L"explorer.exe", std::format(L"/select,\"{}\"", m_Frames[index].Module).c_str(), nullptr, SW_SHOWNORMAL);
 	return 0;
 }
 
@@ -69,8 +111,8 @@ LRESULT CStackDlg::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, 
 	std::wstring text;
 	for (int i = 0; i < (int)m_Frames.size(); i++) {
 		auto& f = m_Frames[i];
-		text += std::format(L"{}\t{}\t{}\t{}\r\n", i, f.Is32Bit ? std::format(L"0x{:08X}", f.Address) : FormatAddress(f.Address),
-			f.Symbol, f.Source);
+		text += std::format(L"{}\t{}\t{}\t{}\t{}\t{}\r\n", i, f.Is32Bit ? std::format(L"0x{:08X}", f.Address) : FormatAddress(f.Address),
+			f.Symbol, f.Source, f.Module, GetSymbolsText(f));
 	}
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;

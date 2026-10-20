@@ -320,6 +320,12 @@ struct SymbolEngine::Impl {
 			StackFrame frame{ f.Address, L"", L"", f.Is32Bit };
 			if (resolve)
 				frame.Symbol = Symbol(session, f.Address, &frame.Source);
+			// after resolving, which loads the module's symbols (unresolved, they're shown as not loaded)
+			if (auto module = session->GetModuleSymbols(f.Address)) {
+				frame.Module = std::move(module->ImagePath);
+				frame.SymbolFile = std::move(module->SymbolFile);
+				frame.Symbols = module->Kind;
+			}
 			capture.Frames.push_back(std::move(frame));
 		}
 		if (capture.Frames.empty())

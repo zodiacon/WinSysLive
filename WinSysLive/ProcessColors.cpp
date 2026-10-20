@@ -8,6 +8,7 @@ namespace ProcessColors {
 		return {
 			{ ProcessKind::Exited, L"Exited", true, RGB(255, 160, 160), RGB(128, 0, 0) },
 			{ ProcessKind::New, L"New", true, RGB(160, 255, 160), RGB(0, 96, 0) },
+			{ ProcessKind::Suspended, L"Suspended", true, RGB(192, 192, 192), RGB(80, 80, 80) },
 			{ ProcessKind::Secure, L"Secure", true, RGB(200, 180, 255), RGB(62, 50, 112) },
 			{ ProcessKind::Protected, L"Protected", true, RGB(255, 128, 255), RGB(106, 42, 106) },
 			{ ProcessKind::Immersive, L"Immersive", true, RGB(128, 255, 255), RGB(30, 90, 90) },
@@ -15,6 +16,8 @@ namespace ProcessColors {
 			{ ProcessKind::Service, L"Service", true, RGB(255, 208, 208), RGB(90, 46, 46) },
 			// many processes are in jobs (browsers, packaged apps...), which would drown the other colors
 			{ ProcessKind::Job, L"Job", false, RGB(208, 168, 144), RGB(90, 66, 50) },
+			// last: the user's own processes are colored only if nothing else applies
+			{ ProcessKind::Own, L"Own", true, RGB(208, 224, 255), RGB(40, 56, 96) },
 		};
 	}
 

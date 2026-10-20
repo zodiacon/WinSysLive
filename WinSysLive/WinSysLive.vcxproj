@@ -378,6 +378,8 @@ exit /b 0</Command>
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
     <ClCompile Include="NetworkView.cpp" />
+    <ClCompile Include="TrayIcon.cpp" />
+    <ClCompile Include="DriversView.cpp" />
     <ClCompile Include="AccessMask.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
@@ -422,6 +424,8 @@ exit /b 0</Command>
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
     <ClInclude Include="NetworkView.h" />
+    <ClInclude Include="TrayIcon.h" />
+    <ClInclude Include="DriversView.h" />
     <ClInclude Include="AccessMask.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />

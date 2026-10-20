@@ -91,6 +91,10 @@ CString CProcessesView::GetTitle() const {
 LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
+	// the Own kind: the app's own entry in the snapshot gives the user as GetUser formats it
+	if (auto self = Frame()->GetProcessManager().GetProcessById(::GetCurrentProcessId()))
+		m_CurrentUser = self->GetUser();
+
 	// the filter box (below, once the list exists) goes in a rebar of the view's own, above the list
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 
@@ -313,7 +317,8 @@ void CProcessesView::ShowProcess(uint32_t pid) {
 
 void CProcessesView::SetFixedKinds(ProcessItem& item) const {
 	auto& p = *item.Process;
-	auto kinds = item.Kinds & (ProcessKind::Service | ProcessKind::DotNet);
+	// the kinds that are checked on refreshes, not only here
+	auto kinds = item.Kinds & (ProcessKind::Service | ProcessKind::DotNet | ProcessKind::Suspended);
 	if (p.IsSecure())
 		kinds |= ProcessKind::Secure;
 	if (p.IsProtected())
@@ -322,7 +327,31 @@ void CProcessesView::SetFixedKinds(ProcessItem& item) const {
 		kinds |= ProcessKind::Immersive;
 	if (GetJobId(p))
 		kinds |= ProcessKind::Job;
+	if (!m_CurrentUser.empty() && ::_wcsicmp(p.GetUser().c_str(), m_CurrentUser.c_str()) == 0)
+		kinds |= ProcessKind::Own;
 	item.Kinds = kinds;
+}
+
+bool CProcessesView::IsSuspended(ProcessInfoEx const& process) {
+	// every thread waiting because it's suspended (a suspended process, a frozen Store app); the threads are
+	// SYSTEM_EXTENDED_THREAD_INFORMATION (as in GetContextSwitches)
+	auto info = process.NativeInfo;
+	if (info->NumberOfThreads == 0 || process.Id <= 4)
+		return false;
+	auto threads = reinterpret_cast<SYSTEM_EXTENDED_THREAD_INFORMATION const*>(info->Threads);
+	for (ULONG i = 0; i < info->NumberOfThreads; i++) {
+		auto& t = threads[i].ThreadInfo;
+		if (t.ThreadState != KTHREAD_STATE::Waiting || (t.WaitReason != KWAIT_REASON::Suspended && t.WaitReason != KWAIT_REASON::WrSuspended))
+			return false;
+	}
+	return true;
+}
+
+void CProcessesView::UpdateSuspended(ProcessItem& item) {
+	if (IsSuspended(*item.Process))
+		item.Kinds |= ProcessKind::Suspended;
+	else
+		item.Kinds &= ~ProcessKind::Suspended;
 }
 
 bool CProcessesView::UpdateServicePids() {
@@ -414,6 +443,7 @@ void CProcessesView::BuildItems() {
 	UpdateServicePids();
 	for (auto& [key, item] : m_Items) {
 		SetFixedKinds(item);
+		UpdateSuspended(item);
 		if (m_ServicePids.contains(key.Id))
 			item.Kinds |= ProcessKind::Service;
 	}
@@ -491,6 +521,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated) {
 			UpdateDeltas(item);
+			UpdateSuspended(item);
 			if (gpu)
 				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
 		}

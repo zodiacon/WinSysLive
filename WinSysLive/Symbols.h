@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <WinSys/SymbolHandler.h>
 
 // posted to a window when addresses it looked up (SymbolEngine::Lookup) are resolved
 constexpr UINT WM_SYMBOLS_RESOLVED = WM_APP + 0x100;
@@ -23,6 +24,9 @@ struct StackFrame {
 	std::wstring Symbol;	// "module!function+0x10", "module+0x1234", or empty
 	std::wstring Source;	// "file(line)" when the symbols have line numbers
 	bool Is32Bit{ false };	// a WOW64 thread's 32-bit frame
+	std::wstring Module;	// the module's file; empty if the address is in no known module
+	std::wstring SymbolFile;	// the PDB the module's symbols came from
+	WinSys::ModuleSymbolsKind Symbols{ WinSys::ModuleSymbolsKind::NotLoaded };
 };
 
 struct StackCapture {

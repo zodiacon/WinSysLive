@@ -1,7 +1,7 @@
 #pragma once
 
 // What a process is, for the Processes view's row colors (flags: a process can be several)
-enum class ProcessKind : uint8_t {
+enum class ProcessKind : uint16_t {
 	None = 0,
 	Secure = 1,
 	Protected = 2,
@@ -12,6 +12,8 @@ enum class ProcessKind : uint8_t {
 	// the view's highlights, not what the process is
 	New = 64,
 	Exited = 128,
+	Suspended = 256,	// every thread suspended (checked on every refresh)
+	Own = 512,			// running as the app's user
 };
 DEFINE_ENUM_FLAG_OPERATORS(ProcessKind);
 

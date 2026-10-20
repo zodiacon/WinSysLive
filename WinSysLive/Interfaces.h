@@ -9,6 +9,7 @@ enum class TabType {
 	Performance,
 	Users,
 	Network,
+	Drivers,
 };
 
 struct IMainFrame abstract {

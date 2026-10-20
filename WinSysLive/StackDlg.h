@@ -7,7 +7,9 @@
 // A thread's user-mode stack: the frames, innermost first, with their symbols and source lines (a WOW64 thread's
 // native frames, then its 32-bit frames). The stack is captured on the symbol engine's thread, which may download
 // symbols, so the dialog opens at once and fills when the capture arrives (WM_STACK_CAPTURED); Refresh captures it
-// again. Copy puts the frames on the clipboard as tab-separated lines.
+// again. Copy puts the frames on the clipboard as tab-separated lines. Each frame shows its module and where the
+// module's symbols came from (a PDB, its exports only, none), and the status line names the modules without a PDB;
+// double-clicking a frame opens its module's folder with the file selected.
 //
 class CStackDlg :
 	public CDialogImpl<CStackDlg>,
@@ -29,6 +31,7 @@ public:
 	BEGIN_MSG_MAP(CStackDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_STACK_CAPTURED, OnStackCaptured)
+		NOTIFY_HANDLER(IDC_STACK_LIST, NM_DBLCLK, OnDoubleClick)
 		COMMAND_ID_HANDLER(IDC_STACK_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_STACK_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
@@ -43,11 +46,14 @@ public:
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnStackCaptured(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnClose(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	void Capture();
+	// where the frame's module's symbols came from: the PDB's path, "Exports only"...
+	static std::wstring GetSymbolsText(StackFrame const& frame);
 
 	uint32_t m_Pid, m_Tid;
 	int64_t m_Created;

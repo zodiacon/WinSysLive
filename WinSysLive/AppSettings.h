@@ -27,6 +27,9 @@ struct AppSettings : Settings {
 		SETTING_STRING(ProcessColors, L"");	// see ProcessColors::Load
 		// the views' font, its height at 96 DPI; no face name: the default font
 		SETTING(Font, LOGFONT{}, SettingType::Binary);
+		SETTING(TrayIcon, 1, SettingType::Bool);	// the CPU graph in the notification area
+		SETTING(MinimizeToTray, 0, SettingType::Bool);	// minimized, the window leaves the taskbar
+		SETTING(AlwaysOnTop, 0, SettingType::Bool);
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
@@ -50,6 +53,9 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(SymbolCache)
 	DEF_SETTING_STRING(SymbolExtraPaths)
 	DEF_SETTING(Font, LOGFONT)
+	DEF_SETTING(TrayIcon, int)
+	DEF_SETTING(MinimizeToTray, int)
+	DEF_SETTING(AlwaysOnTop, int)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };
