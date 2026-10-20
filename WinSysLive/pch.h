@@ -10,8 +10,11 @@
 //    WIN32_NO_STATUS lets phnt_windows.h pull in ntstatus.h without redefinitions.
 // 2. phnt_windows.h defines INITGUID; undo it so later DEFINE_GUIDs are declarations again (WTL defines some IIDs itself).
 // 3. ATL/WTL before phnt.h: phnt.h #defines TOKEN_INFORMATION_CLASS values that break atlcom.h.
+// winsock2.h comes before windows.h, which would otherwise include winsock.h, whose definitions clash with ws2def.h
+// (the IPv6 tables of iphlpapi.h need ws2ipdef.h).
 #define NOMINMAX	// phnt_windows.h would define it, but windows.h is included first (see above)
 #define WIN32_NO_STATUS
+#include <winsock2.h>
 #include <windows.h>
 #undef WIN32_NO_STATUS
 

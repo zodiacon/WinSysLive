@@ -136,6 +136,12 @@
 #define ID_OPTIONS_DEFAULTFONT      32816
 #define ID_OPTIONS_PROCESSCOLORS    32817
 #define ID_VIEW_KEEPSELECTIONVISIBLE 32818
+#define IDI_NETWORK                 253
+#define IDD_PROC_TCPIP              254
+#define IDC_TCPIP_LIST              1115
+#define IDC_TCPIP_STATUS            1116
+#define IDC_TCPIP_COPY              1117
+#define IDC_TCPIP_COPYALL           1118
 #define IDD_PROCESS_COLORS          252
 // each range in ProcessColors::Defaults order
 #define IDC_PCOLOR_ENABLE1          1083
@@ -221,8 +227,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	253
-#define _APS_NEXT_CONTROL_VALUE		1115
+#define _APS_NEXT_RESOURCE_VALUE	255
+#define _APS_NEXT_CONTROL_VALUE		1119
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32819
 #endif

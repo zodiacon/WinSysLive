@@ -48,6 +48,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Token);
 	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Threads);
+	m_TcpIp = std::make_unique<CProcTcpIpPage>(m_Props, m_Snapshot);
+	AddPage(*m_TcpIp);
 	if (IsInJob(m_Props.Id)) {
 		m_Job = std::make_unique<CProcJobPage>(m_Props, m_Snapshot);
 		AddPage(*m_Job);
@@ -95,6 +97,8 @@ void CProcessSheet::Sample() {
 	m_Performance->OnSample(m_Snapshot);
 	if (m_Threads->IsWindow() && GetActivePage() == m_Threads->m_hWnd)
 		m_Threads->OnSample(m_Snapshot);
+	if (m_TcpIp->IsWindow() && GetActivePage() == m_TcpIp->m_hWnd)
+		m_TcpIp->OnSample(m_Snapshot);
 	if (m_Job && m_Job->IsWindow() && GetActivePage() == m_Job->m_hWnd)
 		m_Job->OnSample(m_Snapshot);
 	if (m_Snapshot.Exited())
