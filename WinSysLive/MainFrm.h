@@ -52,6 +52,8 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_USERS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
+		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
+		COMMAND_ID_HANDLER(ID_OPTIONS_DEFAULTFONT, OnDefaultFont)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
 	END_MSG_MAP()
@@ -75,6 +77,8 @@ public:
 	LRESULT OnViewTab(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFont(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDefaultFont(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 private:
 	// IMainFrame
@@ -120,6 +124,8 @@ private:
 	void InitToolBar(bool elevated);
 	void CreateTabs();
 	void SetDarkMode(bool dark);
+	// creates the font from the Font setting (or the default) and hands it to the views
+	void ApplyFont();
 	void Refresh();
 	void UpdateStatusBar();
 	void SetUpdateInterval(int interval);
@@ -136,6 +142,7 @@ private:
 	std::unordered_map<UINT, int> m_IconIndices;
 	std::unordered_map<std::wstring, int> m_ProcessIcons;	// image path (lowercase) to image list index
 	std::vector<IView*> m_Views;	// index == tab index
+	CFont m_Font;	// the views' (see ApplyFont)
 	ProcessManager m_ProcessManager;
 	int m_ActivePage{ -1 };
 	bool m_Paused{ false };

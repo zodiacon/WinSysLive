@@ -149,8 +149,17 @@ void CPerfNav::EnsureVisible(int index) {
 LRESULT CPerfNav::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	NONCLIENTMETRICS ncm = { sizeof(ncm) };
 	::SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0, ::GetDpiForWindow(m_hWnd));
-	m_ValueFont.CreateFontIndirect(&ncm.lfMessageFont);
-	auto lf = ncm.lfMessageFont;
+	CreateFonts(ncm.lfMessageFont);
+	return 0;
+}
+
+void CPerfNav::CreateFonts(LOGFONT const& valueFont) {
+	if (!m_ValueFont.IsNull())
+		m_ValueFont.DeleteObject();
+	if (!m_TitleFont.IsNull())
+		m_TitleFont.DeleteObject();
+	m_ValueFont.CreateFontIndirect(&valueFont);
+	auto lf = valueFont;
 	lf.lfHeight = lf.lfHeight * 4 / 3;
 	lf.lfWeight = FW_SEMIBOLD;
 	m_TitleFont.CreateFontIndirect(&lf);
@@ -164,7 +173,16 @@ LRESULT CPerfNav::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, 
 	dc.GetTextMetrics(&tm);
 	m_ValueHeight = tm.tmHeight + tm.tmExternalLeading;
 	dc.SelectFont(old);
-	return 0;
+}
+
+void CPerfNav::SetTextFont(HFONT font) {
+	LOGFONT lf;
+	if (!::GetObject(font, sizeof(lf), &lf))
+		return;
+	CreateFonts(lf);
+	// the items' height follows the fonts
+	UpdateScrollBar();
+	Invalidate();
 }
 
 LRESULT CPerfNav::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {

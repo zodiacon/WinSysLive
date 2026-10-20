@@ -26,6 +26,8 @@ public:
 	int GetSelectedIndex() const;
 	void SelectItem(int index);
 	void SetTheme(GraphCtrl::GraphTheme const& theme);
+	// the values' font; the titles' is a larger, semibold one of the same face
+	void SetTextFont(HFONT font);
 	int GetIdealWidth() const;
 
 	std::function<void(int)> OnSelectionChanged;
@@ -67,6 +69,7 @@ private:
 	int ItemHeight() const;
 	CRect GetItemRect(int index) const;	// in client coordinates, so scrolled
 	void UpdateScrollBar();
+	void CreateFonts(LOGFONT const& lf);
 	void ScrollTo(int pos);
 	void EnsureVisible(int index);
 	void DrawItem(CDCHandle dc, int index, CRect const& rc);

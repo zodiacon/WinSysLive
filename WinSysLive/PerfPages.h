@@ -66,6 +66,8 @@ struct IPerfPage abstract {
 	virtual void Update(PerfSample const& sample, bool visible) = 0;
 	virtual void SetTheme(GraphCtrl::GraphTheme const& theme) = 0;
 	virtual void SetTimeSpan(std::wstring const& text, UINT interval) = 0;
+	// for the text below the graphs
+	virtual void SetTextFont(HFONT font) = 0;
 };
 
 //
@@ -102,6 +104,16 @@ public:
 		static_cast<T*>(this)->ApplyTimeSpan(text, interval);
 	}
 
+	void SetTextFont(HFONT font) override {
+		LOGFONT lf;
+		if (!::GetObject(font, sizeof(lf), &lf))
+			return;
+		MakeFont(lf);
+		// the text block's height follows the font
+		BOOL handled;
+		OnSize(WM_SIZE, 0, 0, handled);
+	}
+
 	BEGIN_MSG_MAP(CPerfPage)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
@@ -121,16 +133,22 @@ private:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		NONCLIENTMETRICS ncm = { sizeof(ncm) };
 		::SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0, ::GetDpiForWindow(this->m_hWnd));
-		m_Font.CreateFontIndirect(&ncm.lfMessageFont);
+		MakeFont(ncm.lfMessageFont);
+
+		static_cast<T*>(this)->CreateGraphs();
+		return 0;
+	}
+
+	void MakeFont(LOGFONT const& lf) {
+		if (!m_Font.IsNull())
+			m_Font.DeleteObject();
+		m_Font.CreateFontIndirect(&lf);
 		CClientDC dc(this->m_hWnd);
 		auto old = dc.SelectFont(m_Font);
 		TEXTMETRIC tm;
 		dc.GetTextMetrics(&tm);
 		m_LineHeight = tm.tmHeight + tm.tmExternalLeading;
 		dc.SelectFont(old);
-
-		static_cast<T*>(this)->CreateGraphs();
-		return 0;
 	}
 
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {

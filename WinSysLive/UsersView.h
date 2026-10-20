@@ -18,6 +18,7 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
+	void OnFontChanged(HFONT font) override;
 
 	BEGIN_MSG_MAP(CUsersView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)

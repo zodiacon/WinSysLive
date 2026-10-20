@@ -26,6 +26,8 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
 	[[nodiscard]] ProcessInfoEx* GetProcess() const;
 	void Refresh();
+	// the pages' lists
+	void SetListFont(HFONT font);
 
 	// CNativeCustomTabViewImpl
 	void OnPageActivated(int page);

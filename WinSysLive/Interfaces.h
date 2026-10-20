@@ -38,6 +38,8 @@ struct IView abstract {
 	// called on every refresh tick for all views, active or not; inactive views should update data only, not redraw
 	virtual void OnRefresh(bool /*active*/) {}
 	virtual void OnThemeChanged(bool /*dark*/) {}
+	// the font for the view's lists and text (Options > Font), owned by the frame until the next call
+	virtual void OnFontChanged(HFONT /*font*/) {}
 	// views listing processes select the process (see IMainFrame::GoToProcess)
 	virtual void ShowProcess(uint32_t /*pid*/) {}
 };

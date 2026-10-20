@@ -69,6 +69,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	auto& settings = AppSettings::Get();
 	UISetCheck(ID_OPTIONS_DARKMODE, settings.DarkMode());
 	SetDarkMode(settings.DarkMode());
+	// without a font of their own, the views keep their controls' default fonts
+	if (settings.Font().lfFaceName[0])
+		ApplyFont();
+	UIEnable(ID_OPTIONS_DEFAULTFONT, settings.Font().lfFaceName[0] != 0);
 
 	SetUpdateInterval(settings.UpdateInterval());
 
@@ -340,6 +344,56 @@ LRESULT CMainFrame::OnDarkMode(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, 
 	UISetCheck(id, dark);
 
 	return 0;
+}
+
+LRESULT CMainFrame::OnFont(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the setting's height is at 96 DPI; the dialog takes it at the screen's DPI, and the current font if there's no setting
+	CClientDC dc(m_hWnd);
+	int dpi = dc.GetDeviceCaps(LOGPIXELSY);
+	LOGFONT lf;
+	m_Font.IsNull() ? (void)::SystemParametersInfoForDpi(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0, dpi) : (void)m_Font.GetLogFont(&lf);
+	if (!m_Font.IsNull())
+		lf.lfHeight = ::MulDiv(lf.lfHeight, dpi, ::GetDpiForWindow(m_hWnd));
+
+	CFontDialog dlg(&lf, CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+
+	lf = dlg.m_lf;
+	lf.lfHeight = ::MulDiv(lf.lfHeight, 96, dpi);
+	lf.lfWidth = 0;
+	auto& settings = AppSettings::Get();
+	settings.Font(lf);
+	settings.Save();
+	ApplyFont();
+	UIEnable(ID_OPTIONS_DEFAULTFONT, true);
+	return 0;
+}
+
+LRESULT CMainFrame::OnDefaultFont(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	settings.Font(LOGFONT{});
+	settings.Save();
+	ApplyFont();
+	UIEnable(ID_OPTIONS_DEFAULTFONT, false);
+	return 0;
+}
+
+void CMainFrame::ApplyFont() {
+	auto dpi = ::GetDpiForWindow(m_hWnd);
+	auto lf = AppSettings::Get().Font();
+	if (lf.lfFaceName[0])
+		lf.lfHeight = ::MulDiv(lf.lfHeight, dpi, 96);
+	else
+		// the list views' own default
+		::SystemParametersInfoForDpi(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0, dpi);
+
+	// the views switch to the new font before the old one is deleted
+	CFont font;
+	font.CreateFontIndirect(&lf);
+	for (auto view : m_Views)
+		view->OnFontChanged(font);
+	m_Font.Attach(font.Detach());
 }
 
 void CMainFrame::SetDarkMode(bool dark) {

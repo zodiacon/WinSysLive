@@ -17,6 +17,7 @@ public:
 	CString GetTitle() const override;
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
+	void OnFontChanged(HFONT font) override;
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;

@@ -39,6 +39,12 @@ ProcessInfoEx* CProcessDetails::GetProcess() const {
 	return m_Process.get();
 }
 
+void CProcessDetails::SetListFont(HFONT font) {
+	m_Handles.SetListFont(font);
+	m_Modules.SetListFont(font);
+	m_Threads.SetListFont(font);
+}
+
 void CProcessDetails::Refresh() {
 	m_Threads.Refresh();
 	switch (GetActivePage()) {

@@ -84,6 +84,10 @@ void CUsersView::OnActivate(bool active) {
 		m_Tree.SetFocus();
 }
 
+void CUsersView::OnFontChanged(HFONT font) {
+	m_Tree.SetFont(font);
+}
+
 void CUsersView::OnThemeChanged(bool dark) {
 	// the TreeListView doesn't follow WTLHelper's mode switch by itself
 	m_Tree.SetBkColor(dark ? DarkMode::getViewBackgroundColor() : ::GetSysColor(COLOR_WINDOW));

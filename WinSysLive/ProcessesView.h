@@ -16,6 +16,7 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
+	void OnFontChanged(HFONT font) override;
 	void ShowProcess(uint32_t pid) override;
 
 	BEGIN_MSG_MAP(CProcessesView)

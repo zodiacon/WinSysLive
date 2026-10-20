@@ -180,6 +180,10 @@ LRESULT CServicesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 	return 0;
 }
 
+void CServicesView::OnFontChanged(HFONT font) {
+	m_List.SetFont(font);
+}
+
 void CServicesView::OnRefresh(bool active) {
 	auto services = ServiceManager::EnumServices(ServiceEnumType::AllServices);
 	if (services.empty())

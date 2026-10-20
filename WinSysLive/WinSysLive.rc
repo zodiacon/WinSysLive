@@ -106,6 +106,9 @@ BEGIN
     POPUP "&Options"
     BEGIN
         MENUITEM "&Dark Mode",                  ID_OPTIONS_DARKMODE
+        MENUITEM SEPARATOR
+        MENUITEM "&Font...",                    ID_OPTIONS_FONT
+        MENUITEM "Default F&ont",               ID_OPTIONS_DEFAULTFONT
     END
     POPUP "&Help"
     BEGIN

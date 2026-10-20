@@ -21,6 +21,11 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
 	// enumerates the modules again
 	void Refresh();
+	void SetListFont(HFONT font) {
+		m_List.SetFont(font);
+		// a hidden page's header isn't all repainted otherwise
+		m_List.GetHeader().Invalidate();
+	}
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;

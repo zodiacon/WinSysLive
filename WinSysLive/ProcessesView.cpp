@@ -249,6 +249,11 @@ void CProcessesView::OnActivate(bool active) {
 		m_Tree.SetFocus();
 }
 
+void CProcessesView::OnFontChanged(HFONT font) {
+	m_Tree.SetFont(font);
+	m_Details.SetListFont(font);
+}
+
 void CProcessesView::OnThemeChanged(bool dark) {
 	// the TreeListView doesn't follow WTLHelper's mode switch by itself
 	m_Tree.SetBkColor(dark ? DarkMode::getViewBackgroundColor() : ::GetSysColor(COLOR_WINDOW));

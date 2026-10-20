@@ -16,6 +16,8 @@ struct AppSettings : Settings {
 		SETTING_STRING(ThreadColumns, L"");
 		SETTING_STRING(ModuleColumns, L"");
 		SETTING_STRING(HandleColumns, L"");
+		// the views' font, its height at 96 DPI; no face name: the default font
+		SETTING(Font, LOGFONT{}, SettingType::Binary);
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
@@ -30,6 +32,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ThreadColumns)
 	DEF_SETTING_STRING(ModuleColumns)
 	DEF_SETTING_STRING(HandleColumns)
+	DEF_SETTING(Font, LOGFONT)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };

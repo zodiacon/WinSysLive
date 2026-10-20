@@ -18,6 +18,7 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
+	void OnFontChanged(HFONT font) override;
 
 	BEGIN_MSG_MAP(CPerfView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -65,6 +66,7 @@ private:
 	int m_Interval{ 0 };	// the update interval the time span text was built for
 	std::wstring m_TimeSpanText;
 	GraphCtrl::GraphTheme m_Theme;	// for pages created later
+	HFONT m_Font{ nullptr };	// the frame's, for pages created later; null: the pages' default
 	WinSys::NetworkTracker m_Network;
 	WinSys::DiskTracker m_Disks;
 	std::vector<wchar_t> m_DiskLetters;

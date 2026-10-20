@@ -31,6 +31,11 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
 	// takes the threads from the frame's current snapshot
 	void Refresh();
+	void SetListFont(HFONT font) {
+		m_List.SetFont(font);
+		// a hidden page's header isn't all repainted otherwise
+		m_List.GetHeader().Invalidate();
+	}
 	// takes the threads from a snapshot's (SystemExtendedProcessInformation) entry of the process; nullptr: no process.
 	// time: the snapshot's (QPC), for the rates; 0 for now. The same snapshot twice is ignored
 	void Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time = 0);

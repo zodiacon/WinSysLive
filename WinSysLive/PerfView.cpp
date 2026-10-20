@@ -202,6 +202,8 @@ void CPerfView::SyncDiskPages() {
 		auto page = std::make_unique<CPerfDiskPage>(v.Letter);
 		page->CreatePage(m_hWnd);
 		page->SetTheme(m_Theme);
+		if (m_Font)
+			page->SetTextFont(m_Font);
 		if (m_Interval)
 			page->SetTimeSpan(m_TimeSpanText, m_Interval);
 		m_Pages.insert(m_Pages.begin() + index, std::move(page));
@@ -267,6 +269,14 @@ void CPerfView::ShowPage(int index) {
 	if (old >= 0)
 		::ShowWindow(m_Pages[old]->GetHwnd(), SW_HIDE);
 	AppSettings::Get().PerfPage(index);
+}
+
+void CPerfView::OnFontChanged(HFONT font) {
+	m_Font = font;
+	m_Nav.SetTextFont(font);
+	for (auto& page : m_Pages)
+		page->SetTextFont(font);
+	Layout();
 }
 
 void CPerfView::OnThemeChanged(bool dark) {
