@@ -230,23 +230,30 @@ void CProcJobPage::FindJobs() {
 		return;
 	}
 
-	// a job's ancestors hold its processes and more, so the innermost job has the fewest
+	// a job's ancestors hold its processes and more, so the innermost job has the fewest. Nothing documented gives a
+	// job's parent, so when two jobs have as many processes, their order isn't known and the jobs aren't labeled.
 	std::vector<std::pair<DWORD, size_t>> order;
 	for (size_t i = 0; i < m_Jobs.size(); i++)
 		order.emplace_back(GetActiveProcesses(m_Jobs[i].Handle.get()), i);
 	std::ranges::stable_sort(order);
+	bool ordered = std::ranges::adjacent_find(order, [](auto& a, auto& b) { return a.first == b.first; }) == order.end();
 	std::vector<Job> jobs;
 	for (auto& [count, i] : order)
 		jobs.push_back(std::move(m_Jobs[i]));
 	m_Jobs = std::move(jobs);
 
+	std::vector<std::wstring> texts;
 	for (size_t i = 0; i < m_Jobs.size(); i++) {
 		auto& job = m_Jobs[i];
 		auto text = job.Name.empty() ? std::wstring(L"(unnamed)") : job.Name;
 		if (job.Silo)
 			text += L" (silo)";
-		if (m_Jobs.size() > 1)
+		if (m_Jobs.size() > 1 && ordered)
 			text += i == 0 ? L" - innermost" : std::format(L" - nesting level {}", i);
+		// unlabeled unnamed jobs, told apart
+		if (std::ranges::find(texts, text) != texts.end())
+			text += std::format(L" ({})", i + 1);
+		texts.push_back(text);
 		m_JobList.AddString(text.c_str());
 	}
 	m_JobList.SetCurSel(0);
