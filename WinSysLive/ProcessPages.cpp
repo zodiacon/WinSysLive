@@ -658,6 +658,11 @@ LRESULT CProcPerformancePage::OnVertical(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	CRect rc;
 	GetClientRect(&rc);
 	Layout(rc.Width(), rc.Height());
+	// now: a resized graph otherwise paints only with the next sample, and the page where the graphs were before
+	Invalidate();
+	UpdateWindow();
+	for (GraphCtrl::CGraphControl* graph : { (GraphCtrl::CGraphControl*)&m_Cpu, &m_Memory, &m_Io, (GraphCtrl::CGraphControl*)&m_Network })
+		graph->Refresh();
 	return 0;
 }
 
