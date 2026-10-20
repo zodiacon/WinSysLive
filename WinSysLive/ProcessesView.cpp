@@ -144,11 +144,13 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	auto& settings = AppSettings::Get();
 	m_Splitter.SetSplitterPosPct(std::clamp(settings.ProcessSplitterPos(), 10, 90), false);
 	m_LowerPane = settings.ProcessLowerPane();
+	m_KeepSelectionVisible = settings.ProcessKeepSelectionVisible();
 	m_Splitter.SetSinglePaneMode(m_LowerPane ? SPLIT_PANE_NONE : SPLIT_PANE_TOP);
 
 	// enabled while active (see OnActivate)
 	Frame()->GetUI().UIEnable(ID_VIEW_PROCESSTREE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_LOWERPANE, false);
+	Frame()->GetUI().UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, false);
 	Frame()->GetUI().UIEnable(ID_PROCESS_KILL, false);
 
@@ -389,7 +391,8 @@ void CProcessesView::BuildItems() {
 		Sort();
 	m_Tree.EndUpdate();
 
-	RestoreSelection(selectedKey ? &*selectedKey : nullptr);
+	// the list was rebuilt, so the selection is shown wherever it ended up
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, true);
 }
 
 void CProcessesView::OnRefresh(bool /*active*/) {
@@ -459,7 +462,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 		Sort();
 	m_Tree.EndUpdate();
 
-	RestoreSelection(selectedKey ? &*selectedKey : nullptr);
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
 	UpdateUI();
 	UpdateDetails();
 	if (m_LowerPane)
@@ -519,11 +522,11 @@ CProcessesView::ProcessItem* CProcessesView::GetSelectedProcess() const {
 	return hItem ? reinterpret_cast<ProcessItem*>(m_Tree.GetItemData(hItem)) : nullptr;
 }
 
-void CProcessesView::RestoreSelection(ProcessOrThreadKey const* key) {
+void CProcessesView::RestoreSelection(ProcessOrThreadKey const* key, bool ensureVisible) {
 	// the list view keeps the selection by index, which inserts, deletes and sorting shift
 	if (key) {
 		if (auto it = m_Items.find(*key); it != m_Items.end() && it->second.Item) {
-			m_Tree.SelectItem(it->second.Item, false);
+			m_Tree.SelectItem(it->second.Item, ensureVisible);
 			return;
 		}
 	}
@@ -616,7 +619,8 @@ LRESULT CProcessesView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) 
 	auto selected = GetSelectedProcess();
 	auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
 	Sort();
-	RestoreSelection(selectedKey ? &*selectedKey : nullptr);
+	// the user re-sorted: follow the selection to its new place
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, true);
 	return 0;
 }
 
@@ -774,7 +778,9 @@ void CProcessesView::UpdateUI() {
 			if (s_Priorities[i].BasePriority == item->Process->NativeInfo->BasePriority)
 				ui.UISetRadioMenuItem(ID_PRIORITY_REALTIME + i, ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE);
 	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
+	ui.UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, m_Active);
 	if (m_Active) {
+		ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, m_KeepSelectionVisible);
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
 		ui.UISetCheck(ID_VIEW_LOWERPANE, m_LowerPane);
 	}
@@ -971,6 +977,18 @@ LRESULT CProcessesView::OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	AppSettings::Get().ProcessTreeMode(m_TreeMode);
 	// flat mode puts every process at the top level, so sorting covers all of them
 	BuildItems();
+	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_KeepSelectionVisible = !m_KeepSelectionVisible;
+	auto& settings = AppSettings::Get();
+	settings.ProcessKeepSelectionVisible(m_KeepSelectionVisible);
+	settings.Save();
+	if (m_KeepSelectionVisible)
+		if (auto item = GetSelectedProcess())
+			m_Tree.EnsureVisible(item->Item);
 	UpdateUI();
 	return 0;
 }

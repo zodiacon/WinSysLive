@@ -135,6 +135,7 @@
 #define ID_OPTIONS_FONT             32815
 #define ID_OPTIONS_DEFAULTFONT      32816
 #define ID_OPTIONS_PROCESSCOLORS    32817
+#define ID_VIEW_KEEPSELECTIONVISIBLE 32818
 #define IDD_PROCESS_COLORS          252
 // each range in ProcessColors::Defaults order
 #define IDC_PCOLOR_ENABLE1          1083
@@ -223,6 +224,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	253
 #define _APS_NEXT_CONTROL_VALUE		1115
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32818
+#define _APS_NEXT_COMMAND_VALUE		32819
 #endif
 #endif

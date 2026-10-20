@@ -10,6 +10,7 @@ struct AppSettings : Settings {
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
 		SETTING(PerfPage, 0, SettingType::Int32);
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
+		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
 		SETTING(ProcessSplitterPos, 60, SettingType::Int32);	// percent of the height for the process list
 		SETTING_STRING(ProcessColumns, L"");	// see ColumnLayout::Parse
 		SETTING_STRING(ServiceColumns, L"");
@@ -27,6 +28,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(ProcessTreeMode, int)
 	DEF_SETTING(PerfPage, int)
 	DEF_SETTING(ProcessLowerPane, int)
+	DEF_SETTING(ProcessKeepSelectionVisible, int)
 	DEF_SETTING(ProcessSplitterPos, int)
 	DEF_SETTING_STRING(ProcessColumns)
 	DEF_SETTING_STRING(ServiceColumns)

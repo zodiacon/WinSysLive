@@ -66,6 +66,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
+        MENUITEM "&Keep Selection Visible",     ID_VIEW_KEEPSELECTIONVISIBLE
         MENUITEM "Select &Columns...",          ID_VIEW_SELECTCOLUMNS
         MENUITEM SEPARATOR
         MENUITEM "P&roperties...\tAlt+Enter",   ID_VIEW_PROPERTIES

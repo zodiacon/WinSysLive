@@ -45,6 +45,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
 		COMMAND_ID_HANDLER(ID_VIEW_LOWERPANE, OnToggleLowerPane)
+		COMMAND_ID_HANDLER(ID_VIEW_KEEPSELECTIONVISIBLE, OnToggleKeepSelectionVisible)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CProcessesView>, 1)
@@ -93,6 +94,7 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
@@ -127,7 +129,8 @@ private:
 	void CollectDescendants(HTLITEM hItem, std::vector<ProcessItem*>& items) const;
 	ProcessItem* FindParent(ProcessItem const& item);
 	ProcessItem* GetSelectedProcess() const;
-	void RestoreSelection(WinSys::ProcessOrThreadKey const* key);
+	// ensureVisible: scroll to it; otherwise the scroll position stays
+	void RestoreSelection(WinSys::ProcessOrThreadKey const* key, bool ensureVisible);
 	void Sort();
 	static int CALLBACK CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam);
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;
@@ -159,5 +162,7 @@ private:
 	int m_SortColumn{ -1 };	// a Column, or -1
 	bool m_SortAscending{ true };
 	bool m_TreeMode{ true };
+	// scroll to the selected process on every update; otherwise an update keeps the scroll position
+	bool m_KeepSelectionVisible{ false };
 	bool m_Active{ false };
 };
