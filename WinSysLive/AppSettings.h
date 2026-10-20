@@ -16,6 +16,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(ThreadColumns, L"");
 		SETTING_STRING(ModuleColumns, L"");
 		SETTING_STRING(HandleColumns, L"");
+		SETTING_STRING(ProcessColors, L"");	// see ProcessColors::Load
 		// the views' font, its height at 96 DPI; no face name: the default font
 		SETTING(Font, LOGFONT{}, SettingType::Binary);
 	END_SETTINGS
@@ -32,6 +33,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ThreadColumns)
 	DEF_SETTING_STRING(ModuleColumns)
 	DEF_SETTING_STRING(HandleColumns)
+	DEF_SETTING_STRING(ProcessColors)
 	DEF_SETTING(Font, LOGFONT)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";

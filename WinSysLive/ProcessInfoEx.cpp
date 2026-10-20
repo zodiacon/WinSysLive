@@ -103,6 +103,39 @@ ProcessProtection ProcessInfoEx::GetProtection() {
 	return m_Protection;
 }
 
+void ProcessInfoEx::QueryExtendedBasicInfo() {
+	if (m_ExtendedBasicDone)
+		return;
+	m_ExtendedBasicDone = true;
+	// one query for both flags; limited query access is enough, also for protected processes
+	if (auto process = GetProcess()) {
+		PROCESS_EXTENDED_BASIC_INFORMATION info{ sizeof(info) };
+		if (NT_SUCCESS(::NtQueryInformationProcess(process->Handle(), ProcessBasicInformation, &info, sizeof(info), nullptr))) {
+			m_Protected = info.IsProtectedProcess;
+			m_Secure = info.IsSecureProcess;
+		}
+	}
+}
+
+bool ProcessInfoEx::IsProtected() {
+	QueryExtendedBasicInfo();
+	return m_Protected;
+}
+
+bool ProcessInfoEx::IsSecure() {
+	QueryExtendedBasicInfo();
+	return m_Secure;
+}
+
+bool ProcessInfoEx::IsImmersive() {
+	if (!m_ImmersiveDone) {
+		m_ImmersiveDone = true;
+		if (auto process = GetProcess())
+			m_Immersive = process->IsImmersive();
+	}
+	return m_Immersive;
+}
+
 int ProcessInfoEx::GetMemoryPriority() {
 	auto process = GetProcess();
 	return process ? process->GetMemoryPriority() : -1;

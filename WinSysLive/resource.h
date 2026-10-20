@@ -134,6 +134,41 @@
 #define ID_VIEW_PROPERTIES          32814
 #define ID_OPTIONS_FONT             32815
 #define ID_OPTIONS_DEFAULTFONT      32816
+#define ID_OPTIONS_PROCESSCOLORS    32817
+#define IDD_PROCESS_COLORS          252
+// each range in ProcessColors::Defaults order
+#define IDC_PCOLOR_ENABLE1          1083
+#define IDC_PCOLOR_ENABLE2          1084
+#define IDC_PCOLOR_ENABLE3          1085
+#define IDC_PCOLOR_ENABLE4          1086
+#define IDC_PCOLOR_ENABLE5          1087
+#define IDC_PCOLOR_ENABLE6          1088
+#define IDC_PCOLOR_ENABLE7          1089
+#define IDC_PCOLOR_ENABLE8          1090
+#define IDC_PCOLOR_LIGHT1           1091
+#define IDC_PCOLOR_LIGHT2           1092
+#define IDC_PCOLOR_LIGHT3           1093
+#define IDC_PCOLOR_LIGHT4           1094
+#define IDC_PCOLOR_LIGHT5           1095
+#define IDC_PCOLOR_LIGHT6           1096
+#define IDC_PCOLOR_LIGHT7           1097
+#define IDC_PCOLOR_LIGHT8           1098
+#define IDC_PCOLOR_DARK1            1099
+#define IDC_PCOLOR_DARK2            1100
+#define IDC_PCOLOR_DARK3            1101
+#define IDC_PCOLOR_DARK4            1102
+#define IDC_PCOLOR_DARK5            1103
+#define IDC_PCOLOR_DARK6            1104
+#define IDC_PCOLOR_DARK7            1105
+#define IDC_PCOLOR_DARK8            1106
+#define IDC_PCOLOR_DEFAULT1         1107
+#define IDC_PCOLOR_DEFAULT2         1108
+#define IDC_PCOLOR_DEFAULT3         1109
+#define IDC_PCOLOR_DEFAULT4         1110
+#define IDC_PCOLOR_DEFAULT5         1111
+#define IDC_PCOLOR_DEFAULT6         1112
+#define IDC_PCOLOR_DEFAULT7         1113
+#define IDC_PCOLOR_DEFAULT8         1114
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
 #define IDC_MOVEUP                  1001
@@ -185,9 +220,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	252
-#define _APS_NEXT_CONTROL_VALUE		1083
+#define _APS_NEXT_RESOURCE_VALUE	253
+#define _APS_NEXT_CONTROL_VALUE		1115
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32817
+#define _APS_NEXT_COMMAND_VALUE		32818
 #endif
 #endif

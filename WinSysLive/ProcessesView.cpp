@@ -7,6 +7,7 @@
 #include "NetworkTracking.h"
 #include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
+#include <WinSys/ServiceManager.h>
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
 #include "ColumnLayout.h"
@@ -74,6 +75,45 @@ namespace {
 
 	// highlighting of new processes lasts this many updates
 	const int NewProcessTicks = 2;
+	// the CLR starts after the process, so a process is checked for it again on every update until it's this old
+	const int64_t DotNetCheckPeriod = 15 * 10000000LL;	// 100 ns units
+
+	// .NET Framework: the CLR creates a section named after the process in its session's namespace
+	bool HasClrSection(ProcessInfoEx const& process) {
+		auto session = process.NativeInfo->SessionId;
+		for (auto name : { L"Cor_Private_IPCBlock_v4_", L"Cor_Private_IPCBlock_" }) {
+			auto path = session == 0 ? std::format(L"\\BaseNamedObjects\\{}{}", name, process.Id)
+				: std::format(L"\\Sessions\\{}\\BaseNamedObjects\\{}{}", session, name, process.Id);
+			UNICODE_STRING uname;
+			::RtlInitUnicodeString(&uname, path.c_str());
+			OBJECT_ATTRIBUTES attr;
+			InitializeObjectAttributes(&attr, &uname, OBJ_CASE_INSENSITIVE, nullptr, nullptr);
+			HANDLE hSection;
+			auto status = ::NtOpenSection(&hSection, SECTION_QUERY, &attr);
+			if (NT_SUCCESS(status))
+				::NtClose(hSection);
+			// another user's section exists even if it can't be opened
+			if (NT_SUCCESS(status) || status == STATUS_ACCESS_DENIED)
+				return true;
+		}
+		return false;
+	}
+
+	// .NET Core and later: the runtime's diagnostics server listens on a pipe named dotnet-diagnostic-<pid>-...
+	std::unordered_set<uint32_t> GetDotNetPipePids() {
+		std::unordered_set<uint32_t> pids;
+		const std::wstring_view prefix = L"dotnet-diagnostic-";
+		WIN32_FIND_DATA fd;
+		wil::unique_hfind hFind(::FindFirstFile(L"\\\\.\\pipe\\*", &fd));
+		if (!hFind)
+			return pids;
+		do {
+			if (std::wstring_view(fd.cFileName).starts_with(prefix))
+				if (auto pid = ::wcstoul(fd.cFileName + prefix.size(), nullptr, 10))
+					pids.insert(pid);
+		} while (::FindNextFile(hFind.get(), &fd));
+		return pids;
+	}
 }
 
 CString CProcessesView::GetTitle() const {
@@ -93,6 +133,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
 
 	SetColumns(LoadColumns());
+	m_Colors = ProcessColors::Load();
 
 	m_TreeMode = AppSettings::Get().ProcessTreeMode();
 	BuildItems();
@@ -254,6 +295,11 @@ void CProcessesView::OnFontChanged(HFONT font) {
 	m_Details.SetListFont(font);
 }
 
+void CProcessesView::OnProcessColorsChanged() {
+	m_Colors = ProcessColors::Load();
+	m_Tree.Invalidate();
+}
+
 void CProcessesView::OnThemeChanged(bool dark) {
 	// the TreeListView doesn't follow WTLHelper's mode switch by itself
 	m_Tree.SetBkColor(dark ? DarkMode::getViewBackgroundColor() : ::GetSysColor(COLOR_WINDOW));
@@ -269,6 +315,49 @@ void CProcessesView::ShowProcess(uint32_t pid) {
 		m_Tree.SelectItem(it->second.Item);
 		m_Tree.SetFocus();
 	}
+}
+
+void CProcessesView::SetFixedKinds(ProcessItem& item) const {
+	auto& p = *item.Process;
+	auto kinds = item.Kinds & (ProcessKind::Service | ProcessKind::DotNet);
+	if (p.IsSecure())
+		kinds |= ProcessKind::Secure;
+	if (p.IsProtected())
+		kinds |= ProcessKind::Protected;
+	if (p.IsImmersive())
+		kinds |= ProcessKind::Immersive;
+	if (GetJobId(p))
+		kinds |= ProcessKind::Job;
+	item.Kinds = kinds;
+}
+
+bool CProcessesView::UpdateServicePids() {
+	std::unordered_set<uint32_t> pids;
+	for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices, ServiceEnumState::Active))
+		if (auto pid = svc.GetStatusProcess().ProcessId)
+			pids.insert(pid);
+	if (pids == m_ServicePids)
+		return false;
+	m_ServicePids = std::move(pids);
+	return true;
+}
+
+void CProcessesView::UpdateDotNet(bool all) {
+	FILETIME ft;
+	::GetSystemTimeAsFileTime(&ft);
+	auto now = (int64_t)ULARGE_INTEGER{ ft.dwLowDateTime, ft.dwHighDateTime }.QuadPart;
+	std::vector<ProcessItem*> candidates;
+	for (auto& [key, item] : m_Items)
+		if (!item.Terminated && (item.Kinds & ProcessKind::DotNet) == ProcessKind::None && item.Process->Id != 0
+			&& (all || now - key.Created < DotNetCheckPeriod))
+			candidates.push_back(&item);
+	if (candidates.empty())
+		return;
+
+	auto pipePids = GetDotNetPipePids();
+	for (auto item : candidates)
+		if (pipePids.contains(item->Process->Id) || HasClrSection(*item->Process))
+			item->Kinds |= ProcessKind::DotNet;
 }
 
 void CProcessesView::BuildItems() {
@@ -287,6 +376,14 @@ void CProcessesView::BuildItems() {
 	// in snapshot order (not the map's), so unsorted siblings keep the system's order; parents are inserted first anyway
 	for (auto& p : processes)
 		EnsureInserted(m_Items.at(p->Key));
+
+	UpdateServicePids();
+	for (auto& [key, item] : m_Items) {
+		SetFixedKinds(item);
+		if (m_ServicePids.contains(key.Id))
+			item.Kinds |= ProcessKind::Service;
+	}
+	UpdateDotNet(true);
 
 	if (m_SortColumn >= 0)
 		Sort();
@@ -332,8 +429,26 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 			added.push_back(&it->second);
 		}
 	}
-	for (auto item : added)
+	for (auto item : added) {
 		EnsureInserted(*item);
+		SetFixedKinds(*item);
+	}
+
+	// the SCM may record a new service's PID after the snapshot, so the next update looks again too
+	if (!added.empty())
+		m_ServiceRechecks = 2;
+	if (m_ServiceRechecks > 0) {
+		m_ServiceRechecks--;
+		UpdateServicePids();
+		for (auto& [key, item] : m_Items)
+			if (!item.Terminated) {
+				if (m_ServicePids.contains(key.Id))
+					item.Kinds |= ProcessKind::Service;
+				else
+					item.Kinds &= ~ProcessKind::Service;
+			}
+	}
+	UpdateDotNet(false);
 
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated)
@@ -581,12 +696,13 @@ LRESULT CProcessesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled
 	if ((cd->nmcd.dwDrawStage & CDDS_ITEMPREPAINT) == CDDS_ITEMPREPAINT && cd->hItem) {
 		auto& item = *reinterpret_cast<ProcessItem*>(m_Tree.GetItemData(cd->hItem));
 		bool dark = WTLHelper::IsDarkMode();
-		if (item.Terminated) {
-			cd->clrTextBk = dark ? RGB(128, 0, 0) : RGB(255, 160, 160);
-			cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
-		}
-		else if (item.NewTicks > 0) {
-			cd->clrTextBk = dark ? RGB(0, 96, 0) : RGB(160, 255, 160);
+		auto kinds = item.Kinds;
+		if (item.Terminated)
+			kinds |= ProcessKind::Exited;
+		else if (item.NewTicks > 0)
+			kinds |= ProcessKind::New;
+		if (auto color = ProcessColors::Find(m_Colors, kinds)) {
+			cd->clrTextBk = dark ? color->Dark : color->Light;
 			cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
 		}
 	}

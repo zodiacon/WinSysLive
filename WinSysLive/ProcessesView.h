@@ -5,7 +5,9 @@
 #include <WinSys/ProcessNetwork.h>
 #include "ColumnLayout.h"
 #include "ProcessDetails.h"
+#include "ProcessColors.h"
 #include <CustomSplitterWindow.h>
+#include <unordered_set>
 
 class CProcessesView :
 	public CViewBase<CProcessesView> {
@@ -17,6 +19,7 @@ public:
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
 	void OnFontChanged(HFONT font) override;
+	void OnProcessColorsChanged() override;
 	void ShowProcess(uint32_t pid) override;
 
 	BEGIN_MSG_MAP(CProcessesView)
@@ -63,6 +66,7 @@ private:
 		int Image{ -1 };
 		int NewTicks{ 0 };			// > 0: still highlighted as new
 		bool Terminated{ false };	// highlighted for one update, then removed
+		ProcessKind Kinds{ ProcessKind::None };	// for the row color (see UpdateKinds)
 		// changes since the previous update (0 on the first)
 		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
 		uint64_t PrevContextSwitches{ 0 };
@@ -110,6 +114,12 @@ private:
 	// the process total when elevated; otherwise the sum over its current threads (exited threads' are lost)
 	static uint64_t GetContextSwitches(ProcessInfoEx const& process);
 	void UpdateDeltas(ProcessItem& item);
+	// the kinds that don't change (secure, protected, immersive, job); Service and DotNet are set separately
+	void SetFixedKinds(ProcessItem& item) const;
+	// the PIDs hosting running services; false if they're unchanged
+	bool UpdateServicePids();
+	// sets DotNet on the processes the CLR has started in (see UpdateDotNet in the .cpp)
+	void UpdateDotNet(bool all);
 
 	void BuildItems();
 	HTLITEM EnsureInserted(ProcessItem& item);
@@ -139,6 +149,10 @@ private:
 	// runs while a network column is shown
 	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;	// while a network column is shown (NetworkTracking)
 	DWORD m_NetworkError{ 0 };	// why it didn't start
+	std::vector<ProcessColors::Entry> m_Colors;	// the ProcessColors setting
+	std::unordered_set<uint32_t> m_ServicePids;
+	// refreshes left to enumerate the services again; set when processes start, as a service host is a new process
+	int m_ServiceRechecks{ 0 };
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid
 	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)

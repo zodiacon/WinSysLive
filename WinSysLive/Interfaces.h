@@ -40,6 +40,8 @@ struct IView abstract {
 	virtual void OnThemeChanged(bool /*dark*/) {}
 	// the font for the view's lists and text (Options > Font), owned by the frame until the next call
 	virtual void OnFontChanged(HFONT /*font*/) {}
+	// the ProcessColors setting changed (Options > Process Colors)
+	virtual void OnProcessColorsChanged() {}
 	// views listing processes select the process (see IMainFrame::GoToProcess)
 	virtual void ShowProcess(uint32_t /*pid*/) {}
 };

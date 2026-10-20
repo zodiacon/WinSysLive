@@ -8,6 +8,7 @@
 #include "aboutdlg.h"
 #include "MainFrm.h"
 #include "AppSettings.h"
+#include "ProcessColorsDlg.h"
 #include "FormatHelper.h"
 #include "WTLHelper.h"
 #include <IconHelper.h>
@@ -376,6 +377,16 @@ LRESULT CMainFrame::OnDefaultFont(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	settings.Save();
 	ApplyFont();
 	UIEnable(ID_OPTIONS_DEFAULTFONT, false);
+	return 0;
+}
+
+LRESULT CMainFrame::OnProcessColors(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CProcessColorsDlg dlg(ProcessColors::Load());
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	ProcessColors::Save(dlg.GetEntries());
+	for (auto view : m_Views)
+		view->OnProcessColorsChanged();
 	return 0;
 }
 

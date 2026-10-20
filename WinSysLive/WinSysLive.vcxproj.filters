@@ -36,6 +36,12 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ProcessColors.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessColorsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="PerfView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -119,6 +125,12 @@
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessColors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessColorsDlg.h">
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="PerfView.h">
       <Filter>Views</Filter>

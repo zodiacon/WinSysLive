@@ -18,6 +18,10 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	bool IsInJob();
 	WinSys::IntegrityLevel GetIntegrityLevel();	// Error if unknown
 	WinSys::ProcessProtection GetProtection();	// Level 0: not protected (or unknown)
+	// from PROCESS_EXTENDED_BASIC_INFORMATION; false if the process can't be opened
+	bool IsProtected();
+	bool IsSecure();		// runs in VTL 1 (IUM), like LsaIso
+	bool IsImmersive();		// a UWP (Store) app
 
 	// current values; -1 (IoPriority::Unknown) if the process can't be opened
 	int GetMemoryPriority();
@@ -34,6 +38,9 @@ private:
 	WinSys::IntegrityLevel m_Integrity{ WinSys::IntegrityLevel::Error };
 	WinSys::ProcessProtection m_Protection{};
 	bool m_IntegrityDone{ false }, m_ProtectionDone{ false };
+	void QueryExtendedBasicInfo();
+	bool m_ExtendedBasicDone{ false }, m_Protected{ false }, m_Secure{ false };
+	bool m_ImmersiveDone{ false }, m_Immersive{ false };
 
 	std::wstring m_ImagePath, m_User, m_CommandLine, m_Description;
 	PCWSTR m_Architecture{ L"" };
