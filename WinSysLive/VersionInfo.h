@@ -9,3 +9,5 @@ struct FileVersionInfo {
 };
 
 FileVersionInfo const& GetCachedVersionInfo(std::wstring const& path);
+// not cached: for other threads
+FileVersionInfo ReadVersionInfo(std::wstring const& path);

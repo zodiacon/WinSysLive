@@ -47,7 +47,6 @@
 #define IDI_MEMORY                  240
 #define IDI_ENVIRONMENT             241
 #define IDD_PROC_GENERAL            242
-#define IDD_PROC_PAGE               243
 #define IDD_PROC_ENVIRONMENT        244
 #define IDD_PROC_TOKEN              245
 #define IDD_PROC_THREADS            246
@@ -55,6 +54,7 @@
 #define IDD_PROC_MEMORY             248
 #define IDD_PROC_JOB                249
 #define IDI_JOB                     250
+#define IDD_PROC_SERVICES           251
 #define IDC_PROC_ICON               1005
 #define IDC_PROC_NAME               1006
 #define IDC_PROC_DESCRIPTION        1007
@@ -65,7 +65,6 @@
 #define IDC_PROC_USER               1012
 #define IDC_PROC_SESSION            1013
 #define IDC_PROC_STARTED            1014
-#define IDC_PROC_PLACEHOLDER        1015
 #define IDC_PROC_ASLR               1016
 #define IDC_PROC_CFG                1017
 #define IDC_PROC_CET                1018
@@ -124,6 +123,14 @@
 #define IDC_JOB_PROCS_LABEL         1072
 #define IDC_JOB_PROCESSES           1073
 #define IDC_JOB_NAME                1074
+#define IDC_SVC_LIST_LABEL          1075
+#define IDC_SVC_LIST                1076
+#define IDC_SVC_DETAILS_LABEL       1077
+#define IDC_SVC_DETAILS             1078
+#define IDC_SVC_STATUS              1079
+#define IDC_SVC_REFRESH             1080
+#define IDC_SVC_START               1081
+#define IDC_SVC_STOP                1082
 #define ID_VIEW_PROPERTIES          32814
 #define ID_OPTIONS_FONT             32815
 #define ID_OPTIONS_DEFAULTFONT      32816
@@ -178,8 +185,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	251
-#define _APS_NEXT_CONTROL_VALUE		1075
+#define _APS_NEXT_RESOURCE_VALUE	252
+#define _APS_NEXT_CONTROL_VALUE		1083
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32817
 #endif

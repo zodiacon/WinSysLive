@@ -260,26 +260,3 @@ private:
 	ProcessSnapshot const& m_Snapshot;
 	CThreadsPage m_Threads;
 };
-
-//
-// A page still to be implemented: its title, icon and a line saying what it will show
-//
-class CProcPlaceholderPage : public CPropertyPageImpl<CProcPlaceholderPage> {
-public:
-	enum { IDD = IDD_PROC_PAGE };
-
-	// title: kept (not copied) until the page is created
-	CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring text);
-
-	BEGIN_MSG_MAP(CProcPlaceholderPage)
-		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-		MESSAGE_HANDLER(WM_SIZE, OnSize)
-		CHAIN_MSG_MAP(CPropertyPageImpl<CProcPlaceholderPage>)
-	END_MSG_MAP()
-
-private:
-	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-
-	std::wstring m_Text;
-};

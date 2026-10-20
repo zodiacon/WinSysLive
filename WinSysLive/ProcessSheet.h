@@ -5,6 +5,7 @@
 #include "ProcessPages.h"
 #include "MemoryPage.h"
 #include "JobPage.h"
+#include "ServicesPage.h"
 
 //
 // A process's properties: a modeless, resizable property sheet with tab icons, run on a thread of its own (see
@@ -43,7 +44,7 @@ private:
 	std::unique_ptr<CProcTokenPage> m_Token;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
 	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job
-	std::vector<std::unique_ptr<CProcPlaceholderPage>> m_Pages;
+	std::unique_ptr<CProcServicesPage> m_Services;	// only for a process hosting services
 };
 
 // opens the sheet on a new thread, which ends when the sheet is closed

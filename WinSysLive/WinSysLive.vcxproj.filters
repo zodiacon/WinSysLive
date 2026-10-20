@@ -100,6 +100,9 @@
     <ClCompile Include="JobPage.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="ServicesPage.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Signature.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -185,6 +188,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="JobPage.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ServicesPage.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Signature.h">

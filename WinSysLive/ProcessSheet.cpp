@@ -17,13 +17,10 @@ namespace {
 		return hProcess && ::IsProcessInJob(hProcess.get(), nullptr, &inJob) && inJob;
 	}
 
-	// the display names of the running services the process hosts
-	std::vector<std::wstring> GetHostedServices(uint32_t pid) {
-		std::vector<std::wstring> names;
-		for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices, ServiceEnumState::Active))
-			if (svc.GetStatusProcess().ProcessId == pid)
-				names.push_back(svc.GetDisplayName());
-		return names;
+	// the running services the process hosts
+	size_t CountHostedServices(uint32_t pid) {
+		return std::ranges::count_if(ServiceManager::EnumServices(ServiceEnumType::AllServices, ServiceEnumState::Active),
+			[&](auto& svc) { return svc.GetStatusProcess().ProcessId == pid; });
 	}
 }
 
@@ -41,10 +38,6 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	// the pages' order is the tabs'
 	m_General = std::make_unique<CProcGeneralPage>(m_Props, m_Icon);
 	AddPage(*m_General);
-	auto add = [&](PCWSTR title, UINT icon, std::wstring text) {
-		auto& page = m_Pages.emplace_back(std::make_unique<CProcPlaceholderPage>(title, icon, std::move(text)));
-		AddPage(*page);
-	};
 	m_Performance = std::make_unique<CProcPerformancePage>(m_Props);
 	AddPage(*m_Performance);
 	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
@@ -59,11 +52,9 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 		m_Job = std::make_unique<CProcJobPage>(m_Props, m_Snapshot);
 		AddPage(*m_Job);
 	}
-	if (auto services = GetHostedServices(m_Props.Id); !services.empty()) {
-		std::wstring text = L"The services this process hosts:";
-		for (auto& name : services)
-			text += L"\n" + name;
-		add(services.size() == 1 ? L"Service" : L"Services", IDI_SERVICES, std::move(text));
+	if (auto count = CountHostedServices(m_Props.Id); count > 0) {
+		m_Services = std::make_unique<CProcServicesPage>(m_Props, count == 1 ? L"Service" : L"Services");
+		AddPage(*m_Services);
 	}
 }
 

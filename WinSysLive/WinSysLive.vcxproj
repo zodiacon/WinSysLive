@@ -335,6 +335,7 @@
     <ClCompile Include="ProcessPages.cpp" />
     <ClCompile Include="MemoryPage.cpp" />
     <ClCompile Include="JobPage.cpp" />
+    <ClCompile Include="ServicesPage.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
@@ -371,6 +372,7 @@
     <ClInclude Include="ProcessPages.h" />
     <ClInclude Include="MemoryPage.h" />
     <ClInclude Include="JobPage.h" />
+    <ClInclude Include="ServicesPage.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="AppSettings.h" />
     <ClInclude Include="MainFrm.h" />

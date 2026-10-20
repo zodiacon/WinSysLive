@@ -809,27 +809,3 @@ void CProcThreadsPage::OnSample(ProcessSnapshot const& snapshot) {
 	if (auto p = snapshot.Process(); p && m_Threads)
 		m_Threads.Update(p, snapshot.Time());
 }
-
-CProcPlaceholderPage::CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring text) :
-	CPropertyPageImpl(title), m_Text(std::move(text)) {
-	SetIconId(m_psp, icon);
-}
-
-LRESULT CProcPlaceholderPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	SetDlgItemText(IDC_PROC_PLACEHOLDER, m_Text.c_str());
-	return TRUE;
-}
-
-LRESULT CProcPlaceholderPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-	// the text stays in the middle
-	CWindow text(GetDlgItem(IDC_PROC_PLACEHOLDER));
-	if (text) {
-		CRect rc;
-		text.GetWindowRect(&rc);
-		int cx = GET_X_LPARAM(lParam), cy = GET_Y_LPARAM(lParam);
-		int margin = ::MulDiv(8, ::GetDpiForWindow(m_hWnd), 96);
-		text.SetWindowPos(nullptr, margin, (cy - rc.Height()) / 2, (std::max)(0, cx - 2 * margin), rc.Height(),
-			SWP_NOZORDER | SWP_NOACTIVATE);
-	}
-	return 0;
-}
