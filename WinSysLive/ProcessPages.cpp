@@ -525,6 +525,84 @@ void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
 		: std::format(L"Groups ({}) and capabilities ({}):", groups.size(), capabilities.size())).c_str());
 }
 
+CProcThreadsPage::CProcThreadsPage(ProcessProperties const& props) : m_Props(props) {
+	SetIconId(m_psp, IDI_THREADS);
+	m_Threads.UseColumns(props.ThreadColumns);
+}
+
+LRESULT CProcThreadsPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// a control parent, so the dialog manager tabs into its list
+	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT);
+	return TRUE;
+}
+
+LRESULT CProcThreadsPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	if (m_Threads) {
+		// the other pages' margin
+		CRect margin(0, 0, 7, 7);
+		MapDialogRect(&margin);
+		m_Threads.MoveWindow(margin.right, margin.bottom, (std::max)(0, int(GET_X_LPARAM(lParam) - 2 * margin.right)),
+			(std::max)(0, int(GET_Y_LPARAM(lParam) - 2 * margin.bottom)));
+	}
+	return 0;
+}
+
+int CProcThreadsPage::OnSetActive() {
+	Refresh();
+	if (!m_Exited)
+		SetTimer(1, m_Props.UpdateInterval, nullptr);
+	return 0;
+}
+
+BOOL CProcThreadsPage::OnKillActive() {
+	// a snapshot costs a few milliseconds: none while the page is hidden
+	KillTimer(1);
+	return FALSE;
+}
+
+LRESULT CProcThreadsPage::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id != 1) {
+		bHandled = FALSE;
+		return 0;
+	}
+	Refresh();
+	if (m_Exited)
+		KillTimer(1);
+	return 0;
+}
+
+void CProcThreadsPage::Refresh() {
+	if (m_Exited)
+		return;
+	// the threads come with the processes; the size needed grows between calls
+	NTSTATUS status = STATUS_INFO_LENGTH_MISMATCH;
+	for (int i = 0; i < 4 && status == STATUS_INFO_LENGTH_MISMATCH; i++) {
+		if (!m_Buffer)
+			m_Buffer = std::make_unique<BYTE[]>(m_BufferSize);
+		ULONG len = 0;
+		status = ::NtQuerySystemInformation(SystemExtendedProcessInformation, m_Buffer.get(), m_BufferSize, &len);
+		if (status == STATUS_INFO_LENGTH_MISMATCH) {
+			m_BufferSize = (std::max)(m_BufferSize * 2, len + (1 << 16));
+			m_Buffer.reset();
+		}
+	}
+	if (!NT_SUCCESS(status))
+		return;
+
+	// the process, unless its ID now belongs to another one
+	auto p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(m_Buffer.get());
+	for (;;) {
+		if (HandleToULong(p->UniqueProcessId) == m_Props.Id && p->CreateTime.QuadPart == m_Props.CreateTime) {
+			m_Threads.Update(p);
+			return;
+		}
+		if (p->NextEntryOffset == 0)
+			break;
+		p = reinterpret_cast<SYSTEM_PROCESS_INFORMATION const*>(reinterpret_cast<BYTE const*>(p) + p->NextEntryOffset);
+	}
+	m_Exited = true;
+}
+
 CProcPlaceholderPage::CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring text) :
 	CPropertyPageImpl(title), m_Text(std::move(text)) {
 	SetIconId(m_psp, icon);

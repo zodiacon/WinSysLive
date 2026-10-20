@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "ProcessInfoEx.h"
 #include "ThreadsPage.h"
-#include "Interfaces.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
 #include "AppSettings.h"
 #include "resource.h"
 #include <WTLHelper.h>
+#include <IconHelper.h>
 
 using namespace WinSys;
 
@@ -67,22 +67,26 @@ namespace {
 	}
 }
 
-void CThreadsPage::SetFrame(IMainFrame* frame) {
-	m_Frame = frame;
+void CThreadsPage::UseColumns(std::wstring layout) {
+	m_Columns = std::move(layout);
 }
 
 LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
 	m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | LVS_REPORT | LVS_OWNERDATA |
-		LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
+		LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_TABSTOP);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP | LVS_EX_SUBITEMIMAGES);
-	// the state icons, in the leftmost column
-	if (m_Frame)
-		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
+	// the state icons, in the leftmost column: an image list of the page's own, as the frame's belongs to the main
+	// thread (the property sheet's page runs on another)
+	static const UINT icons[] = { IDI_THREADS, IDI_CONTINUE, IDI_RUN, IDI_KILL, IDI_PAUSE, IDI_MEMORY };
+	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons), 0);
+	for (auto id : icons)
+		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, 16));
+	m_List.SetImageList(m_Images, LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 
-	SetColumns(ColumnLayout::Parse(AppSettings::Get().ThreadColumns(), s_Columns));
+	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().ThreadColumns(), s_Columns));
 	return 0;
 }
 
@@ -103,6 +107,8 @@ void CThreadsPage::SetColumns(std::vector<ColumnLayout::ShownColumn> const& colu
 }
 
 void CThreadsPage::SaveColumns() const {
+	if (m_Columns)
+		return;
 	auto& settings = AppSettings::Get();
 	settings.ThreadColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
 	settings.Save();
@@ -173,20 +179,24 @@ void CThreadsPage::SetProcess(std::shared_ptr<ProcessInfoEx> process) {
 }
 
 void CThreadsPage::Refresh() {
+	Update(m_Process ? m_Process->NativeInfo : nullptr);
+}
+
+void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info) {
 	int selected = m_List.GetSelectedIndex();
 	uint32_t selectedTid = selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Key.Id : 0;
 
 	m_Rows.clear();
 	LARGE_INTEGER now;
 	::QueryPerformanceCounter(&now);
-	if (m_Process) {
+	if (info) {
 		static const int64_t frequency = [] { LARGE_INTEGER f; ::QueryPerformanceFrequency(&f); return f.QuadPart; }();
 		static const int processors = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
 		// in 100 ns units, like the CPU times
 		int64_t elapsed = m_PrevTime.QuadPart ? (now.QuadPart - m_PrevTime.QuadPart) * 10000000 / frequency : 0;
 
 		// the snapshot is SystemExtendedProcessInformation (or Full): the threads follow the process entry
-		auto info = m_Process->NativeInfo;
+		auto pid = HandleToULong(info->UniqueProcessId);
 		auto threads = reinterpret_cast<SYSTEM_EXTENDED_THREAD_INFORMATION const*>(info->Threads);
 		decltype(m_Threads) current;
 		current.reserve(info->NumberOfThreads);
@@ -214,8 +224,8 @@ void CThreadsPage::Refresh() {
 			}
 			else {
 				state.Handle = OpenThread(row.Key.Id);
-				if (state.Handle && m_Process->Id > 4)
-					state.Service = state.Handle->GetServiceNameByTag(m_Process->Id);
+				if (state.Handle && pid > 4)
+					state.Service = state.Handle->GetServiceNameByTag(pid);
 				// on the first refresh of a process, all its threads are new to the page, not created
 				if (m_PrevTime.QuadPart)
 					state.NewTicks = NewThreadTicks;
@@ -318,11 +328,11 @@ std::wstring CThreadsPage::GetText(ThreadRow const& row, Column column) const {
 }
 
 int CThreadsPage::GetRowImage(HWND, int row, int col) const {
-	if (row >= (int)m_Rows.size() || !m_Frame || !ColumnLayout::IsLeftmostColumn(m_List, col))
+	if (row >= (int)m_Rows.size() || !ColumnLayout::IsLeftmostColumn(m_List, col))
 		return -1;
 	auto& r = m_Rows[row];
 	if (r.Exited)
-		return m_Frame->GetIconIndex(IDI_KILL);
+		return m_IconIndices.at(IDI_KILL);
 	UINT icon;
 	switch (r.State) {
 		case 1: case 3: case 7: icon = IDI_CONTINUE; break;	// Ready, Standby, Deferred Ready
@@ -332,7 +342,7 @@ int CThreadsPage::GetRowImage(HWND, int row, int col) const {
 		case 6: case 9: icon = IDI_MEMORY; break;	// Transition, Waiting for Swap: the kernel stack isn't resident
 		default: icon = IDI_THREADS; break;	// Initialized
 	}
-	return m_Frame->GetIconIndex(icon);
+	return m_IconIndices.at(icon);
 }
 
 int CThreadsPage::GetSaveColumnRange(HWND, int&) const {

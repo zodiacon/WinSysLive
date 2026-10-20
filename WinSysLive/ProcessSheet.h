@@ -29,6 +29,7 @@ private:
 	std::unique_ptr<CProcGeneralPage> m_General;
 	std::unique_ptr<CProcEnvironmentPage> m_Environment;
 	std::unique_ptr<CProcTokenPage> m_Token;
+	std::unique_ptr<CProcThreadsPage> m_Threads;
 	std::vector<std::unique_ptr<CProcPlaceholderPage>> m_Pages;
 };
 

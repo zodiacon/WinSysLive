@@ -6,11 +6,12 @@
 #include "ColumnLayout.h"
 #include "resource.h"
 
-struct IMainFrame;
+struct ProcessInfoEx;
 
 //
-// The Threads tab of the Processes view's lower pane: the threads of the selected process, read from the
-// frame's snapshot (which has every process's threads after its entry) on every refresh. CPU, cycles and the
+// The Threads tab of the Processes view's lower pane, and the Threads page of a process's property sheet: the threads
+// of a process, read from a snapshot (which has every process's threads after its entry) on every refresh: the
+// frame's for the lower pane, the sheet's own for the sheet, which runs on another thread. CPU, cycles and the
 // context switch delta come from the previous refresh's values, kept per thread. The values the snapshot
 // doesn't have (ideal CPU, I/O and memory priority, cycles, service) are queried through a handle to each
 // thread, opened once while its process is shown. New threads are highlighted for a while, exited ones are shown
@@ -23,12 +24,15 @@ class CThreadsPage :
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLive_ThreadsPage", 0, COLOR_WINDOW)
 
-	// for the state icons
-	void SetFrame(IMainFrame* frame);
+	// the columns from this layout (as in the ThreadColumns setting) instead of the setting, and changes to them not
+	// saved: for a page on another thread than the settings'. Call before Create
+	void UseColumns(std::wstring layout);
 	// nullptr: no process
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
-	// takes the threads from the current snapshot
+	// takes the threads from the frame's current snapshot
 	void Refresh();
+	// takes the threads from a snapshot's (SystemExtendedProcessInformation) entry of the process; nullptr: no process
+	void Update(SYSTEM_PROCESS_INFORMATION const* info);
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;
@@ -113,8 +117,10 @@ private:
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
 	void SaveColumns() const;
 
-	IMainFrame* m_Frame{ nullptr };
 	CListViewCtrl m_List;
+	CImageList m_Images;	// the thread state icons, owned by the list
+	std::unordered_map<UINT, int> m_IconIndices;	// IDI_* to their index in m_Images
+	std::optional<std::wstring> m_Columns;	// see UseColumns
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::vector<ThreadRow> m_Rows;	// in display order
 	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Threads;	// node-based: ThreadRow::Service stays valid

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <VirtualListView.h>
+#include "ThreadsPage.h"
 #include "resource.h"
 
 namespace WinSys {
@@ -18,6 +19,9 @@ struct ProcessProperties {
 	uint32_t SessionId{ 0 };
 	std::wstring ImageName, ImagePath, CommandLine, User, Description;
 	std::wstring ParentName;	// empty if the parent isn't running (or its ID was reused)
+	// settings, which belong to the UI thread
+	std::wstring ThreadColumns;
+	int UpdateInterval{ 1000 };
 };
 
 //
@@ -132,6 +136,48 @@ private:
 
 	ProcessProperties const& m_Props;
 	CListViewCtrl m_Privileges, m_Groups;
+};
+
+//
+// The Threads page: the lower pane's Threads tab (CThreadsPage), fed from a snapshot of the page's own (the frame's
+// belongs to the UI thread), taken every UpdateInterval while the page is shown. Its columns start as the lower
+// pane's; changes to them aren't saved. When the process exits, the last threads stay shown.
+//
+class CProcThreadsPage : public CPropertyPageImpl<CProcThreadsPage> {
+public:
+	enum { IDD = IDD_PROC_THREADS };
+
+	explicit CProcThreadsPage(ProcessProperties const& props);
+
+	// CPropertyPageImpl (_WTL_NEW_PAGE_NOTIFY_HANDLERS, WTL's default): 0 allows the activation, FALSE the deactivation
+	int OnSetActive();
+	BOOL OnKillActive();
+
+	BEGIN_MSG_MAP(CProcThreadsPage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CProcThreadsPage>)
+	END_MSG_MAP()
+
+// Handler prototypes (uncomment arguments if needed):
+//	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+//	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+//	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+
+	// takes a snapshot and shows the process's threads from it; stops the timer once the process is gone
+	void Refresh();
+
+	ProcessProperties const& m_Props;
+	CThreadsPage m_Threads;
+	std::unique_ptr<BYTE[]> m_Buffer;	// the snapshot
+	ULONG m_BufferSize{ 1 << 20 };
+	bool m_Exited{ false };
 };
 
 //
