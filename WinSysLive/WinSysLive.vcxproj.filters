@@ -94,6 +94,9 @@
     <ClCompile Include="ProcessPages.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryPage.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Signature.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -173,6 +176,9 @@
     </ClInclude>
     <ClInclude Include="NetworkTracking.h" />
     <ClInclude Include="ProcessPages.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryPage.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Signature.h">

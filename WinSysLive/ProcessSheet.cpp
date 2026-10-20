@@ -49,7 +49,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Performance);
 	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
 	AddPage(*m_Environment);
-	add(L"Memory", IDI_MEMORY, L"The process's address space: regions, their protection and usage.");
+	m_Memory = std::make_unique<CProcMemoryPage>(m_Props);
+	AddPage(*m_Memory);
 	m_Token = std::make_unique<CProcTokenPage>(m_Props);
 	AddPage(*m_Token);
 	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);

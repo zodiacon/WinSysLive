@@ -333,6 +333,7 @@
     <ClCompile Include="ProcessSheet.cpp" />
     <ClCompile Include="NetworkTracking.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
+    <ClCompile Include="MemoryPage.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
@@ -367,6 +368,7 @@
     <ClInclude Include="ProcessSheet.h" />
     <ClInclude Include="NetworkTracking.h" />
     <ClInclude Include="ProcessPages.h" />
+    <ClInclude Include="MemoryPage.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="AppSettings.h" />
     <ClInclude Include="MainFrm.h" />
@@ -444,6 +446,9 @@
     </ProjectReference>
     <ProjectReference Include="..\wtlhelper\TreeListView\TreeListView.vcxproj">
       <Project>{4ae29f49-dd58-4307-bae5-0bc9e4f81bca}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\wtlhelper\HexControl\HexControl.vcxproj">
+      <Project>{ef5c2f6b-5fcd-446c-be8d-1485407cd65a}</Project>
     </ProjectReference>
     <ProjectReference Include="..\winsys\WinSys\WinSys.vcxproj">
       <Project>{c8ceb891-1e94-4ce1-9497-5d09c6f75ef4}</Project>

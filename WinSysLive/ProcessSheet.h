@@ -3,6 +3,7 @@
 #include <ResizablePropertySheet.h>
 #include <IconPropertySheet.h>
 #include "ProcessPages.h"
+#include "MemoryPage.h"
 
 //
 // A process's properties: a modeless, resizable property sheet with tab icons, run on a thread of its own (see
@@ -36,6 +37,7 @@ private:
 	std::unique_ptr<CProcGeneralPage> m_General;
 	std::unique_ptr<CProcPerformancePage> m_Performance;
 	std::unique_ptr<CProcEnvironmentPage> m_Environment;
+	std::unique_ptr<CProcMemoryPage> m_Memory;
 	std::unique_ptr<CProcTokenPage> m_Token;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
 	std::vector<std::unique_ptr<CProcPlaceholderPage>> m_Pages;

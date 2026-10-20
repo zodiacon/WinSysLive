@@ -52,6 +52,7 @@
 #define IDD_PROC_TOKEN              245
 #define IDD_PROC_THREADS            246
 #define IDD_PROC_PERFORMANCE        247
+#define IDD_PROC_MEMORY             248
 #define IDC_PROC_ICON               1005
 #define IDC_PROC_NAME               1006
 #define IDC_PROC_DESCRIPTION        1007
@@ -110,6 +111,8 @@
 #define IDC_PERF_MEMORY             1061
 #define IDC_PERF_IO                 1062
 #define IDC_PERF_VERTICAL           1063
+#define IDC_MEM_STATUS              1064
+#define IDC_MEM_REFRESH             1065
 #define ID_VIEW_PROPERTIES          32814
 #define ID_OPTIONS_FONT             32815
 #define ID_OPTIONS_DEFAULTFONT      32816
@@ -164,8 +167,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	248
-#define _APS_NEXT_CONTROL_VALUE		1064
+#define _APS_NEXT_RESOURCE_VALUE	249
+#define _APS_NEXT_CONTROL_VALUE		1066
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32817
 #endif

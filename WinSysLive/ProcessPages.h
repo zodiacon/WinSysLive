@@ -26,6 +26,10 @@ struct ProcessProperties {
 	int UpdateInterval{ 1000 };
 };
 
+// the process, if it's still the one the sheet is for (its ID may have been reused): null otherwise, with the last
+// error set
+wil::unique_handle OpenSheetProcess(ProcessProperties const& props, DWORD access);
+
 //
 // The General page: identity and origin of the process, its security mitigations and signature. Its controls follow
 // the page's size through the dialog's AFX_DIALOG_LAYOUT resource (CDynamicDialogLayout)

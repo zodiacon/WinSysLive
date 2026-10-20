@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GraphControl", "wtlhelper\G
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TreeListView", "wtlhelper\TreeListView\TreeListView.vcxproj", "{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HexControl", "wtlhelper\HexControl\HexControl.vcxproj", "{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -61,6 +63,14 @@ Global
 		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|ARM64.Build.0 = Release|x64
 		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|x64.ActiveCfg = Release|x64
 		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA}.Release|x64.Build.0 = Release|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Debug|ARM64.ActiveCfg = Debug|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Debug|ARM64.Build.0 = Debug|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Debug|x64.ActiveCfg = Debug|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Debug|x64.Build.0 = Debug|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Release|ARM64.ActiveCfg = Release|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Release|ARM64.Build.0 = Release|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Release|x64.ActiveCfg = Release|x64
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

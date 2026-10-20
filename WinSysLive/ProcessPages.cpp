@@ -35,20 +35,6 @@ namespace {
 		return nt->OptionalHeader.DllCharacteristics;
 	}
 
-	// the process, if it's still the one the sheet is for (its ID may have been reused): null otherwise, with the
-	// last error set
-	wil::unique_handle OpenProcess(ProcessProperties const& props, DWORD access) {
-		wil::unique_handle hProcess(::OpenProcess(access, FALSE, props.Id));
-		FILETIME created, exited, kernel, user;
-		if (hProcess && ::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
-			&& (int64_t(created.dwHighDateTime) << 32 | created.dwLowDateTime) != props.CreateTime) {
-			// another process with the same ID
-			hProcess.reset();
-			::SetLastError(ERROR_NOT_FOUND);
-		}
-		return hProcess;
-	}
-
 	// "Enabled (a, b)" or "Enabled"
 	std::wstring EnabledText(std::initializer_list<std::pair<DWORD, PCWSTR>> details) {
 		std::wstring text;
@@ -57,6 +43,18 @@ namespace {
 				text += (text.empty() ? L" (" : L", ") + std::wstring(name);
 		return L"Enabled" + text + (text.empty() ? L"" : L")");
 	}
+}
+
+wil::unique_handle OpenSheetProcess(ProcessProperties const& props, DWORD access) {
+	wil::unique_handle hProcess(::OpenProcess(access, FALSE, props.Id));
+	FILETIME created, exited, kernel, user;
+	if (hProcess && ::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
+		&& (int64_t(created.dwHighDateTime) << 32 | created.dwLowDateTime) != props.CreateTime) {
+		// another process with the same ID
+		hProcess.reset();
+		::SetLastError(ERROR_NOT_FOUND);
+	}
+	return hProcess;
 }
 
 CProcGeneralPage::CProcGeneralPage(ProcessProperties const& props, HICON hIcon) : m_Props(props), m_hIcon(hIcon) {
@@ -91,9 +89,9 @@ LRESULT CProcGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 }
 
 void CProcGeneralPage::ShowMitigations() {
-	auto hProcess = OpenProcess(m_Props, PROCESS_QUERY_INFORMATION);
+	auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_INFORMATION);
 	if (!hProcess)
-		hProcess = OpenProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
+		hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
 	if (!hProcess) {
 		auto text = WinSys::Helpers::GetErrorText(::GetLastError());
 		for (UINT id : { IDC_PROC_ASLR, IDC_PROC_CFG, IDC_PROC_CET, IDC_PROC_DEP })
@@ -164,7 +162,7 @@ LRESULT CProcGeneralPage::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
 		return 0;
 
-	auto hProcess = OpenProcess(m_Props, PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION);
+	auto hProcess = OpenSheetProcess(m_Props, PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION);
 	if (!hProcess || !::TerminateProcess(hProcess.get(), 1)) {
 		AtlMessageBox(m_hWnd, std::format(L"Failed to terminate the process: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
 			IDR_MAINFRAME, MB_ICONERROR);
@@ -200,7 +198,7 @@ LRESULT CProcEnvironmentPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPA
 }
 
 bool CProcEnvironmentPage::Load() {
-	auto hProcess = OpenProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
+	auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
 	if (!hProcess) {
 		SetDlgItemText(IDC_ENV_STATUS, std::format(L"Can't read the environment: {}",
 			WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
@@ -399,7 +397,7 @@ LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	InitList(m_Groups, GetDlgItem(IDC_TOKEN_GROUPS), { { L"Name", 260 }, { L"Attributes", 220 }, { L"Type", 110 }, { L"SID", 300 } });
 
 	// the token's security decides; the process needs only limited access. Its source needs more access to the token
-	auto hProcess = OpenProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
+	auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
 	std::unique_ptr<WinSys::Token> token;
 	if (hProcess) {
 		token = std::make_unique<WinSys::Token>(hProcess.get(), WinSys::TokenAccessMask(TOKEN_QUERY | TOKEN_QUERY_SOURCE));
