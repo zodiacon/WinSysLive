@@ -6,6 +6,7 @@
 #include "ColumnLayout.h"
 #include "ProcessDetails.h"
 #include "ProcessColors.h"
+#include "FilterBox.h"
 #include <CustomSplitterWindow.h>
 #include <unordered_set>
 
@@ -29,6 +30,7 @@ public:
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
 		NOTIFY_CODE_HANDLER(TLVN_SELCHANGED, OnSelectionChanged)
@@ -39,6 +41,7 @@ public:
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILL, OnKill)
 		COMMAND_ID_HANDLER(ID_KILL, OnKillFocused)
+		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILLALL, OnKillAll)
 		COMMAND_ID_HANDLER(ID_PROCESS_SUSPEND, OnSuspend)
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
@@ -71,6 +74,7 @@ private:
 		int NewTicks{ 0 };			// > 0: still highlighted as new
 		bool Terminated{ false };	// highlighted for one update, then removed
 		ProcessKind Kinds{ ProcessKind::None };	// for the row color (see UpdateKinds)
+		bool Match{ true };	// matches the filter (always, without one); in the tree only if it does, or a descendant does
 		// changes since the previous update (0 on the first)
 		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
 		uint64_t PrevContextSwitches{ 0 };
@@ -88,6 +92,8 @@ private:
 	LRESULT OnRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKillFocused(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSuspend(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -128,6 +134,10 @@ private:
 	void UpdateDotNet(bool all);
 
 	void BuildItems();
+	// the filter: a process matches if its image name, PID, user, description or command line contains the text
+	bool Matches(ProcessItem& item) const;
+	// the matches' count in the status line (the filter's text, from m_Filter)
+	void UpdateFilterStatus();
 	HTLITEM EnsureInserted(ProcessItem& item);
 	void RemoveItem(ProcessItem& item);
 	void CollectDescendants(HTLITEM hItem, std::vector<ProcessItem*>& items) const;
@@ -157,6 +167,7 @@ private:
 	// the lower pane follows a selection change after a pause, so moving through the list with the keyboard
 	// (arrows held down, type-ahead) doesn't enumerate the handles or modules of every process on the way
 	enum { DetailsTimerId = 1, DetailsDelay = 150 };
+	CFilterBox m_Filter;	// in the view's rebar
 	// runs while a network column is shown
 	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;	// while a network column is shown (NetworkTracking)
 	DWORD m_NetworkError{ 0 };	// why it didn't start

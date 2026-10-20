@@ -98,6 +98,8 @@ CString CServicesView::GetTitle() const {
 }
 
 LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// the filter box goes in a rebar of the view's own, above the list
+	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
 		LVS_REPORT | LVS_OWNERDATA | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
@@ -107,9 +109,18 @@ LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().ServiceColumns(), s_Columns));
 
+	int width = ::MulDiv(360, ::GetDpiForWindow(m_hWnd), 96);
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, description, process or path (Ctrl+F)", m_List,
+		[this](auto&) {
+			ShowItems();
+			UpdateFilterStatus();
+		});
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, width);
+
 	for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices)) {
 		auto item = std::make_shared<ServiceItem>(svc);
 		m_ItemsByName.insert({ svc.GetName(), item });
+		m_All.push_back(item);
 		m_Items.push_back(std::move(item));
 	}
 	m_List.SetItemCount((int)m_Items.size());
@@ -127,6 +138,9 @@ LRESULT CServicesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 void CServicesView::OnActivate(bool active) {
 	// the Processes view handles it too
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	// the status line's count is this view's
+	if (!m_Filter.GetText().empty())
+		active ? UpdateFilterStatus() : Frame()->SetStatusText(0, L"");
 	if (active)
 		m_List.SetFocus();
 }
@@ -182,6 +196,7 @@ LRESULT CServicesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 
 void CServicesView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
+	m_Filter.SetFont(font);
 }
 
 void CServicesView::OnRefresh(bool active) {
@@ -213,27 +228,72 @@ void CServicesView::OnRefresh(bool active) {
 			auto item = std::make_shared<ServiceItem>(std::move(svc));
 			item->NewTicks = HighlightTicks;
 			m_ItemsByName.insert({ item->Info.GetName(), item });
-			m_Items.push_back(std::move(item));
+			m_All.push_back(std::move(item));
 			added = true;
 		}
 	}
 
 	// services that were deleted
-	bool removed = std::erase_if(m_Items, [&](auto& item) { return !current.contains(item->Info.GetName()); }) > 0;
+	bool removed = std::erase_if(m_All, [&](auto& item) { return !current.contains(item->Info.GetName()); }) > 0;
 	if (removed)
 		std::erase_if(m_ItemsByName, [&](auto& pair) { return !current.contains(pair.first); });
 
-	if (added || removed)
-		m_List.SetItemCountEx((int)m_Items.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
-
-	// states change, so the order may too; DoSort keeps the selection
-	if (GetSortInfo(m_List))
+	// with a filter, a service's process may have changed whether it matches
+	if (added || removed || !m_Filter.GetText().empty()) {
+		ShowItems();
+		if (active)
+			UpdateFilterStatus();
+	}
+	else if (GetSortInfo(m_List))
+		// states change, so the order may too; DoSort keeps the selection
 		Sort(m_List);
-	else if (added || removed)
-		SelectService(selectedName);
 
 	if (active)
 		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+bool CServicesView::Matches(ServiceItem& item) const {
+	auto& filter = m_Filter.GetText();
+	if (filter.empty())
+		return true;
+	// the description and the binary path are loaded once (a call to the SCM each) and cached
+	for (auto column : { Column::Name, Column::DisplayName, Column::ProcessId, Column::ProcessName, Column::Description, Column::BinaryPath })
+		if (CFilterBox::Contains(GetText(item, column), filter))
+			return true;
+	return false;
+}
+
+void CServicesView::ShowItems() {
+	auto selected = GetSelectedService();
+	auto selectedName = selected ? selected->Info.GetName() : L"";
+	m_Items.clear();
+	for (auto& item : m_All)
+		if (Matches(*item))
+			m_Items.push_back(item);
+	m_List.SetItemCountEx((int)m_Items.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+	// DoSort keeps the selection
+	if (GetSortInfo(m_List))
+		Sort(m_List);
+	else
+		SelectService(selectedName);
+	m_List.Invalidate();
+}
+
+void CServicesView::UpdateFilterStatus() {
+	if (m_Filter.GetText().empty())
+		Frame()->SetStatusText(0, L"");
+	else
+		Frame()->SetStatusText(0, std::format(L"{} of {} services match the filter", m_Items.size(), m_All.size()).c_str());
+}
+
+LRESULT CServicesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CServicesView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Focus();
+	return 0;
 }
 
 CString CServicesView::GetColumnText(HWND, int row, int col) const {

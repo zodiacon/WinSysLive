@@ -123,6 +123,9 @@ CString CProcessesView::GetTitle() const {
 LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
+	// the filter box (below, once the list exists) goes in a rebar of the view's own, above the list
+	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
+
 	m_hWndClient = m_Splitter.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	// the splitter forwards the tree's notifications (WM_NOTIFY) to this view
 	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
@@ -133,6 +136,15 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
 
 	SetColumns(LoadColumns());
+
+	int width = ::MulDiv(360, ::GetDpiForWindow(m_hWnd), 96);
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, PID, user, description or command line (Ctrl+F)",
+		m_Tree, [this](auto&) {
+			BuildItems();
+			UpdateFilterStatus();
+		});
+	m_Filter.SetFont(m_Tree.GetFont());
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, width);
 	m_Colors = ProcessColors::Load();
 
 	m_TreeMode = AppSettings::Get().ProcessTreeMode();
@@ -289,12 +301,16 @@ void CProcessesView::OnActivate(bool active) {
 	// the Services view handles it too, so it's set here rather than on every refresh (UpdateUI)
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
 	UpdateUI();
+	// the status line's count is this view's
+	if (!m_Filter.GetText().empty())
+		active ? UpdateFilterStatus() : Frame()->SetStatusText(0, L"");
 	if (active)
 		m_Tree.SetFocus();
 }
 
 void CProcessesView::OnFontChanged(HFONT font) {
 	m_Tree.SetFont(font);
+	m_Filter.SetFont(font);
 	m_Details.SetListFont(font);
 }
 
@@ -314,6 +330,9 @@ void CProcessesView::ShowProcess(uint32_t pid) {
 	auto process = Frame()->GetProcessManager().GetProcessById(pid);
 	if (!process)
 		return;
+	// a process the filter hides is shown by clearing the filter
+	if (auto it = m_Items.find(process->Key); it != m_Items.end() && !it->second.Item && !m_Filter.GetText().empty())
+		m_Filter.Clear();
 	if (auto it = m_Items.find(process->Key); it != m_Items.end() && it->second.Item) {
 		m_Tree.SelectItem(it->second.Item);
 		m_Tree.SetFocus();
@@ -363,6 +382,39 @@ void CProcessesView::UpdateDotNet(bool all) {
 			item->Kinds |= ProcessKind::DotNet;
 }
 
+bool CProcessesView::Matches(ProcessItem& item) const {
+	auto& filter = m_Filter.GetText();
+	if (filter.empty())
+		return true;
+	auto& p = *item.Process;
+	auto contains = [&](std::wstring const& text) { return CFilterBox::Contains(text, filter); };
+	// the cheap ones first; the others are cached in ProcessInfoEx once queried
+	return contains(p.GetImageName()) || contains(std::to_wstring(p.Id)) || contains(p.GetUser())
+		|| contains(p.GetDescription()) || contains(p.GetCommandLine());
+}
+
+void CProcessesView::UpdateFilterStatus() {
+	if (!m_Active)
+		return;
+	if (m_Filter.GetText().empty()) {
+		Frame()->SetStatusText(0, L"");
+		return;
+	}
+	auto matches = std::ranges::count_if(m_Items, [](auto& i) { return i.second.Match && !i.second.Terminated; });
+	auto total = std::ranges::count_if(m_Items, [](auto& i) { return !i.second.Terminated; });
+	Frame()->SetStatusText(0, std::format(L"{} of {} processes match the filter", matches, total).c_str());
+}
+
+LRESULT CProcessesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CProcessesView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Focus();
+	return 0;
+}
+
 void CProcessesView::BuildItems() {
 	auto selected = GetSelectedProcess();
 	auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
@@ -376,9 +428,14 @@ void CProcessesView::BuildItems() {
 	m_Items.reserve(processes.size() + 64);
 	for (auto& p : processes)
 		m_Items.insert({ p->Key, ProcessItem{ p } });
-	// in snapshot order (not the map's), so unsorted siblings keep the system's order; parents are inserted first anyway
-	for (auto& p : processes)
-		EnsureInserted(m_Items.at(p->Key));
+	// in snapshot order (not the map's), so unsorted siblings keep the system's order; parents are inserted first anyway.
+	// With a filter, only the matching processes, which bring their ancestors along (EnsureInserted)
+	for (auto& p : processes) {
+		auto& item = m_Items.at(p->Key);
+		item.Match = Matches(item);
+		if (item.Match)
+			EnsureInserted(item);
+	}
 
 	UpdateServicePids();
 	for (auto& [key, item] : m_Items) {
@@ -434,7 +491,9 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 		}
 	}
 	for (auto item : added) {
-		EnsureInserted(*item);
+		item->Match = Matches(*item);
+		if (item->Match)
+			EnsureInserted(*item);
 		SetFixedKinds(*item);
 	}
 
@@ -465,6 +524,8 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 
 	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
 	UpdateUI();
+	if (!m_Filter.GetText().empty())
+		UpdateFilterStatus();
 	UpdateDetails();
 	if (m_LowerPane)
 		m_Details.Refresh();
@@ -497,6 +558,13 @@ CProcessesView::ProcessItem* CProcessesView::FindParent(ProcessItem const& item)
 }
 
 void CProcessesView::RemoveItem(ProcessItem& item) {
+	if (!item.Item) {
+		// filtered out: not in the tree
+		if (m_Network)
+			m_Network->RemoveProcess(item.Process->Id);
+		m_Items.erase(item.Process->Key);
+		return;
+	}
 	// DeleteItem takes the whole subtree; the children move to the top level, since their parent is gone
 	std::vector<ProcessItem*> descendants;
 	CollectDescendants(item.Item, descendants);
@@ -710,6 +778,9 @@ LRESULT CProcessesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled
 			cd->clrTextBk = dark ? color->Dark : color->Light;
 			cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
 		}
+		else if (!item.Match)
+			// shown only as the ancestor of a process that matches the filter
+			cd->clrText = dark ? RGB(128, 128, 128) : RGB(140, 140, 140);
 	}
 	return CDRF_DODEFAULT;
 }

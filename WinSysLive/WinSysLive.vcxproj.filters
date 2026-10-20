@@ -36,6 +36,9 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FilterBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Symbols.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -136,6 +139,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FilterBox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Symbols.h">

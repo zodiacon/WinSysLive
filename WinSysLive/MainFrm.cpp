@@ -17,10 +17,15 @@
 #include <WinSys/SecurityHelper.h>
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
-	// Space pauses updates, but not while typing in an edit control (such as a label being edited)
-	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_SPACE) {
+	// keys that edit text belong to an edit control with the focus (a filter box, a label being edited), not to the
+	// accelerators: Space (pause), Delete (kill), and the clipboard and undo keys (Ctrl+C is Copy)
+	if (pMsg->message == WM_KEYDOWN) {
+		auto key = pMsg->wParam;
+		bool ctrl = ::GetKeyState(VK_CONTROL) < 0;
+		bool editing = (!ctrl && (key == VK_SPACE || key == VK_DELETE))
+			|| (ctrl && (key == 'C' || key == 'V' || key == 'X' || key == 'A' || key == 'Z' || key == 'Y'));
 		WCHAR className[16];
-		if (::GetClassName(::GetFocus(), className, _countof(className)) && ::_wcsicmp(className, WC_EDIT) == 0)
+		if (editing && ::GetClassName(::GetFocus(), className, _countof(className)) && ::_wcsicmp(className, WC_EDIT) == 0)
 			return FALSE;
 	}
 

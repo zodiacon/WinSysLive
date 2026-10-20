@@ -629,6 +629,7 @@ BEGIN
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
     "L",            ID_VIEW_LOWERPANE,      VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
+    "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL
     VK_DELETE,      ID_KILL,                VIRTKEY 
     VK_RETURN,      ID_VIEW_PROPERTIES,     VIRTKEY, ALT
 END

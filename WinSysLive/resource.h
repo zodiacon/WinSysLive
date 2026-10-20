@@ -156,6 +156,7 @@
 #define IDC_SYM_BROWSE              1129
 #define IDC_SYM_EXTRA               1130
 #define IDC_SYM_PREVIEW             1131
+#define IDC_VIEW_FILTER             1132
 #define IDC_STACK_LIST              1120
 #define IDC_STACK_STATUS            1121
 #define IDC_STACK_REFRESH           1122
@@ -252,7 +253,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE	259
-#define _APS_NEXT_CONTROL_VALUE		1132
+#define _APS_NEXT_CONTROL_VALUE		1133
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32826
 #endif

@@ -3,6 +3,7 @@
 #include "resource.h"
 #include "ViewBase.h"
 #include "ColumnLayout.h"
+#include "FilterBox.h"
 #include <VirtualListView.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Service.h>
@@ -32,6 +33,7 @@ public:
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CServicesView>)
 		CHAIN_MSG_MAP(CViewBase<CServicesView>)
@@ -43,6 +45,7 @@ public:
 		COMMAND_ID_HANDLER(ID_SERVICE_RESTART, OnRestart)
 		COMMAND_ID_HANDLER(ID_SERVICE_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CServicesView>, 1)
@@ -86,6 +89,8 @@ private:
 	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
@@ -96,6 +101,13 @@ private:
 	void SaveColumns() const;
 
 	std::wstring GetText(ServiceItem& item, Column column) const;
+	// the filter: a service matches if its name, display name, description, process (ID or name) or binary path
+	// contains the text
+	bool Matches(ServiceItem& item) const;
+	// the list's rows: the services that match the filter, sorted as the list is; the selection is kept by name
+	void ShowItems();
+	// the matches' count in the status line
+	void UpdateFilterStatus();
 	int CompareServices(ServiceItem& s1, ServiceItem& s2, Column column) const;
 	ServiceItem* GetSelectedService() const;
 	void SelectService(std::wstring const& name);
@@ -104,7 +116,9 @@ private:
 
 	CListViewCtrl m_List;
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
-	std::vector<std::shared_ptr<ServiceItem>> m_Items;	// in display order
+	std::vector<std::shared_ptr<ServiceItem>> m_All;	// every service, in enumeration order
+	std::vector<std::shared_ptr<ServiceItem>> m_Items;	// the list's rows (those matching the filter), in display order
+	CFilterBox m_Filter;	// in the view's rebar
 	std::unordered_map<std::wstring, std::shared_ptr<ServiceItem>> m_ItemsByName;
 
 	// restart: stop, then start once the service has stopped (polled with a timer, so the UI doesn't block)
