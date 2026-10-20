@@ -484,3 +484,76 @@ void CPerfDiskPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 		graph->SetExpectedInterval(interval);
 	}
 }
+
+//
+// GPU
+//
+
+void CPerfGpuPage::CreateGraphs() {
+	auto& adapter = WinSys::GpuInfo::GetAdapters()[m_Index];
+	m_Engines.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, GCS_GRID | GCS_FILL | GCS_TOOLTIP);
+	m_Engines.SetGraphCount(adapter.Engines.size());
+	m_Engines.SetRange(0, 100);
+	m_Engines.SetValueFormatter(Format::Percent);
+	m_Engines.SetHistoryLength(PerfHistoryLength);
+	m_Engines.SetSeriesStyle(SeriesStyle{ PerfColors::Gpu, PerfColors::Gpu });
+	m_Engines.SetSharedCrosshair(true);
+	for (size_t i = 0; i < adapter.Engines.size(); i++)
+		m_Engines.GetGraph(i)->SetTitle(adapter.Engines[i]);
+
+	auto memoryGraph = [&](CGraphControl& graph, SeriesId& series, PCWSTR title, COLORREF color, uint64_t limit) {
+		graph.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_TOOLTIP | GCS_VALUEOVERLAY);
+		series = graph.AddSeries(L"In use", SeriesStyle{ color, color });
+		graph.SetTitle(title);
+		graph.SetRange(0, limit ? (float)limit : 1024.0f * 1024 * 1024);
+		graph.SetValueFormatter(Format::Bytes);
+		graph.SetHistoryLength(PerfHistoryLength);
+	};
+	memoryGraph(m_Dedicated, m_DedicatedSeries, L"Dedicated GPU Memory", PerfColors::Memory, adapter.DedicatedLimit);
+	memoryGraph(m_Shared, m_SharedSeries, L"Shared GPU Memory", PerfColors::GpuShared, adapter.SharedLimit);
+	m_Lines.resize(2);
+}
+
+void CPerfGpuPage::LayoutGraphs(CRect const& rc, int gap) {
+	int height = std::max(0, rc.Height() - gap);
+	int enginesHeight = height * 60 / 100, memoryHeight = height - enginesHeight;
+	m_Engines.MoveWindow(rc.left, rc.top, rc.Width(), enginesHeight);
+	// as the CPU page: square-ish tiles in the strip
+	if (auto count = (int)m_Engines.GetGraphCount(); count > 0 && enginesHeight > 0) {
+		int columns = std::clamp((int)std::lround(std::sqrt((double)count * rc.Width() / enginesHeight)), 1, count);
+		m_Engines.SetLayout(columns, (count + columns - 1) / columns);
+	}
+	int width = std::max(0, (rc.Width() - gap) / 2), y = rc.top + enginesHeight + gap;
+	m_Dedicated.MoveWindow(rc.left, y, width, memoryHeight);
+	m_Shared.MoveWindow(rc.left + width + gap, y, rc.Width() - width - gap, memoryHeight);
+}
+
+void CPerfGpuPage::Sample(PerfSample const& sample) {
+	if (!sample.Gpus || m_Index >= sample.Gpus->size())
+		return;
+	auto& adapter = WinSys::GpuInfo::GetAdapters()[m_Index];
+	auto& gpu = (*sample.Gpus)[m_Index];
+	if (sample.HasGpu && gpu.Engines.size() == m_Engines.GetGraphCount())
+		m_Engines.PushSamples(gpu.Engines);
+	m_Dedicated.PushSample(m_DedicatedSeries, (float)gpu.DedicatedUsed);
+	m_Shared.PushSample(m_SharedSeries, (float)gpu.SharedUsed);
+
+	m_Lines[0] = std::format(L"Utilization: {:.1f}%    Dedicated memory: {} of {}    Shared memory: {} of {}", gpu.Usage,
+		FormatBytes((int64_t)gpu.DedicatedUsed), FormatBytes((int64_t)adapter.DedicatedLimit),
+		FormatBytes((int64_t)gpu.SharedUsed), FormatBytes((int64_t)adapter.SharedLimit));
+	m_Lines[1] = std::format(L"{}    Engines: {}    Nodes: {}", adapter.Name, adapter.Engines.size(), adapter.NodeEngine.size());
+}
+
+void CPerfGpuPage::ApplyTheme() {
+	m_Engines.SetTheme(m_Theme);
+	m_Dedicated.SetTheme(m_Theme);
+	m_Shared.SetTheme(m_Theme);
+}
+
+void CPerfGpuPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
+	m_Engines.SetTimeSpanText(text);
+	for (CGraphControl* graph : { &m_Dedicated, &m_Shared }) {
+		graph->SetTimeSpanText(text);
+		graph->SetExpectedInterval(interval);
+	}
+}

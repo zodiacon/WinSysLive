@@ -343,8 +343,8 @@ exit /b 0</Command>
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp" />
     <ClCompile Include="ColumnLayout.cpp" />
-    <ClCompile Include="Connections.cpp" />
-    <ClCompile Include="ObjectNames.cpp" />
+    <ClCompile Include="ConnectionRows.cpp" />
+    <ClCompile Include="HandleIcons.cpp" />
     <ClCompile Include="FilterBox.cpp" />
     <ClCompile Include="ProcessColors.cpp" />
     <ClCompile Include="ProcessColorsDlg.cpp" />
@@ -392,8 +392,8 @@ exit /b 0</Command>
   <ItemGroup>
     <ClInclude Include="AboutDlg.h" />
     <ClInclude Include="ColumnLayout.h" />
-    <ClInclude Include="Connections.h" />
-    <ClInclude Include="ObjectNames.h" />
+    <ClInclude Include="ConnectionRows.h" />
+    <ClInclude Include="HandleIcons.h" />
     <ClInclude Include="FilterBox.h" />
     <ClInclude Include="ProcessColors.h" />
     <ClInclude Include="ProcessColorsDlg.h" />

@@ -68,26 +68,26 @@ void CProcTcpIpPage::OnSample(ProcessSnapshot const& snapshot) {
 }
 
 bool CProcTcpIpPage::Load() {
-	auto current = Connections::Read(m_Props.Id);
+	auto current = WinSys::ConnectionInfo::Read(m_Props.Id);
 	if (!current) {
 		SetDlgItemText(IDC_TCPIP_STATUS, std::format(L"Can't read the connections: {}",
 			WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
 		return false;
 	}
 	// on the first read, all of them are new to the page, not opened
-	Connections::Merge(m_Rows, std::move(*current), m_Loaded);
+	ConnectionRows::Merge(m_Rows, std::move(*current), m_Loaded);
 	m_Loaded = true;
 	return true;
 }
 
 std::wstring CProcTcpIpPage::GetText(Connection const& c, Column column) const {
 	switch (column) {
-		case Column::Protocol: return Connections::ProtocolName(c.Id.Proto);
+		case Column::Protocol: return WinSys::ConnectionInfo::ProtocolName(c.Id.Proto);
 		case Column::LocalAddress: return c.LocalText;
 		case Column::LocalPort: return std::to_wstring(c.Id.LocalPort);
 		case Column::RemoteAddress: return c.RemoteText;
 		case Column::RemotePort: return c.RemoteText.empty() ? L"" : std::to_wstring(c.Id.RemotePort);
-		case Column::State: return Connections::StateName(c);
+		case Column::State: return WinSys::ConnectionInfo::StateName(c);
 		case Column::Created: return c.Created ? FormatHelper::FormatDateTime(c.Created) : L"";
 	}
 	return L"";

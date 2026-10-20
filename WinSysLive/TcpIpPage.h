@@ -1,11 +1,11 @@
 #pragma once
 
 #include "ProcessPages.h"
-#include "Connections.h"
+#include "ConnectionRows.h"
 
 //
-// The TCP/IP page: the process's TCP connections (listening ones too) and UDP endpoints, IPv4 and IPv6 (Connections,
-// shared with the Network view, which needs no elevation). They're read again on
+// The TCP/IP page: the process's TCP connections (listening ones too) and UDP endpoints, IPv4 and IPv6 (WinSys
+// ConnectionInfo, which needs no elevation; merged as the Network view's, ConnectionRows). They're read again on
 // every sample while the page is active; new ones are highlighted for two samples (not on the first read), and closed
 // ones are shown once more in red. The selection (several rows, for Copy) is kept by connection. Copy and Copy All put tab-separated lines on
 // the clipboard.
@@ -53,9 +53,9 @@ private:
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
 	enum class Column { Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, Created, _Count };
-	using Protocol = Connections::Protocol;
-	using Key = Connections::Key;
-	using Connection = Connections::Connection;
+	using Protocol = WinSys::ConnectionProtocol;
+	using Key = WinSys::ConnectionKey;
+	using Connection = ConnectionRow;
 
 	// reads the process's connections and merges them into m_Rows; false (with the status saying why) on failure
 	bool Load();

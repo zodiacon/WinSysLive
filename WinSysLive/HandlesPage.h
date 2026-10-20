@@ -3,7 +3,6 @@
 #include <VirtualListView.h>
 #include <WinSys/Handles.h>
 #include "ColumnLayout.h"
-#include "ObjectNames.h"
 #include "resource.h"
 
 struct IMainFrame;
@@ -109,7 +108,7 @@ private:
 	std::unordered_map<uint64_t, std::shared_ptr<HandleData>> m_Handles;	// by handle value
 	WinSys::HandleEnumerator m_Enumerator;	// keeps the system handle table's buffer
 	mutable WinSys::ObjectNameQuery m_NameQuery;
-	DosNames m_DosNames;	// for the files' names
+	WinSys::DosNames m_DosNames;	// for the files' names
 	bool m_FirstEnum{ true };	// everything is new on the first enumeration: nothing to highlight
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 };

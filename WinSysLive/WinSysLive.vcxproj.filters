@@ -36,10 +36,10 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Connections.cpp">
+    <ClCompile Include="ConnectionRows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ObjectNames.cpp">
+    <ClCompile Include="HandleIcons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FilterBox.cpp">
@@ -156,10 +156,10 @@
     <ClInclude Include="ColumnLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Connections.h">
+    <ClInclude Include="ConnectionRows.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ObjectNames.h">
+    <ClInclude Include="HandleIcons.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FilterBox.h">

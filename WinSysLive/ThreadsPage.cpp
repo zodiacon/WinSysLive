@@ -192,20 +192,19 @@ LRESULT CThreadsPage::OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWn
 		return 0;
 
 	// the thread ID may belong to another thread by now: the row's creation time tells
-	wil::unique_handle hThread(::OpenThread((wID == ID_THREAD_TERMINATE ? THREAD_TERMINATE : THREAD_SUSPEND_RESUME)
-		| THREAD_QUERY_LIMITED_INFORMATION, FALSE, tid));
+	auto thread = Thread::OpenById(tid, (wID == ID_THREAD_TERMINATE ? ThreadAccessMask::Terminate : ThreadAccessMask::SuspendResume)
+		| ThreadAccessMask::QueryLimitedInformation);
 	bool ok = false;
-	if (hThread) {
-		FILETIME created, exited, kernel, user;
-		if (::GetThreadTimes(hThread.get(), &created, &exited, &kernel, &user)
-			&& (int64_t)ULARGE_INTEGER{ created.dwLowDateTime, created.dwHighDateTime }.QuadPart != row->Key.Created)
+	if (thread) {
+		auto created = thread->GetCreateTime();
+		if (created && created != row->Key.Created)
 			::SetLastError(ERROR_INVALID_PARAMETER);
 		else if (wID == ID_THREAD_TERMINATE)
-			ok = ::TerminateThread(hThread.get(), 1);
+			ok = thread->Terminate(1);
 		else if (wID == ID_THREAD_SUSPEND)
-			ok = ::SuspendThread(hThread.get()) != (DWORD)-1;
+			ok = thread->Suspend();
 		else
-			ok = ::ResumeThread(hThread.get()) != (DWORD)-1;
+			ok = thread->Resume();
 	}
 	if (!ok)
 		AtlMessageBox(m_hWnd, std::format(L"Failed to {} the thread: {}", verb, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),

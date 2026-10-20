@@ -30,6 +30,9 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	int GetUserObjects();
 	// EcoQoS (Task Manager's efficiency mode): execution speed throttled; nothing if it can't be queried
 	std::optional<bool> GetEfficiencyMode();
+	// a handle with PROCESS_QUERY_INFORMATION, opened once (the GPU statistics refuse a limited one); null if it can't
+	// be opened (protected processes, other users' without elevation)
+	HANDLE GetQueryInformationHandle();
 
 private:
 	// opened once with limited query access; nullptr if that fails
@@ -37,9 +40,12 @@ private:
 
 	std::unique_ptr<WinSys::Process> m_Process;
 	bool m_ProcessDone{ false };
+	std::unique_ptr<WinSys::Process> m_QueryInformation;
+	bool m_QueryInformationDone{ false };
 	WinSys::IntegrityLevel m_Integrity{ WinSys::IntegrityLevel::Error };
 	WinSys::ProcessProtection m_Protection{};
 	bool m_IntegrityDone{ false }, m_ProtectionDone{ false };
+	// the protected and secure flags, queried once
 	void QueryExtendedBasicInfo();
 	bool m_ExtendedBasicDone{ false }, m_Protected{ false }, m_Secure{ false };
 	bool m_ImmersiveDone{ false }, m_Immersive{ false };

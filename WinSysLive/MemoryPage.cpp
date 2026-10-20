@@ -2,7 +2,8 @@
 #include "MemoryPage.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
-#include "ObjectNames.h"
+#include <WinSys/Handles.h>
+#include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
 #include <WTLHelper.h>
 #include <map>
@@ -291,7 +292,7 @@ void CProcMemoryPage::Load(void const* select) {
 
 	// not WinSys's Helpers::GetDosNameFromNtName: its table isn't safe to build on the sheet's thread while the UI thread
 	// uses it
-	DosNames dosNames;
+	WinSys::DosNames dosNames;
 	MEMORY_BASIC_INFORMATION mbi;
 	BYTE const* address = nullptr;
 	uint64_t committed = 0, reserved = 0;
@@ -393,46 +394,21 @@ void CProcMemoryPage::LabelProcessStructures() {
 				AddDetails(r, text);
 	};
 
-	PROCESS_BASIC_INFORMATION pbi;
-	if (NT_SUCCESS(::NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), nullptr)) && pbi.PebBaseAddress)
-		label((ULONG_PTR)pbi.PebBaseAddress, Kind::Peb, L"PEB");
-	// a WOW64 process also has a 32-bit PEB, and its threads 32-bit TEBs and stacks
-	ULONG_PTR peb32 = 0;
-	if (NT_SUCCESS(::NtQueryInformationProcess(hProcess, ProcessWow64Information, &peb32, sizeof(peb32), nullptr)) && peb32)
-		label(peb32, Kind::Peb32, L"PEB (32-bit)");
-
-	// the threads' TEBs, in thread ID order
-	std::vector<std::pair<ULONG, ULONG_PTR>> tebs;
-	HANDLE hThread = nullptr;
-	for (;;) {
-		// NtGetNextThread continues from the previous handle, so that one closes only after the call
-		HANDLE hNext;
-		auto status = ::NtGetNextThread(hProcess, hThread, THREAD_QUERY_LIMITED_INFORMATION, 0, 0, &hNext);
-		if (hThread)
-			::NtClose(hThread);
-		if (!NT_SUCCESS(status))
-			break;
-		hThread = hNext;
-		THREAD_BASIC_INFORMATION tbi;
-		if (NT_SUCCESS(::NtQueryInformationThread(hThread, ThreadBasicInformation, &tbi, sizeof(tbi), nullptr)) && tbi.TebBaseAddress)
-			tebs.push_back({ HandleToULong(tbi.ClientId.UniqueThread), (ULONG_PTR)tbi.TebBaseAddress });
-	}
-	std::ranges::sort(tebs);
-
-	for (auto [tid, teb] : tebs) {
-		label(teb, Kind::Teb, std::format(L"TEB (thread {})", tid));
-		// the stack's bounds are at the start of the TEB (NT_TIB); reading them needs PROCESS_VM_READ
-		NT_TIB tib;
-		if (m_CanRead && ::ReadProcessMemory(hProcess, (void const*)teb, &tib, sizeof(tib), nullptr) && tib.StackBase)
-			labelStack((ULONG_PTR)tib.StackBase, std::format(L"Stack (thread {})", tid));
-		if (peb32) {
-			// WOW64 puts the 32-bit TEB two pages after the 64-bit one
-			auto teb32 = teb + 0x2000;
-			label(teb32, Kind::Teb32, std::format(L"TEB (32-bit, thread {})", tid));
-			NT_TIB32 tib32;
-			if (m_CanRead && ::ReadProcessMemory(hProcess, (void const*)teb32, &tib32, sizeof(tib32), nullptr) && tib32.StackBase)
-				labelStack(tib32.StackBase, std::format(L"Stack (32-bit, thread {})", tid));
-		}
+	// the PEB, and each thread's TEB and stack (WinSys; the stacks only with PROCESS_VM_READ), the 32-bit ones of a
+	// WOW64 process too
+	auto structures = WinSys::Process::GetStructures(hProcess);
+	if (structures.Peb)
+		label(structures.Peb, Kind::Peb, L"PEB");
+	if (structures.Peb32)
+		label(structures.Peb32, Kind::Peb32, L"PEB (32-bit)");
+	for (auto& t : structures.Threads) {
+		label(t.Teb, Kind::Teb, std::format(L"TEB (thread {})", t.ThreadId));
+		if (t.StackBase)
+			labelStack(t.StackBase, std::format(L"Stack (thread {})", t.ThreadId));
+		if (t.Teb32)
+			label(t.Teb32, Kind::Teb32, std::format(L"TEB (32-bit, thread {})", t.ThreadId));
+		if (t.Stack32Base)
+			labelStack(t.Stack32Base, std::format(L"Stack (32-bit, thread {})", t.ThreadId));
 	}
 
 	for (auto& [base, c] : contents) {

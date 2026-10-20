@@ -11,7 +11,7 @@ struct IMainFrame;
 // Find Handle or DLL (Ctrl+Shift+F): every process's handles whose names, and loaded modules whose paths, contain the
 // text. Modeless, on the UI thread; the search runs on a worker thread of its own (std::jthread, stopped and joined
 // when a new search starts or the dialog closes) and posts the results as it finds them. Handle names are the Handles
-// page's (QueryHandleName); a file's name query can hang, so it has a timeout, and a process with a hung one has the
+// page's (WinSys HandleNames::QueryName); a file's name query can hang, so it has a timeout, and a process with a hung one has the
 // rest of its files skipped (and past a limit, all files are). Processes that can't be opened (other users', protected ones; most without elevation) are counted.
 // Double-clicking a result (or Go to Process) selects its process in the Processes view.
 //

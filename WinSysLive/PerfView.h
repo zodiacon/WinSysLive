@@ -5,7 +5,8 @@
 #include "PerfNav.h"
 
 //
-// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, a page per drive) and the selected page on the right.
+// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, a page per drive and per GPU)
+// and the selected page on the right.
 // Samples are taken on every refresh tick and handed to every page, also while the tab or the page is hidden,
 // so the history is there when it's shown.
 //
@@ -45,6 +46,7 @@ private:
 	void SampleMemory(PerfSample& sample);
 	void SampleNetwork(PerfSample& sample);
 	void SampleDisks(PerfSample& sample);
+	void SampleGpus(PerfSample& sample);
 	// adds and removes drive pages to match the drives that exist
 	void SyncDiskPages();
 	void UpdateNav(PerfSample const& sample);
@@ -52,8 +54,10 @@ private:
 	void ShowPage(int index);
 	void Layout();
 
-	// the drive pages follow, from FirstDiskItem, in drive letter order (m_DiskLetters)
+	// the drive pages follow, from FirstDiskItem, in drive letter order (m_DiskLetters), then the GPU pages (in
+	// WinSys::GpuInfo::GetAdapters order), which move as drives come and go
 	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem, FirstDiskItem };
+	int FirstGpuItem() const;
 
 	CPerfNav m_Nav;
 	std::vector<std::unique_ptr<IPerfPage>> m_Pages;	// in NavItem order
@@ -69,5 +73,6 @@ private:
 	HFONT m_Font{ nullptr };	// the frame's, for pages created later; null: the pages' default
 	WinSys::NetworkTracker m_Network;
 	WinSys::DiskTracker m_Disks;
+	WinSys::GpuTracker m_Gpu;
 	std::vector<wchar_t> m_DiskLetters;
 };

@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "FindHandleDlg.h"
 #include "Interfaces.h"
-#include "ObjectNames.h"
+#include "HandleIcons.h"
+#include <WinSys/Processes.h>
 #include "FilterBox.h"
 #include "ColumnLayout.h"
 #include <WinSys/Handles.h>
@@ -110,17 +111,10 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 	auto post = [&](bool done) { ::PostMessage(hWnd, WM_FIND_PROGRESS, done, state->Id); };
 
 	// the processes and their image names (for the results, and the names of process and thread handles)
-	std::vector<std::pair<DWORD, std::wstring>> processes;
+	auto processes = Process::EnumProcessNames();
 	std::unordered_map<DWORD, std::wstring> names;
-	if (wil::unique_handle snapshot(::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)); snapshot.get() != INVALID_HANDLE_VALUE) {
-		PROCESSENTRY32W pe{ sizeof(pe) };
-		for (BOOL ok = ::Process32FirstW(snapshot.get(), &pe); ok; ok = ::Process32NextW(snapshot.get(), &pe)) {
-			if (pe.th32ProcessID == 0)
-				continue;
-			processes.push_back({ pe.th32ProcessID, pe.szExeFile });
-			names[pe.th32ProcessID] = pe.szExeFile;
-		}
-	}
+	for (auto& [pid, name] : processes)
+		names[pid] = name;
 	{
 		std::lock_guard lock(state->Lock);
 		state->Processes = (int)processes.size();
@@ -155,21 +149,11 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 		bool opened = false;
 
 		if (dlls) {
-			if (wil::unique_handle hProcess(::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid)); hProcess) {
-				std::vector<HMODULE> modules(256);
-				DWORD needed = 0;
-				while (::EnumProcessModulesEx(hProcess.get(), modules.data(), (DWORD)(modules.size() * sizeof(HMODULE)), &needed, LIST_MODULES_ALL)
-					&& needed > modules.size() * sizeof(HMODULE))
-					modules.resize(needed / sizeof(HMODULE) + 16);
-				if (needed) {
-					opened = true;
-					modules.resize((std::min)(modules.size(), (size_t)needed / sizeof(HMODULE)));
-					for (auto module : modules) {
-						WCHAR path[1024];
-						if (::GetModuleFileNameExW(hProcess.get(), module, path, _countof(path)) && CFilterBox::Contains(path, text))
-							add({ pid, name, L"DLL", (uint64_t)module, path });
-					}
-				}
+			if (auto process = Process::OpenById(pid, ProcessAccessMask::QueryInformation | ProcessAccessMask::VmRead)) {
+				opened = true;
+				for (auto& module : Process::EnumLoadedModules(process->Handle()))
+					if (CFilterBox::Contains(module.Path, text))
+						add({ pid, name, L"DLL", module.Base, module.Path });
 			}
 		}
 
@@ -190,7 +174,7 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 						continue;
 					}
 					auto hung = nameQuery.GetAbandonedCount();
-					auto handleName = QueryHandleName(hProcess.get(), entry, nameQuery, dosNames, processName);
+					auto handleName = HandleNames::QueryName(hProcess.get(), entry, nameQuery, dosNames, processName);
 					if (file && nameQuery.GetAbandonedCount() > hung)
 						files = false;
 					if (!handleName.empty() && CFilterBox::Contains(handleName, text)
@@ -219,7 +203,10 @@ LRESULT CFindHandleDlg::OnProgress(UINT /*uMsg*/, WPARAM done, LPARAM lParam, BO
 		m_State->Pending.clear();
 	}
 	if (!results.empty()) {
-		m_Results.insert(m_Results.end(), std::make_move_iterator(results.begin()), std::make_move_iterator(results.end()));
+		// not a range insert: its try/catch warns (C4530) in Release, which builds without /EH
+		m_Results.reserve(m_Results.size() + results.size());
+		for (auto& r : results)
+			m_Results.push_back(std::move(r));
 		m_List.SetItemCountEx((int)m_Results.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 		if (auto si = GetSortInfo(m_List))
 			DoSort(si);

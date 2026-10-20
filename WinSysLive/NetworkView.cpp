@@ -61,14 +61,14 @@ void CNetworkView::OnFontChanged(HFONT font) {
 
 void CNetworkView::OnRefresh(bool active) {
 	// also while hidden: a few milliseconds, and the highlighting stays right
-	auto current = Connections::Read();
+	auto current = WinSys::ConnectionInfo::Read();
 	if (!current)
 		return;	// keep what we have
 	// the rows point into m_All, which the merge replaces: the selection is taken first, and the rows are rebuilt
 	auto selected = GetSelectedKey();
 	m_Rows.clear();
 	// on the first read, all of them are new to the view, not opened
-	Connections::Merge(m_All, std::move(*current), m_Loaded);
+	ConnectionRows::Merge(m_All, std::move(*current), m_Loaded);
 	m_Loaded = true;
 	ShowRows(selected);
 	if (active) {
@@ -93,12 +93,12 @@ bool CNetworkView::Matches(Connection const& c) const {
 	return false;
 }
 
-std::optional<Connections::Key> CNetworkView::GetSelectedKey() const {
+std::optional<WinSys::ConnectionKey> CNetworkView::GetSelectedKey() const {
 	auto c = GetSelected();
 	return c ? std::optional(c->Id) : std::nullopt;
 }
 
-void CNetworkView::ShowRows(std::optional<Connections::Key> const& selected) {
+void CNetworkView::ShowRows(std::optional<WinSys::ConnectionKey> const& selected) {
 	m_Rows.clear();
 	for (auto& c : m_All)
 		if (Matches(c))
@@ -125,12 +125,12 @@ std::wstring CNetworkView::GetText(Connection const& c, Column column) const {
 	switch (column) {
 		case Column::Process: return GetProcessName(c.Id.Pid);
 		case Column::Pid: return std::to_wstring(c.Id.Pid);
-		case Column::Protocol: return Connections::ProtocolName(c.Id.Proto);
+		case Column::Protocol: return WinSys::ConnectionInfo::ProtocolName(c.Id.Proto);
 		case Column::LocalAddress: return c.LocalText;
 		case Column::LocalPort: return std::to_wstring(c.Id.LocalPort);
 		case Column::RemoteAddress: return c.RemoteText;
 		case Column::RemotePort: return c.RemoteText.empty() ? L"" : std::to_wstring(c.Id.RemotePort);
-		case Column::State: return Connections::StateName(c);
+		case Column::State: return WinSys::ConnectionInfo::StateName(c);
 		case Column::Created: return c.Created ? FormatHelper::FormatDateTime(c.Created) : L"";
 	}
 	return L"";
@@ -184,7 +184,7 @@ CNetworkView::Connection const* CNetworkView::GetSelected() const {
 	return selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected] : nullptr;
 }
 
-void CNetworkView::SelectConnection(Connections::Key const* key) {
+void CNetworkView::SelectConnection(WinSys::ConnectionKey const* key) {
 	// the list view keeps the selection by index, which new rows and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	if (!key)

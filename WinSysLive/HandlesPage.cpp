@@ -5,7 +5,7 @@
 #include "AccessMask.h"
 #include "AppSettings.h"
 #include "ViewBase.h"
-#include "ObjectNames.h"
+#include "HandleIcons.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/Sid.h>
 #include <WTLHelper.h>
@@ -166,26 +166,16 @@ void CHandlesPage::CloseSelected() {
 	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
 		return;
 
-	// the handle value may have been closed and reused since the last refresh: the object's type tells
-	auto source = (HANDLE)(ULONG_PTR)entry.Value;
-	wil::unique_handle copy;
-	bool same = false;
-	if (::DuplicateHandle(m_hProcess.get(), source, ::GetCurrentProcess(), copy.addressof(), 0, FALSE, DUPLICATE_SAME_ACCESS)) {
-		BYTE buffer[1024];
-		if (NT_SUCCESS(::NtQueryObject(copy.get(), ObjectTypeInformation, buffer, sizeof(buffer), nullptr))) {
-			auto& info = *reinterpret_cast<OBJECT_TYPE_INFORMATION const*>(buffer);
-			same = type == std::wstring_view(info.TypeName.Buffer, info.TypeName.Length / sizeof(WCHAR));
+	// the handle value may have been closed and reused since the last refresh: checked against the type
+	if (!HandleNames::CloseInProcess(m_hProcess.get(), entry.Value, type)) {
+		auto error = ::GetLastError();
+		if (error == ERROR_INVALID_HANDLE) {
+			AtlMessageBox(m_hWnd, L"The handle isn't there anymore (or is another object's now).", IDR_MAINFRAME, MB_ICONWARNING);
+			Refresh();
 		}
-	}
-	if (!same) {
-		AtlMessageBox(m_hWnd, L"The handle isn't there anymore (or is another object's now).", IDR_MAINFRAME, MB_ICONWARNING);
-		Refresh();
-		return;
-	}
-	copy.reset();
-	if (!::DuplicateHandle(m_hProcess.get(), source, nullptr, nullptr, 0, FALSE, DUPLICATE_CLOSE_SOURCE)) {
-		AtlMessageBox(m_hWnd, std::format(L"Failed to close the handle: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-			IDR_MAINFRAME, MB_ICONERROR);
+		else
+			AtlMessageBox(m_hWnd, std::format(L"Failed to close the handle: {}", WinSys::Helpers::GetErrorText(error)).c_str(),
+				IDR_MAINFRAME, MB_ICONERROR);
 		return;
 	}
 	// shown as closed
@@ -210,7 +200,7 @@ std::wstring const& CHandlesPage::GetName(HandleData& data, bool closed) const {
 
 std::wstring CHandlesPage::QueryName(HandleEntry const& entry) const {
 	// when name queries have hung (their workers are stuck), files aren't queried anymore
-	return QueryHandleName(m_hProcess.get(), entry, m_NameQuery, m_DosNames,
+	return HandleNames::QueryName(m_hProcess.get(), entry, m_NameQuery, m_DosNames,
 		[this](DWORD pid) { return m_Frame ? m_Frame->GetProcessManager().GetProcessNameById(pid) : L""; },
 		m_NameQuery.GetAbandonedCount() < MaxHungQueries);
 }

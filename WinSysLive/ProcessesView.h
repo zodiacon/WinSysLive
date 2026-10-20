@@ -8,6 +8,7 @@
 #include "ProcessColors.h"
 #include "FilterBox.h"
 #include "Symbols.h"
+#include <WinSys/Gpu.h>
 #include <CustomSplitterWindow.h>
 #include <unordered_set>
 
@@ -71,6 +72,7 @@ private:
 		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults,
 		Threads, PeakThreads, Handles, GdiObjects, UserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
 		Architecture, IntegrityLevel, Protection, Virtualization, JobId, IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
+		GpuUsage, GpuDedicated, GpuShared,
 		Description, ImagePath, CommandLine,
 		_Count
 	};
@@ -83,6 +85,9 @@ private:
 		bool Terminated{ false };	// highlighted for one update, then removed
 		ProcessKind Kinds{ ProcessKind::None };	// for the row color (see UpdateKinds)
 		bool Match{ true };	// matches the filter (always, without one); in the tree only if it does, or a descendant does
+		// queried on every refresh while a GPU column is shown
+		WinSys::GpuProcessState GpuState;
+		WinSys::GpuProcessUsage Gpu;
 		// changes since the previous update (0 on the first)
 		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
 		uint64_t PrevContextSwitches{ 0 };
@@ -133,6 +138,8 @@ private:
 	static std::vector<ColumnLayout::ShownColumn> ToLayout(std::vector<ShownColumn> const& columns);
 	void SaveColumns() const;
 	bool ShowsNetwork() const;
+	// a GPU column is shown: the processes' GPU usage is queried (a call per engine of each process using the GPU)
+	bool ShowsGpu() const;
 	// zero without the tracker
 	WinSys::ProcessNetworkTracker::Counters NetworkCounters(uint32_t pid) const;
 	// the job's ID when the snapshot has it (elevated), else 1 for a process in a job and 0 for one not in a job
@@ -171,9 +178,9 @@ private:
 	// the lower pane shows the selected process (none for one that exited)
 	void UpdateDetails();
 	static bool CanControl(ProcessItem const* item);
-	// the selected process opened with the access (and PROCESS_QUERY_LIMITED_INFORMATION), if it can be controlled;
-	// null (after saying why) otherwise
-	wil::unique_handle OpenSelected(DWORD access) const;
+	// the selected process opened with the access (and limited query access), if it can be controlled; null (after
+	// saying why) otherwise
+	std::unique_ptr<WinSys::Process> OpenSelected(WinSys::ProcessAccessMask access) const;
 	void ShowError(PCWSTR operation) const;
 
 	// the process list on top; the lower pane (handles, modules, threads of the selected process) can be hidden

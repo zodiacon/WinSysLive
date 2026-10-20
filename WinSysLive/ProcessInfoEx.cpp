@@ -107,13 +107,10 @@ void ProcessInfoEx::QueryExtendedBasicInfo() {
 	if (m_ExtendedBasicDone)
 		return;
 	m_ExtendedBasicDone = true;
-	// one query for both flags; limited query access is enough, also for protected processes
+	// limited query access is enough, also for protected processes
 	if (auto process = GetProcess()) {
-		PROCESS_EXTENDED_BASIC_INFORMATION info{ sizeof(info) };
-		if (NT_SUCCESS(::NtQueryInformationProcess(process->Handle(), ProcessBasicInformation, &info, sizeof(info), nullptr))) {
-			m_Protected = info.IsProtectedProcess;
-			m_Secure = info.IsSecureProcess;
-		}
+		m_Protected = process->IsProtected();
+		m_Secure = process->IsSecure();
 	}
 }
 
@@ -146,14 +143,18 @@ IoPriority ProcessInfoEx::GetIoPriority() {
 	return process ? process->GetIoPriority() : IoPriority::Unknown;
 }
 
+HANDLE ProcessInfoEx::GetQueryInformationHandle() {
+	if (!m_QueryInformationDone) {
+		m_QueryInformationDone = true;
+		if (Id != 0)
+			m_QueryInformation = Process::OpenById(Id, ProcessAccessMask::QueryInformation);
+	}
+	return m_QueryInformation ? m_QueryInformation->Handle() : nullptr;
+}
+
 std::optional<bool> ProcessInfoEx::GetEfficiencyMode() {
 	auto process = GetProcess();
-	if (!process)
-		return std::nullopt;
-	PROCESS_POWER_THROTTLING_STATE state{ PROCESS_POWER_THROTTLING_CURRENT_VERSION };
-	if (!::GetProcessInformation(process->Handle(), ProcessPowerThrottling, &state, sizeof(state)))
-		return std::nullopt;
-	return (state.ControlMask & state.StateMask & PROCESS_POWER_THROTTLING_EXECUTION_SPEED) != 0;
+	return process ? process->GetEfficiencyMode() : std::nullopt;
 }
 
 int ProcessInfoEx::GetGdiObjects() {

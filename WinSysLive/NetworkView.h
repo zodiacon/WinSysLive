@@ -3,11 +3,11 @@
 #include "resource.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
-#include "Connections.h"
+#include "ConnectionRows.h"
 #include <VirtualListView.h>
 
 //
-// The Network tab: every process's TCP connections and UDP endpoints (Connections), read again on every refresh tick
+// The Network tab: every process's TCP connections and UDP endpoints (WinSys ConnectionInfo, merged by ConnectionRows), read again on every refresh tick
 // (also while hidden, so the highlighting stays right) and merged: new ones green for two refreshes, closed ones red
 // once. The process column has the process's icon (the frame's, from IMainFrame::GetProcessIcon). The filter box
 // matches the process, PID, protocol, addresses, ports and state. Double-click or Go to Process selects the process;
@@ -52,7 +52,7 @@ public:
 
 private:
 	enum class Column { Process, Pid, Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, Created, _Count };
-	using Connection = Connections::Connection;
+	using Connection = ConnectionRow;
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -65,10 +65,10 @@ private:
 	std::wstring GetProcessName(uint32_t pid) const;
 	bool Matches(Connection const& c) const;
 	// the list's rows: the connections that match the filter, sorted as the list is; selected: the connection to select
-	void ShowRows(std::optional<Connections::Key> const& selected);
-	std::optional<Connections::Key> GetSelectedKey() const;
+	void ShowRows(std::optional<WinSys::ConnectionKey> const& selected);
+	std::optional<WinSys::ConnectionKey> GetSelectedKey() const;
 	Connection const* GetSelected() const;
-	void SelectConnection(Connections::Key const* key);
+	void SelectConnection(WinSys::ConnectionKey const* key);
 	void UpdateStatus();
 
 	CListViewCtrl m_List;

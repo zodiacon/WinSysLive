@@ -12,7 +12,7 @@
 #include <WTLHelper.h>
 #include "ColumnLayout.h"
 #include "AffinityDlg.h"
-#include <WinSys/SecurityHelper.h>
+#include <WinSys/DotNet.h>
 #include <ranges>
 
 using namespace WinSys;
@@ -57,6 +57,9 @@ namespace {
 		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false },
 		{ L"Network Send Bytes", L"NetworkSend", 140, LVCFMT_RIGHT, false },
 		{ L"Network Receive Bytes", L"NetworkReceive", 140, LVCFMT_RIGHT, false },
+		{ L"GPU (%)", L"Gpu", 70, LVCFMT_RIGHT, false },
+		{ L"Dedicated GPU Memory", L"GpuDedicated", 140, LVCFMT_RIGHT, false },
+		{ L"Shared GPU Memory", L"GpuShared", 130, LVCFMT_RIGHT, false },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true },
@@ -79,43 +82,6 @@ namespace {
 	const int NewProcessTicks = 2;
 	// the CLR starts after the process, so a process is checked for it again on every update until it's this old
 	const int64_t DotNetCheckPeriod = 15 * 10000000LL;	// 100 ns units
-
-	// .NET Framework: the CLR creates a section named after the process in its session's namespace
-	bool HasClrSection(ProcessInfoEx const& process) {
-		auto session = process.NativeInfo->SessionId;
-		for (auto name : { L"Cor_Private_IPCBlock_v4_", L"Cor_Private_IPCBlock_" }) {
-			auto path = session == 0 ? std::format(L"\\BaseNamedObjects\\{}{}", name, process.Id)
-				: std::format(L"\\Sessions\\{}\\BaseNamedObjects\\{}{}", session, name, process.Id);
-			UNICODE_STRING uname;
-			::RtlInitUnicodeString(&uname, path.c_str());
-			OBJECT_ATTRIBUTES attr;
-			InitializeObjectAttributes(&attr, &uname, OBJ_CASE_INSENSITIVE, nullptr, nullptr);
-			HANDLE hSection;
-			auto status = ::NtOpenSection(&hSection, SECTION_QUERY, &attr);
-			if (NT_SUCCESS(status))
-				::NtClose(hSection);
-			// another user's section exists even if it can't be opened
-			if (NT_SUCCESS(status) || status == STATUS_ACCESS_DENIED)
-				return true;
-		}
-		return false;
-	}
-
-	// .NET Core and later: the runtime's diagnostics server listens on a pipe named dotnet-diagnostic-<pid>-...
-	std::unordered_set<uint32_t> GetDotNetPipePids() {
-		std::unordered_set<uint32_t> pids;
-		const std::wstring_view prefix = L"dotnet-diagnostic-";
-		WIN32_FIND_DATA fd;
-		wil::unique_hfind hFind(::FindFirstFile(L"\\\\.\\pipe\\*", &fd));
-		if (!hFind)
-			return pids;
-		do {
-			if (std::wstring_view(fd.cFileName).starts_with(prefix))
-				if (auto pid = ::wcstoul(fd.cFileName + prefix.size(), nullptr, 10))
-					pids.insert(pid);
-		} while (::FindNextFile(hFind.get(), &fd));
-		return pids;
-	}
 }
 
 CString CProcessesView::GetTitle() const {
@@ -241,6 +207,10 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 
 WinSys::ProcessNetworkTracker::Counters CProcessesView::NetworkCounters(uint32_t pid) const {
 	return m_Network ? m_Network->GetCounters(pid) : WinSys::ProcessNetworkTracker::Counters{};
+}
+
+bool CProcessesView::ShowsGpu() const {
+	return std::ranges::any_of(m_Columns, [](auto c) { return c == Column::GpuUsage || c == Column::GpuDedicated || c == Column::GpuShared; });
 }
 
 bool CProcessesView::ShowsNetwork() const {
@@ -378,10 +348,12 @@ void CProcessesView::UpdateDotNet(bool all) {
 	if (candidates.empty())
 		return;
 
-	auto pipePids = GetDotNetPipePids();
-	for (auto item : candidates)
-		if (pipePids.contains(item->Process->Id) || HasClrSection(*item->Process))
+	auto corePids = DotNetInfo::GetCoreRuntimeProcesses();
+	for (auto item : candidates) {
+		auto& p = *item->Process;
+		if (corePids.contains(p.Id) || DotNetInfo::HasFrameworkRuntime(p.Id, p.NativeInfo->SessionId))
 			item->Kinds |= ProcessKind::DotNet;
+	}
 }
 
 bool CProcessesView::Matches(ProcessItem& item) const {
@@ -515,9 +487,13 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	}
 	UpdateDotNet(false);
 
+	bool gpu = ShowsGpu();
 	for (auto& [key, item] : m_Items)
-		if (!item.Terminated)
+		if (!item.Terminated) {
 			UpdateDeltas(item);
+			if (gpu)
+				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
+		}
 
 	// values change on every update, so the order may too
 	if (m_SortColumn >= 0)
@@ -675,6 +651,10 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::IoOther: return FormatHelper::FormatBytes(info->OtherTransferCount.QuadPart);
 		case Column::NetworkSend: return FormatHelper::FormatBytes(NetworkCounters(p.Id).Sent);
 		case Column::NetworkReceive: return FormatHelper::FormatBytes(NetworkCounters(p.Id).Received);
+		// blank when not known (the process can't be queried) or idle, as the CPU column
+		case Column::GpuUsage: return item.Gpu.Known && item.Gpu.Usage >= 0.005f ? std::format(L"{:.2f}", item.Gpu.Usage) : L"";
+		case Column::GpuDedicated: return item.Gpu.Known && item.Gpu.Dedicated ? FormatHelper::FormatSize((int64_t)item.Gpu.Dedicated) : L"";
+		case Column::GpuShared: return item.Gpu.Known && item.Gpu.Shared ? FormatHelper::FormatSize((int64_t)item.Gpu.Shared) : L"";
 		case Column::Description: return p.GetDescription();
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
@@ -754,6 +734,9 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);
 		case Column::NetworkSend: return compare(NetworkCounters(p1.Id).Sent, NetworkCounters(p2.Id).Sent);
 		case Column::NetworkReceive: return compare(NetworkCounters(p1.Id).Received, NetworkCounters(p2.Id).Received);
+		case Column::GpuUsage: return compare(item1.Gpu.Usage, item2.Gpu.Usage);
+		case Column::GpuDedicated: return compare(item1.Gpu.Dedicated, item2.Gpu.Dedicated);
+		case Column::GpuShared: return compare(item1.Gpu.Shared, item2.Gpu.Shared);
 		case Column::Description: return compareText(p1.GetDescription(), p2.GetDescription());
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
@@ -1070,84 +1053,67 @@ LRESULT CProcessesView::OnSetPriority(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 	return 0;
 }
 
-wil::unique_handle CProcessesView::OpenSelected(DWORD access) const {
+std::unique_ptr<Process> CProcessesView::OpenSelected(ProcessAccessMask access) const {
 	auto item = GetSelectedProcess();
 	if (!CanControl(item))
 		return {};
-	wil::unique_handle hProcess(::OpenProcess(access | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, item->Process->Id));
-	if (!hProcess)
+	auto process = Process::OpenById(item->Process->Id, access | ProcessAccessMask::QueryLimitedInformation);
+	if (!process)
 		ShowError(L"Opening the process");
-	return hProcess;
+	return process;
 }
 
 LRESULT CProcessesView::OnSetIoPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
-	if (!hProcess)
+	auto process = OpenSelected(ProcessAccessMask::SetInformation);
+	if (!process)
 		return 0;
-	// IO_PRIORITY_HINT: very low (0) to high (3); high takes SeIncreaseBasePriorityPrivilege, which an elevated token has
-	// but not enabled
-	ULONG hint = wID - ID_IOPRIORITY_VERYLOW;
-	if (wID == ID_IOPRIORITY_HIGH)
-		SecurityHelper::EnablePrivilege(SE_INC_BASE_PRIORITY_NAME, true);
-	auto status = ::NtSetInformationProcess(hProcess.get(), ProcessIoPriority, &hint, sizeof(hint));
-	if (!NT_SUCCESS(status)) {
-		::SetLastError(::RtlNtStatusToDosError(status));
+	// the commands are in IoPriority order, from very low
+	if (!process->SetIoPriority(IoPriority(wID - ID_IOPRIORITY_VERYLOW)))
 		ShowError(L"Setting the I/O priority");
-	}
 	UpdateUI();
 	return 0;
 }
 
 LRESULT CProcessesView::OnSetMemoryPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
-	if (!hProcess)
+	auto process = OpenSelected(ProcessAccessMask::SetInformation);
+	if (!process)
 		return 0;
 	// MEMORY_PRIORITY_VERY_LOW (1) to MEMORY_PRIORITY_NORMAL (5)
-	MEMORY_PRIORITY_INFORMATION info{ ULONG(wID - ID_MEMPRIORITY_VERYLOW + 1) };
-	if (!::SetProcessInformation(hProcess.get(), ProcessMemoryPriority, &info, sizeof(info)))
+	if (!process->SetMemoryPriority(wID - ID_MEMPRIORITY_VERYLOW + 1))
 		ShowError(L"Setting the memory priority");
 	UpdateUI();
 	return 0;
 }
 
 LRESULT CProcessesView::OnSetAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
-	if (!hProcess)
+	auto process = OpenSelected(ProcessAccessMask::SetInformation);
+	if (!process)
 		return 0;
 	DWORD_PTR mask, systemMask;
-	if (!::GetProcessAffinityMask(hProcess.get(), &mask, &systemMask)) {
-		ShowError(L"Getting the affinity");
-		return 0;
-	}
-	if (mask == 0) {
-		// its threads are in more than one processor group: there's no single mask
-		AtlMessageBox(m_hWnd, L"The process runs in more than one processor group; its affinity can't be set as one mask.",
-			IDR_MAINFRAME, MB_ICONINFORMATION);
+	if (!process->GetAffinity(mask, systemMask)) {
+		if (::GetLastError() == ERROR_NOT_SUPPORTED)
+			// its threads are in more than one processor group: there's no single mask
+			AtlMessageBox(m_hWnd, L"The process runs in more than one processor group; its affinity can't be set as one mask.",
+				IDR_MAINFRAME, MB_ICONINFORMATION);
+		else
+			ShowError(L"Getting the affinity");
 		return 0;
 	}
 	auto& p = *GetSelectedProcess()->Process;
 	CAffinityDlg dlg(std::format(L"{} ({})", p.GetImageName(), p.Id), mask, systemMask);
-	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !::SetProcessAffinityMask(hProcess.get(), dlg.GetMask()))
+	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !process->SetAffinity(dlg.GetMask()))
 		ShowError(L"Setting the affinity");
 	return 0;
 }
 
 LRESULT CProcessesView::OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	auto item = GetSelectedProcess();
-	auto hProcess = OpenSelected(PROCESS_SET_INFORMATION);
-	if (!hProcess)
+	auto process = OpenSelected(ProcessAccessMask::SetInformation);
+	if (!process)
 		return 0;
-	// as Task Manager does it: EcoQoS and the idle priority class; off, the system decides again, at normal priority
-	bool on = !item->Process->GetEfficiencyMode().value_or(false);
-	PROCESS_POWER_THROTTLING_STATE state{ PROCESS_POWER_THROTTLING_CURRENT_VERSION };
-	state.ControlMask = on ? PROCESS_POWER_THROTTLING_EXECUTION_SPEED : 0;
-	state.StateMask = on ? PROCESS_POWER_THROTTLING_EXECUTION_SPEED : 0;
-	if (!::SetProcessInformation(hProcess.get(), ProcessPowerThrottling, &state, sizeof(state))) {
+	// as Task Manager does it (WinSys): EcoQoS and the idle priority class; off, the system decides, at normal priority
+	if (!process->SetEfficiencyMode(!item->Process->GetEfficiencyMode().value_or(false)))
 		ShowError(L"Setting the efficiency mode");
-		return 0;
-	}
-	if (!::SetPriorityClass(hProcess.get(), on ? IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS))
-		ShowError(L"Setting the priority");
 	UpdateUI();
 	return 0;
 }

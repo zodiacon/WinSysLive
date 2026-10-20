@@ -48,6 +48,15 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	SampleMemory(sample);
 	SampleNetwork(sample);	// the first update sets the baseline: all rates are 0
 	SampleDisks(sample);	// creates the drive pages
+	// a page per GPU, after the drives; the first sample is the baseline for the utilizations
+	for (size_t i = 0; i < WinSys::GpuInfo::GetAdapters().size(); i++) {
+		auto page = std::make_unique<CPerfGpuPage>(i);
+		page->CreatePage(m_hWnd);
+		page->SetTimeSpan(m_TimeSpanText, m_Interval);
+		m_Pages.push_back(std::move(page));
+		m_Nav.AddItem(std::format(L"GPU {}", i), PerfColors::Gpu, CPerfNav::GraphType::Percent);
+	}
+	SampleGpus(sample);
 	for (auto& page : m_Pages)
 		page->Update(sample, false);
 	UpdateNav(sample);
@@ -81,6 +90,7 @@ void CPerfView::OnRefresh(bool active) {
 	SampleMemory(sample);
 	SampleNetwork(sample);
 	SampleDisks(sample);
+	SampleGpus(sample);
 	for (int i = 0; i < (int)m_Pages.size(); i++)
 		m_Pages[i]->Update(sample, active && i == m_Page);
 	UpdateNav(sample);
@@ -171,6 +181,15 @@ void CPerfView::SampleDisks(PerfSample& sample) {
 	SyncDiskPages();
 }
 
+void CPerfView::SampleGpus(PerfSample& sample) {
+	sample.HasGpu = m_Gpu.Update();
+	sample.Gpus = &m_Gpu.GetSamples();
+}
+
+int CPerfView::FirstGpuItem() const {
+	return FirstDiskItem + (int)m_DiskLetters.size();
+}
+
 void CPerfView::SyncDiskPages() {
 	auto& volumes = m_Disks.GetVolumes();
 	auto exists = [&](wchar_t letter) {
@@ -241,6 +260,14 @@ void CPerfView::UpdateNav(PerfSample const& sample) {
 		}
 		m_Nav.PushItemSample(index, (float)v.ActivePercent);
 		m_Nav.SetItemValue(index, v.Label.empty() ? std::format(L"{:.0f}%", v.ActivePercent) : std::format(L"{:.0f}%  {}", v.ActivePercent, v.Label));
+	}
+	if (sample.HasGpu) {
+		auto& adapters = WinSys::GpuInfo::GetAdapters();
+		for (size_t i = 0; i < sample.Gpus->size() && i < adapters.size(); i++) {
+			auto usage = (*sample.Gpus)[i].Usage;
+			m_Nav.PushItemSample(FirstGpuItem() + (int)i, usage);
+			m_Nav.SetItemValue(FirstGpuItem() + (int)i, std::format(L"{:.0f}%  {}", usage, adapters[i].Name));
+		}
 	}
 	if (sample.HasCpu || sample.HasMemory) {
 		m_Nav.SetItemValue(SummaryItem, std::format(L"CPU {:.0f}%    Memory {:.0f}%", sample.CpuPercent(), sample.MemoryPercent()));

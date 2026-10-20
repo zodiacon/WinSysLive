@@ -5,6 +5,7 @@
 #include <GraphControl/include/CompositionBar.h>
 #include <WinSys/Network.h>
 #include <WinSys/Disk.h>
+#include <WinSys/Gpu.h>
 
 // samples kept by the graphs
 const size_t PerfHistoryLength = 120;
@@ -19,6 +20,8 @@ namespace PerfColors {
 	const COLORREF DiskRead = RGB(60, 140, 210);
 	const COLORREF DiskWrite = RGB(220, 120, 60);
 	const COLORREF IoOther = RGB(150, 150, 150);
+	const COLORREF Gpu = RGB(196, 84, 168);
+	const COLORREF GpuShared = RGB(96, 118, 170);
 }
 
 //
@@ -47,6 +50,10 @@ struct PerfSample {
 	std::vector<WinSys::DiskTracker::Volume> const* Disks{ nullptr };
 	bool HasDisks{ false };	// at least one drive has counters
 	double DiskRead{ 0 }, DiskWrite{ 0 };	// all drives, bytes per second
+
+	// the GPUs, in WinSys::GpuInfo::GetAdapters order; owned by CPerfView and valid for the duration of the update
+	std::vector<WinSys::GpuTracker::AdapterSample> const* Gpus{ nullptr };
+	bool HasGpu{ false };	// the utilizations are valid (not on the first tick)
 
 	float CpuPercent() const {
 		return KernelCpu + UserCpu;
@@ -320,6 +327,29 @@ private:
 	CRect m_GraphRect;	// from the last LayoutGraphs, for laying out again when adapters change
 	int m_Gap{ 0 };
 };
+//
+// A GPU: a graph per engine (3D, Copy, Video Decode...: the busiest node of each), and its dedicated and shared memory.
+//
+class CPerfGpuPage : public CPerfPage<CPerfGpuPage> {
+public:
+	DECLARE_WND_CLASS_EX(L"WinSysLivePerfGpu", CS_HREDRAW | CS_VREDRAW, -1)
+
+	// index: in WinSys::GpuInfo::GetAdapters
+	explicit CPerfGpuPage(size_t index) : m_Index(index) {}
+
+	void CreateGraphs();
+	void LayoutGraphs(CRect const& rc, int gap);
+	void Sample(PerfSample const& sample);
+	void ApplyTheme();
+	void ApplyTimeSpan(std::wstring const& text, UINT interval);
+
+private:
+	GraphCtrl::CGraphGrid m_Engines;
+	GraphCtrl::CGraphControl m_Dedicated, m_Shared;
+	GraphCtrl::SeriesId m_DedicatedSeries{ GraphCtrl::InvalidSeries }, m_SharedSeries{ GraphCtrl::InvalidSeries };
+	size_t m_Index;
+};
+
 //
 // A drive (C:, D:...): active time, read/write transfer rates and how full it is.
 //
