@@ -3,6 +3,10 @@
 #include <VirtualListView.h>
 #include "resource.h"
 
+namespace WinSys {
+	class Token;
+}
+
 //
 // What a process's property sheet shows of it: copied from the snapshot on the UI thread, because the sheet runs on
 // a thread of its own. The pages query anything else from the process themselves.
@@ -99,6 +103,35 @@ private:
 	ProcessProperties const& m_Props;
 	CListViewCtrl m_List;
 	std::vector<std::pair<std::wstring, std::wstring>> m_Vars;	// in display order
+};
+
+//
+// The Token page: the process token's properties (read-only edits, grouped), privileges and groups (with an
+// AppContainer's capabilities), read from the token (WinSys Token) when the page is first shown
+//
+class CProcTokenPage :
+	public CPropertyPageImpl<CProcTokenPage>,
+	public CDynamicDialogLayout<CProcTokenPage> {
+public:
+	enum { IDD = IDD_PROC_TOKEN };
+
+	explicit CProcTokenPage(ProcessProperties const& props);
+
+	BEGIN_MSG_MAP(CProcTokenPage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcTokenPage>)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CProcTokenPage>)
+	END_MSG_MAP()
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+
+	void ShowProperties(WinSys::Token const& token);
+	void ShowPrivileges(WinSys::Token const& token);
+	void ShowGroups(WinSys::Token const& token);
+
+	ProcessProperties const& m_Props;
+	CListViewCtrl m_Privileges, m_Groups;
 };
 
 //

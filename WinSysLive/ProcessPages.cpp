@@ -4,6 +4,8 @@
 #include "Signature.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/Processes.h>
+#include <WinSys/Token.h>
+#include <WinSys/LsaSecurity.h>
 #include <WTLHelper.h>
 #include <ClipboardHelper.h>
 
@@ -255,6 +257,272 @@ LRESULT CProcEnvironmentPage::OnCopy(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 	if (!text.empty())
 		ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;
+}
+
+namespace {
+	std::wstring FormatLuid(LUID const& luid) {
+		return luid.HighPart ? std::format(L"0x{:X}:{:08X}", (ULONG)luid.HighPart, luid.LowPart) : std::format(L"0x{:X}", luid.LowPart);
+	}
+
+	// the account's name, with the SID: or the SID alone
+	std::wstring FormatSid(WinSys::Sid const& sid) {
+		if (!sid)
+			return L"";
+		auto name = sid.UserName();
+		return name.empty() ? sid.AsString() : std::format(L"{} ({})", name, sid.AsString());
+	}
+
+	// a protected process's trust level SID (S-1-19-type-signer): its protection type and signer
+	std::wstring FormatTrustLevel(WinSys::Sid const& sid) {
+		auto psid = (PSID)sid;
+		if (*::GetSidSubAuthorityCount(psid) != 2)
+			return FormatSid(sid);
+		auto type = *::GetSidSubAuthority(psid, 0), signer = *::GetSidSubAuthority(psid, 1);
+		PCWSTR typeName = type == SECURITY_PROCESS_PROTECTION_TYPE_FULL_RID ? L"Protected"
+			: type == SECURITY_PROCESS_PROTECTION_TYPE_LITE_RID ? L"Protected Light" : L"None";
+		PCWSTR signerName = L"";
+		switch (signer) {
+			case SECURITY_PROCESS_PROTECTION_LEVEL_AUTHENTICODE_RID: signerName = L"Authenticode"; break;
+			case SECURITY_PROCESS_PROTECTION_LEVEL_ANTIMALWARE_RID: signerName = L"Antimalware"; break;
+			case SECURITY_PROCESS_PROTECTION_LEVEL_APP_RID: signerName = L"App"; break;
+			case SECURITY_PROCESS_PROTECTION_LEVEL_WINDOWS_RID: signerName = L"Windows"; break;
+			case SECURITY_PROCESS_PROTECTION_LEVEL_WINTCB_RID: signerName = L"WinTcb"; break;
+		}
+		return std::format(L"{}{}{} ({})", typeName, *signerName ? L", " : L"", signerName, sid.AsString());
+	}
+
+	// an AppContainer's package (its moniker), with the SID. The lookup is exported by kernelbase.dll but declared in
+	// no SDK header
+	std::wstring FormatAppContainer(WinSys::Sid const& sid) {
+		using LookupMoniker = HRESULT(WINAPI*)(PSID, PWSTR*);
+		using FreeMemory = BOOLEAN(WINAPI*)(PVOID);
+		static auto hKernelBase = ::GetModuleHandle(L"kernelbase");
+		static auto lookup = reinterpret_cast<LookupMoniker>(::GetProcAddress(hKernelBase, "AppContainerLookupMoniker"));
+		static auto free = reinterpret_cast<FreeMemory>(::GetProcAddress(hKernelBase, "AppContainerFreeMemory"));
+		PWSTR moniker = nullptr;
+		if (!sid || !lookup || !free || FAILED(lookup((PSID)sid, &moniker)) || !moniker)
+			return FormatSid(sid);
+		auto text = std::format(L"{} ({})", moniker, sid.AsString());
+		free(moniker);
+		return text;
+	}
+
+	PCWSTR YesNo(bool value) {
+		return value ? L"Yes" : L"No";
+	}
+
+	PCWSTR LogonTypeToString(WinSys::SecurityLogonType type) {
+		using enum WinSys::SecurityLogonType;
+		switch (type) {
+			case Interactive: return L"Interactive";
+			case Network: return L"Network";
+			case Batch: return L"Batch";
+			case Service: return L"Service";
+			case Proxy: return L"Proxy";
+			case Unlock: return L"Unlock";
+			case NetworkCleartext: return L"Network (cleartext)";
+			case NewCredentials: return L"New credentials";
+			case RemoteInteractive: return L"Remote interactive";
+			case CachedInteractive: return L"Cached interactive";
+			case CachedRemoteInteractive: return L"Cached remote interactive";
+			case CachedUnlock: return L"Cached unlock";
+		}
+		return L"System";
+	}
+
+	PCWSTR SidUseToString(SID_NAME_USE use) {
+		switch (use) {
+			case SidTypeUser: return L"User";
+			case SidTypeGroup: return L"Group";
+			case SidTypeDomain: return L"Domain";
+			case SidTypeAlias: return L"Alias";
+			case SidTypeWellKnownGroup: return L"Well-known group";
+			case SidTypeDeletedAccount: return L"Deleted account";
+			case SidTypeComputer: return L"Computer";
+			case SidTypeLabel: return L"Label";
+			case SidTypeLogonSession: return L"Logon session";
+		}
+		return L"";
+	}
+
+	std::wstring GroupAttributesToString(WinSys::SidGroupAttributes attributes) {
+		static const struct {
+			DWORD Flag;
+			PCWSTR Name;
+		} flags[] = {
+			{ SE_GROUP_MANDATORY, L"Mandatory" },
+			{ SE_GROUP_ENABLED, L"Enabled" },
+			{ SE_GROUP_ENABLED_BY_DEFAULT, L"Default" },
+			{ SE_GROUP_OWNER, L"Owner" },
+			{ SE_GROUP_USE_FOR_DENY_ONLY, L"Deny only" },
+			{ SE_GROUP_INTEGRITY, L"Integrity" },
+			{ SE_GROUP_INTEGRITY_ENABLED, L"Integrity enabled" },
+			{ SE_GROUP_LOGON_ID, L"Logon ID" },
+			{ SE_GROUP_RESOURCE, L"Resource" },
+		};
+		std::wstring text;
+		for (auto& f : flags)
+			if ((DWORD)attributes & f.Flag)
+				text += (text.empty() ? L"" : L", ") + std::wstring(f.Name);
+		return text;
+	}
+
+	void InitList(CListViewCtrl& list, HWND hList, std::initializer_list<std::pair<PCWSTR, int>> columns) {
+		list.Attach(hList);
+		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
+		auto dpi = ::GetDpiForWindow(hList);
+		int i = 0;
+		for (auto& [name, width] : columns)
+			list.InsertColumn(i++, name, LVCFMT_LEFT, ::MulDiv(width, dpi, 96));
+	}
+
+	void AddRow(CListViewCtrl& list, std::initializer_list<std::wstring> texts) {
+		int row = list.GetItemCount();
+		int col = 0;
+		for (auto& text : texts) {
+			if (col == 0)
+				list.InsertItem(row, text.c_str());
+			else
+				list.SetItemText(row, col, text.c_str());
+			col++;
+		}
+	}
+}
+
+CProcTokenPage::CProcTokenPage(ProcessProperties const& props) : m_Props(props) {
+	SetIconId(m_psp, IDI_TOKEN);
+}
+
+LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	InitList(m_Privileges, GetDlgItem(IDC_TOKEN_PRIVS), { { L"Privilege", 190 }, { L"State", 110 }, { L"Description", 300 } });
+	InitList(m_Groups, GetDlgItem(IDC_TOKEN_GROUPS), { { L"Name", 260 }, { L"Attributes", 220 }, { L"Type", 110 }, { L"SID", 300 } });
+
+	// the token's security decides; the process needs only limited access. Its source needs more access to the token
+	auto hProcess = OpenProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
+	std::unique_ptr<WinSys::Token> token;
+	if (hProcess) {
+		token = std::make_unique<WinSys::Token>(hProcess.get(), WinSys::TokenAccessMask(TOKEN_QUERY | TOKEN_QUERY_SOURCE));
+		if (!*token)
+			token = std::make_unique<WinSys::Token>(hProcess.get(), WinSys::TokenAccessMask::Query);
+	}
+	if (!token || !*token) {
+		SetDlgItemText(IDC_TOKEN_USER, std::format(L"Can't open the token: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
+	}
+	else {
+		ShowProperties(*token);
+		ShowPrivileges(*token);
+		ShowGroups(*token);
+	}
+
+	InitDynamicLayout(false, false);
+	return TRUE;
+}
+
+void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
+	auto set = [&](UINT id, std::wstring const& value) {
+		SetDlgItemText(id, value.c_str());
+	};
+	auto unknown = [](auto const& value, auto format) -> std::wstring {
+		return value ? format(*value) : std::wstring(L"Unknown");
+	};
+	auto stats = token.GetStats();
+
+	auto [userName, userSid] = token.GetUserNameAndSid();
+	set(IDC_TOKEN_USER, userName.empty() ? userSid.AsString() : std::format(L"{} ({})", userName, userSid.AsString()));
+	set(IDC_TOKEN_OWNER, FormatSid(token.GetOwner()));
+	set(IDC_TOKEN_PGROUP, FormatSid(token.GetPrimaryGroup()));
+	set(IDC_TOKEN_SESSION, std::to_wstring(token.GetSessionId()));
+
+	set(IDC_TOKEN_LOGONID, FormatLuid(stats.AuthenticationId));
+	// details only for the caller's own logon sessions, or when elevated
+	if (auto logon = WinSys::LsaSecurity::GetLogonSessionData(stats.AuthenticationId)) {
+		set(IDC_TOKEN_LOGONTYPE, LogonTypeToString(logon->LogonType));
+		set(IDC_TOKEN_PACKAGE, logon->AuthenticationPackage);
+		if (logon->LogonTime.QuadPart)
+			set(IDC_TOKEN_LOGONTIME, FormatHelper::FormatDateTime(logon->LogonTime.QuadPart));
+		if (!logon->LogonServer.empty())
+			set(IDC_TOKEN_LOGONSERVER, logon->LogonServer);
+	}
+	if (auto origin = token.GetOrigin(); origin && (origin->LowPart || origin->HighPart))
+		set(IDC_TOKEN_ORIGIN, FormatLuid(*origin));
+
+	set(IDC_TOKEN_TOKENID, FormatLuid(stats.TokenId));
+	set(IDC_TOKEN_MODIFIEDID, FormatLuid(stats.ModifiedId));
+	set(IDC_TOKEN_TYPE, stats.TokenType == TokenPrimary ? std::wstring(L"Primary") : std::format(L"Impersonation ({})",
+		stats.ImpersonationLevel == SecurityAnonymous ? L"anonymous" : stats.ImpersonationLevel == SecurityIdentification ? L"identification"
+		: stats.ImpersonationLevel == SecurityImpersonation ? L"impersonation" : L"delegation"));
+	if (auto source = token.GetSource()) {
+		// padded with spaces to its 8 characters
+		std::string name(source->SourceName, strnlen(source->SourceName, TOKEN_SOURCE_LENGTH));
+		while (!name.empty() && name.back() == ' ')
+			name.pop_back();
+		set(IDC_TOKEN_SOURCE, std::format(L"{} ({})", std::wstring(name.begin(), name.end()), FormatLuid(source->SourceIdentifier)));
+	}
+
+	set(IDC_TOKEN_ELEVATED, YesNo(token.IsElevated()));
+	set(IDC_TOKEN_ELEVATIONTYPE, unknown(token.GetElevationType(), [](auto type) -> std::wstring {
+		using enum WinSys::ElevationType;
+		return type == Full ? L"Full (elevated half of a split token)" : type == Limited ? L"Limited (filtered half of a split token)" : L"Default";
+		}));
+	set(IDC_TOKEN_INTEGRITY, FormatHelper::IntegrityLevelToString(token.GetIntegrityLevel()));
+	set(IDC_TOKEN_POLICY, unknown(token.GetMandatoryPolicy(), [](uint32_t policy) -> std::wstring {
+		std::wstring text;
+		if (policy & TOKEN_MANDATORY_POLICY_NO_WRITE_UP)
+			text = L"No write up";
+		if (policy & TOKEN_MANDATORY_POLICY_NEW_PROCESS_MIN)
+			text += text.empty() ? L"New process min" : L", new process min";
+		return text.empty() ? L"None" : text;
+		}));
+	using enum WinSys::VirtualizationState;
+	auto virt = token.GetVirtualizationState();
+	set(IDC_TOKEN_VIRTUALIZATION, virt == Enabled ? L"Enabled" : virt == Disabled ? L"Disabled" : virt == NotAllowed ? L"Not allowed" : L"Unknown");
+	set(IDC_TOKEN_UIACCESS, unknown(token.HasUIAccess(), [](bool v) -> std::wstring { return YesNo(v); }));
+	if (token.IsAppContainer()) {
+		auto number = token.GetAppContainerNumber();
+		set(IDC_TOKEN_APPCONTAINER, std::format(L"{}{}", FormatAppContainer(token.GetAppContainerSid()), number ? std::format(L", number {}", *number) : L""));
+	}
+	else {
+		set(IDC_TOKEN_APPCONTAINER, L"No");
+	}
+	set(IDC_TOKEN_RESTRICTED, YesNo(token.IsRestricted()));
+	set(IDC_TOKEN_FILTERED, unknown(token.HasRestrictions(), [](bool v) -> std::wstring { return YesNo(v); }));
+	set(IDC_TOKEN_SANDBOX, unknown(token.IsSandboxInert(), [](bool v) -> std::wstring { return YesNo(v); }));
+	auto trust = token.GetTrustLevel();
+	set(IDC_TOKEN_TRUSTLEVEL, trust ? FormatTrustLevel(trust) : L"None");
+	set(IDC_TOKEN_CHARGED, FormatHelper::FormatBytes(stats.DynamicCharged));
+	set(IDC_TOKEN_AVAILABLE, FormatHelper::FormatBytes(stats.DynamicAvailable));
+	// tokens that don't expire have the largest time, or (SYSTEM's) the end of 2999
+	constexpr int64_t Year2900 = 410'000'000'000'000'000;
+	auto expires = stats.ExpirationTime.QuadPart;
+	set(IDC_TOKEN_EXPIRES, expires <= 0 || expires >= Year2900 ? L"Never" : FormatHelper::FormatDateTime(expires));
+}
+
+void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
+	auto privileges = token.EnumPrivileges();
+	for (auto& p : privileges) {
+		auto attributes = p.Attributes;
+		std::wstring state = (attributes & SE_PRIVILEGE_ENABLED) ? L"Enabled" : L"Disabled";
+		if (attributes & SE_PRIVILEGE_ENABLED_BY_DEFAULT)
+			state += L" (default)";
+		WCHAR description[256];
+		DWORD size = _countof(description), language;
+		if (p.Name.empty() || !::LookupPrivilegeDisplayName(nullptr, p.Name.c_str(), description, &size, &language))
+			description[0] = 0;
+		AddRow(m_Privileges, { p.Name.empty() ? FormatLuid(p.Privilege) : p.Name, state, description });
+	}
+	SetDlgItemText(IDC_TOKEN_PRIVS_LABEL, std::format(L"Privileges ({}):", privileges.size()).c_str());
+}
+
+void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
+	auto groups = token.EnumGroups();
+	for (auto& g : groups)
+		AddRow(m_Groups, { g.Name, GroupAttributesToString(g.Attributes), SidUseToString(g.Use), g.Sid });
+	// an AppContainer's capabilities are SIDs as well
+	auto capabilities = token.IsAppContainer() ? token.EnumGroups(true) : std::vector<WinSys::TokenGroup>();
+	for (auto& c : capabilities)
+		AddRow(m_Groups, { c.Name, GroupAttributesToString(c.Attributes), L"Capability", c.Sid });
+	SetDlgItemText(IDC_TOKEN_GROUPS_LABEL, (capabilities.empty() ? std::format(L"Groups ({}):", groups.size())
+		: std::format(L"Groups ({}) and capabilities ({}):", groups.size(), capabilities.size())).c_str());
 }
 
 CProcPlaceholderPage::CProcPlaceholderPage(PCWSTR title, UINT icon, std::wstring text) :

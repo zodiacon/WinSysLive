@@ -47,7 +47,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
 	AddPage(*m_Environment);
 	add(L"Memory", IDI_MEMORY, L"The process's address space: regions, their protection and usage.");
-	add(L"Token", IDI_TOKEN, L"The process token: user, groups, privileges and integrity level.");
+	m_Token = std::make_unique<CProcTokenPage>(m_Props);
+	AddPage(*m_Token);
 	add(L"Threads", IDI_THREADS, L"The process's threads.");
 	if (IsInJob(m_Props.Id))
 		add(L"Job", IDI_PROCESSES, L"The job the process is in: its limits and its processes.");

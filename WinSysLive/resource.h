@@ -49,6 +49,7 @@
 #define IDD_PROC_GENERAL            242
 #define IDD_PROC_PAGE               243
 #define IDD_PROC_ENVIRONMENT        244
+#define IDD_PROC_TOKEN              245
 #define IDC_PROC_ICON               1005
 #define IDC_PROC_NAME               1006
 #define IDC_PROC_DESCRIPTION        1007
@@ -71,6 +72,38 @@
 #define IDC_ENV_STATUS              1024
 #define IDC_ENV_COPY                1025
 #define IDC_ENV_COPYALL             1026
+#define IDC_TOKEN_PRIVS_LABEL       1028
+#define IDC_TOKEN_PRIVS             1029
+#define IDC_TOKEN_GROUPS_LABEL      1030
+#define IDC_TOKEN_GROUPS            1031
+#define IDC_TOKEN_USER              1032
+#define IDC_TOKEN_OWNER             1033
+#define IDC_TOKEN_PGROUP            1034
+#define IDC_TOKEN_SESSION           1035
+#define IDC_TOKEN_TYPE              1036
+#define IDC_TOKEN_APPCONTAINER      1037
+#define IDC_TOKEN_LOGONID           1038
+#define IDC_TOKEN_ORIGIN            1039
+#define IDC_TOKEN_LOGONTYPE         1040
+#define IDC_TOKEN_PACKAGE           1041
+#define IDC_TOKEN_LOGONTIME         1042
+#define IDC_TOKEN_LOGONSERVER       1043
+#define IDC_TOKEN_TOKENID           1044
+#define IDC_TOKEN_MODIFIEDID        1045
+#define IDC_TOKEN_SOURCE            1046
+#define IDC_TOKEN_EXPIRES           1047
+#define IDC_TOKEN_CHARGED           1048
+#define IDC_TOKEN_AVAILABLE         1049
+#define IDC_TOKEN_ELEVATED          1050
+#define IDC_TOKEN_UIACCESS          1051
+#define IDC_TOKEN_RESTRICTED        1052
+#define IDC_TOKEN_FILTERED          1053
+#define IDC_TOKEN_SANDBOX           1054
+#define IDC_TOKEN_VIRTUALIZATION    1055
+#define IDC_TOKEN_INTEGRITY         1056
+#define IDC_TOKEN_ELEVATIONTYPE     1057
+#define IDC_TOKEN_POLICY            1058
+#define IDC_TOKEN_TRUSTLEVEL        1059
 #define ID_VIEW_PROPERTIES          32814
 #define IDD_COLUMNS                 215
 #define IDC_COLUMNS                 1000
@@ -123,8 +156,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	245
-#define _APS_NEXT_CONTROL_VALUE		1027
+#define _APS_NEXT_RESOURCE_VALUE	246
+#define _APS_NEXT_CONTROL_VALUE		1060
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32815
 #endif
