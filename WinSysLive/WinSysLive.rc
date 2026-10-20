@@ -102,7 +102,14 @@ BEGIN
             MENUITEM "&Idle",                       ID_PRIORITY_IDLE
         END
         MENUITEM SEPARATOR
+        POPUP "Create &Dump"
+        BEGIN
+            MENUITEM "&Minidump...",                ID_PROCESS_MINIDUMP
+            MENUITEM "&Full Dump...",               ID_PROCESS_FULLDUMP
+        END
         MENUITEM "Open File &Location",         ID_PROCESS_GOTOFILELOCATION
+        MENUITEM SEPARATOR
+        MENUITEM "&Find Handle or DLL...\tCtrl+Shift+F", ID_FIND_HANDLE
     END
     POPUP "&Options"
     BEGIN
@@ -141,6 +148,11 @@ BEGIN
             MENUITEM "&Idle",                       ID_PRIORITY_IDLE
         END
         MENUITEM SEPARATOR
+        POPUP "Create &Dump"
+        BEGIN
+            MENUITEM "&Minidump...",                ID_PROCESS_MINIDUMP
+            MENUITEM "&Full Dump...",               ID_PROCESS_FULLDUMP
+        END
         MENUITEM "Open File &Location",         ID_PROCESS_GOTOFILELOCATION
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
@@ -490,6 +502,22 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,263,199,50,14
 END
 
+IDD_FIND_HANDLE DIALOGEX 0, 0, 480, 280
+STYLE DS_SETFONT | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Find Handle or DLL"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Find &what:",IDC_STATIC,7,9,40,8
+    EDITTEXT        IDC_FIND_TEXT,48,7,370,14,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "&Search",IDC_FIND_SEARCH,423,7,50,14
+    CONTROL         "&Handles",IDC_FIND_HANDLES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,25,50,10
+    CONTROL         "&DLLs",IDC_FIND_DLLS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,104,25,50,10
+    CONTROL         "",IDC_FIND_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_OWNERDATA | LVS_SHAREIMAGELISTS | WS_BORDER | WS_TABSTOP,7,40,466,213
+    LTEXT           "",IDC_FIND_STATUS,7,262,330,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Go to Process",IDC_FIND_GOTO,350,259,64,14
+    PUSHBUTTON      "Close",IDCANCEL,423,259,50,14
+END
+
 IDD_STACK DIALOGEX 0, 0, 480, 260
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Stack"
@@ -630,6 +658,7 @@ BEGIN
     "L",            ID_VIEW_LOWERPANE,      VIRTKEY, CONTROL
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
     "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL
+    "F",            ID_FIND_HANDLE,         VIRTKEY, SHIFT, CONTROL
     VK_DELETE,      ID_KILL,                VIRTKEY 
     VK_RETURN,      ID_VIEW_PROPERTIES,     VIRTKEY, ALT
 END
@@ -922,6 +951,9 @@ BEGIN
     ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
     ID_PANE_THREADS         "Threads: 000,000"
+    ID_FIND_HANDLE          "Find the processes with a handle or a DLL whose name contains a text\nFind Handle or DLL"
+    ID_PROCESS_MINIDUMP     "Write a minidump of the selected process (threads, modules, handles)\nMinidump"
+    ID_PROCESS_FULLDUMP     "Write a dump of the selected process with all its memory\nFull Dump"
     ID_PROCESS_KILLALL      "Terminate all the processes with the selected process's image name\nKill All with the Same Name"
     ID_VIEW_PROPERTIES      "Show the properties of the selected process\nProperties (Alt+Enter)"
 END

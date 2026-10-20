@@ -835,7 +835,7 @@ void CProcessesView::UpdateUI() {
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
 	auto item = GetSelectedProcess();
 	bool live = m_Active && CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
 	ui.UIEnable(ID_VIEW_PROPERTIES, m_Active && item && !item->Terminated);
@@ -877,7 +877,7 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 	WTLHelper::InitMenu(popup, icons, _countof(icons));
 
 	bool live = CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_GOTOFILELOCATION, MF_BYCOMMAND | (item->Process->GetImagePath().empty() ? MF_GRAYED : MF_ENABLED));
 	popup.EnableMenuItem(ID_VIEW_PROPERTIES, MF_BYCOMMAND | (item->Terminated ? MF_GRAYED : MF_ENABLED));
@@ -1085,6 +1085,49 @@ LRESULT CProcessesView::OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, H
 
 	auto args = std::format(L"/select,\"{}\"", item->Process->GetImagePath());
 	::ShellExecute(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+	return 0;
+}
+
+LRESULT CProcessesView::OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return 0;
+	auto& p = *item->Process;
+	bool full = wID == ID_PROCESS_FULLDUMP;
+
+	// name_pid_date_time.dmp
+	SYSTEMTIME now;
+	::GetLocalTime(&now);
+	auto name = p.GetImageName();
+	if (auto dot = name.rfind(L'.'); dot != std::wstring::npos)
+		name.erase(dot);
+	auto fileName = std::format(L"{}_{}_{:04}{:02}{:02}_{:02}{:02}{:02}{}.dmp", name, p.Id, now.wYear, now.wMonth, now.wDay,
+		now.wHour, now.wMinute, now.wSecond, full ? L"_full" : L"");
+	COMDLG_FILTERSPEC const types[] = { { L"Dump Files", L"*.dmp" }, { L"All Files", L"*.*" } };
+	CShellFileSaveDialog dlg(fileName.c_str(), FOS_OVERWRITEPROMPT | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST, L"dmp", types, _countof(types));
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	CString path;
+	if (FAILED(dlg.GetFilePath(path)))
+		return 0;
+
+	// written on the symbol engine's thread (DbgHelp's): a full dump of a large process takes a while
+	Frame()->SetStatusText(0, std::format(L"Writing a {} of {} ({})...", full ? L"full dump" : L"minidump", p.GetImageName(), p.Id).c_str());
+	SymbolEngine::Get().WriteDump(p.Id, p.Key.Created, (PCWSTR)path, full, m_hWnd);
+	return 0;
+}
+
+LRESULT CProcessesView::OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	std::unique_ptr<DumpResult> result(reinterpret_cast<DumpResult*>(lParam));
+	// the status line is the filter's otherwise
+	UpdateFilterStatus();
+	if (!result->Error.empty()) {
+		AtlMessageBox(m_hWnd, result->Error.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	auto text = std::format(L"The dump was written to {} ({}).\n\nOpen its folder?", result->Path, FormatHelper::FormatBytes(result->Size));
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_YESNO | MB_ICONINFORMATION) == IDYES)
+		::ShellExecute(nullptr, L"open", L"explorer.exe", std::format(L"/select,\"{}\"", result->Path).c_str(), nullptr, SW_SHOWNORMAL);
 	return 0;
 }
 

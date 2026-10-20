@@ -7,6 +7,7 @@
 #include "ProcessDetails.h"
 #include "ProcessColors.h"
 #include "FilterBox.h"
+#include "Symbols.h"
 #include <CustomSplitterWindow.h>
 #include <unordered_set>
 
@@ -30,6 +31,7 @@ public:
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		MESSAGE_HANDLER(WM_DUMP_WRITTEN, OnDumpWritten)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
@@ -47,6 +49,8 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
 		COMMAND_RANGE_HANDLER(ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE, OnSetPriority)
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
+		COMMAND_ID_HANDLER(ID_PROCESS_MINIDUMP, OnCreateDump)
+		COMMAND_ID_HANDLER(ID_PROCESS_FULLDUMP, OnCreateDump)
 		COMMAND_ID_HANDLER(ID_VIEW_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
@@ -99,6 +103,8 @@ private:
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetPriority(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

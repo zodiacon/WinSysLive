@@ -148,6 +148,17 @@
 #define IDD_SYMBOLS                 258
 #define ID_OPTIONS_SYMBOLSETTINGS   32824
 #define ID_KILL                     32825
+#define ID_PROCESS_MINIDUMP         32826
+#define ID_PROCESS_FULLDUMP         32827
+#define ID_FIND_HANDLE              32828
+#define IDD_FIND_HANDLE             259
+#define IDC_FIND_TEXT               1133
+#define IDC_FIND_SEARCH             1134
+#define IDC_FIND_HANDLES            1135
+#define IDC_FIND_DLLS               1136
+#define IDC_FIND_LIST               1137
+#define IDC_FIND_STATUS             1138
+#define IDC_FIND_GOTO               1139
 #define IDC_SYM_USE_ENV             1124
 #define IDC_SYM_ENV_VALUE           1125
 #define IDC_SYM_USE_SERVER          1126
@@ -252,9 +263,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	259
-#define _APS_NEXT_CONTROL_VALUE		1133
+#define _APS_NEXT_RESOURCE_VALUE	260
+#define _APS_NEXT_CONTROL_VALUE		1140
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32826
+#define _APS_NEXT_COMMAND_VALUE		32829
 #endif
 #endif

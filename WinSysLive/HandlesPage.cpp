@@ -5,6 +5,7 @@
 #include "AccessMask.h"
 #include "AppSettings.h"
 #include "ViewBase.h"
+#include "ObjectNames.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/Sid.h>
 #include <WTLHelper.h>
@@ -27,35 +28,6 @@ namespace {
 	const int NewHandleTicks = 2;
 	// when this many name queries have hung (their workers are stuck), files aren't queried anymore
 	const int MaxHungQueries = 4;
-
-	std::wstring RegistryName(std::wstring name) {
-		// \REGISTRY\MACHINE\... and \REGISTRY\USER\<SID>\... as the registry editor shows them
-		static const std::wstring currentUser = [] {
-			std::wstring sid;
-			HANDLE hToken;
-			if (::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
-				BYTE buffer[256];
-				DWORD len;
-				if (NT_SUCCESS(::NtQueryInformationToken(hToken, TokenUser, buffer, sizeof(buffer), &len)))
-					sid = L"\\REGISTRY\\USER\\" + Sid(reinterpret_cast<TOKEN_USER*>(buffer)->User.Sid).AsString();
-				::CloseHandle(hToken);
-			}
-			return sid;
-		}();
-		auto replace = [&](std::wstring const& prefix, PCWSTR with) {
-			if (prefix.empty() || ::_wcsnicmp(name.c_str(), prefix.c_str(), prefix.size()) != 0)
-				return false;
-			// the whole prefix or up to a backslash, not part of a longer name
-			if (name.size() > prefix.size() && name[prefix.size()] != L'\\')
-				return false;
-			name = with + name.substr(prefix.size());
-			return true;
-		};
-		// the first that matches
-		(void)(replace(currentUser + L"_Classes", L"HKCU\\Software\\Classes") || replace(currentUser, L"HKCU")
-			|| replace(L"\\REGISTRY\\MACHINE", L"HKLM") || replace(L"\\REGISTRY\\USER", L"HKU"));
-		return name;
-	}
 }
 
 void CHandlesPage::SetFrame(IMainFrame* frame) {
@@ -237,64 +209,10 @@ std::wstring const& CHandlesPage::GetName(HandleData& data, bool closed) const {
 }
 
 std::wstring CHandlesPage::QueryName(HandleEntry const& entry) const {
-	if (!m_hProcess)
-		return L"";
-	auto& type = ObjectTypes::GetName(entry.TypeIndex);
-	if (type == L"File" && m_NameQuery.GetAbandonedCount() >= MaxHungQueries)
-		return L"";
-
-	// a copy of the handle in this process. Processes and threads are queried for their IDs, which the handle's own
-	// access may not allow, so they're duplicated with the access that needs first
-	wil::unique_handle h;
-	auto source = (HANDLE)(ULONG_PTR)entry.Value;
-	DWORD queryAccess = type == L"Process" ? PROCESS_QUERY_LIMITED_INFORMATION : type == L"Thread" ? THREAD_QUERY_LIMITED_INFORMATION : 0;
-	if ((!queryAccess || !::DuplicateHandle(m_hProcess.get(), source, ::GetCurrentProcess(), h.addressof(), queryAccess, FALSE, 0))
-		&& !::DuplicateHandle(m_hProcess.get(), source, ::GetCurrentProcess(), h.addressof(), 0, FALSE, DUPLICATE_SAME_ACCESS))
-		return L"";
-
-	// processes and threads have no names: their IDs and image names are more useful
-	auto processText = [&](DWORD pid, HANDLE hProcess) {
-		std::wstring name = m_Frame ? m_Frame->GetProcessManager().GetProcessNameById(pid) : L"";
-		if (name.empty() && hProcess) {
-			// not in the snapshot (it may have exited): the image path from the handle
-			WCHAR path[MAX_PATH];
-			DWORD size = _countof(path);
-			if (::QueryFullProcessImageName(hProcess, 0, path, &size)) {
-				auto slash = wcsrchr(path, L'\\');
-				name = slash ? slash + 1 : path;
-			}
-		}
-		return name.empty() ? std::format(L"PID: {}", pid) : std::format(L"PID: {}, {}", pid, name);
-	};
-	if (type == L"Process") {
-		if (auto pid = ::GetProcessId(h.get()))
-			return processText(pid, h.get());
-		return L"";
-	}
-	if (type == L"Thread") {
-		if (auto tid = ::GetThreadId(h.get()))
-			return std::format(L"TID: {}, {}", tid, processText(::GetProcessIdOfThread(h.get()), nullptr));
-		return L"";
-	}
-	if (type == L"Token") {
-		// the user, and the logon session
-		BYTE buffer[256];
-		DWORD len;
-		TOKEN_STATISTICS stats;
-		if (NT_SUCCESS(::NtQueryInformationToken(h.get(), TokenUser, buffer, sizeof(buffer), &len))
-			&& NT_SUCCESS(::NtQueryInformationToken(h.get(), TokenStatistics, &stats, sizeof(stats), &len)))
-			return std::format(L"{}:{:x}", Sid(reinterpret_cast<TOKEN_USER*>(buffer)->User.Sid).UserName(), stats.AuthenticationId.LowPart);
-		return L"";
-	}
-
-	auto name = m_NameQuery.GetName(h.get());
-	if (!name || name->empty())
-		return L"";
-	if (type == L"File")
-		return Helpers::GetDosNameFromNtName(name->c_str());
-	if (type == L"Key")
-		return RegistryName(std::move(*name));
-	return std::move(*name);
+	// when name queries have hung (their workers are stuck), files aren't queried anymore
+	return QueryHandleName(m_hProcess.get(), entry, m_NameQuery, m_DosNames,
+		[this](DWORD pid) { return m_Frame ? m_Frame->GetProcessManager().GetProcessNameById(pid) : L""; },
+		m_NameQuery.GetAbandonedCount() < MaxHungQueries);
 }
 
 CString CHandlesPage::GetColumnText(HWND, int row, int col) const {
@@ -330,28 +248,8 @@ int CHandlesPage::GetRowImage(HWND, int row, int col) const {
 		return -1;
 	auto& r = m_Rows[row];
 	auto& type = ObjectTypes::GetName(r.Data->Entry.TypeIndex);
-	if (type == L"File") {
-		// devices and pipes keep their NT names; files on drives get DOS paths
-		auto& name = GetName(*r.Data, r.Closed);
-		return m_Frame->GetIconIndex(name.starts_with(L"\\") ? IDI_DEVICE : IDI_FILE);
-	}
-	return m_Frame->GetIconIndex(GetTypeIcon(type));
-}
-
-UINT CHandlesPage::GetTypeIcon(std::wstring const& type) {
-	static const std::unordered_map<std::wstring, UINT> icons{
-		{ L"Event", IDI_EVENT }, { L"Mutant", IDI_MUTEX }, { L"Semaphore", IDI_SEMAPHORE },
-		{ L"Timer", IDI_TIMER }, { L"IRTimer", IDI_TIMER }, { L"Key", IDI_KEY }, { L"ALPC Port", IDI_ALPC },
-		{ L"Desktop", IDI_DESKTOP }, { L"WindowStation", IDI_WINSTA }, { L"Composition", IDI_GRAPHICS },
-		{ L"Directory", IDI_DIRECTORY }, { L"Section", IDI_SECTION }, { L"Session", IDI_SESSION }, { L"Token", IDI_TOKEN }, { L"Thread", IDI_THREADS },
-		{ L"Job", IDI_JOB },
-		{ L"EtwRegistration", IDI_ETW }, { L"EtwConsumer", IDI_ETW }, { L"EtwSessionDemuxEntry", IDI_ETW },
-		{ L"FilterConnectionPort", IDI_PORT }, { L"FilterCommunicationPort", IDI_PORT },
-	};
-	if (auto it = icons.find(type); it != icons.end())
-		return it->second;
-	// DxgkSharedResource, DxgkCompositionObject...
-	return type.starts_with(L"Dxgk") ? IDI_DIRECTX : IDI_OBJECT;
+	// only a file's icon depends on its name
+	return m_Frame->GetIconIndex(GetHandleIcon(type, type == L"File" ? GetName(*r.Data, r.Closed) : std::wstring()));
 }
 
 int CHandlesPage::GetSaveColumnRange(HWND, int&) const {

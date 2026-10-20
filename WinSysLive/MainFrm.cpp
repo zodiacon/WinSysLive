@@ -29,6 +29,10 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 			return FALSE;
 	}
 
+	// the modeless Find Handle or DLL dialog's keys (Tab, Enter, Escape) before the frame's accelerators
+	if (m_FindDlg && m_FindDlg->IsWindow() && m_FindDlg->IsDialogMessage(pMsg))
+		return TRUE;
+
 	if (CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg))
 		return TRUE;
 
@@ -443,6 +447,17 @@ LRESULT CMainFrame::OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 		SymbolEngine::Get().SetSearchPath(BuildSymbolSearchPath(CSymbolSettingsDlg::LoadOptions()));
 		RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
 	}
+	return 0;
+}
+
+LRESULT CMainFrame::OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (!m_FindDlg || !m_FindDlg->IsWindow()) {
+		m_FindDlg = std::make_unique<CFindHandleDlg>(this);
+		m_FindDlg->Create(m_hWnd);
+	}
+	m_FindDlg->ShowWindow(SW_SHOW);
+	m_FindDlg->SetActiveWindow();
+	m_FindDlg->GotoDlgCtrl(m_FindDlg->GetDlgItem(IDC_FIND_TEXT));
 	return 0;
 }
 

@@ -178,6 +178,13 @@ struct SymbolEngine::Impl {
 		HWND Notify;
 		bool Resolve;	// the frames' symbols too
 	};
+	struct DumpWork {
+		ProcessKey Process;
+		std::wstring Path;
+		bool Full;
+		HWND Notify;
+	};
+	using Work = std::variant<ResolveWork, StackWork, DumpWork>;
 
 	// a process opened for DbgHelp; DbgHelp's session is keyed by the handle
 	struct Session {
@@ -192,7 +199,7 @@ struct SymbolEngine::Impl {
 	std::wstring Path;			// the search path
 	bool PathChanged{ false };	// the sessions are to be closed, so new ones use the new path
 	std::condition_variable Wake;
-	std::deque<std::variant<ResolveWork, StackWork>> Queue;
+	std::deque<Work> Queue;
 	std::map<AddressKey, std::wstring> Cache;
 	std::map<AddressKey, std::set<HWND>> Pending;	// queued addresses, and the windows to tell
 	bool Stopping{ false };
@@ -208,7 +215,7 @@ struct SymbolEngine::Impl {
 		Thread = std::thread([this] { Run(); });
 	}
 
-	void Post(std::variant<ResolveWork, StackWork> work) {
+	void Post(Work work) {
 		std::lock_guard lock(Lock);
 		if (Stopping)
 			return;
@@ -219,7 +226,7 @@ struct SymbolEngine::Impl {
 	void Run() {
 		std::set<HWND> notify;
 		for (;;) {
-			std::variant<ResolveWork, StackWork> work;
+			Work work;
 			{
 				std::unique_lock lock(Lock);
 				// the windows waiting for resolved addresses are told once the queue empties, not once per address
@@ -252,6 +259,11 @@ struct SymbolEngine::Impl {
 					notify.insert(it->second.begin(), it->second.end());
 					Pending.erase(it);
 				}
+			}
+			else if (auto dump = std::get_if<DumpWork>(&work)) {
+				auto result = std::make_unique<DumpResult>(WriteDump(*dump));
+				if (::PostMessage(dump->Notify, WM_DUMP_WRITTEN, 0, (LPARAM)result.get()))
+					result.release();
 			}
 			else {
 				auto& stack = std::get<StackWork>(work);
@@ -401,6 +413,43 @@ struct SymbolEngine::Impl {
 			return LoadKernel() ? Format(KernelSession, key.Address) : L"";
 		auto session = GetSession(key.Process);
 		return session ? FormatInProcess(*session, key.Address) : L"";
+	}
+
+	DumpResult WriteDump(DumpWork const& work) {
+		DumpResult result{ work.Path };
+		auto fail = [&](PCWSTR what) {
+			result.Error = std::format(L"{}: {}", what, WinSys::Helpers::GetErrorText(::GetLastError()));
+			return result;
+		};
+		// the handles' data needs PROCESS_DUP_HANDLE
+		wil::unique_handle hProcess(::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_DUP_HANDLE, FALSE, work.Process.Pid));
+		if (!hProcess)
+			return fail(L"Can't open the process");
+		FILETIME created, exited, kernel, user;
+		if (::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
+			&& (int64_t)ULARGE_INTEGER{ created.dwLowDateTime, created.dwHighDateTime }.QuadPart != work.Process.Created) {
+			::SetLastError(ERROR_INVALID_PARAMETER);
+			return fail(L"The process is gone");
+		}
+		wil::unique_hfile file(::CreateFile(work.Path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+		if (!file)
+			return fail(L"Can't create the file");
+		auto type = MiniDumpWithHandleData | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo | MiniDumpWithProcessThreadData
+			| MiniDumpWithFullMemoryInfo;
+		if (work.Full)
+			type |= MiniDumpWithFullMemory | MiniDumpWithTokenInformation | MiniDumpIgnoreInaccessibleMemory;
+		if (!::MiniDumpWriteDump(hProcess.get(), work.Process.Pid, file.get(), (MINIDUMP_TYPE)type, nullptr, nullptr, nullptr)) {
+			auto error = ::GetLastError();
+			file.reset();
+			::DeleteFile(work.Path.c_str());
+			// MiniDumpWriteDump returns an HRESULT as the last error
+			::SetLastError(HRESULT_FACILITY(error) == FACILITY_WIN32 ? HRESULT_CODE(error) : error);
+			return fail(L"Writing the dump failed");
+		}
+		LARGE_INTEGER size;
+		if (::GetFileSizeEx(file.get(), &size))
+			result.Size = size.QuadPart;
+		return result;
 	}
 
 	StackCapture Capture(ProcessKey const& key, uint32_t tid, bool resolve) {
@@ -569,6 +618,10 @@ std::optional<std::wstring> SymbolEngine::Lookup(uint32_t pid, int64_t created, 
 
 void SymbolEngine::CaptureStack(uint32_t pid, int64_t created, uint32_t tid, HWND notify) {
 	GetImpl().Post(Impl::StackWork{ { pid, created }, tid, notify, m_Enabled });
+}
+
+void SymbolEngine::WriteDump(uint32_t pid, int64_t created, std::wstring path, bool full, HWND notify) {
+	GetImpl().Post(Impl::DumpWork{ { pid, created }, std::move(path), full, notify });
 }
 
 void SymbolEngine::SetSearchPath(std::wstring path) {

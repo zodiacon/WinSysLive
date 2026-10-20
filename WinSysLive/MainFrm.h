@@ -9,6 +9,7 @@
 #include <NativeCustomTabView.h>
 #include <TabViewHelper.h>
 #include "Interfaces.h"
+#include "FindHandleDlg.h"
 
 // tabs are fixed, so no close button; the image list is the frame's shared one
 class CMainTabView : public CNativeCustomTabViewImpl<CMainTabView> {
@@ -58,6 +59,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_PROCESSCOLORS, OnProcessColors)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVESYMBOLS, OnResolveSymbols)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SYMBOLSETTINGS, OnSymbolSettings)
+		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
 	END_MSG_MAP()
@@ -87,6 +89,7 @@ public:
 	LRESULT OnProcessColors(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResolveSymbols(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 private:
 	// IMainFrame
@@ -151,6 +154,7 @@ private:
 	std::unordered_map<std::wstring, int> m_ProcessIcons;	// image path (lowercase) to image list index
 	std::vector<IView*> m_Views;	// index == tab index
 	std::wstring m_TipText;	// a toolbar tooltip from the active view (OnToolTipText)
+	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
 	ProcessManager m_ProcessManager;
 	int m_ActivePage{ -1 };

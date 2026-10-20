@@ -2,6 +2,7 @@
 #include "MemoryPage.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
+#include "ObjectNames.h"
 #include <WinSys/Helpers.h>
 #include <WTLHelper.h>
 #include <map>
@@ -138,21 +139,6 @@ namespace {
 	// the bytes of a region can be read without side effects (a guard page's read would clear its guard)
 	bool IsReadable(MEMORY_BASIC_INFORMATION const& mbi) {
 		return mbi.State == MEM_COMMIT && mbi.Protect != 0 && (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
-	}
-
-	// NT device names of the drives (\Device\HarddiskVolume3) and their letters, for mapped files' paths. Not
-	// WinSys's Helpers::GetDosNameFromNtName: its table isn't safe to build on the sheet's thread while the UI thread uses it
-	std::vector<std::pair<std::wstring, std::wstring>> GetDeviceNames() {
-		std::vector<std::pair<std::wstring, std::wstring>> names;
-		auto drives = ::GetLogicalDrives();
-		for (int drive = 0; drives; drive++, drives >>= 1) {
-			WCHAR letter[] = L"X:";
-			letter[0] = WCHAR(L'A' + drive);
-			WCHAR device[MAX_PATH];
-			if ((drives & 1) && ::QueryDosDevice(letter, device, _countof(device)))
-				names.push_back({ std::wstring(device) + L"\\", std::wstring(letter) + L"\\" });
-		}
-		return names;
 	}
 }
 
@@ -303,7 +289,9 @@ void CProcMemoryPage::Load(void const* select) {
 		}
 	}
 
-	auto devices = GetDeviceNames();
+	// not WinSys's Helpers::GetDosNameFromNtName: its table isn't safe to build on the sheet's thread while the UI thread
+	// uses it
+	DosNames dosNames;
 	MEMORY_BASIC_INFORMATION mbi;
 	BYTE const* address = nullptr;
 	uint64_t committed = 0, reserved = 0;
@@ -312,12 +300,7 @@ void CProcMemoryPage::Load(void const* select) {
 		if (mbi.BaseAddress == mbi.AllocationBase && (mbi.Type == MEM_IMAGE || mbi.Type == MEM_MAPPED)) {
 			WCHAR name[MAX_PATH];
 			if (::GetMappedFileName(m_hProcess.get(), mbi.BaseAddress, name, _countof(name))) {
-				region.Details = name;
-				for (auto& [device, letter] : devices)
-					if (::_wcsnicmp(name, device.c_str(), device.size()) == 0) {
-						region.Details = letter + (name + device.size());
-						break;
-					}
+				region.Details = dosNames.Convert(name);
 			}
 		}
 		if (mbi.State == MEM_COMMIT)

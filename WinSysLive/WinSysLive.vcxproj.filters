@@ -36,6 +36,9 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ObjectNames.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="FilterBox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -102,6 +105,9 @@
     <ClCompile Include="StackDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="FindHandleDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="SymbolSettingsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -139,6 +145,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectNames.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FilterBox.h">
@@ -211,6 +220,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="StackDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="FindHandleDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="SymbolSettingsDlg.h">
