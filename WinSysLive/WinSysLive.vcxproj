@@ -397,6 +397,7 @@
     <ClCompile Include="ConnectionRows.cpp" />
     <ClCompile Include="HandleIcons.cpp" />
     <ClCompile Include="FilterBox.cpp" />
+    <ClCompile Include="RunDlg.cpp" />
     <ClCompile Include="ProcessColors.cpp" />
     <ClCompile Include="ProcessColorsDlg.cpp" />
     <ClCompile Include="ColumnsDlg.cpp" />
@@ -455,6 +456,7 @@
     <ClInclude Include="HandleIcons.h" />
     <ClInclude Include="FilterBox.h" />
     <ClInclude Include="DpiLayout.h" />
+    <ClInclude Include="RunDlg.h" />
     <ClInclude Include="ProcessColors.h" />
     <ClInclude Include="ProcessColorsDlg.h" />
     <ClInclude Include="ColumnsDlg.h" />
@@ -514,6 +516,7 @@
     <Image Include="res\copy.ico" />
     <Image Include="res\image.ico" />
     <Image Include="res\data.ico" />
+    <Image Include="res\Run.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

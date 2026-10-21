@@ -24,6 +24,8 @@ struct AppSettings : Settings {
 		SETTING_STRING(NetworkColumns, L"");
 		SETTING_STRING(DriverColumns, L"");
 		SETTING_STRING(UserColumns, L"");
+		SETTING_STRING(RunHistory, L"");	// File > Run and Run As: the last command lines, newest first, one a line
+		SETTING_STRING(RunAsUser, L"");	// File > Run As: the last user name (never the password)
 		SETTING(ResolveSymbols, 1, SettingType::Bool);
 		// the Symbol Settings (see SymbolPathOptions)
 		SETTING(SymbolUseEnvPath, 1, SettingType::Bool);
@@ -59,6 +61,8 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(NetworkColumns)
 	DEF_SETTING_STRING(DriverColumns)
 	DEF_SETTING_STRING(UserColumns)
+	DEF_SETTING_STRING(RunHistory)
+	DEF_SETTING_STRING(RunAsUser)
 	DEF_SETTING_STRING(ProcessColors)
 	DEF_SETTING(ResolveSymbols, int)
 	DEF_SETTING(SymbolUseEnvPath, int)

@@ -45,6 +45,9 @@
     <ClCompile Include="FilterBox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="RunDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Symbols.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -188,6 +191,9 @@
     </ClInclude>
     <ClInclude Include="DpiLayout.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RunDlg.h">
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Symbols.h">
       <Filter>Header Files</Filter>
@@ -467,6 +473,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\data.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Run.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

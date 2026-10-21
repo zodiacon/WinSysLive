@@ -148,6 +148,20 @@
 #define IDI_COPY                    268
 #define IDI_MODULE_IMAGE            269
 #define IDI_MODULE_DATA             270
+#define IDD_RUN                     271
+#define IDD_RUNAS                   272
+#define IDI_RUN_COMMAND             273
+#define IDC_RUN_COMMAND             1231
+#define IDC_RUN_BROWSE              1232
+#define IDC_RUN_ELEVATED            1233
+#define IDC_RUNAS_COMMAND           1234
+#define IDC_RUNAS_BROWSE            1235
+#define IDC_RUNAS_USER              1236
+#define IDC_RUNAS_PASSWORD          1237
+#define IDC_RUNAS_PROFILE           1238
+#define IDC_RUNAS_NETONLY           1239
+#define ID_FILE_RUN                 32863
+#define ID_FILE_RUNAS               32864
 #define IDD_SYMBOLS                 258
 #define ID_OPTIONS_SYMBOLSETTINGS   32824
 #define ID_KILL                     32825
@@ -367,9 +381,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	271
-#define _APS_NEXT_CONTROL_VALUE		1231
+#define _APS_NEXT_RESOURCE_VALUE	274
+#define _APS_NEXT_CONTROL_VALUE		1240
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32863
+#define _APS_NEXT_COMMAND_VALUE		32865
 #endif
 #endif

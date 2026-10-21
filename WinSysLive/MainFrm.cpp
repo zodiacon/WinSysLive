@@ -12,6 +12,7 @@
 #include "SymbolSettingsDlg.h"
 #include "FormatHelper.h"
 #include "ListExport.h"
+#include "RunDlg.h"
 #include <ClipboardHelper.h>
 #include "WTLHelper.h"
 #include <IconHelper.h>
@@ -443,6 +444,8 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 
 	std::vector<MenuItemData> commands{
 		{ ID_FILE_RUNASADMIN, 0, hShield },
+		{ ID_FILE_RUN, IDI_RUN_COMMAND },
+		{ ID_FILE_RUNAS, IDI_USERS },
 		{ ID_VIEW_PAUSE, IDI_PAUSE },
 		{ ID_VIEW_REFRESH, IDI_REFRESH },
 		// as in the process and thread context menus
@@ -602,6 +605,18 @@ LRESULT CMainFrame::OnPageActivated(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandle
 	for (int i = 0; i < _countof(s_Tabs); i++)
 		UISetCheck(s_Tabs[i].CommandId, i == page);
 
+	return 0;
+}
+
+LRESULT CMainFrame::OnRun(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CRunDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnRunAs(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CRunAsDlg dlg;
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 
