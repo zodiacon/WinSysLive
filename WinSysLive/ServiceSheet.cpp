@@ -101,6 +101,7 @@ CServiceSheet::CServiceSheet(std::wstring const& name) {
 		AddPage(m_LogOn);
 		AddPage(m_Recovery);
 	}
+	AddPage(m_Dependencies);
 }
 
 void CServiceSheet::OnSheetInitialized() {
@@ -429,4 +430,120 @@ int CServiceRecoveryPage::OnApply() {
 	m_Data.Applied = true;
 	m_Changed = false;
 	return PSNRET_NOERROR;
+}
+
+namespace {
+	// the services depending on a service directly (or on its load order group), from its dependents (direct or not)
+	std::vector<ServiceDependent> DirectDependents(std::wstring const& name) {
+		std::vector<ServiceDependent> direct;
+		auto service = WinSys::Service::Open(name, ServiceAccessMask::EnumerateDependents);
+		if (!service)
+			return direct;
+		auto config = ServiceManager::GetServiceConfiguration(name);
+		auto group = config && !config->LoadOrderGroup.empty() ? SC_GROUP_IDENTIFIER + config->LoadOrderGroup : std::wstring();
+		for (auto& d : service->GetDependents()) {
+			auto dconfig = ServiceManager::GetServiceConfiguration(d.Name);
+			if (dconfig && std::ranges::any_of(dconfig->Dependencies, [&](auto& dep) {
+				return _wcsicmp(dep.c_str(), name.c_str()) == 0 || (!group.empty() && _wcsicmp(dep.c_str(), group.c_str()) == 0);
+				}))
+				direct.push_back(d);
+		}
+		return direct;
+	}
+
+	bool HasDependents(std::wstring const& name) {
+		auto service = WinSys::Service::Open(name, ServiceAccessMask::EnumerateDependents);
+		return service && !service->GetDependents().empty();
+	}
+}
+
+LRESULT CServiceDependenciesPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	for (auto [id, dependents] : { std::pair{ IDC_SVC_DEPENDSON, false }, std::pair{ IDC_SVC_DEPENDENTS, true } }) {
+		CTreeViewCtrl tree(GetDlgItem(id));
+		if (!AddChildren(tree, TVI_ROOT, m_Data.Name, dependents))
+			tree.InsertItem(dependents ? L"<No dependents>" : L"<No dependencies>", TVI_ROOT, TVI_LAST);
+	}
+	return TRUE;
+}
+
+LRESULT CServiceDependenciesPage::OnItemExpanding(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	auto tv = (NMTREEVIEW*)hdr;
+	if (tv->action != TVE_EXPAND)
+		return FALSE;
+	CTreeViewCtrl tree(hdr->hwndFrom);
+	auto index = (size_t)tree.GetItemData(tv->itemNew.hItem);
+	if (index >= m_Nodes.size() || m_Nodes[index].Filled)
+		return FALSE;
+	m_Nodes[index].Filled = true;
+	// copied: adding nodes moves them
+	auto node = m_Nodes[index];
+	if (!AddChildren(tree, tv->itemNew.hItem, node.Name, node.Dependents)) {
+		TVITEM item{ TVIF_CHILDREN, tv->itemNew.hItem };
+		item.cChildren = 0;
+		tree.SetItem(&item);
+	}
+	return FALSE;
+}
+
+bool CServiceDependenciesPage::AddChildren(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool dependents) {
+	bool any = false;
+	if (dependents) {
+		auto direct = DirectDependents(name);
+		// the SCM's order is the stop order
+		std::ranges::sort(direct, [](auto& a, auto& b) { return _wcsicmp(a.DisplayName.c_str(), b.DisplayName.c_str()) < 0; });
+		for (auto& d : direct) {
+			AddNode(tree, parent, d.Name, false, true);
+			any = true;
+		}
+		return any;
+	}
+	auto config = ServiceManager::GetServiceConfiguration(name);
+	if (!config)
+		return false;
+	for (auto& dep : config->Dependencies) {
+		if (dep.empty())
+			continue;
+		if (dep[0] == SC_GROUP_IDENTIFIER)
+			AddNode(tree, parent, dep.substr(1), true, false);
+		else
+			AddNode(tree, parent, dep, false, false);
+		any = true;
+	}
+	return any;
+}
+
+void CServiceDependenciesPage::AddNode(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool group, bool dependents) {
+	std::wstring text;
+	bool children = false;
+	if (group)
+		text = std::format(L"{} (load order group)", name);
+	else if (auto config = ServiceManager::GetServiceConfiguration(name); !config)
+		text = std::format(L"{} (not installed)", name);
+	else {
+		auto& display = config->DisplayName;
+		text = display.empty() || _wcsicmp(display.c_str(), name.c_str()) == 0 ? name : std::format(L"{} ({})", display, name);
+		text += std::format(L": {}", FormatHelper::ServiceStateToString(ServiceManager::GetServiceState(name)));
+		if (InPath(tree, parent, name))
+			text += L" (a cycle)";
+		else
+			children = dependents ? HasDependents(name) : !config->Dependencies.empty();
+	}
+	m_Nodes.push_back({ name, group, dependents });
+	TVINSERTSTRUCT insert{ parent, TVI_LAST };
+	insert.item.mask = TVIF_TEXT | TVIF_CHILDREN | TVIF_PARAM;
+	insert.item.pszText = text.data();
+	insert.item.cChildren = children ? 1 : 0;
+	insert.item.lParam = (LPARAM)(m_Nodes.size() - 1);
+	tree.InsertItem(&insert);
+}
+
+bool CServiceDependenciesPage::InPath(CTreeViewCtrl tree, HTREEITEM item, std::wstring const& name) const {
+	if (_wcsicmp(name.c_str(), m_Data.Name.c_str()) == 0)
+		return true;
+	for (; item && item != TVI_ROOT; item = tree.GetParentItem(item)) {
+		auto index = (size_t)tree.GetItemData(item);
+		if (index < m_Nodes.size() && !m_Nodes[index].Group && _wcsicmp(m_Nodes[index].Name.c_str(), name.c_str()) == 0)
+			return true;
+	}
+	return false;
 }

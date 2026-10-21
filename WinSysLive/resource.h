@@ -322,6 +322,9 @@
 #define IDC_AFF_ALL                 1141
 #define IDC_AFF_NONE                1142
 #define IDC_AFF_LABEL               1240
+#define IDD_SERVICE_DEPENDENCIES    277
+#define IDC_SVC_DEPENDSON           1241
+#define IDC_SVC_DEPENDENTS          1242
 #define IDD_FIND_HANDLE             259
 #define IDC_FIND_TEXT               1133
 #define IDC_FIND_SEARCH             1134
@@ -402,8 +405,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	277
-#define _APS_NEXT_CONTROL_VALUE		1241
+#define _APS_NEXT_RESOURCE_VALUE	278
+#define _APS_NEXT_CONTROL_VALUE		1243
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32882
 #endif

@@ -8,6 +8,7 @@
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Service.h>
 #include <functional>
+#include <deque>
 
 //
 // The Services tab, and the Drivers tab: the same view for Win32 services or driver services (kernel and file system
@@ -161,8 +162,21 @@ private:
 	CFilterBox m_Filter;	// in the view's rebar
 	std::unordered_map<std::wstring, std::shared_ptr<ServiceItem>> m_ItemsByName;
 
-	// restart: stop, then start once the service has stopped (polled with a timer, so the UI doesn't block)
-	enum { RestartTimerId = 1 };
-	std::wstring m_RestartName;
-	ULONGLONG m_RestartDeadline{ 0 };
+	// Stop and Restart with running dependents: stop them first (in the SCM's order), then the service; a restart then
+	// starts the service and the dependents again, in the reverse order. One step at a time, each waited for (polled
+	// with a timer, so the UI doesn't block)
+	struct ControlStep {
+		std::wstring Name;
+		bool Start;
+	};
+	// the selected service's stop (and start, for a restart) with its running dependents, after a confirmation if it has
+	// any; false if canceled or they can't be listed
+	bool PlanStop(ServiceItem const& item, bool restart);
+	// runs the steps until one has to be waited for; the timer runs while steps remain
+	void RunSteps();
+	enum { StepTimerId = 1 };
+	std::deque<ControlStep> m_Steps;
+	bool m_StepIssued{ false };	// the first step's control was sent: waiting for its state
+	ULONGLONG m_StepDeadline{ 0 };
+	std::wstring m_StepErrors;	// starts that failed, shown when the steps are done
 };

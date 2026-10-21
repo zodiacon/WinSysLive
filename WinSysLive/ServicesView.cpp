@@ -17,8 +17,8 @@ using namespace WinSys;
 namespace {
 	// highlighting lasts this many updates
 	const int HighlightTicks = 2;
-	// how long a restart waits for the service to stop
-	const ULONGLONG RestartTimeout = 30000;
+	// how long a stop or restart waits for each service to stop or start
+	const ULONGLONG StepTimeout = 30000;
 
 	// in CServicesView::Column order; the keys are stored in the ServiceColumns setting
 	const ColumnLayout::ColumnDef s_Columns[] = {
@@ -523,10 +523,10 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
 	};
 	enable(ID_SERVICE_START, state == ServiceState::Stopped);
-	enable(ID_SERVICE_STOP, canStop && state != ServiceState::Stopped);
+	enable(ID_SERVICE_STOP, canStop && state != ServiceState::Stopped && m_Steps.empty());
 	enable(ID_SERVICE_PAUSE, pauseContinue && state == ServiceState::Running);
 	enable(ID_SERVICE_CONTINUE, pauseContinue && state == ServiceState::Paused);
-	enable(ID_SERVICE_RESTART, canStop && state == ServiceState::Running && m_RestartName.empty());
+	enable(ID_SERVICE_RESTART, canStop && state == ServiceState::Running && m_Steps.empty());
 	enable(ID_SERVICE_GOTOPROCESS, status.ProcessId != 0);
 	// a driver has no process: its loaded module instead
 	if (m_Kind == Kind::Drivers) {
@@ -642,7 +642,9 @@ LRESULT CServicesView::OnStart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 }
 
 LRESULT CServicesView::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	Control(ServiceAccessMask::Stop, L"Stopping the service", [](auto& svc) { return svc.Stop(); });
+	auto item = GetSelectedService();
+	if (item && m_Steps.empty() && PlanStop(*item, false))
+		RunSteps();
 	return 0;
 }
 
@@ -656,41 +658,125 @@ LRESULT CServicesView::OnContinue(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	return 0;
 }
 
+bool CServicesView::PlanStop(ServiceItem const& item, bool restart) {
+	auto& name = item.Info.GetName();
+	std::vector<ServiceDependent> dependents;
+	if (auto service = WinSys::Service::Open(name, ServiceAccessMask::EnumerateDependents)) {
+		dependents = service->GetDependents(ServiceEnumState::Active);
+		if (dependents.empty() && ::GetLastError() != ERROR_SUCCESS) {
+			ShowError(L"Listing the dependent services", ::GetLastError());
+			return false;
+		}
+	}
+	else {
+		ShowError(L"Opening the service", ::GetLastError());
+		return false;
+	}
+	if (!dependents.empty()) {
+		auto text = std::format(L"{} {} also stops the services that depend on it:\n", restart ? L"Restarting" : L"Stopping",
+			item.Info.GetDisplayName());
+		for (size_t i = 0; i < dependents.size() && i < 20; i++)
+			text += std::format(L"\n    {}", dependents[i].DisplayName);
+		if (dependents.size() > 20)
+			text += std::format(L"\n    ...and {} more", dependents.size() - 20);
+		text += restart ? L"\n\nThey're started again after it." : L"\n\nStop them all?";
+		if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONQUESTION) != IDOK)
+			return false;
+	}
+	// the SCM's order is the order to stop them in
+	for (auto& d : dependents)
+		m_Steps.push_back({ d.Name, false });
+	m_Steps.push_back({ name, false });
+	if (restart) {
+		m_Steps.push_back({ name, true });
+		// those that ran: started after the services they depend on
+		for (auto it = dependents.rbegin(); it != dependents.rend(); ++it)
+			if (it->State == ServiceState::Running)
+				m_Steps.push_back({ it->Name, true });
+	}
+	m_StepIssued = false;
+	m_StepErrors.clear();
+	return true;
+}
+
 LRESULT CServicesView::OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	auto item = GetSelectedService();
-	if (!item || !m_RestartName.empty())
-		return 0;
-
-	if (!Control(ServiceAccessMask::Stop | ServiceAccessMask::Start, L"Stopping the service", [](auto& svc) { return svc.Stop(); }))
-		return 0;
-
-	m_RestartName = item->Info.GetName();
-	m_RestartDeadline = ::GetTickCount64() + RestartTimeout;
-	SetTimer(RestartTimerId, 250);
+	if (item && m_Steps.empty() && PlanStop(*item, true))
+		RunSteps();
 	return 0;
 }
 
+void CServicesView::RunSteps() {
+	// a message box below lets the timer fire again: it's gone first, and so are the steps on a failure
+	auto fail = [&](std::wstring const& text) {
+		KillTimer(StepTimerId);
+		m_Steps.clear();
+		AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONWARNING);
+	};
+	while (!m_Steps.empty()) {
+		auto step = m_Steps.front();
+		auto state = ServiceManager::GetServiceState(step.Name);
+		if (!m_StepIssued) {
+			if (step.Start ? state == ServiceState::Running : state == ServiceState::Stopped) {
+				m_Steps.pop_front();
+				continue;
+			}
+			// stopping already: waited for as if stopped here
+			bool stopping = !step.Start && state == ServiceState::StopPending;
+			auto service = WinSys::Service::Open(step.Name, step.Start ? ServiceAccessMask::Start : ServiceAccessMask::Stop);
+			bool ok = stopping || (service && (step.Start ? service->Start() : service->Stop()));
+			if (!ok) {
+				auto error = ::GetLastError();
+				if (step.Start) {
+					// the others may still start
+					if (error != ERROR_SERVICE_ALREADY_RUNNING)
+						m_StepErrors += std::format(L"\n{}: {}", step.Name, Helpers::GetErrorText(error));
+					m_Steps.pop_front();
+					continue;
+				}
+				if (error != ERROR_SERVICE_NOT_ACTIVE) {
+					KillTimer(StepTimerId);
+					m_Steps.clear();
+					ShowError(std::format(L"Stopping {}", step.Name).c_str(), error);
+					return;
+				}
+				m_Steps.pop_front();
+				continue;
+			}
+			m_StepIssued = true;
+			m_StepDeadline = ::GetTickCount64() + StepTimeout;
+			SetTimer(StepTimerId, 250);
+			return;
+		}
+		// waiting for the control sent
+		bool done = step.Start ? state != ServiceState::StartPending : state == ServiceState::Stopped;
+		if (!done) {
+			if (::GetTickCount64() < m_StepDeadline)
+				return;
+			m_StepIssued = false;
+			if (!step.Start)
+				return fail(std::format(L"Service {} did not stop in time; the rest is left as it is.", step.Name));
+			m_StepErrors += std::format(L"\n{}: still starting", step.Name);
+		}
+		else if (step.Start && state != ServiceState::Running)
+			m_StepErrors += std::format(L"\n{}: stopped while starting", step.Name);
+		m_StepIssued = false;
+		m_Steps.pop_front();
+	}
+	KillTimer(StepTimerId);
+	if (!m_StepErrors.empty()) {
+		auto text = L"Some services didn't start again:" + m_StepErrors;
+		m_StepErrors.clear();
+		AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONWARNING);
+	}
+}
+
 LRESULT CServicesView::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
-	if (id != RestartTimerId) {
+	if (id != StepTimerId) {
 		bHandled = FALSE;
 		return 0;
 	}
-
-	auto state = ServiceManager::GetServiceState(m_RestartName);
-	if (state != ServiceState::Stopped && ::GetTickCount64() < m_RestartDeadline)
-		return 0;
-
-	KillTimer(RestartTimerId);
-	auto name = std::move(m_RestartName);
-	m_RestartName.clear();
-	if (state != ServiceState::Stopped) {
-		AtlMessageBox(m_hWnd, std::format(L"Service {} did not stop in time; not restarting it.", name).c_str(), IDR_MAINFRAME, MB_ICONWARNING);
-		return 0;
-	}
-
-	auto service = WinSys::Service::Open(name, ServiceAccessMask::Start);
-	if (!service || !service->Start())
-		ShowError(L"Starting the service", ::GetLastError());
+	RunSteps();
 	return 0;
 }
 

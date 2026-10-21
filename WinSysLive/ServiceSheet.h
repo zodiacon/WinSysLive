@@ -135,9 +135,43 @@ private:
 	RoundedValue m_Reset{ IDC_SVC_RESETDAYS }, m_RestartDelay{ IDC_SVC_RESTARTMIN }, m_RebootDelay{ IDC_SVC_REBOOTMIN };
 };
 
+// what the service depends on and what depends on it (directly; a node expands to the next level when it's opened)
+class CServiceDependenciesPage : public CPropertyPageImpl<CServiceDependenciesPage> {
+public:
+	enum { IDD = IDD_SERVICE_DEPENDENCIES };
+	explicit CServiceDependenciesPage(ServiceSheetData& data) : m_Data(data) {}
+
+	BEGIN_MSG_MAP(CServiceDependenciesPage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		NOTIFY_CODE_HANDLER(TVN_ITEMEXPANDING, OnItemExpanding)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CServiceDependenciesPage>)
+	END_MSG_MAP()
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnItemExpanding(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+
+	// a tree item's (its lParam is its index)
+	struct Node {
+		std::wstring Name;
+		bool Group;	// a load order group ("+Group" in the dependencies), not a service
+		bool Dependents;	// in the dependents' tree
+		bool Filled{ false };	// its children were added
+	};
+	// the services and groups name depends on, or the services depending on it directly; false if there are none
+	bool AddChildren(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool dependents);
+	void AddNode(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool group, bool dependents);
+	// name is the sheet's service, the item's or one of its ancestors' (a cycle, which the SCM shouldn't allow)
+	bool InPath(CTreeViewCtrl tree, HTREEITEM item, std::wstring const& name) const;
+
+	ServiceSheetData& m_Data;
+	std::vector<Node> m_Nodes;
+};
+
 //
 // A service's properties, as services.msc has them: General (display name, description, path, start type, error
-// control), Log On (the account) and Recovery (the failure actions). Modal; the configuration is read when it's created.
+// control), Log On (the account), Recovery (the failure actions) and Dependencies. Modal; the configuration is read when
+// it's created.
 //
 class CServiceSheet : public CPropertySheetImpl<CServiceSheet> {
 public:
@@ -156,4 +190,5 @@ private:
 	CServiceGeneralPage m_General{ m_Data };
 	CServiceLogOnPage m_LogOn{ m_Data };
 	CServiceRecoveryPage m_Recovery{ m_Data };
+	CServiceDependenciesPage m_Dependencies{ m_Data };
 };
