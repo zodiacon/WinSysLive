@@ -5,6 +5,7 @@
 #include "FilterBox.h"
 #include "ColumnLayout.h"
 #include "ConnectionRows.h"
+#include "AddressResolver.h"
 #include <VirtualListView.h>
 
 //
@@ -47,6 +48,7 @@ public:
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		MESSAGE_HANDLER(WM_ADDRESS_RESOLVED, OnAddressResolved)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CNetworkView>)
@@ -72,6 +74,7 @@ private:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnAddressResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI

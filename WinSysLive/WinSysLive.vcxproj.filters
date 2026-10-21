@@ -36,6 +36,9 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AddressResolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ConnectionRows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -178,6 +181,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AddressResolver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ConnectionRows.h">

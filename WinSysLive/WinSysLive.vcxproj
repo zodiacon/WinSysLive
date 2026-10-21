@@ -415,6 +415,7 @@
     <ClCompile Include="ServiceSheet.cpp" />
     <ClCompile Include="MemoryDialogs.cpp" />
     <ClCompile Include="ObjectSecurity.cpp" />
+    <ClCompile Include="AddressResolver.cpp" />
     <ClCompile Include="AffinityDlg.cpp" />
     <ClCompile Include="FindHandleDlg.cpp" />
     <ClCompile Include="SymbolSettingsDlg.cpp" />
@@ -474,6 +475,7 @@
     <ClInclude Include="ServiceSheet.h" />
     <ClInclude Include="MemoryDialogs.h" />
     <ClInclude Include="ObjectSecurity.h" />
+    <ClInclude Include="AddressResolver.h" />
     <ClInclude Include="AffinityDlg.h" />
     <ClInclude Include="FindHandleDlg.h" />
     <ClInclude Include="SymbolSettingsDlg.h" />

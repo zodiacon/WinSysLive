@@ -148,10 +148,12 @@ BEGIN
         MENUITEM "Process &Colors...",          ID_OPTIONS_PROCESSCOLORS
         MENUITEM "Resolve &Symbols",            ID_OPTIONS_RESOLVESYMBOLS
         MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
+        MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icon",                  ID_OPTIONS_TRAYICON
         MENUITEM "&Minimize to Tray",           ID_OPTIONS_MINIMIZETOTRAY
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
+        MENUITEM "Single &Instance",            ID_OPTIONS_SINGLEINSTANCE
         MENUITEM "&Replace Task Manager",       ID_OPTIONS_REPLACETASKMANAGER
     END
     POPUP "&Help"

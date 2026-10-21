@@ -2,6 +2,7 @@
 
 #include "ProcessPages.h"
 #include "ConnectionRows.h"
+#include "AddressResolver.h"
 
 //
 // The TCP/IP page: the process's TCP connections (listening ones too) and UDP endpoints, IPv4 and IPv6 (WinSys
@@ -32,6 +33,7 @@ public:
 
 	BEGIN_MSG_MAP(CProcTcpIpPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_ADDRESS_RESOLVED, OnAddressResolved)
 		COMMAND_ID_HANDLER(IDC_TCPIP_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDC_TCPIP_COPYALL, OnCopy)
 		NOTIFY_HANDLER(IDC_TCPIP_LIST, LVN_ITEMCHANGED, OnItemChanged)
@@ -48,6 +50,10 @@ public:
 
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnAddressResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+		m_List.Invalidate();
+		return 0;
+	}
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);

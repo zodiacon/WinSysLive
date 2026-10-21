@@ -13,6 +13,7 @@
 #include "FormatHelper.h"
 #include "ListExport.h"
 #include "RunDlg.h"
+#include "AddressResolver.h"
 #include <ClipboardHelper.h>
 #include "WTLHelper.h"
 #include <IconHelper.h>
@@ -158,6 +159,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	SymbolEngine::Get().SetSearchPath(BuildSymbolSearchPath(CSymbolSettingsDlg::LoadOptions()));
 	SymbolEngine::Get().Enable(settings.ResolveSymbols());
 	UISetCheck(ID_OPTIONS_RESOLVESYMBOLS, settings.ResolveSymbols());
+	AddressResolver::Get().Enable(settings.ResolveAddresses());
+	UISetCheck(ID_OPTIONS_RESOLVEADDRESSES, settings.ResolveAddresses());
 
 	SetUpdateInterval(settings.UpdateInterval());
 
@@ -170,6 +173,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	if (settings.AlwaysOnTop())
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
+	UISetCheck(ID_OPTIONS_SINGLEINSTANCE, settings.SingleInstance());
 	// changing it writes to HKLM
 	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
 	UIEnable(ID_OPTIONS_REPLACETASKMANAGER, elevated);
@@ -312,6 +316,27 @@ LRESULT CMainFrame::OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	settings.Save();
 	SetWindowPos(top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, top);
+	return 0;
+}
+
+LRESULT CMainFrame::OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// read by the next instance started (ActivateRunningInstance)
+	auto& settings = AppSettings::Get();
+	settings.SingleInstance(!settings.SingleInstance());
+	settings.Save();
+	UISetCheck(ID_OPTIONS_SINGLEINSTANCE, settings.SingleInstance());
+	return 0;
+}
+
+LRESULT CMainFrame::OnResolveAddresses(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	bool resolve = !settings.ResolveAddresses();
+	settings.ResolveAddresses(resolve);
+	settings.Save();
+	// shared with the property sheets' threads, whose TCP/IP pages show the change on their next sample
+	AddressResolver::Get().Enable(resolve);
+	UISetCheck(id, resolve);
+	RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
 	return 0;
 }
 
@@ -628,9 +653,10 @@ LRESULT CMainFrame::OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 }
 
 LRESULT CMainFrame::OnRunAsAdmin(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// save first, so the elevated instance starts with the current settings
+	// save first, so the elevated instance starts with the current settings; /restart: it starts while this one
+	// still runs, so Single Instance doesn't apply to it
 	SaveSettings();
-	if (WinSys::SecurityHelper::RunElevated())
+	if (WinSys::SecurityHelper::RunElevated(L"/restart"))
 		PostMessage(WM_CLOSE);
 	return 0;
 }

@@ -7,6 +7,7 @@
 #include "WTLHelper.h"
 #include "AppSettings.h"
 #include "Symbols.h"
+#include "AddressResolver.h"
 #include <DpiHelper.h>
 
 CAppModule _Module;
@@ -49,17 +50,21 @@ int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	// the property sheets run on threads of their own
 	CloseProcessProperties();
 	SymbolEngine::Get().Shutdown();
+	AddressResolver::Get().Shutdown();
 
 	_Module.RemoveMessageLoop();
 	return nRet;
 }
 
-// started as Task Manager (Options > Replace Task Manager: Windows passes taskmgr.exe's path) while an instance runs:
-// that one comes to the front (from the tray too), as Task Manager does
-static bool ActivateRunningInstance(PCWSTR cmdLine) {
+// started as Task Manager (Options > Replace Task Manager: Windows passes taskmgr.exe's path), or at all with Options >
+// Single Instance (single), while an instance runs: that one comes to the front (from the tray too), as Task Manager
+// does. Not when Run as Administrator starts the elevated instance (/restart), while this one still runs
+static bool ActivateRunningInstance(PCWSTR cmdLine, bool single) {
 	std::wstring args(cmdLine ? cmdLine : L"");
 	::CharLowerBuff(args.data(), (DWORD)args.size());
-	if (args.find(L"taskmgr.exe") == std::wstring::npos)
+	if (args.find(L"/restart") != std::wstring::npos)
+		return false;
+	if (!single && args.find(L"taskmgr.exe") == std::wstring::npos)
 		return false;
 	auto hWnd = ::FindWindow(CMainFrame::WindowClassName, nullptr);
 	if (!hWnd)
@@ -73,9 +78,6 @@ static bool ActivateRunningInstance(PCWSTR cmdLine) {
 }
 
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow) {
-	if (ActivateRunningInstance(lpstrCmdLine))
-		return 0;
-
 	HRESULT hRes = ::CoInitialize(nullptr);
 	ATLASSERT(SUCCEEDED(hRes));
 
@@ -86,7 +88,13 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	hRes = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));
 
-	if (AppSettings::Get().Load(L"Software\\ScorpioSoftware\\WinSysLive"))
+	bool loaded = AppSettings::Get().Load(L"Software\\ScorpioSoftware\\WinSysLive");
+	if (ActivateRunningInstance(lpstrCmdLine, loaded && AppSettings::Get().SingleInstance())) {
+		_Module.Term();
+		::CoUninitialize();
+		return 0;
+	}
+	if (loaded)
 		WTLHelper::InitDarkMode(AppSettings::Get().DarkMode() ? DarkModeKind::Dark : DarkModeKind::Light);
 	else
 		WTLHelper::InitDarkMode();

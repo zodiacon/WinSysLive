@@ -41,6 +41,8 @@ struct AppSettings : Settings {
 		SETTING(TrayIcon, 1, SettingType::Bool);	// the CPU graph in the notification area
 		SETTING(MinimizeToTray, 0, SettingType::Bool);	// minimized, the window leaves the taskbar
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
+		SETTING(SingleInstance, 0, SettingType::Bool);	// starting the app again brings the running instance to the front
+		SETTING(ResolveAddresses, 1, SettingType::Bool);	// connections' addresses by their DNS names (AddressResolver)
 	END_SETTINGS
 
 	DEF_SETTING(DarkMode, int)
@@ -78,6 +80,8 @@ struct AppSettings : Settings {
 	DEF_SETTING(TrayIcon, int)
 	DEF_SETTING(MinimizeToTray, int)
 	DEF_SETTING(AlwaysOnTop, int)
+	DEF_SETTING(SingleInstance, int)
+	DEF_SETTING(ResolveAddresses, int)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";
 };

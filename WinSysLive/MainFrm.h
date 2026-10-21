@@ -84,6 +84,8 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
+		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
+		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVEADDRESSES, OnResolveAddresses)
 		COMMAND_ID_HANDLER(ID_OPTIONS_REPLACETASKMANAGER, OnReplaceTaskManager)
 		COMMAND_ID_HANDLER(ID_TRAY_SHOW, OnTrayShow)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
@@ -129,6 +131,8 @@ public:
 	LRESULT OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResolveAddresses(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayShow(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 

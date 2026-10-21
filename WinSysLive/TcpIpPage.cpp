@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "TcpIpPage.h"
 #include "FormatHelper.h"
+#include "AddressResolver.h"
 #include <WinSys/Helpers.h>
 #include <WTLHelper.h>
 #include <ClipboardHelper.h>
@@ -82,9 +83,9 @@ bool CProcTcpIpPage::Load() {
 std::wstring CProcTcpIpPage::GetText(Connection const& c, Column column) const {
 	switch (column) {
 		case Column::Protocol: return WinSys::ConnectionInfo::ProtocolName(c.Id.Proto);
-		case Column::LocalAddress: return c.LocalText;
+		case Column::LocalAddress: return AddressResolver::Get().GetLocalText(c, m_hWnd);
 		case Column::LocalPort: return std::to_wstring(c.Id.LocalPort);
-		case Column::RemoteAddress: return c.RemoteText;
+		case Column::RemoteAddress: return AddressResolver::Get().GetRemoteText(c, m_hWnd);
 		case Column::RemotePort: return c.RemoteText.empty() ? L"" : std::to_wstring(c.Id.RemotePort);
 		case Column::State: return WinSys::ConnectionInfo::StateName(c);
 		case Column::Created: return c.Created ? FormatHelper::FormatDateTime(c.Created) : L"";
@@ -107,10 +108,15 @@ void CProcTcpIpPage::DoSort(SortInfo const* si) {
 		int result = 0;
 		switch (column) {
 			case Column::Protocol: result = compare(c1.Id.Proto, c2.Id.Proto); break;
-			// by the address's bytes, so 10.0.0.9 comes before 10.0.0.10
-			case Column::LocalAddress: result = compare(c1.Id.LocalAddress, c2.Id.LocalAddress); break;
+			// by the address's bytes, so 10.0.0.9 comes before 10.0.0.10; by the text shown while names are
+			case Column::LocalAddress: case Column::RemoteAddress:
+				if (AddressResolver::Get().IsEnabled())
+					result = ::_wcsicmp(GetText(c1, column).c_str(), GetText(c2, column).c_str());
+				else
+					result = column == Column::LocalAddress ? compare(c1.Id.LocalAddress, c2.Id.LocalAddress)
+						: compare(c1.Id.RemoteAddress, c2.Id.RemoteAddress);
+				break;
 			case Column::LocalPort: result = compare(c1.Id.LocalPort, c2.Id.LocalPort); break;
-			case Column::RemoteAddress: result = compare(c1.Id.RemoteAddress, c2.Id.RemoteAddress); break;
 			case Column::RemotePort: result = compare(c1.Id.RemotePort, c2.Id.RemotePort); break;
 			case Column::State: result = ::_wcsicmp(GetText(c1, column).c_str(), GetText(c2, column).c_str()); break;
 			case Column::Created: result = compare(c1.Created, c2.Created); break;
