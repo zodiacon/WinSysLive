@@ -6,6 +6,7 @@
 #include "AppSettings.h"
 #include "NetworkTracking.h"
 #include <WinSys/Processes.h>
+#include <WinSys/SystemInfo.h>
 #include <WinSys/Helpers.h>
 #include <WinSys/ServiceManager.h>
 #include <ClipboardHelper.h>
@@ -1269,6 +1270,10 @@ LRESULT CProcessesView::OnSetAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 	auto process = OpenSelected(ProcessAccessMask::SetInformation);
 	if (!process)
 		return 0;
+	if (auto groups = WinSys::SystemInfo::GetProcessorGroups(); groups.size() > 1) {
+		SetGroupsAffinity(*process, groups);
+		return 0;
+	}
 	DWORD_PTR mask, systemMask;
 	if (!process->GetAffinity(mask, systemMask)) {
 		if (::GetLastError() == ERROR_NOT_SUPPORTED)
@@ -1284,6 +1289,62 @@ LRESULT CProcessesView::OnSetAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !process->SetAffinity(dlg.GetMask()))
 		ShowError(L"Setting the affinity");
 	return 0;
+}
+
+void CProcessesView::SetGroupsAffinity(WinSys::Process& process, std::vector<WinSys::SystemInfo::ProcessorGroup> const& groups) {
+	// a process with an affinity mask is held to that mask's group; else it may run in every group (Windows 11 on),
+	// and its default CPU sets restrict it
+	DWORD_PTR mask = 0, systemMask = 0;
+	bool held = process.GetAffinity(mask, systemMask);
+	uint16_t heldGroup = 0;
+	if (held) {
+		auto in = process.GetGroups();
+		heldGroup = in.empty() ? 0 : in[0];
+	}
+	auto cpuSets = held ? std::nullopt : process.GetDefaultCpuSetMasks();
+	if (!held && !cpuSets) {
+		ShowError(L"Getting the default CPU sets");
+		return;
+	}
+	std::vector<CAffinityDlg::Group> choices;
+	int first = 0;
+	for (auto& g : groups) {
+		CAffinityDlg::Group choice{ g.Group, g.ActiveMask, g.ActiveMask, !held || g.Group == heldGroup, first };
+		first += g.ActiveCount;
+		if (held)
+			choice.Selected = g.Group == heldGroup ? mask & g.ActiveMask : 0;
+		else if (!cpuSets->empty()) {
+			// none set for a group: none of its processors
+			auto it = std::ranges::find(*cpuSets, g.Group, &GROUP_AFFINITY::Group);
+			choice.Selected = it == cpuSets->end() ? 0 : it->Mask & g.ActiveMask;
+		}
+		choices.push_back(choice);
+	}
+	auto note = held ? std::format(L"The process is held to group {} by its affinity mask, which is what OK sets.", heldGroup)
+		: std::wstring(L"The process may run in every group; OK sets the processors as its default CPU sets.");
+	auto& p = *GetSelectedProcess()->Process;
+	CAffinityDlg dlg(std::format(L"{} ({})", p.GetImageName(), p.Id), choices, false, note);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return;
+	auto& chosen = dlg.GetGroups();
+	if (held) {
+		auto it = std::ranges::find(chosen, heldGroup, &CAffinityDlg::Group::Number);
+		if (it != chosen.end() && it->Selected != mask && !process.SetAffinity(it->Selected))
+			ShowError(L"Setting the affinity");
+		return;
+	}
+	// every processor: none set
+	std::vector<GROUP_AFFINITY> masks;
+	bool all = true;
+	for (auto& g : chosen) {
+		all &= g.Selected == g.Available;
+		if (g.Selected)
+			masks.push_back({ g.Selected, g.Number });
+	}
+	if (all)
+		masks.clear();
+	if (!process.SetDefaultCpuSetMasks(masks))
+		ShowError(L"Setting the default CPU sets");
 }
 
 LRESULT CProcessesView::OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

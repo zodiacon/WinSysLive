@@ -13,6 +13,8 @@
 #include "StackDlg.h"
 #include "WaitChainDlg.h"
 #include "AffinityDlg.h"
+#include <WinSys/SystemInfo.h>
+#include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
 
 using namespace WinSys;
@@ -262,10 +264,33 @@ LRESULT CThreadsPage::OnThreadAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 			IDR_MAINFRAME, MB_ICONERROR);
 		return 0;
 	}
-	// the processors of the thread's group, numbered within it
 	auto title = std::format(L"Thread {} of {} ({})", row->Key.Id, m_ProcessName, m_Pid);
-	if (::GetActiveProcessorGroupCount() > 1)
-		title += std::format(L", group {}", group);
+	if (auto groups = WinSys::SystemInfo::GetProcessorGroups(); groups.size() > 1) {
+		// over 64 processors: the thread may move to another group, unless its process is held to one by a mask
+		DWORD_PTR processMask = 0, systemMask = 0;
+		auto process = WinSys::Process::OpenById(m_Pid);
+		bool held = process && process->GetAffinity(processMask, systemMask);
+		std::vector<CAffinityDlg::Group> choices;
+		int first = 0;
+		for (auto& g : groups) {
+			choices.push_back({ g.Group, g.Group == group ? allowed : g.ActiveMask, g.Group == group ? mask : 0, !held || g.Group == group, first });
+			first += g.ActiveCount;
+		}
+		auto note = held ? std::format(L"The process is held to group {} by its affinity mask; its threads stay there.", group)
+			: std::wstring(L"A thread runs in one group: choosing processors in another moves it there.");
+		CAffinityDlg dlg(title, choices, true, note);
+		if (dlg.DoModal(m_hWnd) != IDOK)
+			return 0;
+		auto& chosen = dlg.GetGroups();
+		auto it = std::ranges::find_if(chosen, [](auto& g) { return g.Selected != 0; });
+		if (it == chosen.end() || (it->Number == group && it->Selected == mask))
+			return 0;
+		if (!thread->SetGroupAffinity(it->Number, it->Selected))
+			AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+				IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	// the processors of the thread's group
 	CAffinityDlg dlg(title, mask, allowed, true);
 	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !thread->SetAffinity(dlg.GetMask()))
 		AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),

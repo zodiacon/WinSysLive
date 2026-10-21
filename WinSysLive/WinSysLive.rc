@@ -612,6 +612,9 @@ CAPTION "Processor Affinity"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     LTEXT           "The processors the process's threads may run on:",IDC_AFF_LABEL,7,7,246,9
+    LTEXT           "Processor &group:",IDC_AFF_GROUP_LABEL,7,22,60,9
+    COMBOBOX        IDC_AFF_GROUP,70,20,183,80,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "",IDC_AFF_NOTE,7,37,246,18,SS_NOPREFIX
     LTEXT           "",IDC_AFF_AREA,7,20,246,70,NOT WS_VISIBLE
     PUSHBUTTON      "Select &All",IDC_AFF_ALL,7,99,50,14
     PUSHBUTTON      "&Clear",IDC_AFF_NONE,61,99,50,14

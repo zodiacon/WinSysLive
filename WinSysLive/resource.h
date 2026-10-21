@@ -322,6 +322,9 @@
 #define IDC_AFF_ALL                 1141
 #define IDC_AFF_NONE                1142
 #define IDC_AFF_LABEL               1240
+#define IDC_AFF_GROUP_LABEL         1257
+#define IDC_AFF_GROUP               1258
+#define IDC_AFF_NOTE                1259
 #define IDD_SERVICE_DEPENDENCIES    277
 #define IDC_SVC_DEPENDSON           1241
 #define IDC_SVC_DEPENDENTS          1242
@@ -424,7 +427,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE	280
-#define _APS_NEXT_CONTROL_VALUE		1257
+#define _APS_NEXT_CONTROL_VALUE		1260
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32884
 #endif

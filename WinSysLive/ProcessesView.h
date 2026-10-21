@@ -1,5 +1,7 @@
 #pragma once
 
+#include <WinSys/SystemInfo.h>
+
 #include "ViewBase.h"
 #include <TreeListView/include/TreeListView.h>
 #include <WinSys/ProcessNetwork.h>
@@ -130,6 +132,8 @@ private:
 	LRESULT OnSetIoPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetMemoryPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Set Affinity with more than one processor group (over 64 processors)
+	void SetGroupsAffinity(WinSys::Process& process, std::vector<WinSys::SystemInfo::ProcessorGroup> const& groups);
 	LRESULT OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
