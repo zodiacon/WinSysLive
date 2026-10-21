@@ -919,6 +919,25 @@ ProcessManager& CMainFrame::GetProcessManager() {
 	return m_ProcessManager;
 }
 
+IView* CMainFrame::ActivateTab(TabType type) {
+	for (int i = 0; i < _countof(s_Tabs); i++)
+		if (s_Tabs[i].Type == type && i < (int)m_Views.size()) {
+			m_Tabs.SetActivePage(i);
+			return m_Views[i];
+		}
+	return nullptr;
+}
+
+void CMainFrame::GoToKernelModule(std::wstring const& path) {
+	if (auto view = ActivateTab(TabType::KernelModules); view && !view->ShowKernelModule(path))
+		AtlMessageBox(m_hWnd, std::format(L"{} isn't loaded.", path).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
+void CMainFrame::GoToDriver(std::wstring const& path) {
+	if (auto view = ActivateTab(TabType::Drivers); view && !view->ShowDriver(path))
+		AtlMessageBox(m_hWnd, std::format(L"No driver service has {} as its image.", path).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
 void CMainFrame::GoToProcess(uint32_t pid) {
 	for (int i = 0; i < _countof(s_Tabs); i++) {
 		if (s_Tabs[i].Type == TabType::Processes) {

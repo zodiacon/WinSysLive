@@ -5,6 +5,7 @@
 #include "ServiceSheet.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
+#include <WinSys/KernelModules.h>
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
 #include <ClipboardHelper.h>
@@ -527,16 +528,38 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	enable(ID_SERVICE_CONTINUE, pauseContinue && state == ServiceState::Paused);
 	enable(ID_SERVICE_RESTART, canStop && state == ServiceState::Running && m_RestartName.empty());
 	enable(ID_SERVICE_GOTOPROCESS, status.ProcessId != 0);
-	// a driver starts at boot, with the system, automatically or on demand: no delayed start
-	enable(ID_SERVICE_START_DELAYED, m_Kind != Kind::Drivers);
-	// the current start type, checked in its submenu
-	if (auto config = item.GetConfig()) {
+	// a driver has no process: its loaded module instead
+	if (m_Kind == Kind::Drivers) {
+		for (int i = 0; i < popup.GetMenuItemCount(); i++)
+			if (popup.GetMenuItemID(i) == ID_SERVICE_GOTOPROCESS) {
+				popup.DeleteMenu(i, MF_BYPOSITION);
+				popup.InsertMenu(i, MF_BYPOSITION | MF_STRING | (state == ServiceState::Running ? 0 : MF_GRAYED), ID_SERVICE_GOTOKMODULE,
+					L"Go to &Kernel Module");
+				break;
+			}
+	}
+	// the Start Type submenu
+	CMenuHandle startType;
+	for (int i = 0; i < popup.GetMenuItemCount() && !startType; i++)
+		if (CMenuHandle sub = popup.GetSubMenu(i); sub && sub.GetMenuState(ID_SERVICE_START_AUTO, MF_BYCOMMAND) != (UINT)-1)
+			startType = sub;
+	// a driver starts with the boot loader or the kernel's initialization too, and never delayed
+	if (startType && m_Kind == Kind::Drivers) {
+		startType.DeleteMenu(ID_SERVICE_START_DELAYED, MF_BYCOMMAND);
+		startType.InsertMenu(0, MF_BYPOSITION | MF_STRING, ID_SERVICE_START_BOOT, L"&Boot");
+		startType.InsertMenu(1, MF_BYPOSITION | MF_STRING, ID_SERVICE_START_SYSTEM, L"&System");
+	}
+	// the current start type, checked
+	if (auto config = item.GetConfig(); config && startType) {
 		auto id = config->StartType == ServiceStartType::Auto ? (config->DelayedAutoStart ? ID_SERVICE_START_DELAYED : ID_SERVICE_START_AUTO)
 			: config->StartType == ServiceStartType::Demand ? ID_SERVICE_START_MANUAL
-			: config->StartType == ServiceStartType::Disabled ? ID_SERVICE_START_DISABLED : 0;
-		for (int i = 0; i < popup.GetMenuItemCount(); i++)
-			if (CMenuHandle sub = popup.GetSubMenu(i); sub && id)
-				sub.CheckMenuRadioItem(ID_SERVICE_START_AUTO, ID_SERVICE_START_DISABLED, id, MF_BYCOMMAND);
+			: config->StartType == ServiceStartType::Disabled ? ID_SERVICE_START_DISABLED
+			: config->StartType == ServiceStartType::Boot ? ID_SERVICE_START_BOOT
+			: config->StartType == ServiceStartType::System ? ID_SERVICE_START_SYSTEM : 0;
+		// by position: the drivers' IDs aren't next to the others
+		for (int i = 0; i < startType.GetMenuItemCount(); i++)
+			if (id && startType.GetMenuItemID(i) == id)
+				startType.CheckMenuRadioItem(0, startType.GetMenuItemCount() - 1, i, MF_BYPOSITION);
 	}
 
 	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
@@ -546,9 +569,45 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 bool CServicesView::OnDoubleClickList(HWND, int row, int, POINT const&) {
 	if (row < 0 || row >= (int)m_Items.size())
 		return false;
-	if (auto pid = m_Items[row]->Info.GetStatusProcess().ProcessId; pid)
+	// a service's process, a driver's loaded module
+	if (m_Kind == Kind::Drivers) {
+		if (auto path = DriverPath(*m_Items[row]); !path.empty())
+			Frame()->GoToKernelModule(path);
+	}
+	else if (auto pid = m_Items[row]->Info.GetStatusProcess().ProcessId; pid)
 		Frame()->GoToProcess(pid);
 	return true;
+}
+
+std::wstring CServicesView::DriverPath(ServiceItem& item) const {
+	auto config = item.GetConfig();
+	return config ? WinSys::KernelModules::DriverImagePath(item.Info.GetName(), config->BinaryPathName) : std::wstring();
+}
+
+bool CServicesView::ShowDriver(std::wstring const& path) {
+	if (m_Kind != Kind::Drivers)
+		return false;
+	// the configurations are loaded (once, cached) as the services are compared
+	auto it = std::ranges::find_if(m_All, [&](auto& item) { return ::_wcsicmp(DriverPath(*item).c_str(), path.c_str()) == 0; });
+	if (it == m_All.end())
+		return false;
+	auto name = (*it)->Info.GetName();
+	// a filter that hides it goes
+	if (!Matches(**it))
+		m_Filter.Clear();
+	SelectService(name);
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		m_List.EnsureVisible(selected, FALSE);
+	m_List.SetFocus();
+	return true;
+}
+
+LRESULT CServicesView::OnGoToKernelModule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto item = GetSelectedService()) {
+		if (auto path = DriverPath(*item); !path.empty())
+			Frame()->GoToKernelModule(path);
+	}
+	return 0;
 }
 
 void CServicesView::ShowError(PCWSTR operation, DWORD error) const {
@@ -644,11 +703,15 @@ LRESULT CServicesView::OnStartType(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCt
 	if (!item)
 		return 0;
 	auto type = wID == ID_SERVICE_START_MANUAL ? ServiceStartType::Demand
-		: wID == ID_SERVICE_START_DISABLED ? ServiceStartType::Disabled : ServiceStartType::Auto;
+		: wID == ID_SERVICE_START_DISABLED ? ServiceStartType::Disabled
+		: wID == ID_SERVICE_START_BOOT ? ServiceStartType::Boot
+		: wID == ID_SERVICE_START_SYSTEM ? ServiceStartType::System : ServiceStartType::Auto;
 	bool changed = Control(ServiceAccessMask::ChangeConfig | ServiceAccessMask::QueryConfig, L"Changing the start type", [&](WinSys::Service& svc) {
 		ServiceConfigChange change;
 		change.StartType = type;
-		return svc.ChangeConfig(change) && (type != ServiceStartType::Auto || svc.SetDelayedAutoStart(wID == ID_SERVICE_START_DELAYED));
+		// delayed start is a Win32 service's only
+		return svc.ChangeConfig(change) && (type != ServiceStartType::Auto || m_Kind == Kind::Drivers
+			|| svc.SetDelayedAutoStart(wID == ID_SERVICE_START_DELAYED));
 		});
 	if (changed) {
 		item->Reload();

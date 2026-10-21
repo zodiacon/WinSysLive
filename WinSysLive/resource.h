@@ -154,6 +154,10 @@
 #define IDI_ATOM                    274
 #define IDI_DRIVER                  275
 #define ID_VIEW_KERNELMODULES       32865
+#define ID_SERVICE_START_BOOT       32866
+#define ID_SERVICE_START_SYSTEM     32867
+#define ID_SERVICE_GOTOKMODULE      32868
+#define ID_KMODULE_GOTODRIVER       32869
 #define IDC_RUN_COMMAND             1231
 #define IDC_RUN_BROWSE              1232
 #define IDC_RUN_ELEVATED            1233
@@ -387,6 +391,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	276
 #define _APS_NEXT_CONTROL_VALUE		1240
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32866
+#define _APS_NEXT_COMMAND_VALUE		32870
 #endif
 #endif

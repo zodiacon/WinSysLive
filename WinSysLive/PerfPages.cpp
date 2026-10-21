@@ -46,8 +46,12 @@ namespace {
 
 	std::wstring DiskLine(PerfSample const& s) {
 		auto line = std::format(L"Disk: read {}    write {}    Drives: {}", FormatRate(s.DiskRead), FormatRate(s.DiskWrite), s.Disks->size());
-		auto busiest = std::ranges::max_element(*s.Disks, {}, &WinSys::DiskTracker::Volume::ActivePercent);
-		if (busiest != s.Disks->end())
+		// among the drives with counters: one without them (no IOCTL_DISK_PERFORMANCE) has no activity to compare
+		WinSys::DiskTracker::Volume const* busiest = nullptr;
+		for (auto& v : *s.Disks)
+			if (v.HasPerformance && (!busiest || v.ActivePercent > busiest->ActivePercent))
+				busiest = &v;
+		if (busiest)
 			line += std::format(L"    Busiest: {}: ({:.0f}% active)", busiest->Letter, busiest->ActivePercent);
 		return line;
 	}

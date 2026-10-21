@@ -30,6 +30,10 @@ struct IMainFrame abstract {
 
 	// switches to the Processes tab and selects the process
 	virtual void GoToProcess(uint32_t pid) = 0;
+	// switches to the Kernel Modules tab and selects the module loaded from the file (a Win32 path), or says it isn't loaded
+	virtual void GoToKernelModule(std::wstring const& path) = 0;
+	// switches to the Drivers tab and selects the driver service whose image is the file, or says there's none
+	virtual void GoToDriver(std::wstring const& path) = 0;
 };
 
 struct IView abstract {
@@ -55,6 +59,10 @@ struct IView abstract {
 	virtual std::wstring GetCommandTip(UINT /*id*/) const { return {}; }
 	// views listing processes select the process (see IMainFrame::GoToProcess)
 	virtual void ShowProcess(uint32_t /*pid*/) {}
+	// the Kernel Modules and Drivers views select the module or driver service of the file (see IMainFrame::GoToKernelModule,
+	// GoToDriver); false if there's none
+	virtual bool ShowKernelModule(std::wstring const& /*path*/) { return false; }
+	virtual bool ShowDriver(std::wstring const& /*path*/) { return false; }
 	// the view's main list, for File > Export List and Copy All Rows (a list in the view with the focus comes first);
 	// nullptr if it has none
 	virtual HWND GetExportList() { return nullptr; }

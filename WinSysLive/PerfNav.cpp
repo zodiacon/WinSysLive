@@ -354,6 +354,16 @@ LRESULT CPerfNav::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOO
 		case VK_DOWN: SelectItem(std::min(count - 1, m_Selected + 1)); break;
 		case VK_HOME: SelectItem(0); break;
 		case VK_END: SelectItem(count - 1); break;
+		case VK_PRIOR:
+		case VK_NEXT:
+		{
+			// by the items that fit in the window
+			CRect rc;
+			GetClientRect(&rc);
+			int page = std::max(1, rc.Height() / ItemHeight());
+			SelectItem(wParam == VK_PRIOR ? std::max(0, m_Selected - page) : std::min(count - 1, m_Selected + page));
+			break;
+		}
 		default: bHandled = FALSE; break;
 	}
 	return 0;

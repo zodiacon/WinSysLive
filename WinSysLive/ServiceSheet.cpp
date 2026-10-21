@@ -179,11 +179,11 @@ int CServiceGeneralPage::OnApply() {
 	if (change.ErrorControl)
 		config.ErrorControl = *change.ErrorControl;
 	if (delayedChanged) {
-		if (!service->SetDelayedAutoStart(s_StartTypes[start].Delayed)) {
+		if (!service->SetDelayedAutoStart(StartTypes(m_Data.Driver)[start].Delayed)) {
 			ShowError(L"Changing the delayed start", ::GetLastError());
 			return PSNRET_INVALID;
 		}
-		config.DelayedAutoStart = s_StartTypes[start].Delayed;
+		config.DelayedAutoStart = StartTypes(m_Data.Driver)[start].Delayed;
 	}
 	if (description != m_Data.Description) {
 		if (!service->SetDescription(description)) {

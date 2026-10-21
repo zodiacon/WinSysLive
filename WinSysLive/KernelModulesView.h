@@ -35,6 +35,7 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
+	bool ShowKernelModule(std::wstring const& path) override;
 	void SaveSettings() override {
 		SaveColumns();
 	}
@@ -70,6 +71,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_KMODULE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_KMODULE_GOTOFILELOCATION, OnGoToFileLocation)
+		COMMAND_ID_HANDLER(ID_KMODULE_GOTODRIVER, OnGoToDriver)
 		CHAIN_MSG_MAP_ALT(CViewBase<CKernelModulesView>, 1)
 	END_MSG_MAP()
 
@@ -115,6 +117,7 @@ private:
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// true if a module was loaded
 	bool Merge(std::vector<WinSys::KernelModule> current);

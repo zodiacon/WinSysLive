@@ -359,12 +359,33 @@ bool CKernelModulesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	menu.CreatePopupMenu();
 	menu.AppendMenu(MF_STRING, ID_KMODULE_PROPERTIES, L"&Properties...");
 	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTOFILELOCATION, L"Open File &Location");
+	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTODRIVER, L"Go to &Driver");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
 	menu.SetMenuDefaultItem(ID_KMODULE_PROPERTIES);
 	// commands land in the frame and are routed to this (the active) view
 	Frame()->ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
 	return true;
+}
+
+bool CKernelModulesView::ShowKernelModule(std::wstring const& path) {
+	auto loaded = std::ranges::find_if(m_All, [&](auto& row) { return !row.Unloaded && ::_wcsicmp(row.Module.Path.c_str(), path.c_str()) == 0; });
+	if (loaded == m_All.end())
+		return false;
+	// a filter that hides it goes
+	if (!Matches(*loaded))
+		m_Filter.Clear();
+	SelectDriver(loaded->Key);
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		m_List.EnsureVisible(selected, FALSE);
+	m_List.SetFocus();
+	return true;
+}
+
+LRESULT CKernelModulesView::OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelected())
+		Frame()->GoToDriver(row->Module.Path);
+	return 0;
 }
 
 bool CKernelModulesView::OnDoubleClickList(HWND, int row, int, POINT const&) {

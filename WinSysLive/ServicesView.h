@@ -39,6 +39,8 @@ public:
 	}
 	// Properties (Alt+Enter) for the selected service
 	void OnFrameIdle() override;
+	// the Drivers tab: the driver service whose image is the file
+	bool ShowDriver(std::wstring const& path) override;
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;
@@ -64,7 +66,10 @@ public:
 		COMMAND_ID_HANDLER(ID_SERVICE_CONTINUE, OnContinue)
 		COMMAND_ID_HANDLER(ID_SERVICE_RESTART, OnRestart)
 		COMMAND_ID_HANDLER(ID_SERVICE_GOTOPROCESS, OnGoToProcess)
+		COMMAND_ID_HANDLER(ID_SERVICE_GOTOKMODULE, OnGoToKernelModule)
 		COMMAND_RANGE_HANDLER(ID_SERVICE_START_AUTO, ID_SERVICE_START_DISABLED, OnStartType)
+		COMMAND_ID_HANDLER(ID_SERVICE_START_BOOT, OnStartType)
+		COMMAND_ID_HANDLER(ID_SERVICE_START_SYSTEM, OnStartType)
 		COMMAND_ID_HANDLER(ID_VIEW_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
@@ -112,6 +117,9 @@ private:
 	LRESULT OnContinue(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToKernelModule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// a driver service's image as a Win32 path (WinSys KernelModules::DriverImagePath); empty if its configuration can't be read
+	std::wstring DriverPath(ServiceItem& item) const;
 	LRESULT OnStartType(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

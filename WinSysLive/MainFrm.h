@@ -146,6 +146,10 @@ private:
 	int GetProcessIcon(ProcessInfoEx& process) override;
 	ProcessManager& GetProcessManager() override;
 	void GoToProcess(uint32_t pid) override;
+	void GoToKernelModule(std::wstring const& path) override;
+	void GoToDriver(std::wstring const& path) override;
+	// switches to the tab; its view
+	IView* ActivateTab(TabType type);
 
 	struct TabInfo {
 		TabType Type;
