@@ -356,6 +356,8 @@ IDI_ATOM                ICON                    "res\\atom.ico"
 
 IDI_DRIVER              ICON                    "res\\Driver.ico"
 
+IDI_SYSTEM_DRIVER       ICON                    "res\\System.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

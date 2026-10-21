@@ -519,6 +519,7 @@
     <Image Include="res\Run.ico" />
     <Image Include="res\atom.ico" />
     <Image Include="res\Driver.ico" />
+    <Image Include="res\System.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

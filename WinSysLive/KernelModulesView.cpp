@@ -8,7 +8,7 @@ namespace {
 		{ L"Name", L"Name", 160, LVCFMT_LEFT, true, true },
 		{ L"Base", L"Base", 130, LVCFMT_RIGHT, true },
 		{ L"Size", L"Size", 80, LVCFMT_RIGHT, true },
-		{ L"Load Order", L"LoadOrder", 75, LVCFMT_RIGHT, true },
+		{ L"Load Order", L"LoadOrder", 90, LVCFMT_RIGHT, true },
 		{ L"Description", L"Description", 250, LVCFMT_LEFT, true },
 		{ L"Company", L"Company", 170, LVCFMT_LEFT, true },
 		{ L"Version", L"Version", 130, LVCFMT_LEFT, true },
@@ -50,7 +50,12 @@ LRESULT CKernelModulesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	// the layout saved when this was the Drivers tab, until one is saved under the new name
 	auto& settings = AppSettings::Get();
 	auto layout = settings.KernelModuleColumns();
-	SetColumns(ColumnLayout::Parse(layout.empty() ? settings.DriverColumns() : layout, s_Columns));
+	auto columns = ColumnLayout::Parse(layout.empty() ? settings.DriverColumns() : layout, s_Columns);
+	// the old default width (75) cut the header off: a saved one that narrow is widened
+	for (auto& c : columns)
+		if (c.Id == (int)Column::LoadOrder)
+			c.Width = (std::max)(c.Width, s_Columns[c.Id].Width);
+	SetColumns(columns);
 
 	int filterWidth = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, filterWidth, L"Filter: name, path, description or company (Ctrl+F)",
@@ -279,7 +284,14 @@ CString CKernelModulesView::GetColumnText(HWND, int row, int col) const {
 int CKernelModulesView::GetRowImage(HWND, int row, int col) const {
 	if (row >= (int)m_Rows.size() || GetColumnManager(m_List)->GetColumnTag<Column>(col) != Column::Name)
 		return -1;
-	return Frame()->GetIconIndex(IDI_DEVICE);
+	// the kernel and the HAL, the first two in the kernel's list (the kernel's file name varies: ntoskrnl, ntkrnlmp...);
+	// the drivers (.sys); the rest are kernel-mode libraries (kd.dll, ci.dll...)
+	auto& m = m_Rows[row]->Module;
+	if (m.LoadOrder <= 1)
+		return Frame()->GetIconIndex(IDI_ATOM);
+	auto& name = m.Name;
+	bool driver = name.size() > 4 && ::_wcsicmp(name.c_str() + name.size() - 4, L".sys") == 0;
+	return Frame()->GetIconIndex(driver ? IDI_SYSTEM_DRIVER : IDI_DEVICE);
 }
 
 int CKernelModulesView::GetSaveColumnRange(HWND, int&) const {

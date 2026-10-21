@@ -484,5 +484,8 @@
     <Image Include="res\Driver.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\System.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
   </ItemGroup>
 </Project>
