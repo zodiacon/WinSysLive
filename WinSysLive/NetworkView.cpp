@@ -99,12 +99,12 @@ bool CNetworkView::Matches(Connection const& c) const {
 	return false;
 }
 
-std::optional<WinSys::ConnectionKey> CNetworkView::GetSelectedKey() const {
+std::optional<ConnectionRows::Key> CNetworkView::GetSelectedKey() const {
 	auto c = GetSelected();
-	return c ? std::optional(c->Id) : std::nullopt;
+	return c ? std::optional(ConnectionRows::KeyOf(*c)) : std::nullopt;
 }
 
-void CNetworkView::ShowRows(std::optional<WinSys::ConnectionKey> const& selected) {
+void CNetworkView::ShowRows(std::optional<ConnectionRows::Key> const& selected) {
 	m_RowsPending = false;
 	m_Rows.clear();
 	for (auto& c : m_All)
@@ -211,12 +211,12 @@ CNetworkView::Connection const* CNetworkView::GetSelected() const {
 	return selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected] : nullptr;
 }
 
-void CNetworkView::SelectConnection(WinSys::ConnectionKey const* key) {
+void CNetworkView::SelectConnection(ConnectionRows::Key const* key) {
 	// the list view keeps the selection by index, which new rows and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	if (!key)
 		return;
-	auto it = std::ranges::find_if(m_Rows, [&](auto c) { return c->Id == *key; });
+	auto it = std::ranges::find_if(m_Rows, [&](auto c) { return ConnectionRows::KeyOf(*c) == *key; });
 	if (it != m_Rows.end())
 		m_List.SetItemState((int)(it - m_Rows.begin()), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 }

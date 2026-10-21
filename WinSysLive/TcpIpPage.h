@@ -54,7 +54,7 @@ private:
 
 	enum class Column { Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, Created, _Count };
 	using Protocol = WinSys::ConnectionProtocol;
-	using Key = WinSys::ConnectionKey;
+	using Key = ConnectionRows::Key;
 	using Connection = ConnectionRow;
 
 	// reads the process's connections and merges them into m_Rows; false (with the status saying why) on failure

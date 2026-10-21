@@ -126,10 +126,10 @@ std::vector<CProcTcpIpPage::Key> CProcTcpIpPage::GetSelectedKeys() const {
 	std::vector<Key> keys;
 	int focused = m_List.GetNextItem(-1, LVNI_FOCUSED | LVNI_SELECTED);
 	if (focused >= 0 && focused < (int)m_Rows.size())
-		keys.push_back(m_Rows[focused].Id);
+		keys.push_back(ConnectionRows::KeyOf(m_Rows[focused]));
 	for (int i = m_List.GetNextItem(-1, LVNI_SELECTED); i >= 0 && i < (int)m_Rows.size(); i = m_List.GetNextItem(i, LVNI_SELECTED))
 		if (i != focused)
-			keys.push_back(m_Rows[i].Id);
+			keys.push_back(ConnectionRows::KeyOf(m_Rows[i]));
 	return keys;
 }
 
@@ -137,7 +137,7 @@ void CProcTcpIpPage::SelectConnections(std::vector<Key> const& keys) {
 	// the list view keeps the selection by index, which new rows and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	for (size_t k = 0; k < keys.size(); k++) {
-		auto it = std::ranges::find_if(m_Rows, [&](auto& c) { return c.Id == keys[k]; });
+		auto it = std::ranges::find_if(m_Rows, [&](auto& c) { return ConnectionRows::KeyOf(c) == keys[k]; });
 		if (it != m_Rows.end())
 			m_List.SetItemState((int)(it - m_Rows.begin()), k == 0 ? LVIS_SELECTED | LVIS_FOCUSED : LVIS_SELECTED,
 				LVIS_SELECTED | LVIS_FOCUSED);

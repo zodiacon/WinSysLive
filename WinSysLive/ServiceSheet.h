@@ -120,7 +120,18 @@ private:
 	void UpdateControls();
 	WinSys::ServiceFailureActionType GetAction(int index) const;
 
+	// a value shown rounded (the reset period in days, the delays in minutes): written back as it was unless its text
+	// was changed, so a reset period of hours or a delay of seconds isn't rounded down by a change elsewhere
+	struct RoundedValue {
+		UINT Id;
+		uint32_t Value;
+		std::wstring Text;	// as first shown
+	};
+	// unit: per one shown (24 * 3600 seconds, 60000 ms); nothing after telling the user, if it's no number or too large
+	std::optional<uint32_t> GetValue(RoundedValue const& value, uint32_t unit, PCWSTR what);
+
 	bool m_Initialized{ false };
+	RoundedValue m_Reset{ IDC_SVC_RESETDAYS }, m_RestartDelay{ IDC_SVC_RESTARTMIN }, m_RebootDelay{ IDC_SVC_REBOOTMIN };
 };
 
 //

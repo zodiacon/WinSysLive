@@ -68,10 +68,10 @@ private:
 	std::wstring GetProcessName(uint32_t pid) const;
 	bool Matches(Connection const& c) const;
 	// the list's rows: the connections that match the filter, sorted as the list is; selected: the connection to select
-	void ShowRows(std::optional<WinSys::ConnectionKey> const& selected);
-	std::optional<WinSys::ConnectionKey> GetSelectedKey() const;
+	void ShowRows(std::optional<ConnectionRows::Key> const& selected);
+	std::optional<ConnectionRows::Key> GetSelectedKey() const;
 	Connection const* GetSelected() const;
-	void SelectConnection(WinSys::ConnectionKey const* key);
+	void SelectConnection(ConnectionRows::Key const* key);
 	void UpdateStatus();
 
 	CListViewCtrl m_List;
@@ -82,5 +82,5 @@ private:
 	bool m_Active{ false };
 	// merged while hidden: the rows (filtered and sorted) are rebuilt when shown, with the selection from before
 	bool m_RowsPending{ false };
-	std::optional<WinSys::ConnectionKey> m_PendingSelection;
+	std::optional<ConnectionRows::Key> m_PendingSelection;
 };

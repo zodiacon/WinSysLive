@@ -295,6 +295,13 @@ LRESULT CServiceRecoveryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPA
 		SetDlgItemInt(IDC_SVC_RESETDAYS, failure.ResetPeriod / (24 * 3600), FALSE);
 	SetDlgItemText(IDC_SVC_COMMAND, failure.Command.c_str());
 	CheckDlgButton(IDC_SVC_NONCRASH, failure.OnNonCrashFailures ? BST_CHECKED : BST_UNCHECKED);
+	auto keep = [&](RoundedValue& value, uint32_t exact) {
+		value.Value = exact;
+		value.Text = GetText(GetDlgItem(value.Id));
+	};
+	keep(m_Reset, failure.ResetPeriod);
+	keep(m_RestartDelay, restartDelay);
+	keep(m_RebootDelay, rebootDelay);
 	UpdateControls();
 	m_Initialized = true;
 	return TRUE;
@@ -321,17 +328,24 @@ LRESULT CServiceRecoveryPage::OnChange(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 	return 0;
 }
 
+std::optional<uint32_t> CServiceRecoveryPage::GetValue(RoundedValue const& value, uint32_t unit, PCWSTR what) {
+	auto edit = GetDlgItem(value.Id);
+	if (GetText(edit) == value.Text)
+		return value.Value;
+	// below INFINITE (0xFFFFFFFF), which means never for the reset period
+	auto max = (INFINITE - 1) / unit;
+	auto number = GetNumber(edit);
+	if (!number || *number > max) {
+		AtlMessageBox(m_hWnd, std::format(L"Type a whole number of {}, up to {}.", what, max).c_str(), IDR_MAINFRAME, MB_ICONWARNING);
+		GotoDlgCtrl(edit);
+		return std::nullopt;
+	}
+	return *number * unit;
+}
+
 int CServiceRecoveryPage::OnApply() {
 	if (!m_Changed)
 		return PSNRET_NOERROR;
-	auto number = [&](UINT id, PCWSTR what) -> std::optional<uint32_t> {
-		auto value = GetNumber(GetDlgItem(id));
-		if (!value) {
-			AtlMessageBox(m_hWnd, std::format(L"Type a whole number of {}.", what).c_str(), IDR_MAINFRAME, MB_ICONWARNING);
-			GotoDlgCtrl(GetDlgItem(id));
-		}
-		return value;
-	};
 
 	ServiceFailureActions failure;
 	if (m_Data.Failure)
@@ -339,8 +353,8 @@ int CServiceRecoveryPage::OnApply() {
 	auto resetText = GetText(GetDlgItem(IDC_SVC_RESETDAYS));
 	if (resetText.empty())
 		failure.ResetPeriod = INFINITE;
-	else if (auto days = number(IDC_SVC_RESETDAYS, L"days"))
-		failure.ResetPeriod = *days * 24 * 3600;
+	else if (auto period = GetValue(m_Reset, 24 * 3600, L"days"))
+		failure.ResetPeriod = *period;
 	else
 		return PSNRET_INVALID_NOCHANGEPAGE;
 	uint32_t restart = 0, reboot = 0;
@@ -348,17 +362,17 @@ int CServiceRecoveryPage::OnApply() {
 	for (int i = 0; i < 3; i++) {
 		auto type = GetAction(i);
 		if (type == ServiceFailureActionType::Restart && !restarts) {
-			auto minutes = number(IDC_SVC_RESTARTMIN, L"minutes");
-			if (!minutes)
+			auto delay = GetValue(m_RestartDelay, 60000, L"minutes");
+			if (!delay)
 				return PSNRET_INVALID_NOCHANGEPAGE;
-			restart = *minutes * 60000;
+			restart = *delay;
 			restarts = true;
 		}
 		if (type == ServiceFailureActionType::Reboot && reboot == 0) {
-			auto minutes = number(IDC_SVC_REBOOTMIN, L"minutes");
-			if (!minutes)
+			auto delay = GetValue(m_RebootDelay, 60000, L"minutes");
+			if (!delay)
 				return PSNRET_INVALID_NOCHANGEPAGE;
-			reboot = (std::max)(*minutes * 60000, 1u);
+			reboot = (std::max)(*delay, 1u);
 		}
 	}
 	for (int i = 0; i < 3; i++) {
@@ -381,6 +395,17 @@ int CServiceRecoveryPage::OnApply() {
 		return PSNRET_INVALID;
 	}
 	m_Data.Failure = failure;
+	// what was written is what the fields stand for now
+	auto written = [&](RoundedValue& value, uint32_t exact) {
+		value.Value = exact;
+		value.Text = GetText(GetDlgItem(value.Id));
+	};
+	if (failure.ResetPeriod != INFINITE)
+		written(m_Reset, failure.ResetPeriod);
+	if (restarts)
+		written(m_RestartDelay, restart);
+	if (reboot)
+		written(m_RebootDelay, reboot);
 	m_Data.Applied = true;
 	m_Changed = false;
 	return PSNRET_NOERROR;
