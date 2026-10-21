@@ -31,6 +31,7 @@ public:
 	BEGIN_MSG_MAP(CStackDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_STACK_CAPTURED, OnStackCaptured)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		NOTIFY_HANDLER(IDC_STACK_LIST, NM_DBLCLK, OnDoubleClick)
 		COMMAND_ID_HANDLER(IDC_STACK_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_STACK_COPY, OnCopy)
@@ -46,6 +47,7 @@ public:
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnStackCaptured(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

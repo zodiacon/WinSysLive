@@ -212,6 +212,21 @@
 #define ID_MODULE_PROPERTIES        32860
 #define ID_MODULE_GOTOFILELOCATION  32861
 #define ID_PAGE_COPY                32862
+#define IDD_MEMORY_FIND             266
+#define IDD_MEMORY_GOTO             267
+#define IDC_MEM_FIND                1218
+#define IDC_MEM_FINDNEXT            1219
+#define IDC_MEM_GOTO                1220
+#define IDC_MEM_SAVE                1221
+#define IDC_MEM_EDIT                1222
+#define IDC_MFIND_TEXT              1223
+#define IDC_MFIND_ASCII             1224
+#define IDC_MFIND_UNICODE           1225
+#define IDC_MFIND_HEX               1226
+#define IDC_MFIND_CASE              1227
+#define IDC_MFIND_REGION            1228
+#define IDC_MFIND_ALL               1229
+#define IDC_MGOTO_ADDRESS           1230
 #define ID_HANDLE_PROPERTIES        32854
 #define ID_HANDLE_CLOSE             32855
 #define ID_PROCESS_WAITCHAIN        32851
@@ -349,8 +364,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	266
-#define _APS_NEXT_CONTROL_VALUE		1218
+#define _APS_NEXT_RESOURCE_VALUE	268
+#define _APS_NEXT_CONTROL_VALUE		1231
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32863
 #endif

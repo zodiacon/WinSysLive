@@ -965,18 +965,20 @@ LRESULT CProcessesView::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	if (!item || item->Terminated)
 		return 0;
 
-	auto& p = *item->Process;
+	// held: refreshes go on while the box is open, and may remove the item
+	auto info = item->Process;
+	auto& p = *info;
 	auto text = std::format(L"Terminate process {} ({})?", p.GetImageName(), p.Id);
 	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
 		return 0;
 
-	auto process = Process::OpenById(p.Id, ProcessAccessMask::Terminate);
+	auto process = Process::OpenById(p.Id, p.Key.Created, ProcessAccessMask::Terminate);
 	if (!process) {
 		ShowError(L"Opening the process");
 		return 0;
 	}
 	if (!process->Terminate())
-		AtlMessageBox(m_hWnd, L"Failed to terminate the process.", IDR_MAINFRAME, MB_ICONERROR);
+		ShowError(L"Terminating the process");
 	return 0;
 }
 
@@ -1040,10 +1042,10 @@ LRESULT CProcessesView::OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 
 	// image names compare case-insensitively
 	auto name = item->Process->GetImageName();
-	std::vector<uint32_t> pids;
+	std::vector<ProcessOrThreadKey> pids;
 	for (auto& [key, i] : m_Items)
 		if (CanControl(&i) && ::_wcsicmp(i.Process->GetImageName().c_str(), name.c_str()) == 0)
-			pids.push_back(i.Process->Id);
+			pids.push_back(i.Process->Key);
 
 	auto text = std::format(L"Terminate {} process{} named {}?", pids.size(), pids.size() == 1 ? L"" : L"es", name);
 	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
@@ -1052,7 +1054,7 @@ LRESULT CProcessesView::OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	int failed = 0;
 	DWORD error = ERROR_SUCCESS;
 	for (auto pid : pids) {
-		auto process = Process::OpenById(pid, ProcessAccessMask::Terminate);
+		auto process = Process::OpenById(pid.Id, pid.Created, ProcessAccessMask::Terminate);
 		if (!process || !process->Terminate()) {
 			if (!failed++)
 				error = ::GetLastError();
@@ -1069,11 +1071,11 @@ LRESULT CProcessesView::OnSuspend(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	if (!item || item->Terminated)
 		return 0;
 
-	auto process = Process::OpenById(item->Process->Id, ProcessAccessMask::SuspendResume);
+	auto process = Process::OpenById(item->Process->Id, item->Process->Key.Created, ProcessAccessMask::SuspendResume);
 	if (!process)
 		ShowError(L"Opening the process");
 	else if (!process->Suspend())
-		AtlMessageBox(m_hWnd, L"Failed to suspend the process.", IDR_MAINFRAME, MB_ICONERROR);
+		ShowError(L"Suspending the process");
 	return 0;
 }
 
@@ -1082,11 +1084,11 @@ LRESULT CProcessesView::OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	if (!item || item->Terminated)
 		return 0;
 
-	auto process = Process::OpenById(item->Process->Id, ProcessAccessMask::SuspendResume);
+	auto process = Process::OpenById(item->Process->Id, item->Process->Key.Created, ProcessAccessMask::SuspendResume);
 	if (!process)
 		ShowError(L"Opening the process");
 	else if (!process->Resume())
-		AtlMessageBox(m_hWnd, L"Failed to resume the process.", IDR_MAINFRAME, MB_ICONERROR);
+		ShowError(L"Resuming the process");
 	return 0;
 }
 
@@ -1095,8 +1097,7 @@ LRESULT CProcessesView::OnSetPriority(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 	if (!item || item->Terminated)
 		return 0;
 
-	// ProcessAccessMask has no SetInformation value
-	auto process = Process::OpenById(item->Process->Id, static_cast<ProcessAccessMask>(PROCESS_SET_INFORMATION));
+	auto process = Process::OpenById(item->Process->Id, item->Process->Key.Created, ProcessAccessMask::SetInformation);
 	if (!process)
 		ShowError(L"Opening the process");
 	else if (!process->SetPriorityClass(s_Priorities[id - ID_PRIORITY_REALTIME].PriorityClass))
@@ -1108,7 +1109,7 @@ std::unique_ptr<Process> CProcessesView::OpenSelected(ProcessAccessMask access) 
 	auto item = GetSelectedProcess();
 	if (!CanControl(item))
 		return {};
-	auto process = Process::OpenById(item->Process->Id, access | ProcessAccessMask::QueryLimitedInformation);
+	auto process = Process::OpenById(item->Process->Id, item->Process->Key.Created, access);
 	if (!process)
 		ShowError(L"Opening the process");
 	return process;
@@ -1237,7 +1238,9 @@ LRESULT CProcessesView::OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWnd
 	auto item = GetSelectedProcess();
 	if (!CanControl(item))
 		return 0;
-	auto& p = *item->Process;
+	// held: refreshes go on while the file dialog is open, and may remove the item
+	auto info = item->Process;
+	auto& p = *info;
 	bool full = wID == ID_PROCESS_FULLDUMP;
 
 	// name_pid_date_time.dmp

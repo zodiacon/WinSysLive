@@ -123,6 +123,9 @@
     <ClCompile Include="ServiceSheet.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryDialogs.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="ObjectSecurity.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -265,6 +268,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ServiceSheet.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryDialogs.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ObjectSecurity.h">
@@ -432,6 +438,18 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\Users.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\stack.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\network.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\job.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\delete.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

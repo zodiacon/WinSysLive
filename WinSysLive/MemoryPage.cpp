@@ -5,6 +5,8 @@
 #include <WinSys/Handles.h>
 #include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
+#include <WinSys/ProcessMemory.h>
+#include <functional>
 #include <WTLHelper.h>
 #include <map>
 
@@ -29,11 +31,16 @@ namespace {
 	const int64_t MaxShownBytes = 256 << 20;
 
 	//
-	// A range of another process's memory, read as the hex view asks for it, in chunks kept until the next one is read
+	// A range of another process's memory, read as the hex view asks for it, in chunks kept until the next one is read;
+	// with a handle to write with, the hex view's changes are written to the process at once
 	//
 	class ProcessMemoryBuffer : public IBufferManager {
 	public:
-		ProcessMemoryBuffer(HANDLE hProcess, uintptr_t address, int64_t size) : m_hProcess(hProcess), m_Address(address), m_Size(size) {
+		using WriteFailed = std::function<void(uint64_t address, DWORD error)>;
+
+		// hWrite: PROCESS_VM_WRITE and PROCESS_VM_OPERATION, or null (read-only)
+		ProcessMemoryBuffer(HANDLE hProcess, HANDLE hWrite, uintptr_t address, int64_t size, WriteFailed failed) :
+			m_hProcess(hProcess), m_hWrite(hWrite), m_Address(address), m_Size(size), m_Failed(std::move(failed)) {
 		}
 
 		uint32_t GetData(int64_t offset, uint8_t* buffer, uint32_t count) override {
@@ -68,11 +75,28 @@ namespace {
 		bool Delete(int64_t, size_t) override {
 			return false;
 		}
-		bool SetData(int64_t, const uint8_t*, uint32_t) override {
-			return false;
+		bool SetData(int64_t offset, const uint8_t* data, uint32_t count) override {
+			if (!m_hWrite || offset < 0 || offset + count > m_Size)
+				return false;
+			if (!WinSys::ProcessMemory::Write(m_hWrite, m_Address + offset, data, count)) {
+				auto error = ::GetLastError();
+				// the bytes as they are
+				m_ChunkOffset = -1;
+				if (m_Failed)
+					m_Failed(m_Address + offset, error);
+				return false;
+			}
+			// the bytes kept from the last read
+			for (uint32_t i = 0; i < count; i++) {
+				auto at = offset + i;
+				if (at >= m_ChunkOffset && at < m_ChunkOffset + m_ChunkValid)
+					m_Chunk[at - m_ChunkOffset] = data[i];
+			}
+			return true;
 		}
-		bool SetData(int64_t, uint8_t, uint32_t) override {
-			return false;
+		bool SetData(int64_t offset, uint8_t value, uint32_t count) override {
+			std::vector<uint8_t> data(count, value);
+			return SetData(offset, data.data(), count);
 		}
 		int64_t GetSize() const override {
 			return m_Size;
@@ -81,13 +105,14 @@ namespace {
 			return nullptr;
 		}
 		bool IsReadOnly() const override {
-			return true;
+			return m_hWrite == nullptr;
 		}
 
 	private:
 		static constexpr uint32_t ChunkSize = 1 << 16;
 
-		HANDLE m_hProcess;
+		HANDLE m_hProcess, m_hWrite;
+		WriteFailed m_Failed;
 		uintptr_t m_Address;
 		int64_t m_Size;
 		int64_t m_ChunkOffset{ -1 };
@@ -161,6 +186,18 @@ int CMemoryHexView::GetWidthFor(int bytesPerLine) {
 	return chars * m_CharWidth + ::GetSystemMetricsForDpi(SM_CXVSCROLL, dpi) + 2 * ::GetSystemMetricsForDpi(SM_CXEDGE, dpi);
 }
 
+LRESULT CMemoryHexView::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
+	bool ctrl = ::GetKeyState(VK_CONTROL) < 0;
+	if (wParam == VK_INSERT)
+		return 0;	// overwriting only: a process's memory doesn't grow
+	if (m_Page && ((wParam == 'F' && ctrl) || wParam == VK_F3)) {
+		::PostMessage(m_Page, WM_COMMAND, wParam == VK_F3 ? IDC_MEM_FINDNEXT : IDC_MEM_FIND, 0);
+		return 0;
+	}
+	bHandled = FALSE;
+	return 0;
+}
+
 LRESULT CMemoryHexView::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	CRect rc;
 	GetWindowRect(&rc);
@@ -192,6 +229,7 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 
 	m_Hex.SetFont(CMemoryHexView::FontName, CMemoryHexView::FontSize);
 	m_Hex.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP | WS_BORDER, 0);
+	m_Hex.SetPage(m_hWnd);
 	m_Hex.SetReadOnly(true);
 	m_Hex.SetOptions(HexControlOptions::DisableUndoRedo | HexControlOptions::GrayOutZeros);
 	auto& colors = m_Hex.GetColors();
@@ -212,6 +250,8 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	m_ButtonSize = rc.Size();
 	GetDlgItem(IDC_MEM_HEXVIEW).GetWindowRect(&rc);
 	m_CheckSize = rc.Size();
+	GetDlgItem(IDC_MEM_EDIT).GetWindowRect(&rc);
+	m_EditSize = rc.Size();
 	GetClientRect(&rc);
 	Layout(rc.Width(), rc.Height());
 	return TRUE;
@@ -236,13 +276,23 @@ void CProcMemoryPage::Layout(int cx, int cy) {
 	int checkLeft = cx - margin - m_ButtonSize.cx - 2 * gap - m_CheckSize.cx;
 	GetDlgItem(IDC_MEM_HEXVIEW).SetWindowPos(nullptr, checkLeft, bottom - (m_ButtonSize.cy + m_CheckSize.cy) / 2, 0, 0,
 		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	int editLeft = checkLeft - gap - m_EditSize.cx;
+	GetDlgItem(IDC_MEM_EDIT).SetWindowPos(nullptr, editLeft, bottom - (m_ButtonSize.cy + m_EditSize.cy) / 2, 0, 0,
+		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 	CWindow status(GetDlgItem(IDC_MEM_STATUS));
 	CRect rc;
 	status.GetWindowRect(&rc);
 	status.SetWindowPos(nullptr, margin, bottom - (m_ButtonSize.cy + rc.Height()) / 2,
-		(std::max)(0, int(checkLeft - margin - gap)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+		(std::max)(0, int(editLeft - margin - gap)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+	// Find, Find Next, Go To and Save in a row above
+	int row = bottom - m_ButtonSize.cy - gap - m_ButtonSize.cy;
+	int x = margin;
+	for (UINT id : { IDC_MEM_FIND, IDC_MEM_FINDNEXT, IDC_MEM_GOTO, IDC_MEM_SAVE }) {
+		GetDlgItem(id).SetWindowPos(nullptr, x, row, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+		x += m_ButtonSize.cx + gap;
+	}
 	m_Splitter.SetWindowPos(nullptr, margin, margin, (std::max)(0, cx - 2 * margin),
-		(std::max)(0, int(bottom - m_ButtonSize.cy - gap - margin)), SWP_NOZORDER | SWP_NOACTIVATE);
+		(std::max)(0, int(row - gap - margin)), SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 int CProcMemoryPage::OnSetActive() {
@@ -276,6 +326,8 @@ void CProcMemoryPage::Load(void const* select) {
 	m_Bytes.reset();
 	m_Tree.DeleteAllItems();
 	m_Regions.clear();
+	m_Items.clear();
+	m_Found = 0;
 
 	if (!m_hProcess) {
 		// reading the bytes needs more than querying the map; protected processes allow neither
@@ -321,6 +373,7 @@ void CProcMemoryPage::Load(void const* select) {
 		auto& info = m_Regions[i].Info;
 		bool child = info.State != MEM_FREE && parent && info.AllocationBase == parentBase && info.BaseAddress != info.AllocationBase;
 		auto item = m_Tree.InsertItem(child ? parent : TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, -1, (LPARAM)i);
+		m_Items.push_back(item);
 		if (!child) {
 			parent = item;
 			parentBase = info.State == MEM_FREE ? nullptr : info.AllocationBase;
@@ -335,7 +388,7 @@ void CProcMemoryPage::Load(void const* select) {
 		FormatHelper::FormatBytes(committed), FormatHelper::FormatBytes(reserved));
 	if (!m_CanRead)
 		m_Summary += L"    (the memory can't be read)";
-	SetDlgItemText(IDC_MEM_STATUS, m_Summary.c_str());
+	SetNote(L"");
 
 	if (selected) {
 		if (auto p = m_Tree.GetParentItem(selected))
@@ -484,7 +537,12 @@ void CProcMemoryPage::ShowBytes(Region const* region) {
 			note = L"The process's memory can't be read";
 		else {
 			auto size = (std::min)((int64_t)info.RegionSize, MaxShownBytes);
-			m_Bytes = std::make_unique<ProcessMemoryBuffer>(m_hProcess.get(), (uintptr_t)info.BaseAddress, size);
+			m_Bytes = std::make_unique<ProcessMemoryBuffer>(m_hProcess.get(), m_Edit ? m_hWrite.get() : nullptr,
+				(uintptr_t)info.BaseAddress, size, [this](uint64_t address, DWORD error) {
+					SetNote(std::format(L"Writing at 0x{:X} failed: {}", address, WinSys::Helpers::GetErrorText(error)));
+					m_Hex.Refresh();
+				});
+			m_Hex.SetReadOnly(!m_Edit);
 			m_Hex.SetBufferManager(m_Bytes.get());
 			// the offsets shown are the addresses
 			m_Hex.SetBiasOffset((int64_t)info.BaseAddress);
@@ -492,5 +550,188 @@ void CProcMemoryPage::ShowBytes(Region const* region) {
 				note = std::format(L"Showing the first {} of the region", FormatHelper::FormatBytes(size));
 		}
 	}
+	SetNote(note);
+}
+
+void CProcMemoryPage::SetNote(std::wstring const& note) {
 	SetDlgItemText(IDC_MEM_STATUS, (note.empty() ? m_Summary : m_Summary + L"    " + note).c_str());
+}
+
+void CProcMemoryPage::ShowHexView() {
+	if (m_ShowHex)
+		return;
+	CheckDlgButton(IDC_MEM_HEXVIEW, BST_CHECKED);
+	m_ShowHex = true;
+	m_Splitter.SetSinglePaneMode(SPLIT_PANE_NONE);
+	ShowBytes(GetSelectedRegion());
+}
+
+uint64_t CProcMemoryPage::GetCurrentAddress() const {
+	auto region = GetSelectedRegion();
+	if (!region)
+		return 0;
+	auto base = (uint64_t)region->Info.BaseAddress;
+	return m_Bytes ? base + (std::max)(m_Hex.GetCaretOffset(), (int64_t)0) : base;
+}
+
+bool CProcMemoryPage::Reveal(uint64_t address, size_t length) {
+	auto region = FindRegion((ULONG_PTR)address);
+	if (!region)
+		return false;
+	auto item = m_Items[region - m_Regions.data()];
+	if (auto parent = m_Tree.GetParentItem(item))
+		m_Tree.Expand(parent);
+	// shows its bytes (OnSelChanged), if it isn't selected already
+	m_Tree.SelectItem(item);
+	ShowHexView();
+	if (!m_Bytes)
+		return true;	// the note says why
+	auto offset = (int64_t)(address - (uint64_t)region->Info.BaseAddress);
+	if (offset >= m_Bytes->GetSize()) {
+		SetNote(std::format(L"0x{:X} is past the part of the region shown", address));
+		return true;
+	}
+	m_Hex.GotoOffset(offset);
+	if (length)
+		m_Hex.SetSelection(offset, (int64_t)length);
+	return true;
+}
+
+void CProcMemoryPage::Search(bool next) {
+	if (!m_CanRead) {
+		SetNote(L"The process's memory can't be read");
+		return;
+	}
+	auto pattern = m_Search.GetPattern();
+	if (pattern.empty())
+		return;
+	auto region = GetSelectedRegion();
+	bool whole = m_Search.WholeSpace || !region;
+	uint64_t from = next && m_Found ? m_Found + 1 : GetCurrentAddress();
+	uint64_t to = whole ? WinSys::ProcessMemory::MaxAddress() : (uint64_t)region->Info.BaseAddress + region->Info.RegionSize;
+	std::optional<uint64_t> found;
+	{
+		CWaitCursor wait;
+		found = WinSys::ProcessMemory::Find(m_hProcess.get(), pattern.data(), pattern.size(), from, to,
+			m_Search.IgnoreCase && m_Search.Type != MemorySearch::Kind::Hex);
+	}
+	if (!found) {
+		m_Found = 0;
+		::MessageBeep(MB_ICONASTERISK);
+		SetNote(std::format(L"Not found after 0x{:X}{}", from, whole ? L"" : L" in the region"));
+		return;
+	}
+	m_Found = *found;
+	Reveal(*found, pattern.size());
+	SetNote(std::format(L"Found at 0x{:X} (F3: the next one)", *found));
+}
+
+LRESULT CProcMemoryPage::OnFind(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (wID == IDC_MEM_FIND || !m_Searched) {
+		CMemoryFindDlg dlg(m_Search, GetSelectedRegion() != nullptr);
+		if (dlg.DoModal(m_hWnd) != IDOK)
+			return 0;
+		m_Searched = true;
+		Search(false);
+	}
+	else
+		Search(true);
+	return 0;
+}
+
+LRESULT CProcMemoryPage::OnGoTo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CMemoryGoToDlg dlg(GetCurrentAddress());
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	if (!Reveal(dlg.GetAddress(), 0))
+		SetNote(std::format(L"0x{:X} isn't in the address space", dlg.GetAddress()));
+	return 0;
+}
+
+LRESULT CProcMemoryPage::OnGoToRequested(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_Hex) {
+		bHandled = FALSE;
+		return 0;
+	}
+	PostMessage(WM_COMMAND, IDC_MEM_GOTO);
+	return 0;
+}
+
+LRESULT CProcMemoryPage::OnSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto region = GetSelectedRegion();
+	if (!region || region->Info.State != MEM_COMMIT) {
+		AtlMessageBox(m_hWnd, L"Select a committed region to save.", IDR_MAINFRAME, MB_ICONINFORMATION);
+		return 0;
+	}
+	if (!m_CanRead) {
+		AtlMessageBox(m_hWnd, L"The process's memory can't be read.", IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	auto base = (uint64_t)region->Info.BaseAddress;
+	auto size = (uint64_t)region->Info.RegionSize;
+	auto name = m_Props.ImageName;
+	if (auto dot = name.rfind(L'.'); dot != std::wstring::npos)
+		name.erase(dot);
+	auto fileName = std::format(L"{}_{}_{:X}.bin", name, m_Props.Id, base);
+	CFileDialog dlg(FALSE, L"bin", fileName.c_str(), OFN_OVERWRITEPROMPT | OFN_EXPLORER | OFN_PATHMUSTEXIST,
+		L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0", m_hWnd);
+	if (dlg.DoModal() != IDOK)
+		return 0;
+
+	wil::unique_hfile file(::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+	if (!file) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to create the file: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	CWaitCursor wait;
+	const size_t chunk = 1 << 20;
+	auto buffer = std::make_unique<uint8_t[]>(chunk);
+	uint64_t unreadable = 0;
+	for (uint64_t offset = 0; offset < size; offset += chunk) {
+		auto count = (size_t)(std::min)((uint64_t)chunk, size - offset);
+		unreadable += count - WinSys::ProcessMemory::Read(m_hProcess.get(), base + offset, buffer.get(), count);
+		DWORD written;
+		if (!::WriteFile(file.get(), buffer.get(), (DWORD)count, &written, nullptr) || written != count) {
+			AtlMessageBox(m_hWnd, std::format(L"Failed to write the file: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+				IDR_MAINFRAME, MB_ICONERROR);
+			return 0;
+		}
+	}
+	SetNote(std::format(L"Saved {} to {}{}", FormatHelper::FormatBytes(size), dlg.m_szFileName,
+		unreadable ? std::format(L" ({} couldn't be read: zeros)", FormatHelper::FormatBytes(unreadable)) : std::wstring()));
+	return 0;
+}
+
+LRESULT CProcMemoryPage::OnToggleEdit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	bool edit = IsDlgButtonChecked(IDC_MEM_EDIT) == BST_CHECKED;
+	if (edit && !m_hWrite) {
+		if (AtlMessageBox(m_hWnd, L"Changes made in the hex view are written to the process's memory as they're made, which can "
+			L"make it fail or behave differently.\n\nEdit its memory?", IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK) {
+			CheckDlgButton(IDC_MEM_EDIT, BST_UNCHECKED);
+			return 0;
+		}
+		m_hWrite = OpenSheetProcess(m_Props, PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_LIMITED_INFORMATION);
+		if (!m_hWrite) {
+			AtlMessageBox(m_hWnd, std::format(L"The process can't be opened for writing: {}",
+				WinSys::Helpers::GetErrorText(::GetLastError())).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+			CheckDlgButton(IDC_MEM_EDIT, BST_UNCHECKED);
+			return 0;
+		}
+	}
+	m_Edit = edit;
+	if (m_Edit && !m_ShowHex) {
+		ShowHexView();
+		return 0;
+	}
+	// the bytes again (with or without the handle to write with), where they were
+	auto caret = m_Hex.GetCaretOffset();
+	auto selection = m_Hex.GetSelectionOffset(), length = m_Hex.GetSelectionLength();
+	ShowBytes(GetSelectedRegion());
+	if (m_Bytes && caret >= 0 && caret < m_Bytes->GetSize()) {
+		m_Hex.GotoOffset(caret);
+		if (length > 0)
+			m_Hex.SetSelection(selection, length);
+	}
+	return 0;
 }

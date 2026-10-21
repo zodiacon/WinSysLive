@@ -471,9 +471,9 @@ BEGIN
     LTEXT           "Trust level:",IDC_STATIC,14,334,58,9
     EDITTEXT        IDC_TOKEN_TRUSTLEVEL,74,332,196,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Privileges:",IDC_TOKEN_PRIVS_LABEL,283,7,150,9
-    CONTROL         "",IDC_TOKEN_PRIVS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_BORDER | WS_TABSTOP,283,17,220,126
+    CONTROL         "",IDC_TOKEN_PRIVS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,283,17,220,126
     LTEXT           "Groups:",IDC_TOKEN_GROUPS_LABEL,283,147,200,9
-    CONTROL         "",IDC_TOKEN_GROUPS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_BORDER | WS_TABSTOP,283,157,220,191
+    CONTROL         "",IDC_TOKEN_GROUPS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,283,157,220,191
     PUSHBUTTON      "&Security...",IDC_TOKEN_SECURITY,449,2,54,13
 END
 
@@ -482,7 +482,12 @@ STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPCHILDREN | WS_CAPTION
 CAPTION "Memory"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    LTEXT           "",IDC_MEM_STATUS,7,212,201,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Find...",IDC_MEM_FIND,7,190,50,14
+    PUSHBUTTON      "Find &Next",IDC_MEM_FINDNEXT,61,190,50,14
+    PUSHBUTTON      "&Go To...",IDC_MEM_GOTO,115,190,50,14
+    PUSHBUTTON      "&Save...",IDC_MEM_SAVE,169,190,50,14
+    LTEXT           "",IDC_MEM_STATUS,7,212,150,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    CONTROL         "&Edit",IDC_MEM_EDIT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,165,211,40,10
     CONTROL         "&Hex View",IDC_MEM_HEXVIEW,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,218,211,50,10
     PUSHBUTTON      "&Refresh",IDC_MEM_REFRESH,273,209,50,14
 END
@@ -497,11 +502,11 @@ BEGIN
     EDITTEXT        IDC_JOB_NAME,30,7,293,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_VISIBLE
     LTEXT           "",IDC_JOB_STATUS,30,9,293,9,SS_NOPREFIX | SS_ENDELLIPSIS | NOT WS_VISIBLE
     LTEXT           "Limits:",IDC_JOB_LIMITS_LABEL,7,25,155,9
-    CONTROL         "",IDC_JOB_LIMITS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,35,155,85
+    CONTROL         "",IDC_JOB_LIMITS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,35,155,85
     LTEXT           "Statistics:",IDC_JOB_STATS_LABEL,168,25,155,9
-    CONTROL         "",IDC_JOB_STATS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,168,35,155,85
+    CONTROL         "",IDC_JOB_STATS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,168,35,155,85
     LTEXT           "Processes:",IDC_JOB_PROCS_LABEL,7,126,316,9
-    CONTROL         "",IDC_JOB_PROCESSES,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,136,316,87
+    CONTROL         "",IDC_JOB_PROCESSES,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,136,316,87
 END
 
 IDD_PROC_PERFORMANCE DIALOGEX 0, 0, 330, 230
@@ -528,9 +533,9 @@ CAPTION "Services"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     LTEXT           "Services:",IDC_SVC_LIST_LABEL,7,7,316,9,SS_NOPREFIX
-    CONTROL         "",IDC_SVC_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,17,316,80
+    CONTROL         "",IDC_SVC_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,17,316,80
     LTEXT           "Details:",IDC_SVC_DETAILS_LABEL,7,103,316,9,SS_NOPREFIX | SS_ENDELLIPSIS
-    CONTROL         "",IDC_SVC_DETAILS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,113,316,89
+    CONTROL         "",IDC_SVC_DETAILS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,113,316,89
     LTEXT           "",IDC_SVC_STATUS,7,211,142,9,SS_NOPREFIX | SS_ENDELLIPSIS
     PUSHBUTTON      "&Start",IDC_SVC_START,155,208,50,14,WS_DISABLED
     PUSHBUTTON      "S&top",IDC_SVC_STOP,211,208,50,14,WS_DISABLED
@@ -542,9 +547,11 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Symbol Settings"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    CONTROL         "Use the _NT_SYMBOL_&PATH environment variable:",IDC_SYM_USE_ENV,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,7,250,10
+    CONTROL         "Use the _NT_SYMBOL_&PATH environment variable:",IDC_SYM_USE_ENV,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,7,250,10
     LTEXT           "",IDC_SYM_ENV_VALUE,19,19,294,9,SS_NOPREFIX | SS_ENDELLIPSIS
-    CONTROL         "Use a symbol &server (unless _NT_SYMBOL_PATH has one)",IDC_SYM_USE_SERVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,35,250,10
+    CONTROL         "Use a symbol &server (unless _NT_SYMBOL_PATH has one)",IDC_SYM_USE_SERVER,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,35,250,10
     LTEXT           "Symbol server &URL:",IDC_STATIC,19,49,120,8
     EDITTEXT        IDC_SYM_SERVER_URL,19,59,294,14,ES_AUTOHSCROLL
     LTEXT           "Download &cache directory (empty: TotalPE's symbol cache):",IDC_STATIC,7,79,250,8
@@ -569,7 +576,7 @@ BEGIN
     DEFPUSHBUTTON   "&Search",IDC_FIND_SEARCH,423,7,50,14
     CONTROL         "&Handles",IDC_FIND_HANDLES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,25,50,10
     CONTROL         "&DLLs",IDC_FIND_DLLS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,104,25,50,10
-    CONTROL         "",IDC_FIND_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_OWNERDATA | LVS_SHAREIMAGELISTS | WS_BORDER | WS_TABSTOP,7,40,466,213
+    CONTROL         "",IDC_FIND_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,40,466,213
     LTEXT           "",IDC_FIND_STATUS,7,262,276,9,SS_NOPREFIX | SS_ENDELLIPSIS
     PUSHBUTTON      "&Properties...",IDC_FIND_PROPERTIES,288,259,56,14
     PUSHBUTTON      "&Go to Process",IDC_FIND_GOTO,350,259,64,14
@@ -656,9 +663,9 @@ BEGIN
     CONTROL         "&This account:",IDC_SVC_THISACCOUNT,"Button",BS_AUTORADIOBUTTON,14,62,72,10
     EDITTEXT        IDC_SVC_ACCOUNT,90,61,163,12,ES_AUTOHSCROLL | WS_GROUP
     LTEXT           "&Password:",IDC_STATIC,26,79,62,9
-    EDITTEXT        IDC_SVC_PASSWORD,90,77,163,12,ES_AUTOHSCROLL | ES_PASSWORD
+    EDITTEXT        IDC_SVC_PASSWORD,90,77,163,12,ES_PASSWORD | ES_AUTOHSCROLL
     LTEXT           "&Confirm password:",IDC_STATIC,26,95,62,9
-    EDITTEXT        IDC_SVC_CONFIRM,90,93,163,12,ES_AUTOHSCROLL | ES_PASSWORD
+    EDITTEXT        IDC_SVC_CONFIRM,90,93,163,12,ES_PASSWORD | ES_AUTOHSCROLL
     LTEXT           "",IDC_SVC_LOGON_NOTE,7,116,246,30,SS_NOPREFIX
 END
 
@@ -680,13 +687,44 @@ BEGIN
     LTEXT           "Restart ser&vice after:",IDC_STATIC,7,99,90,9
     EDITTEXT        IDC_SVC_RESTARTMIN,100,97,40,12,ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "minutes",IDC_STATIC,145,99,108,9
-    CONTROL         "E&nable actions for stops with errors",IDC_SVC_NONCRASH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,117,246,10
+    CONTROL         "E&nable actions for stops with errors",IDC_SVC_NONCRASH,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,117,246,10
     LTEXT           "Run a program: &command line",IDC_STATIC,7,135,246,9
     EDITTEXT        IDC_SVC_COMMAND,7,146,246,12,ES_AUTOHSCROLL
     LTEXT           "Restart the com&puter after:",IDC_STATIC,7,168,90,9
     EDITTEXT        IDC_SVC_REBOOTMIN,100,166,40,12,ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "minutes",IDC_STATIC,145,168,108,9
     LTEXT           "",IDC_SVC_RECOVERY_NOTE,7,190,246,20,SS_NOPREFIX
+END
+
+IDD_MEMORY_FIND DIALOGEX 0, 0, 260, 118
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Find in Memory"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Find &what:",IDC_STATIC,7,9,44,9
+    EDITTEXT        IDC_MFIND_TEXT,54,7,199,13,ES_AUTOHSCROLL
+    GROUPBOX        "As",IDC_STATIC,7,26,120,62
+    CONTROL         "&Text (ASCII)",IDC_MFIND_ASCII,"Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,14,38,105,10
+    CONTROL         "Text (&Unicode)",IDC_MFIND_UNICODE,"Button",BS_AUTORADIOBUTTON,14,52,105,10
+    CONTROL         "He&x bytes",IDC_MFIND_HEX,"Button",BS_AUTORADIOBUTTON,14,66,105,10
+    GROUPBOX        "In",IDC_STATIC,133,26,120,48
+    CONTROL         "The selected &region",IDC_MFIND_REGION,"Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,140,38,105,10
+    CONTROL         "The &address space",IDC_MFIND_ALL,"Button",BS_AUTORADIOBUTTON,140,52,105,10
+    CONTROL         "Match &case",IDC_MFIND_CASE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,133,78,110,10
+    DEFPUSHBUTTON   "Find",IDOK,149,97,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,203,97,50,14
+END
+
+IDD_MEMORY_GOTO DIALOGEX 0, 0, 220, 58
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Go To Address"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Address (hex):",IDC_STATIC,7,9,56,9
+    EDITTEXT        IDC_MGOTO_ADDRESS,66,7,147,13,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "Go",IDOK,109,37,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,163,37,50,14
 END
 
 IDD_COLUMNS DIALOGEX 0, 0, 230, 220
@@ -757,15 +795,14 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,218,226,50,14
 END
 
-IDD_ABOUTBOX DIALOG 0, 0, 187, 102
+IDD_ABOUTBOX DIALOGEX 0, 0, 197, 77
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "About"
-FONT 9, "Segoe UI"
+CAPTION "About WinSysLive"
+FONT 9, "Segoe UI", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,130,81,50,14
-    CTEXT           "WinSysLive Application v1.0\n\n(c) Copyright 2026",IDC_STATIC,25,57,78,32
-    ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,20
-    GROUPBOX        "",IDC_STATIC,7,7,115,88
+    DEFPUSHBUTTON   "OK",IDOK,73,56,50,14
+    CTEXT           "WinSysLive v1.0\n\n(C)2026 Pavel Yosifovich",IDC_STATIC,55,17,78,27
+    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,18,17
 END
 
 
@@ -800,9 +837,9 @@ BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 180
+        RIGHTMARGIN, 190
         TOPMARGIN, 7
-        BOTTOMMARGIN, 95
+        BOTTOMMARGIN, 70
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -841,8 +878,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -855,15 +892,16 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"
+        BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "WinSysLive Module"
-            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "CompanyName", "Scorpio Software"
+            VALUE "FileDescription", "WinSysLive App"
+            VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "WinSysLive"
-            VALUE "LegalCopyright", "Copyright 2026"
+            VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
             VALUE "ProductName", "WinSysLive Module"
-            VALUE "ProductVersion", "1, 0, 0, 1"
+            VALUE "ProductVersion", "1.0.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -880,7 +918,7 @@ END
 
 IDD_PROC_JOB AFX_DIALOG_LAYOUT
 BEGIN
-    0
+    0,
     0, 0, 0, 0,
     0, 0, 100, 0,
     0, 0, 100, 0,
@@ -895,7 +933,7 @@ END
 
 IDD_PROC_ENVIRONMENT AFX_DIALOG_LAYOUT
 BEGIN
-    0
+    0,
     0, 0, 100, 100,
     0, 100, 100, 0,
     100, 100, 0, 0,
@@ -904,7 +942,7 @@ END
 
 IDD_PROC_TCPIP AFX_DIALOG_LAYOUT
 BEGIN
-    0
+    0,
     0, 0, 100, 100,
     0, 100, 100, 0,
     100, 100, 0, 0,
@@ -913,7 +951,7 @@ END
 
 IDD_PROC_TOKEN AFX_DIALOG_LAYOUT
 BEGIN
-    0
+    0,
     0, 0, 40, 0,
     0, 0, 0, 0,
     0, 0, 40, 0,
@@ -1018,7 +1056,7 @@ END
 
 IDD_PROC_SERVICES AFX_DIALOG_LAYOUT
 BEGIN
-    0
+    0,
     0, 0, 100, 0,
     0, 0, 100, 40,
     0, 40, 100, 0,
@@ -1027,6 +1065,11 @@ BEGIN
     100, 100, 0, 0,
     100, 100, 0, 0,
     100, 100, 0, 0
+END
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
 END
 
 
@@ -1109,7 +1152,6 @@ BEGIN
     ID_PANE_CPU             "CPU: 100.0%  "
     ID_PANE_ELEVATION       "Standard User  "
     ID_PROCESS_KILL         "Terminate the selected process\nKill Process"
-    ID_KILL                 "Terminate the selected process or thread, or close the selected handle: the list with the focus decides\nKill (Del)"
     ID_PROCESS_SUSPEND      "Suspend all the threads of the selected process\nSuspend"
     ID_PROCESS_RESUME       "Resume the threads of the selected process\nResume"
     ID_PROCESS_GOTOFILELOCATION 
@@ -1119,30 +1161,46 @@ END
 
 STRINGTABLE
 BEGIN
+    ID_KILL                 "Terminate the selected process or thread, or close the selected handle: the list with the focus decides\nKill (Del)"
+    ID_PROCESS_MINIDUMP     "Write a minidump of the selected process (threads, modules, handles)\nMinidump"
+    ID_PROCESS_FULLDUMP     "Write a dump of the selected process with all its memory\nFull Dump"
+    ID_FIND_HANDLE          "Find the processes with a handle or a DLL whose name contains a text\nFind Handle or DLL"
+END
+
+STRINGTABLE
+BEGIN
     ID_VIEW_SELECTCOLUMNS   "Choose the columns of the list and their order\nSelect Columns"
     ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
     ID_PANE_THREADS         "Threads: 000,000"
+    ID_PROCESS_KILLALL      "Terminate all the processes with the selected process's image name\nKill All with the Same Name"
+    ID_VIEW_PROPERTIES      "Show the properties of the selected process\nProperties (Alt+Enter)"
+END
+
+STRINGTABLE
+BEGIN
     ID_PROCESS_AFFINITY     "Choose the processors the selected process may run on\nSet Affinity"
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
+    ID_VIEW_DRIVERS         "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nDrivers"
+    ID_DRIVER_PROPERTIES    "Show the properties of the selected driver's file\nProperties"
+    ID_DRIVER_GOTOFILELOCATION 
+                            "Open the folder of the selected driver's file\nOpen File Location"
+    ID_OPTIONS_TRAYICON     "Show a CPU usage graph in the notification area\nTray Icon"
+    ID_OPTIONS_MINIMIZETOTRAY 
+                            "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
+    ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
+END
+
+STRINGTABLE
+BEGIN
+    ID_OPTIONS_REPLACETASKMANAGER 
+                            "Start WinSysLive instead of Task Manager, also for Ctrl+Shift+Esc (needs elevation)\nReplace Task Manager"
+    ID_TRAY_SHOW            "Show or hide the window\nShow"
     ID_THREAD_WAITCHAIN     "Show what the selected thread waits for, and who owns that\nWait Chain"
     ID_PROCESS_WAITCHAIN    "Show what the selected process's threads wait for, deadlocks first\nAnalyze Wait Chain"
     ID_FILE_EXPORT          "Save the list with the focus (or the tab's list) as a CSV or tab-separated file\nExport List (Ctrl+S)"
     ID_EDIT_COPYALL         "Copy every row of the list with the focus (or the tab's list), tab separated\nCopy All Rows"
-    ID_VIEW_DRIVERS         "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nDrivers"
-    ID_DRIVER_PROPERTIES    "Show the properties of the selected driver's file\nProperties"
-    ID_DRIVER_GOTOFILELOCATION "Open the folder of the selected driver's file\nOpen File Location"
-    ID_OPTIONS_TRAYICON     "Show a CPU usage graph in the notification area\nTray Icon"
-    ID_OPTIONS_MINIMIZETOTRAY "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
-    ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
-    ID_OPTIONS_REPLACETASKMANAGER "Start WinSysLive instead of Task Manager, also for Ctrl+Shift+Esc (needs elevation)\nReplace Task Manager"
-    ID_TRAY_SHOW            "Show or hide the window\nShow"
-    ID_FIND_HANDLE          "Find the processes with a handle or a DLL whose name contains a text\nFind Handle or DLL"
-    ID_PROCESS_MINIDUMP     "Write a minidump of the selected process (threads, modules, handles)\nMinidump"
-    ID_PROCESS_FULLDUMP     "Write a dump of the selected process with all its memory\nFull Dump"
-    ID_PROCESS_KILLALL      "Terminate all the processes with the selected process's image name\nKill All with the Same Name"
-    ID_VIEW_PROPERTIES      "Show the properties of the selected process\nProperties (Alt+Enter)"
 END
 
 STRINGTABLE

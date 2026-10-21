@@ -161,9 +161,11 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 
 		if (handles) {
 			auto entries = HandleEnumerator::EnumProcessHandles(pid);
-			wil::unique_handle hProcess(entries ? ::OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid) : nullptr);
-			if (entries && hProcess) {
+			auto process = entries ? Process::OpenById(pid, ProcessAccessMask::DuplicateHandle | ProcessAccessMask::QueryLimitedInformation) : nullptr;
+			if (entries && process) {
 				opened = true;
+				auto hProcess = process->Handle();
+				auto created = process->GetCreateTime();
 				bool files = true;	// until a file's query hangs in this process
 				for (size_t i = 0; i < entries->size(); i++) {
 					if ((i & 255) == 0 && stop.stop_requested())
@@ -176,11 +178,11 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 						continue;
 					}
 					auto hung = nameQuery.GetAbandonedCount();
-					auto handleName = HandleNames::QueryName(hProcess.get(), entry, nameQuery, dosNames, processName);
+					auto handleName = HandleNames::QueryName(hProcess, entry, nameQuery, dosNames, processName);
 					if (file && nameQuery.GetAbandonedCount() > hung)
 						files = false;
 					if (!handleName.empty() && CFilterBox::Contains(handleName, text)
-						&& !add({ pid, name, ObjectTypes::GetName(entry.TypeIndex), entry.Value, std::move(handleName), entry }))
+						&& !add({ pid, name, ObjectTypes::GetName(entry.TypeIndex), entry.Value, std::move(handleName), entry, created }))
 						break;
 				}
 			}
@@ -339,13 +341,14 @@ LRESULT CFindHandleDlg::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 		return 0;
 	// copies: a search in progress may add results while the dialog runs
 	auto r = *result;
-	wil::unique_handle hProcess(::OpenProcess(PROCESS_DUP_HANDLE, FALSE, r.Pid));
-	if (!hProcess) {
+	// not another process that got its ID since the search
+	auto process = Process::OpenById(r.Pid, r.Created, ProcessAccessMask::DuplicateHandle);
+	if (!process) {
 		AtlMessageBox(m_hWnd, std::format(L"Failed to open the process: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
 			IDR_MAINFRAME, MB_ICONERROR);
 		return 0;
 	}
-	CHandleSheet sheet(hProcess.get(), r.Pid, r.ProcessName, *r.Handle, r.Name,
+	CHandleSheet sheet(process->Handle(), r.Pid, r.ProcessName, *r.Handle, r.Name,
 		[this](DWORD pid) { return m_Frame->GetProcessManager().GetProcessNameById(pid); });
 	sheet.DoModal(m_hWnd);
 	return 0;

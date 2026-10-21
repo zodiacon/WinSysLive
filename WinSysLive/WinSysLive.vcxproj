@@ -25,6 +25,10 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseSigned|x64">
+      <Configuration>ReleaseSigned</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -62,6 +66,12 @@
     <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -88,6 +98,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -105,6 +118,9 @@
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -289,6 +305,40 @@
       <DllDataFileName />
     </Midl>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'">
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling />
+      <DebugInformationFormat />
+      <PreprocessorDefinitions>_WINDOWS;STRICT;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>..\wtlhelper\WTLHelper;..\wtlhelper\WTL;..\wtlhelper;..\winsys;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Midl>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <HeaderFileName>WinSysLive.h</HeaderFileName>
+      <InterfaceIdentifierFileName>WinSysLive_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>WinSysLive_p.c</ProxyFileName>
+      <GenerateStublessProxies>true</GenerateStublessProxies>
+      <TypeLibraryName>$(IntDir)/WinSysLive.tlb</TypeLibraryName>
+      <DllDataFileName />
+    </Midl>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
@@ -327,17 +377,18 @@
     </Midl>
   </ItemDefinitionGroup>
   <!-- every configuration: DbgHelp, delay-loaded so the symbol engine loads the exe folder's copy (with symsrv.dll,
-       which the system's lacks) before the first call; both are copied from the Debugging Tools after the build -->
+       which the system's lacks) before the first call; the installer puts both beside the exe -->
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>dbghelp.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>dbghelp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
+  </ItemDefinitionGroup>
+  <!-- ReleaseSigned: Release, with the exe signed (as TotalPE: the Scorpio certificate, timestamped) -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'">
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(WindowsSdkDir)Debuggers\$(PlatformTarget)\dbghelp.dll" "$(OutDir)" &gt;nul
-xcopy /y /d "$(WindowsSdkDir)Debuggers\$(PlatformTarget)\symsrv.dll" "$(OutDir)" &gt;nul
-exit /b 0</Command>
-      <Message>Copying dbghelp.dll and symsrv.dll from the Debugging Tools</Message>
+      <Command>signtool sign /a /n Scorpio /t http://timestamp.digicert.com /fd sha256 "$(TargetPath)"</Command>
+      <Message>Signing</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -361,6 +412,7 @@ exit /b 0</Command>
     <ClCompile Include="WaitChainDlg.cpp" />
     <ClCompile Include="HandleSheet.cpp" />
     <ClCompile Include="ServiceSheet.cpp" />
+    <ClCompile Include="MemoryDialogs.cpp" />
     <ClCompile Include="ObjectSecurity.cpp" />
     <ClCompile Include="AffinityDlg.cpp" />
     <ClCompile Include="FindHandleDlg.cpp" />
@@ -374,6 +426,7 @@ exit /b 0</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseSigned|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="PerfNav.cpp" />
@@ -416,6 +469,7 @@ exit /b 0</Command>
     <ClInclude Include="WaitChainDlg.h" />
     <ClInclude Include="HandleSheet.h" />
     <ClInclude Include="ServiceSheet.h" />
+    <ClInclude Include="MemoryDialogs.h" />
     <ClInclude Include="ObjectSecurity.h" />
     <ClInclude Include="AffinityDlg.h" />
     <ClInclude Include="FindHandleDlg.h" />
@@ -452,6 +506,7 @@ exit /b 0</Command>
     <Image Include="res\chart.ico" />
     <Image Include="res\color_wheel.ico" />
     <Image Include="res\cpu.ico" />
+    <Image Include="res\delete.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />
@@ -462,16 +517,19 @@ exit /b 0</Command>
     <Image Include="res\file.ico" />
     <Image Include="res\folder.ico" />
     <Image Include="res\handle.ico" />
+    <Image Include="res\job.ico" />
     <Image Include="res\key.ico" />
     <Image Include="res\lower-pane.ico" />
     <Image Include="res\Memory.ico" />
     <Image Include="res\message.ico" />
     <Image Include="res\mutex.ico" />
+    <Image Include="res\network.ico" />
     <Image Include="res\Object.ico" />
     <Image Include="res\port.ico" />
     <Image Include="res\section.ico" />
     <Image Include="res\semaphore.ico" />
     <Image Include="res\session.ico" />
+    <Image Include="res\stack.ico" />
     <Image Include="res\thread.ico" />
     <Image Include="res\timer.ico" />
     <Image Include="res\token.ico" />

@@ -31,6 +31,15 @@ void CStackDlg::Capture() {
 	SymbolEngine::Get().CaptureStack(m_Pid, m_Created, m_Tid, m_hWnd);
 }
 
+LRESULT CStackDlg::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// captures posted before the dialog closed: nothing else would free them
+	MSG msg;
+	while (::PeekMessage(&msg, m_hWnd, WM_STACK_CAPTURED, WM_STACK_CAPTURED, PM_REMOVE))
+		delete reinterpret_cast<StackCapture*>(msg.lParam);
+	bHandled = FALSE;
+	return 0;
+}
+
 LRESULT CStackDlg::OnStackCaptured(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
 	std::unique_ptr<StackCapture> capture(reinterpret_cast<StackCapture*>(lParam));
 	GetDlgItem(IDC_STACK_REFRESH).EnableWindow(TRUE);

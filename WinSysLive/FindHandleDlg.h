@@ -87,6 +87,7 @@ private:
 		uint64_t Value;		// the handle, or the module's base address
 		std::wstring Name;
 		std::optional<WinSys::HandleEntry> Handle;	// a handle's, for its properties
+		int64_t Created{ 0 };	// a handle's process's (FILETIME), so its properties don't open another that got its ID
 	};
 
 	// what the worker and the dialog share (the worker may outlive nothing: the dialog joins it)

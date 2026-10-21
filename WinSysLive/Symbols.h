@@ -38,8 +38,8 @@ struct StackCapture {
 //
 // Symbols for addresses in processes (and the kernel, when elevated), through DbgHelp. DbgHelp isn't thread-safe, so
 // every DbgHelp call is made on the engine's own thread; the methods may be called from any thread, and the results
-// come back as messages. dbghelp.dll and symsrv.dll are loaded from the exe's folder (a post-build step copies them
-// from the Debugging Tools), so the symbol server works; without them, the system's dbghelp.dll is used, which can't
+// come back as messages. dbghelp.dll and symsrv.dll are loaded from the exe's folder (the Pavel Tools installer puts
+// the Debugging Tools' copies there), so the symbol server works; without them, the system's dbghelp.dll is used, which can't
 // download symbols.
 //
 // The search path comes from the UI thread (SetSearchPath, built by BuildSymbolSearchPath from the Symbol Settings); a

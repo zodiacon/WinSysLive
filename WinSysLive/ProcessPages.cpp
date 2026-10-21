@@ -47,10 +47,11 @@ namespace {
 }
 
 wil::unique_handle OpenSheetProcess(ProcessProperties const& props, DWORD access) {
-	wil::unique_handle hProcess(::OpenProcess(access, FALSE, props.Id));
+	// with query access always, or the start time couldn't be checked (the Security page asks for none)
+	wil::unique_handle hProcess(::OpenProcess(access | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, props.Id));
 	FILETIME created, exited, kernel, user;
-	if (hProcess && ::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
-		&& (int64_t(created.dwHighDateTime) << 32 | created.dwLowDateTime) != props.CreateTime) {
+	if (hProcess && (!::GetProcessTimes(hProcess.get(), &created, &exited, &kernel, &user)
+		|| (int64_t(created.dwHighDateTime) << 32 | created.dwLowDateTime) != props.CreateTime)) {
 		// another process with the same ID
 		hProcess.reset();
 		::SetLastError(ERROR_NOT_FOUND);
