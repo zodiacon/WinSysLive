@@ -97,11 +97,10 @@ std::wstring const& CServicesView::ServiceItem::GetPrivileges() {
 std::wstring const& CServicesView::ServiceItem::GetTriggers() {
 	if (!m_TriggersLoaded) {
 		m_TriggersLoaded = true;
-		// only the type and action: ServiceTrigger::TriggerSubtype points into a buffer GetTriggers has freed
 		if (auto svc = Service::Open(Info.GetName(), ServiceAccessMask::QueryConfig)) {
-			// without the subtypes, triggers of a type look the same: "Start: Network endpoint (3)"
+			// by type and action, counted (the subtypes are on the sheet's Triggers page): "Start: Network endpoint (3)"
 			std::vector<std::pair<std::wstring, int>> triggers;
-			for (auto& t : svc->GetTriggers()) {
+			for (auto& t : svc->GetTriggerDetails()) {
 				auto text = FormatHelper::ServiceTriggerToString(t.Type, t.Action);
 				if (auto it = std::ranges::find(triggers, text, &std::pair<std::wstring, int>::first); it != triggers.end())
 					it->second++;

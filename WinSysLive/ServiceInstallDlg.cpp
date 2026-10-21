@@ -138,11 +138,6 @@ LRESULT CServiceInstallDlg::OnOK(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 		params.Password = password;
 	}
 	params.Dependencies = GetText(GetDlgItem(IDC_SVCI_DEPENDENCIES));
-	// WinSys copies them into a 512-character buffer
-	if (params.Dependencies.size() >= 510) {
-		Invalid(IDC_SVCI_DEPENDENCIES, L"The dependencies are too long.");
-		return 0;
-	}
 
 	auto service = ServiceManager::Install(params);
 	SecureZeroMemory(params.Password.data(), params.Password.size() * sizeof(WCHAR));

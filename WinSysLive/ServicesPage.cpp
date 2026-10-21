@@ -216,10 +216,9 @@ CProcServicesPage::ServiceData CProcServicesPage::ReadService(std::wstring const
 		add(L"SID type", SidTypeToString(service->GetSidType()));
 		auto privileges = service->GetRequiredPrivileges();
 		add(L"Required privileges", privileges.empty() ? L"Default" : Join(privileges, [](auto& p) { return p; }));
-		// only the type and action: ServiceTrigger::TriggerSubtype points into a buffer GetTriggers has freed
 		// triggers of the same type and action (different subtypes) shown once, with their count
 		std::vector<std::pair<std::wstring, int>> triggers;
-		for (auto& t : service->GetTriggers()) {
+		for (auto& t : service->GetTriggerDetails()) {
 			auto text = FormatHelper::ServiceTriggerToString(t.Type, t.Action);
 			if (auto it = std::ranges::find(triggers, text, &std::pair<std::wstring, int>::first); it != triggers.end())
 				it->second++;
