@@ -362,6 +362,7 @@ IDI_ATOM                ICON                    "res\\atom.ico"
 IDI_DRIVER              ICON                    "res\\Driver.ico"
 
 IDI_SYSTEM_DRIVER       ICON                    "res\\System.ico"
+IDI_TARGET              ICON                    "res\\target.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1282,6 +1283,7 @@ BEGIN
     ID_PROCESS_MINIDUMP     "Write a minidump of the selected process (threads, modules, handles)\nMinidump"
     ID_PROCESS_FULLDUMP     "Write a dump of the selected process with all its memory\nFull Dump"
     ID_FIND_HANDLE          "Find the processes with a handle or a DLL whose name contains a text\nFind Handle or DLL"
+    ID_FIND_WINDOW          "Drag onto a window to select the process that owns it\nFind Window's Process (drag onto a window)"
 END
 
 STRINGTABLE

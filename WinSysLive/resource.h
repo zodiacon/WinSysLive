@@ -333,6 +333,7 @@
 #define IDC_SVC_TRIGGERS            1243
 #define IDC_SVC_TRIGGERDATA         1244
 #define IDD_SERVICE_INSTALL         279
+#define IDI_TARGET                  280
 #define IDC_SVCI_NAME               1245
 #define IDC_SVCI_DISPLAYNAME        1246
 #define IDC_SVCI_DESCRIPTION        1247
@@ -347,6 +348,7 @@
 #define IDC_SVCI_START              1256
 #define ID_SERVICE_INSTALL          32882
 #define ID_SERVICE_DELETE           32883
+#define ID_FIND_WINDOW              32884
 #define IDD_FIND_HANDLE             259
 #define IDC_FIND_TEXT               1133
 #define IDC_FIND_SEARCH             1134
@@ -427,9 +429,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	280
+#define _APS_NEXT_RESOURCE_VALUE	281
 #define _APS_NEXT_CONTROL_VALUE		1261
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32884
+#define _APS_NEXT_COMMAND_VALUE		32885
 #endif
 #endif

@@ -411,6 +411,7 @@
     <ClCompile Include="StackDlg.cpp" />
     <ClCompile Include="ListExport.cpp" />
     <ClCompile Include="WaitChainDlg.cpp" />
+    <ClCompile Include="WindowFinder.cpp" />
     <ClCompile Include="HandleSheet.cpp" />
     <ClCompile Include="ServiceSheet.cpp" />
     <ClCompile Include="ServiceSteps.cpp" />
@@ -474,6 +475,7 @@
     <ClInclude Include="StackDlg.h" />
     <ClInclude Include="ListExport.h" />
     <ClInclude Include="WaitChainDlg.h" />
+    <ClInclude Include="WindowFinder.h" />
     <ClInclude Include="HandleSheet.h" />
     <ClInclude Include="ServiceSheet.h" />
     <ClInclude Include="ServiceSteps.h" />
@@ -528,6 +530,7 @@
     <Image Include="res\atom.ico" />
     <Image Include="res\Driver.ico" />
     <Image Include="res\System.ico" />
+    <Image Include="res\target.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

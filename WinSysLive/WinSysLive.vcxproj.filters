@@ -147,6 +147,9 @@
     <ClCompile Include="WaitChainDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="WindowFinder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="AffinityDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -311,6 +314,9 @@
     </ClInclude>
     <ClInclude Include="WaitChainDlg.h">
       <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowFinder.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AffinityDlg.h">
       <Filter>Dialogs</Filter>
@@ -509,6 +515,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\System.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\target.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

@@ -46,6 +46,8 @@ namespace {
 		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
 		{ ID_VIEW_LOWERPANE, IDI_LOWERPANE, BTNS_CHECK },
 		{ ID_KILL, IDI_DELETE },	// the process, thread or handle selected in the list with the focus
+		{ 0 },
+		{ ID_FIND_WINDOW, IDI_TARGET },	// dragged onto a window, not clicked (CWindowFinder)
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 
@@ -80,6 +82,12 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	// the modeless Find Handle or DLL dialog's keys (Tab, Enter, Escape) before the frame's accelerators
 	if (m_FindDlg && m_FindDlg->IsWindow() && m_FindDlg->IsDialogMessage(pMsg))
 		return TRUE;
+
+	// Escape cancels dragging the window finder (the keys go to the focus, not the toolbar holding the capture)
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE && m_WindowFinder.IsDragging()) {
+		m_WindowFinder.Cancel();
+		return TRUE;
+	}
 
 	if (CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg))
 		return TRUE;
@@ -426,6 +434,8 @@ void CMainFrame::InitToolBar(bool elevated) {
 
 	AddSimpleReBarBand(m_ToolBar);
 	UIAddToolBar(m_ToolBar);
+	m_WindowFinder.Init(m_ToolBar, ID_FIND_WINDOW,
+		[this](HWND hWnd) { OnFinderHover(hWnd); }, [this](HWND hWnd) { OnWindowFound(hWnd); });
 }
 
 void CMainFrame::AddToolBarImages() {
@@ -962,6 +972,35 @@ void CMainFrame::GoToKernelModule(std::wstring const& path) {
 void CMainFrame::GoToDriver(std::wstring const& path) {
 	if (auto view = ActivateTab(TabType::Drivers); view && !view->ShowDriver(path))
 		AtlMessageBox(m_hWnd, std::format(L"No driver service has {} as its image.", path).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
+void CMainFrame::OnFinderHover(HWND hWnd) {
+	if (!hWnd) {
+		if (m_FinderSavedStatus)
+			m_StatusBar.SetPaneText(ID_DEFAULT_PANE, m_FinderSavedStatus->c_str());
+		m_FinderSavedStatus.reset();
+		return;
+	}
+	if (!m_FinderSavedStatus) {
+		CString text;
+		m_StatusBar.GetPaneText(ID_DEFAULT_PANE, text);
+		m_FinderSavedStatus = (PCWSTR)text;
+	}
+	DWORD pid = 0;
+	::GetWindowThreadProcessId(hWnd, &pid);
+	// InternalGetWindowText sends no message, so a hung window can't hang the drag
+	WCHAR title[128]{}, className[64]{};
+	::InternalGetWindowText(hWnd, title, _countof(title));
+	::GetClassName(hWnd, className, _countof(className));
+	auto name = m_ProcessManager.GetProcessNameById(pid);
+	m_StatusBar.SetPaneText(ID_DEFAULT_PANE, std::format(L"{} ({}): {} [{}]",
+		name.empty() ? L"<unknown>" : name, pid, *title ? title : L"<no title>", className).c_str());
+}
+
+void CMainFrame::OnWindowFound(HWND hWnd) {
+	DWORD pid = 0;
+	if (::GetWindowThreadProcessId(hWnd, &pid))
+		GoToProcess(pid);
 }
 
 void CMainFrame::GoToProcess(uint32_t pid) {

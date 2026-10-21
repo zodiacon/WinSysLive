@@ -11,6 +11,7 @@
 #include "Interfaces.h"
 #include "FindHandleDlg.h"
 #include "TrayIcon.h"
+#include "WindowFinder.h"
 
 // tabs are fixed, so no close button; the image list is the frame's shared one
 class CMainTabView : public CNativeCustomTabViewImpl<CMainTabView> {
@@ -213,6 +214,9 @@ private:
 	// the window back from the tray (or minimized), in front
 	void RestoreWindow();
 	void ShowTrayMenu();
+	// the window finder: the window under the cursor in the status bar while dragging, the process when dropped
+	void OnFinderHover(HWND hWnd);
+	void OnWindowFound(HWND hWnd);
 	// the list Export List and Copy All Rows act on: a list view of the active view's with the focus, else the view's
 	// main list; nullptr if there's none
 	HWND GetExportList();
@@ -233,6 +237,8 @@ private:
 	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
 	CTrayIcon m_Tray;
+	CWindowFinder m_WindowFinder;	// subclasses the toolbar
+	std::optional<std::wstring> m_FinderSavedStatus;	// the status text before the drag, restored after it
 	static inline UINT const s_TaskbarCreated = ::RegisterWindowMessage(L"TaskbarCreated");
 	ProcessManager m_ProcessManager;
 	int m_ActivePage{ -1 };
