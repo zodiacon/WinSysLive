@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MemoryPage.h"
+#include <ListViewhelper.h>
 #include "FormatHelper.h"
 #include "ViewBase.h"
 #include <WinSys/Handles.h>
@@ -169,20 +170,25 @@ namespace {
 }
 
 int CMemoryHexView::GetWidthFor(int bytesPerLine) {
-	if (m_CharWidth == 0) {
-		// as the control measures it
+	auto dpi = ::GetDpiForWindow(m_hWnd);
+	if (m_CharWidth == 0 || m_CharWidthDpi != dpi) {
+		// as the control measures it: its font for its DPI (FontSize is in tenths of a point)
+		LOGFONT lf{};
+		::StringCchCopy(lf.lfFaceName, LF_FACESIZE, FontName);
+		lf.lfHeight = -::MulDiv(FontSize, dpi, 720);
+		lf.lfCharSet = DEFAULT_CHARSET;
 		CFont font;
-		font.CreatePointFont(FontSize, FontName);
+		font.CreateFontIndirect(&lf);
 		CClientDC dc(m_hWnd);
 		auto old = dc.SelectFont(font);
 		TEXTMETRIC tm;
 		dc.GetTextMetrics(&tm);
 		dc.SelectFont(old);
 		m_CharWidth = tm.tmAveCharWidth;
+		m_CharWidthDpi = dpi;
 	}
 	// the address, the bytes (two digits and a space each), the characters, and a little room
 	int chars = 16 + 1 + bytesPerLine * 3 + 1 + bytesPerLine + 2;
-	auto dpi = ::GetDpiForWindow(m_hWnd);
 	return chars * m_CharWidth + ::GetSystemMetricsForDpi(SM_CXVSCROLL, dpi) + 2 * ::GetSystemMetricsForDpi(SM_CXEDGE, dpi);
 }
 
@@ -226,6 +232,8 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	auto dpi = ::GetDpiForWindow(m_hWnd);
 	for (int i = 0; i < _countof(s_Columns); i++)
 		m_Tree.InsertColumn(i, s_Columns[i].Name, ::MulDiv(s_Columns[i].Width, dpi, 96), s_Columns[i].Format);
+	// the TreeListView doesn't scale its column widths to a new DPI
+	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 
 	m_Hex.SetFont(CMemoryHexView::FontName, CMemoryHexView::FontSize);
 	m_Hex.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP | WS_BORDER, 0);

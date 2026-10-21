@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ProcessPages.h"
+#include <ListViewhelper.h>
 #include "ObjectSecurity.h"
 #include "FormatHelper.h"
 #include "Signature.h"
@@ -184,9 +185,9 @@ LRESULT CProcEnvironmentPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPA
 	m_List.Attach(GetDlgItem(IDC_ENV_LIST));
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP);
 	auto cm = GetColumnManager(m_List);
-	auto dpi = ::GetDpiForWindow(m_hWnd);
-	cm->AddColumn(L"Name", LVCFMT_LEFT, ::MulDiv(180, dpi, 96));
-	cm->AddColumn(L"Value", LVCFMT_LEFT, ::MulDiv(560, dpi, 96));
+	// at 96 DPI: the column manager scales them
+	cm->AddColumn(L"Name", LVCFMT_LEFT, 180);
+	cm->AddColumn(L"Value", LVCFMT_LEFT, 560);
 
 	if (Load()) {
 		m_List.SetItemCount((int)m_Vars.size());
@@ -365,6 +366,8 @@ namespace {
 		int i = 0;
 		for (auto& [name, width] : columns)
 			list.InsertColumn(i++, name, LVCFMT_LEFT, ::MulDiv(width, dpi, 96));
+		// the widths follow the list's DPI from now on
+		ListViewHelper::EnableColumnDpiScaling(list);
 	}
 
 	void AddRow(CListViewCtrl& list, std::initializer_list<std::wstring> texts) {

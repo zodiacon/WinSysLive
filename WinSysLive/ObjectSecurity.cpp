@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <DpiHelper.h>
 #include "ObjectSecurity.h"
 #include <WinSys/ObjectDetails.h>
 #include <WinSys/AccessMask.h>
@@ -196,7 +197,7 @@ void CALLBACK CAclDialogTheming::OnTimer(HWND, UINT, UINT_PTR id, DWORD) {
 }
 
 void SetSecurityTabIcon(HWND sheet, int tab) {
-	auto size = ::GetSystemMetrics(SM_CXSMICON);
+	auto size = DpiHelper::SmallIconSize(sheet);
 	CIcon shield;
 	if (FAILED(::LoadIconWithScaleDown(nullptr, IDI_SHIELD, size, size, &shield.m_hIcon)))
 		return;

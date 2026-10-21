@@ -34,6 +34,10 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
+	// the frame's image list has the new DPI's size: the rows take its height
+	void OnDpiChanged(UINT /*dpi*/) override {
+		m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+	}
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;

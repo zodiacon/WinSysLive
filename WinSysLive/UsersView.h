@@ -28,6 +28,10 @@ public:
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
 	void OnFontChanged(HFONT font) override;
+	// the frame's image list has the new DPI's size: the rows take its height
+	void OnDpiChanged(UINT /*dpi*/) override {
+		m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+	}
 
 	BEGIN_MSG_MAP(CUsersView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)

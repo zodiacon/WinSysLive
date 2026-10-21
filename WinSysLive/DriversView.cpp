@@ -31,25 +31,24 @@ LRESULT CDriversView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_Signatures->Notify = m_hWnd;
 
 	auto cm = GetColumnManager(m_List);
-	auto dpi = ::GetDpiForWindow(m_hWnd);
-	auto width = [&](int w) { return ::MulDiv(w, dpi, 96); };
-	cm->AddColumn(L"Name", LVCFMT_LEFT, width(160), Column::Name);
-	cm->AddColumn(L"Base", LVCFMT_RIGHT, width(130), Column::Base);
-	cm->AddColumn(L"Size", LVCFMT_RIGHT, width(80), Column::Size);
-	cm->AddColumn(L"Load Order", LVCFMT_RIGHT, width(75), Column::LoadOrder);
-	cm->AddColumn(L"Description", LVCFMT_LEFT, width(250), Column::Description);
-	cm->AddColumn(L"Company", LVCFMT_LEFT, width(170), Column::Company);
-	cm->AddColumn(L"Version", LVCFMT_LEFT, width(130), Column::Version);
-	cm->AddColumn(L"Signature", LVCFMT_LEFT, width(280), Column::Signature);
-	cm->AddColumn(L"Path", LVCFMT_LEFT, width(380), Column::Path);
+	// widths at 96 DPI: the column manager scales them to the list's DPI
+	cm->AddColumn(L"Name", LVCFMT_LEFT, 160, Column::Name);
+	cm->AddColumn(L"Base", LVCFMT_RIGHT, 130, Column::Base);
+	cm->AddColumn(L"Size", LVCFMT_RIGHT, 80, Column::Size);
+	cm->AddColumn(L"Load Order", LVCFMT_RIGHT, 75, Column::LoadOrder);
+	cm->AddColumn(L"Description", LVCFMT_LEFT, 250, Column::Description);
+	cm->AddColumn(L"Company", LVCFMT_LEFT, 170, Column::Company);
+	cm->AddColumn(L"Version", LVCFMT_LEFT, 130, Column::Version);
+	cm->AddColumn(L"Signature", LVCFMT_LEFT, 280, Column::Signature);
+	cm->AddColumn(L"Path", LVCFMT_LEFT, 380, Column::Path);
 
-	int filterWidth = width(360);
+	int filterWidth = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, filterWidth, L"Filter: name, path, description or company (Ctrl+F)",
 		m_List, [this](auto&) {
 			ShowRows(GetSelectedKey());
 			UpdateStatus();
 		});
-	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, filterWidth);
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 
 	OnRefresh(false);
 	return 0;

@@ -454,6 +454,7 @@
     <ClInclude Include="ConnectionRows.h" />
     <ClInclude Include="HandleIcons.h" />
     <ClInclude Include="FilterBox.h" />
+    <ClInclude Include="DpiLayout.h" />
     <ClInclude Include="ProcessColors.h" />
     <ClInclude Include="ProcessColorsDlg.h" />
     <ClInclude Include="ColumnsDlg.h" />
@@ -501,6 +502,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WinSysLive.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="WinSysLive.manifest" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\chart.ico" />

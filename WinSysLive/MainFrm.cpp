@@ -18,6 +18,45 @@
 #include <ToolbarHelper.h>
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/Helpers.h>
+#include <DpiHelper.h>
+
+namespace {
+	// the frame's images, in their image list order (the process icons follow them)
+	const UINT s_Icons[] = {
+		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_USERS, IDI_NETWORK, IDI_RUN, IDI_KILL,
+		IDI_HANDLES, IDI_MODULES, IDI_THREADS,
+		// object types, for the Handles tab
+		IDI_OBJECT, IDI_GRAPHICS, IDI_FILE, IDI_DESKTOP, IDI_DEVICE, IDI_EVENT, IDI_KEY, IDI_ALPC, IDI_MUTEX, IDI_SEMAPHORE, IDI_TIMER,
+		IDI_DIRECTX, IDI_ETW, IDI_DIRECTORY, IDI_PORT, IDI_SECTION, IDI_SESSION, IDI_TOKEN, IDI_WINSTA, IDI_JOB,
+		// thread states, for the Threads tab
+		IDI_PAUSE, IDI_CONTINUE, IDI_MEMORY,
+	};
+
+	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
+	const ToolBarButtonInfo s_ToolBarButtons[] = {
+		{ ID_VIEW_PAUSE, IDI_PAUSE },
+		{ ID_VIEW_REFRESH, IDI_REFRESH },
+		{ 0 },
+		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
+		{ ID_VIEW_LOWERPANE, IDI_LOWERPANE, BTNS_CHECK },
+		{ ID_KILL, IDI_DELETE },	// the process, thread or handle selected in the list with the focus
+	};
+	const int ToolBarIconSize = 24;	// at 96 DPI
+
+	// pane widths come from the panes' string resources
+	int s_Panes[] = { ID_DEFAULT_PANE, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
+
+	// an executable's icon in a size (ExtractIconEx's small icons are of the system DPI)
+	HICON ExtractFileIcon(std::wstring const& path, int size) {
+		HICON hIcon = nullptr;
+		return SUCCEEDED(::SHDefExtractIcon(path.c_str(), 0, 0, &hIcon, nullptr, size)) ? hIcon : nullptr;
+	}
+
+	HICON LoadDefaultProcessIcon(int size) {
+		HICON hIcon = nullptr;
+		return SUCCEEDED(::LoadIconWithScaleDown(nullptr, IDI_APPLICATION, size, size, &hIcon)) ? hIcon : nullptr;
+	}
+}
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
 	// keys that edit text belong to an edit control with the focus (a filter box, a label being edited), not to the
@@ -163,6 +202,29 @@ LRESULT CMainFrame::OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL
 	return 0;
 }
 
+LRESULT CMainFrame::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	// moved to a monitor with another DPI (or its DPI changed): the size Windows suggests for the new DPI. The child
+	// windows get WM_DPICHANGED_AFTERPARENT after this (the lists scale their columns then, the filter boxes resize)
+	auto rc = reinterpret_cast<RECT const*>(lParam);
+	SetWindowPos(nullptr, rc, SWP_NOZORDER | SWP_NOACTIVATE);
+
+	UpdateImageList();
+	m_Tabs.SetImageList(m_Images);
+	UpdateToolBar();
+	InitMenu(GetMenu());
+	// the pane widths for the status bar's font at the new DPI
+	m_StatusBar.SetPanes(s_Panes, _countof(s_Panes), false);
+	UpdateStatusBar();
+	// a font of the user's choice, at the new DPI (the views' default fonts follow the DPI by themselves)
+	if (!m_Font.IsNull())
+		ApplyFont();
+	auto dpi = DpiHelper::GetDpi(m_hWnd);
+	for (auto view : m_Views)
+		view->OnDpiChanged(dpi);
+	UpdateLayout();
+	return 0;
+}
+
 LRESULT CMainFrame::OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
 	switch ((UINT)lParam) {
 		case WM_LBUTTONUP:
@@ -290,55 +352,92 @@ LRESULT CMainFrame::OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 }
 
 void CMainFrame::InitImageList() {
-	static const UINT icons[] = {
-		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_USERS, IDI_NETWORK, IDI_RUN, IDI_KILL,
-		IDI_HANDLES, IDI_MODULES, IDI_THREADS,
-		// object types, for the Handles tab
-		IDI_OBJECT, IDI_GRAPHICS, IDI_FILE, IDI_DESKTOP, IDI_DEVICE, IDI_EVENT, IDI_KEY, IDI_ALPC, IDI_MUTEX, IDI_SEMAPHORE, IDI_TIMER,
-		IDI_DIRECTX, IDI_ETW, IDI_DIRECTORY, IDI_PORT, IDI_SECTION, IDI_SESSION, IDI_TOKEN, IDI_WINSTA, IDI_JOB,
-		// thread states, for the Threads tab
-		IDI_PAUSE, IDI_CONTINUE, IDI_MEMORY,
-	};
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.Create(size, size, ILC_COLOR32 | ILC_MASK, _countof(s_Icons) + 1, 16);
+	AddImages();
+}
 
-	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons) + 1, 16);
-	for (auto id : icons)
-		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, 16));
+void CMainFrame::AddImages() {
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	for (auto id : s_Icons)
+		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, size));
 	// processes without an icon of their own get the system's default application icon
-	m_IconIndices[IDI_PROCESS] = m_Images.AddIcon(::LoadIcon(nullptr, IDI_APPLICATION));
+	CIcon hDefault(LoadDefaultProcessIcon(size));
+	m_IconIndices[IDI_PROCESS] = m_Images.AddIcon(hDefault);
+}
+
+void CMainFrame::UpdateImageList() {
+	// the same image list (the views and the tab view have it) at the same indices, in the new size: SetIconSize
+	// empties it, and the images are added again in their order, the process icons after the frame's
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.SetIconSize(size, size);
+	AddImages();
+	std::vector<std::pair<int, std::wstring const*>> processIcons;
+	for (auto& [path, index] : m_ProcessIcons)
+		if (index != GetIconIndex(IDI_PROCESS))
+			processIcons.push_back({ index, &path });
+	std::ranges::sort(processIcons);
+	CIcon hDefault(LoadDefaultProcessIcon(size));
+	for (auto& [index, path] : processIcons) {
+		CIcon hIcon(ExtractFileIcon(*path, size));
+		ATLVERIFY(m_Images.AddIcon(hIcon ? hIcon.m_hIcon : hDefault.m_hIcon) == index);
+	}
 }
 
 void CMainFrame::InitToolBar(bool elevated) {
-	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
-	ToolBarButtonInfo const buttons[] = {
-		{ ID_VIEW_PAUSE, IDI_PAUSE },
-		{ ID_VIEW_REFRESH, IDI_REFRESH },
-		{ 0 },
-		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
-		{ ID_VIEW_LOWERPANE, IDI_LOWERPANE, BTNS_CHECK },
-		{ ID_KILL, IDI_DELETE },	// the process, thread or handle selected in the list with the focus
-	};
-	const int iconSize = 24;
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
-	m_ToolBar = ToolbarHelper::CreateAndInitToolBar(m_hWnd, buttons, _countof(buttons), iconSize);
-
-	// the pause button switches to a "run" image while paused
-	CImageList images = m_ToolBar.GetImageList();
-	m_PauseImage = 0;	// first button's image
-	m_RunImage = images.AddIcon(IconHelper::LoadCached(IDI_RUN, iconSize));
-
+	// the button images' size is at 96 DPI, scaled to the frame's
+	m_ToolBar = ToolbarHelper::CreateAndInitToolBar(m_hWnd, s_ToolBarButtons, _countof(s_ToolBarButtons), ToolBarIconSize);
+	AddToolBarImages();
 	if (!elevated) {
-		static const HICON hShield = IconHelper::GetStockIcon(SIID_SHIELD, true);
 		m_ToolBar.AddSeparator(0);
-		m_ToolBar.AddButton(ID_FILE_RUNASADMIN, BTNS_BUTTON, TBSTATE_ENABLED, images.AddIcon(hShield), nullptr, 0);
+		m_ToolBar.AddButton(ID_FILE_RUNASADMIN, BTNS_BUTTON, TBSTATE_ENABLED, m_ShieldImage, nullptr, 0);
 	}
 
 	AddSimpleReBarBand(m_ToolBar);
 	UIAddToolBar(m_ToolBar);
 }
 
+void CMainFrame::AddToolBarImages() {
+	// after the buttons' own images
+	auto size = DpiHelper::Scale(ToolBarIconSize, m_ToolBar.m_hWnd);
+	CImageList images = m_ToolBar.GetImageList();
+	// the pause button switches to a "run" image while paused
+	m_PauseImage = 0;	// first button's image
+	m_RunImage = images.AddIcon(IconHelper::LoadCached(IDI_RUN, size));
+	CIcon hShield(IconHelper::GetStockIcon(SIID_SHIELD, true, DpiHelper::GetDpi(m_ToolBar)));
+	m_ShieldImage = images.AddIcon(hShield);
+}
+
+void CMainFrame::UpdateToolBar() {
+	// the buttons' images in the new size (the buttons keep their indices)
+	ToolbarHelper::UpdateToolBarImages(m_ToolBar, s_ToolBarButtons, _countof(s_ToolBarButtons), ToolBarIconSize);
+	AddToolBarImages();
+	m_ToolBar.ChangeBitmap(ID_VIEW_PAUSE, m_Paused ? m_RunImage : m_PauseImage);
+	m_ToolBar.AutoSize();
+	// the band for the toolbar's new size, as AddSimpleReBarBand sets it: a button's height, the width to the last one's end
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_ToolBar) {
+			CRect rc;
+			m_ToolBar.GetItemRect(m_ToolBar.GetButtonCount() - 1, &rc);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cyMinChild = rc.Height();
+			band.cxIdeal = rc.right;
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+}
+
 void CMainFrame::InitMenu(HMENU hMenu) {
-	// GetShieldIcon creates a new icon on every call, and InitMenu caches its bitmaps by icon handle
-	static const HICON hShield = IconHelper::GetShieldIcon();
+	// GetShieldIcon creates a new icon on every call, and InitMenu caches its bitmaps by icon handle: one for each DPI
+	static std::unordered_map<UINT, HICON> s_Shields;
+	auto dpi = DpiHelper::GetDpi(m_hWnd);
+	auto& hShield = s_Shields[dpi];
+	if (!hShield)
+		hShield = IconHelper::GetShieldIcon(dpi);
 
 	std::vector<MenuItemData> commands{
 		{ ID_FILE_RUNASADMIN, 0, hShield },
@@ -352,7 +451,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 	for (auto& tab : s_Tabs)
 		commands.push_back({ (int)tab.CommandId, (int)tab.Icon });
 
-	WTLHelper::InitMenu(hMenu, commands.data(), (int)commands.size());
+	WTLHelper::InitMenu(hMenu, commands.data(), (int)commands.size(), DpiHelper::SmallIconSize(m_hWnd));
 }
 
 void CMainFrame::RemoveRunAsAdminMenuItem() {
@@ -371,10 +470,7 @@ void CMainFrame::RemoveRunAsAdminMenuItem() {
 void CMainFrame::InitStatusBar() {
 	CreateSimpleStatusBar();
 	m_StatusBar.SubclassWindow(m_hWndStatusBar);
-
-	// pane widths come from the panes' string resources
-	int panes[] = { ID_DEFAULT_PANE, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
-	m_StatusBar.SetPanes(panes, _countof(panes), false);
+	m_StatusBar.SetPanes(s_Panes, _countof(s_Panes), false);
 	m_StatusBar.SetPaneText(ID_PANE_CPU, L"CPU: --");
 	m_StatusBar.SetPaneText(ID_PANE_ELEVATION, WinSys::SecurityHelper::IsRunningElevated() ? L"Administrator" : L"Standard User");
 }
@@ -780,13 +876,8 @@ int CMainFrame::GetProcessIcon(ProcessInfoEx& process) {
 	if (auto it = m_ProcessIcons.find((PCWSTR)key); it != m_ProcessIcons.end())
 		return it->second;
 
-	HICON hIcon = nullptr;
-	::ExtractIconEx(path.c_str(), 0, nullptr, &hIcon, 1);
-	int index = defaultIcon;
-	if (hIcon) {
-		index = m_Images.AddIcon(hIcon);
-		::DestroyIcon(hIcon);
-	}
+	CIcon hIcon(ExtractFileIcon(path, DpiHelper::SmallIconSize(m_hWnd)));
+	int index = hIcon ? m_Images.AddIcon(hIcon) : defaultIcon;
 	m_ProcessIcons.insert({ (PCWSTR)key, index });
 	return index;
 }

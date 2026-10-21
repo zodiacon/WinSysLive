@@ -6,6 +6,7 @@
 #include <WinSys/Handles.h>
 #include <WinSys/ObjectDetails.h>
 #include "ObjectSecurity.h"
+#include "DpiLayout.h"
 #include <functional>
 
 class CHandleSheet;
@@ -16,7 +17,8 @@ class CHandleSheet;
 //
 class CHandleListPage :
 	public CPropertyPageImpl<CHandleListPage>,
-	public CDialogResize<CHandleListPage> {
+	public CDialogResize<CHandleListPage>,
+	public CDpiDialogResizePage<CHandleListPage> {
 public:
 	enum { IDD = IDD_HANDLE_PAGE };
 
@@ -45,6 +47,7 @@ public:
 		NOTIFY_HANDLER(IDC_HANDLEPROPS_LIST, NM_CUSTOMDRAW, OnCustomDraw)
 		COMMAND_ID_HANDLER(IDC_HANDLEPROPS_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_HANDLEPROPS_COPY, OnCopy)
+		CHAIN_MSG_MAP(CDpiDialogResizePage<CHandleListPage>)
 		CHAIN_MSG_MAP(CDialogResize<CHandleListPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CHandleListPage>)
 	END_MSG_MAP()

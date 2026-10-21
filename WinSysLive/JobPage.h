@@ -15,7 +15,7 @@
 //
 class CProcJobPage :
 	public CPropertyPageImpl<CProcJobPage>,
-	public CDynamicDialogLayout<CProcJobPage> {
+	public CDpiDynamicDialogLayout<CProcJobPage> {
 public:
 	enum { IDD = IDD_PROC_JOB };
 
@@ -29,7 +29,7 @@ public:
 	BEGIN_MSG_MAP(CProcJobPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_HANDLER(IDC_JOB_JOBS, CBN_SELCHANGE, OnJobChanged)
-		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcJobPage>)
+		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcJobPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcJobPage>)
 	END_MSG_MAP()
 

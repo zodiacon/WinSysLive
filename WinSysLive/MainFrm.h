@@ -49,6 +49,7 @@ public:
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_TRAYICON, OnTrayIcon)
 		MESSAGE_HANDLER(s_TaskbarCreated, OnTaskbarCreated)
 		MESSAGE_HANDLER(ActivateMessage, OnActivateMessage)
@@ -116,6 +117,7 @@ public:
 	LRESULT OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopyAllRows(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -168,10 +170,18 @@ private:
 
 	std::pair<IView*, CMessageMap*> CreateView(TabType type);	// ViewFactory.cpp
 	void InitImageList();
+	// the frame's icons into the image list, in the size for its DPI
+	void AddImages();
+	// the image list for a new DPI, the same indices (process icons too)
+	void UpdateImageList();
 	void InitMenu(HMENU hMenu);
 	void RemoveRunAsAdminMenuItem();
 	void InitStatusBar();
 	void InitToolBar(bool elevated);
+	// the images that follow the buttons' own: run (for the pause button) and the shield (Run as Administrator)
+	void AddToolBarImages();
+	// the toolbar's images and its band for a new DPI
+	void UpdateToolBar();
 	void CreateTabs();
 	void SetDarkMode(bool dark);
 	// creates the font from the Font setting (or the default) and hands it to the views
@@ -197,6 +207,7 @@ private:
 	CMultiPaneStatusBarCtrl m_StatusBar;
 	CToolBarCtrl m_ToolBar;
 	int m_PauseImage{ -1 }, m_RunImage{ -1 };	// the pause button shows the action it performs
+	int m_ShieldImage{ -1 };
 	CImageListManaged m_Images;
 	std::unordered_map<UINT, int> m_IconIndices;
 	std::unordered_map<std::wstring, int> m_ProcessIcons;	// image path (lowercase) to image list index

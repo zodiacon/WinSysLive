@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ServicesPage.h"
+#include <ListViewhelper.h>
 #include "FormatHelper.h"
 #include "VersionInfo.h"
 #include <WinSys/ServiceManager.h>
@@ -28,6 +29,8 @@ namespace {
 		int i = 0;
 		for (auto& [name, width] : columns)
 			list.InsertColumn(i++, name, LVCFMT_LEFT, ::MulDiv(width, dpi, 96));
+		// the widths follow the list's DPI from now on
+		ListViewHelper::EnableColumnDpiScaling(list);
 	}
 
 	std::wstring ControlsAcceptedToString(ServiceControlsAccepted controls) {

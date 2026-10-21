@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.h"
+#include "DpiLayout.h"
 #include <WinSys/WaitChain.h>
 #include <thread>
 
@@ -12,7 +13,8 @@
 //
 class CWaitChainDlg :
 	public CDialogImpl<CWaitChainDlg>,
-	public CDialogResize<CWaitChainDlg> {
+	public CDialogResize<CWaitChainDlg>,
+	public CDpiDialogResize<CWaitChainDlg> {
 public:
 	enum { IDD = IDD_WAITCHAIN };
 
@@ -35,6 +37,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_WAITCHAIN_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_WAITCHAIN_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
+		CHAIN_MSG_MAP(CDpiDialogResize<CWaitChainDlg>)
 		CHAIN_MSG_MAP(CDialogResize<CWaitChainDlg>)
 	END_MSG_MAP()
 

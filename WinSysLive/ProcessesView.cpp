@@ -10,6 +10,8 @@
 #include <WinSys/ServiceManager.h>
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
+#include <ListViewhelper.h>
+#include <DpiHelper.h>
 #include "ColumnLayout.h"
 #include "AffinityDlg.h"
 #include "WaitChainDlg.h"
@@ -107,18 +109,19 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
 	m_Tree.SetCallbackMode(true);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
+	// the TreeListView doesn't scale its column widths to a new DPI
+	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 
 	LoadSort();
 	SetColumns(LoadColumns());
 
-	int width = ::MulDiv(360, ::GetDpiForWindow(m_hWnd), 96);
+	int width = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, PID, user, description or command line (Ctrl+F)",
 		m_Tree, [this](auto&) {
 			RebuildTree();
 			UpdateFilterStatus();
 		});
-	m_Filter.SetFont(m_Tree.GetFont());
-	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, width);
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 	m_Colors = ProcessColors::Load();
 
 	m_TreeMode = AppSettings::Get().ProcessTreeMode();
@@ -170,8 +173,10 @@ std::vector<CProcessesView::ShownColumn> CProcessesView::GetShownColumns() const
 	std::vector<int> order(count);
 	m_Tree.GetHeader().GetOrderArray(count, order.data());
 	std::vector<ShownColumn> columns;
+	// at 96 DPI, as the setting keeps them
+	auto dpi = DpiHelper::GetDpi(m_Tree);
 	for (int index : order)
-		columns.push_back({ m_Columns[index], m_Tree.GetColumnWidth(index) });
+		columns.push_back({ m_Columns[index], DpiHelper::Scale(m_Tree.GetColumnWidth(index), USER_DEFAULT_SCREEN_DPI, dpi) });
 	return columns;
 }
 
@@ -190,7 +195,7 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 
 	for (int i = 0; i < (int)m_Columns.size(); i++) {
 		auto& info = s_Columns[(int)m_Columns[i]];
-		int width = std::ranges::find(columns, m_Columns[i], &ShownColumn::Id)->Width;
+		int width = DpiHelper::Scale(std::ranges::find(columns, m_Columns[i], &ShownColumn::Id)->Width, m_Tree.m_hWnd);
 		if (i == 0 && m_Tree.GetColumnCount() == 1)
 			m_Tree.SetColumnWidth(0, width);
 		else
@@ -305,6 +310,12 @@ void CProcessesView::OnFontChanged(HFONT font) {
 	m_Tree.SetFont(font);
 	m_Filter.SetFont(font);
 	m_Details.SetListFont(font);
+}
+
+void CProcessesView::OnDpiChanged(UINT /*dpi*/) {
+	// the frame's image list has the new DPI's size: the rows take its height
+	m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+	m_Details.ResetImageList();
 }
 
 void CProcessesView::OnProcessColorsChanged() {
@@ -1045,7 +1056,7 @@ void CProcessesView::ShowRowMenu(CPoint pt) {
 		{ ID_PROCESS_SUSPEND, IDI_PAUSE },
 		{ ID_PROCESS_RESUME, IDI_RUN },
 	};
-	WTLHelper::InitMenu(popup, icons, _countof(icons));
+	WTLHelper::InitMenu(popup, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 
 	bool live = CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN })

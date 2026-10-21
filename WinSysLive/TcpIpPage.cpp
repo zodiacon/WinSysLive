@@ -14,15 +14,14 @@ LRESULT CProcTcpIpPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	m_List.Attach(GetDlgItem(IDC_TCPIP_LIST));
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP);
 	auto cm = GetColumnManager(m_List);
-	auto dpi = ::GetDpiForWindow(m_hWnd);
-	auto width = [&](int w) { return ::MulDiv(w, dpi, 96); };
-	cm->AddColumn(L"Protocol", LVCFMT_LEFT, width(65), Column::Protocol);
-	cm->AddColumn(L"Local Address", LVCFMT_LEFT, width(150), Column::LocalAddress);
-	cm->AddColumn(L"Local Port", LVCFMT_RIGHT, width(70), Column::LocalPort);
-	cm->AddColumn(L"Remote Address", LVCFMT_LEFT, width(150), Column::RemoteAddress);
-	cm->AddColumn(L"Remote Port", LVCFMT_RIGHT, width(80), Column::RemotePort);
-	cm->AddColumn(L"State", LVCFMT_LEFT, width(90), Column::State);
-	cm->AddColumn(L"Created", LVCFMT_LEFT, width(150), Column::Created);
+	// widths at 96 DPI: the column manager scales them to the list's DPI
+	cm->AddColumn(L"Protocol", LVCFMT_LEFT, 65, Column::Protocol);
+	cm->AddColumn(L"Local Address", LVCFMT_LEFT, 150, Column::LocalAddress);
+	cm->AddColumn(L"Local Port", LVCFMT_RIGHT, 70, Column::LocalPort);
+	cm->AddColumn(L"Remote Address", LVCFMT_LEFT, 150, Column::RemoteAddress);
+	cm->AddColumn(L"Remote Port", LVCFMT_RIGHT, 80, Column::RemotePort);
+	cm->AddColumn(L"State", LVCFMT_LEFT, 90, Column::State);
+	cm->AddColumn(L"Created", LVCFMT_LEFT, 150, Column::Created);
 	UpdateButtons();
 
 	InitDynamicLayout(false, false);

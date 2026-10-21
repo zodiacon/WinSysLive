@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "resource.h"
+#include <ListViewhelper.h>
+#include <DpiHelper.h>
 #include "UsersView.h"
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
@@ -60,9 +62,11 @@ LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	m_Tree.SetCallbackMode(true);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
 
+	// the widths are at 96 DPI; the TreeListView doesn't scale them to a new DPI by itself
+	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 	for (int i = 0; i < _countof(s_Columns); i++) {
 		auto& c = s_Columns[i];
-		m_Tree.InsertColumn(i, c.Name, c.Width, c.Format);
+		m_Tree.InsertColumn(i, c.Name, DpiHelper::Scale(c.Width, m_Tree.m_hWnd), c.Format);
 		m_Tree.SetColumnSortable(i, true);
 	}
 

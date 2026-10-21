@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.h"
+#include "DpiLayout.h"
 #include <VirtualListView.h>
 #include <thread>
 #include <mutex>
@@ -20,6 +21,7 @@ struct IMainFrame;
 class CFindHandleDlg :
 	public CDialogImpl<CFindHandleDlg>,
 	public CDialogResize<CFindHandleDlg>,
+	public CDpiDialogResize<CFindHandleDlg>,
 	public CVirtualListView<CFindHandleDlg> {
 public:
 	enum { IDD = IDD_FIND_HANDLE };
@@ -54,6 +56,7 @@ public:
 		COMMAND_HANDLER(IDC_FIND_TEXT, EN_CHANGE, OnTextChanged)
 		NOTIFY_HANDLER(IDC_FIND_LIST, LVN_ITEMCHANGED, OnItemChanged)
 		CHAIN_MSG_MAP(CVirtualListView<CFindHandleDlg>)
+		CHAIN_MSG_MAP(CDpiDialogResize<CFindHandleDlg>)
 		CHAIN_MSG_MAP(CDialogResize<CFindHandleDlg>)
 	END_MSG_MAP()
 

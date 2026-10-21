@@ -30,13 +30,12 @@ LRESULT CFindHandleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	// the frame's icons (the list has LVS_SHAREIMAGELISTS: they aren't its to destroy)
 	m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
 	auto cm = GetColumnManager(m_List);
-	auto dpi = ::GetDpiForWindow(m_hWnd);
-	auto width = [&](int w) { return ::MulDiv(w, dpi, 96); };
-	cm->AddColumn(L"Process", LVCFMT_LEFT, width(150), Column::Process);
-	cm->AddColumn(L"PID", LVCFMT_RIGHT, width(60), Column::Pid);
-	cm->AddColumn(L"Type", LVCFMT_LEFT, width(90), Column::Type);
-	cm->AddColumn(L"Handle / Base", LVCFMT_RIGHT, width(130), Column::Value);
-	cm->AddColumn(L"Name", LVCFMT_LEFT, width(500), Column::Name);
+	// widths at 96 DPI: the column manager scales them to the list's DPI
+	cm->AddColumn(L"Process", LVCFMT_LEFT, 150, Column::Process);
+	cm->AddColumn(L"PID", LVCFMT_RIGHT, 60, Column::Pid);
+	cm->AddColumn(L"Type", LVCFMT_LEFT, 90, Column::Type);
+	cm->AddColumn(L"Handle / Base", LVCFMT_RIGHT, 130, Column::Value);
+	cm->AddColumn(L"Name", LVCFMT_LEFT, 500, Column::Name);
 
 	CheckDlgButton(IDC_FIND_HANDLES, BST_CHECKED);
 	CheckDlgButton(IDC_FIND_DLLS, BST_CHECKED);
@@ -45,6 +44,7 @@ LRESULT CFindHandleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	CEdit(GetDlgItem(IDC_FIND_TEXT)).SetCueBannerText(L"Part of a handle's name or a DLL's path", TRUE);
 
 	DlgResize_Init(true, true);
+	InitDpi();
 	CenterWindow(GetParent());
 	return TRUE;
 }

@@ -4,6 +4,7 @@
 #include "ThreadsPage.h"
 #include "PerfPages.h"
 #include "resource.h"
+#include "DpiLayout.h"
 
 namespace WinSys {
 	class Token;
@@ -36,7 +37,7 @@ wil::unique_handle OpenSheetProcess(ProcessProperties const& props, DWORD access
 //
 class CProcGeneralPage :
 	public CPropertyPageImpl<CProcGeneralPage>,
-	public CDynamicDialogLayout<CProcGeneralPage> {
+	public CDpiDynamicDialogLayout<CProcGeneralPage> {
 public:
 	enum { IDD = IDD_PROC_GENERAL };
 
@@ -46,7 +47,7 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_ID_HANDLER(IDC_PROC_VERIFY, OnVerify)
 		COMMAND_ID_HANDLER(IDC_PROC_KILL, OnKill)
-		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcGeneralPage>)
+		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcGeneralPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcGeneralPage>)
 	END_MSG_MAP()
 
@@ -74,7 +75,7 @@ private:
 //
 class CProcEnvironmentPage :
 	public CPropertyPageImpl<CProcEnvironmentPage>,
-	public CDynamicDialogLayout<CProcEnvironmentPage>,
+	public CDpiDynamicDialogLayout<CProcEnvironmentPage>,
 	public CVirtualListView<CProcEnvironmentPage> {
 public:
 	enum { IDD = IDD_PROC_ENVIRONMENT };
@@ -92,7 +93,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_ENV_COPYALL, OnCopy)
 		NOTIFY_HANDLER(IDC_ENV_LIST, LVN_ITEMCHANGED, OnItemChanged)
 		CHAIN_MSG_MAP(CVirtualListView<CProcEnvironmentPage>)
-		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcEnvironmentPage>)
+		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcEnvironmentPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcEnvironmentPage>)
 	END_MSG_MAP()
 
@@ -121,7 +122,7 @@ private:
 //
 class CProcTokenPage :
 	public CPropertyPageImpl<CProcTokenPage>,
-	public CDynamicDialogLayout<CProcTokenPage> {
+	public CDpiDynamicDialogLayout<CProcTokenPage> {
 public:
 	enum { IDD = IDD_PROC_TOKEN };
 
@@ -130,7 +131,7 @@ public:
 	BEGIN_MSG_MAP(CProcTokenPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_ID_HANDLER(IDC_TOKEN_SECURITY, OnSecurity)
-		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcTokenPage>)
+		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcTokenPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcTokenPage>)
 	END_MSG_MAP()
 

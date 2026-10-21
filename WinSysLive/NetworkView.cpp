@@ -19,25 +19,24 @@ LRESULT CNetworkView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	SuspendHookWhilePainting(m_List);
 
 	auto cm = GetColumnManager(m_List);
-	auto dpi = ::GetDpiForWindow(m_hWnd);
-	auto width = [&](int w) { return ::MulDiv(w, dpi, 96); };
-	cm->AddColumn(L"Process", LVCFMT_LEFT, width(180), Column::Process);
-	cm->AddColumn(L"PID", LVCFMT_RIGHT, width(60), Column::Pid);
-	cm->AddColumn(L"Protocol", LVCFMT_LEFT, width(65), Column::Protocol);
-	cm->AddColumn(L"Local Address", LVCFMT_LEFT, width(170), Column::LocalAddress);
-	cm->AddColumn(L"Local Port", LVCFMT_RIGHT, width(70), Column::LocalPort);
-	cm->AddColumn(L"Remote Address", LVCFMT_LEFT, width(170), Column::RemoteAddress);
-	cm->AddColumn(L"Remote Port", LVCFMT_RIGHT, width(80), Column::RemotePort);
-	cm->AddColumn(L"State", LVCFMT_LEFT, width(90), Column::State);
-	cm->AddColumn(L"Created", LVCFMT_LEFT, width(150), Column::Created);
+	// widths at 96 DPI: the column manager scales them to the list's DPI
+	cm->AddColumn(L"Process", LVCFMT_LEFT, 180, Column::Process);
+	cm->AddColumn(L"PID", LVCFMT_RIGHT, 60, Column::Pid);
+	cm->AddColumn(L"Protocol", LVCFMT_LEFT, 65, Column::Protocol);
+	cm->AddColumn(L"Local Address", LVCFMT_LEFT, 170, Column::LocalAddress);
+	cm->AddColumn(L"Local Port", LVCFMT_RIGHT, 70, Column::LocalPort);
+	cm->AddColumn(L"Remote Address", LVCFMT_LEFT, 170, Column::RemoteAddress);
+	cm->AddColumn(L"Remote Port", LVCFMT_RIGHT, 80, Column::RemotePort);
+	cm->AddColumn(L"State", LVCFMT_LEFT, 90, Column::State);
+	cm->AddColumn(L"Created", LVCFMT_LEFT, 150, Column::Created);
 
-	int filterWidth = width(360);
+	int filterWidth = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, filterWidth, L"Filter: process, PID, protocol, address, port or state (Ctrl+F)",
 		m_List, [this](auto&) {
 			ShowRows(GetSelectedKey());
 			UpdateStatus();
 		});
-	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, filterWidth);
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 
 	OnRefresh(false);
 	return 0;

@@ -51,6 +51,11 @@ void CProcessDetails::SaveColumns() const {
 	m_Threads.SaveColumns();
 }
 
+void CProcessDetails::ResetImageList() {
+	SetImageList(m_Frame->GetImageList());
+	m_Handles.ResetImageList();
+}
+
 void CProcessDetails::Refresh() {
 	// the threads too only while shown: each has its handle queried four times a refresh. The deltas cover the time
 	// since the last refresh, so they're right when the tab is shown again

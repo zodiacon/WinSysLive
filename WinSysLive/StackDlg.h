@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.h"
+#include "DpiLayout.h"
 #include "Symbols.h"
 
 //
@@ -13,7 +14,8 @@
 //
 class CStackDlg :
 	public CDialogImpl<CStackDlg>,
-	public CDialogResize<CStackDlg> {
+	public CDialogResize<CStackDlg>,
+	public CDpiDialogResize<CStackDlg> {
 public:
 	enum { IDD = IDD_STACK };
 
@@ -36,6 +38,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_STACK_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_STACK_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
+		CHAIN_MSG_MAP(CDpiDialogResize<CStackDlg>)
 		CHAIN_MSG_MAP(CDialogResize<CStackDlg>)
 	END_MSG_MAP()
 

@@ -12,7 +12,7 @@
 //
 class CProcTcpIpPage :
 	public CPropertyPageImpl<CProcTcpIpPage>,
-	public CDynamicDialogLayout<CProcTcpIpPage>,
+	public CDpiDynamicDialogLayout<CProcTcpIpPage>,
 	public CVirtualListView<CProcTcpIpPage> {
 public:
 	enum { IDD = IDD_PROC_TCPIP };
@@ -37,7 +37,7 @@ public:
 		NOTIFY_HANDLER(IDC_TCPIP_LIST, LVN_ITEMCHANGED, OnItemChanged)
 		NOTIFY_HANDLER(IDC_TCPIP_LIST, NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CProcTcpIpPage>)
-		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcTcpIpPage>)
+		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcTcpIpPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcTcpIpPage>)
 	END_MSG_MAP()
 

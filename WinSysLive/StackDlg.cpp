@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "StackDlg.h"
+#include <ListViewhelper.h>
 #include <ClipboardHelper.h>
 
 CStackDlg::CStackDlg(uint32_t pid, int64_t created, uint32_t tid, std::wstring name) :
@@ -18,8 +19,10 @@ LRESULT CStackDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_List.InsertColumn(3, L"Source", LVCFMT_LEFT, width(300));
 	m_List.InsertColumn(4, L"Module", LVCFMT_LEFT, width(300));
 	m_List.InsertColumn(5, L"Symbols", LVCFMT_LEFT, width(300));
+	ListViewHelper::EnableColumnDpiScaling(m_List);
 
 	DlgResize_Init(true, true);
+	InitDpi();
 	CenterWindow(GetParent());
 	Capture();
 	return TRUE;

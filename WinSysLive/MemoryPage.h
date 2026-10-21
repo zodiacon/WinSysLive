@@ -36,6 +36,7 @@ private:
 	LRESULT OnKeyDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 	int m_CharWidth{ 0 };
+	UINT m_CharWidthDpi{ 0 };	// the DPI m_CharWidth was measured at
 	HWND m_Page{ nullptr };
 };
 

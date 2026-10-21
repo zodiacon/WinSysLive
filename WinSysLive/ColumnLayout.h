@@ -21,7 +21,7 @@ namespace ColumnLayout {
 
 	struct ShownColumn {
 		int Id;		// index in the ColumnDef table
-		int Width;
+		int Width;	// at 96 DPI, scaled to the list's DPI when the column is inserted
 	};
 
 	// Unknown keys are skipped. Nothing usable gives the defaults; mandatory columns that are missing are added.

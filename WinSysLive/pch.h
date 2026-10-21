@@ -4,6 +4,8 @@
 #define _WIN32_WINNT	0x0A00
 #define _WIN32_IE		0x0A00
 #define _RICHEDIT_VER	0x0500
+// CDialogResize keeps its layout at 96 DPI and redoes it for a new DPI (the app is per-monitor DPI aware)
+#define _WTL_DPI_SUPPORT
 
 // The include order below is load-bearing:
 // 1. windows.h in full first: phnt_windows.h would force WIN32_LEAN_AND_MEAN, which ATL/WTL can't live with.

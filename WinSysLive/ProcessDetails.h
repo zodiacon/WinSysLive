@@ -28,6 +28,8 @@ public:
 	void Refresh();
 	// the pages' lists
 	void SetListFont(HFONT font);
+	// the frame's image list again (the tabs' and the Handles page's), after it took a new DPI's size
+	void ResetImageList();
 	// the pages' column layouts, saved in the settings
 	void SaveColumns() const;
 

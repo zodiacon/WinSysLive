@@ -44,6 +44,10 @@ struct IView abstract {
 	virtual void OnFontChanged(HFONT /*font*/) {}
 	// the ProcessColors setting changed (Options > Process Colors)
 	virtual void OnProcessColorsChanged() {}
+	// the frame moved to a monitor with another DPI: its image list has the new size (the same handle and indices), which
+	// the lists that use it are given again so their rows take its height. Called before the views' own child windows
+	// get WM_DPICHANGED_AFTERPARENT (and after OnFontChanged, when there's a font of the user's)
+	virtual void OnDpiChanged(UINT /*dpi*/) {}
 	// the active view, when the frame's message loop is idle: to update commands that depend on the focus
 	virtual void OnFrameIdle() {}
 	// the toolbar tooltip of a command whose text depends on the view's state; empty: the command's string resource

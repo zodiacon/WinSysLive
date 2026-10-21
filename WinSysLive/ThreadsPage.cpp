@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <DpiHelper.h>
 #include "ProcessInfoEx.h"
 #include "ThreadsPage.h"
 #include "FormatHelper.h"
@@ -76,6 +77,22 @@ void CThreadsPage::UseColumns(std::wstring layout) {
 	m_Columns = std::move(layout);
 }
 
+void CThreadsPage::AddImages() {
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	for (auto id : s_StateIcons)
+		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, size));
+}
+
+LRESULT CThreadsPage::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the state icons in the new size, at the same indices; the list is given its image list again for the rows' height
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.SetIconSize(size, size);
+	AddImages();
+	m_List.SetImageList(m_Images, LVSIL_SMALL);
+	bHandled = FALSE;
+	return 0;
+}
+
 LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
@@ -84,10 +101,9 @@ LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP | LVS_EX_SUBITEMIMAGES);
 	// the state icons, in the leftmost column: an image list of the page's own, as the frame's belongs to the main
 	// thread (the property sheet's page runs on another)
-	static const UINT icons[] = { IDI_THREADS, IDI_CONTINUE, IDI_RUN, IDI_KILL, IDI_PAUSE, IDI_MEMORY };
-	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, _countof(icons), 0);
-	for (auto id : icons)
-		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, 16));
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.Create(size, size, ILC_COLOR32 | ILC_MASK, _countof(s_StateIcons), 0);
+	AddImages();
 	m_List.SetImageList(m_Images, LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 	m_Filter.Create(m_hWnd, IDC_PAGE_FILTER, 200, L"Filter (Ctrl+F)", m_List, [this](std::wstring const&) {
@@ -299,7 +315,7 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 			{ suspended ? ID_THREAD_RESUME : ID_THREAD_SUSPEND, suspended ? IDI_RUN : IDI_PAUSE },
 			{ ID_THREAD_TERMINATE, IDI_DELETE },
 		};
-		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons));
+		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}

@@ -89,11 +89,13 @@ namespace ColumnLayout {
 		std::vector<int> order(count);
 		header.GetOrderArray(count, order.data());
 		std::vector<ShownColumn> columns;
+		// the widths at 96 DPI, as the setting keeps them and ColumnManager::AddColumn takes them
+		auto dpi = DpiHelper::GetDpi(list);
 		for (int index : order) {
 			// the header item's lParam is the column manager's index
 			HDITEM hdi{ HDI_LPARAM };
 			header.GetItem(index, &hdi);
-			columns.push_back({ cm->GetColumnTag<int>((int)hdi.lParam), list.GetColumnWidth(index) });
+			columns.push_back({ cm->GetColumnTag<int>((int)hdi.lParam), DpiHelper::Scale(list.GetColumnWidth(index), USER_DEFAULT_SCREEN_DPI, dpi) });
 		}
 		return columns;
 	}

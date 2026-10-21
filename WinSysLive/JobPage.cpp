@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "JobPage.h"
+#include <ListViewhelper.h>
 #include "FormatHelper.h"
 #include <WinSys/Handles.h>
 #include <WinSys/Job.h>
@@ -19,6 +20,8 @@ namespace {
 		int i = 0;
 		for (auto& [name, width, format] : columns)
 			list.InsertColumn(i++, name, format, ::MulDiv(width, dpi, 96));
+		// the widths follow the list's DPI from now on
+		ListViewHelper::EnableColumnDpiScaling(list);
 	}
 
 	struct Row {

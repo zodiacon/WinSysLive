@@ -18,7 +18,7 @@ namespace WinSys {
 //
 class CProcServicesPage :
 	public CPropertyPageImpl<CProcServicesPage>,
-	public CDynamicDialogLayout<CProcServicesPage> {
+	public CDpiDynamicDialogLayout<CProcServicesPage> {
 public:
 	enum { IDD = IDD_PROC_SERVICES };
 
@@ -35,7 +35,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_SVC_START, OnStart)
 		COMMAND_ID_HANDLER(IDC_SVC_STOP, OnStop)
 		NOTIFY_HANDLER(IDC_SVC_LIST, LVN_ITEMCHANGED, OnItemChanged)
-		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcServicesPage>)
+		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcServicesPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcServicesPage>)
 	END_MSG_MAP()
 

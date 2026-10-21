@@ -61,6 +61,7 @@ public:
 	BEGIN_MSG_MAP(CThreadsPage)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnDpiChanged)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		COMMAND_HANDLER(IDC_PAGE_FILTER, EN_CHANGE, OnFilterChanged)
 		COMMAND_ID_HANDLER(ID_PAGE_COPY, OnCopy)
@@ -130,6 +131,7 @@ private:
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -180,6 +182,9 @@ private:
 	uint32_t m_Pid{ 0 };
 	int64_t m_Created{ 0 };
 	std::wstring m_ProcessName;
+	// the thread state icons, in m_Images order
+	static constexpr UINT s_StateIcons[] = { IDI_THREADS, IDI_CONTINUE, IDI_RUN, IDI_KILL, IDI_PAUSE, IDI_MEMORY };
+	void AddImages();
 	CImageList m_Images;	// the thread state icons, owned by the list
 	std::unordered_map<UINT, int> m_IconIndices;	// IDI_* to their index in m_Images
 	std::optional<std::wstring> m_Columns;	// see UseColumns

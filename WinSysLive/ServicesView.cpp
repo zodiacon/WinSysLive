@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <DpiHelper.h>
 #include "resource.h"
 #include "ServicesView.h"
 #include "ServiceSheet.h"
@@ -115,13 +116,13 @@ LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().ServiceColumns(), s_Columns));
 
-	int width = ::MulDiv(360, ::GetDpiForWindow(m_hWnd), 96);
+	int width = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, description, process or path (Ctrl+F)", m_List,
 		[this](auto&) {
 			ShowItems();
 			UpdateFilterStatus();
 		});
-	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, width);
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 
 	for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices)) {
 		auto item = std::make_shared<ServiceItem>(svc);
@@ -482,7 +483,7 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 		{ ID_SERVICE_CONTINUE, IDI_CONTINUE },
 		{ ID_SERVICE_RESTART, IDI_REFRESH },
 	};
-	WTLHelper::InitMenu(popup, icons, _countof(icons));
+	WTLHelper::InitMenu(popup, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 
 	auto enable = [&](UINT id, bool enabled) {
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));

@@ -1,5 +1,7 @@
 #include "pch.h"
+#include <DpiHelper.h>
 #include "WaitChainDlg.h"
+#include <ListViewhelper.h>
 #include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
@@ -26,9 +28,10 @@ LRESULT CWaitChainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	m_List.Attach(GetDlgItem(IDC_WAITCHAIN_LIST));
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
 	// the dialog may run on a property sheet's thread: an image list of its own (also for the rows' indentation)
-	m_Images.Create(16, 16, ILC_COLOR32 | ILC_MASK, 4, 4);
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.Create(size, size, ILC_COLOR32 | ILC_MASK, 4, 4);
 	for (auto id : { IDI_THREADS, IDI_OBJECT, IDI_MUTEX, IDI_ALPC })
-		m_Images.AddIcon(IconHelper::LoadCached(id, 16));
+		m_Images.AddIcon(IconHelper::LoadCached(id, size));
 	m_List.SetImageList(m_Images, LVSIL_SMALL);
 
 	auto dpi = ::GetDpiForWindow(m_hWnd);
@@ -37,8 +40,10 @@ LRESULT CWaitChainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	m_List.InsertColumn(1, L"Status", LVCFMT_LEFT, width(110));
 	m_List.InsertColumn(2, L"Wait Time", LVCFMT_RIGHT, width(90));
 	m_List.InsertColumn(3, L"Context Switches", LVCFMT_RIGHT, width(110));
+	ListViewHelper::EnableColumnDpiScaling(m_List);
 
 	DlgResize_Init(true, true);
+	InitDpi();
 	CenterWindow(GetParent());
 	Read();
 	return TRUE;

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <DpiHelper.h>
 #include "ProcessInfoEx.h"
 #include "Interfaces.h"
 #include "HandlesPage.h"
@@ -390,7 +391,7 @@ LRESULT CHandlesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		MenuItemData const icons[] = {
 			{ ID_HANDLE_CLOSE, IDI_DELETE },
 		};
-		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons));
+		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}

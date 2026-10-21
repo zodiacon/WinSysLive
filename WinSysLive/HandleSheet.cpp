@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "HandleSheet.h"
+#include <ListViewhelper.h>
 #include "FormatHelper.h"
 #include "HandleIcons.h"
 #include "ObjectSecurity.h"
@@ -405,6 +406,7 @@ LRESULT CHandleListPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	auto dpi = ::GetDpiForWindow(m_hWnd);
 	m_List.InsertColumn(0, L"Property", LVCFMT_LEFT, ::MulDiv(180, dpi, 96));
 	m_List.InsertColumn(1, L"Value", LVCFMT_LEFT, ::MulDiv(300, dpi, 96));
+	ListViewHelper::EnableColumnDpiScaling(m_List);
 
 	// the sections' titles
 	LOGFONT lf;
@@ -413,6 +415,7 @@ LRESULT CHandleListPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	m_BoldFont.CreateFontIndirect(&lf);
 
 	DlgResize_Init(false, false, 0);
+	InitDpi();
 	Show();
 	return TRUE;
 }

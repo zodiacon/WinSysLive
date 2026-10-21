@@ -77,6 +77,11 @@ public:
 
 	// puts the column layout in its setting and saves it (also done when the page is destroyed)
 	void SaveColumns() const;
+	// the frame's image list again, after it took a new DPI's size, so the rows take its height
+	void ResetImageList() {
+		if (m_Frame)
+			m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
+	}
 
 private:
 	enum class Column {

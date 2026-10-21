@@ -32,6 +32,7 @@ public:
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
 	void OnFontChanged(HFONT font) override;
+	void OnDpiChanged(UINT dpi) override;
 	void OnProcessColorsChanged() override;
 	void ShowProcess(uint32_t pid) override;
 	void OnFrameIdle() override;
