@@ -390,6 +390,7 @@ LRESULT CHandlesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		MenuItemData const icons[] = {
 			{ ID_HANDLE_CLOSE, IDI_DELETE },
+			{ ID_PAGE_COPY, IDI_COPY },
 		};
 		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);

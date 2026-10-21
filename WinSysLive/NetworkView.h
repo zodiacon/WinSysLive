@@ -3,6 +3,7 @@
 #include "resource.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
+#include "ColumnLayout.h"
 #include "ConnectionRows.h"
 #include <VirtualListView.h>
 
@@ -26,6 +27,9 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
+	void SaveSettings() override {
+		SaveColumns();
+	}
 	// the frame's image list has the new DPI's size: the rows take its height
 	void OnDpiChanged(UINT /*dpi*/) override {
 		m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
@@ -41,12 +45,16 @@ public:
 
 	BEGIN_MSG_MAP(CNetworkView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CNetworkView>)
 		CHAIN_MSG_MAP(CViewBase<CNetworkView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
+		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_NETWORK_GOTOPROCESS, OnGoToProcess)
 		CHAIN_MSG_MAP_ALT(CViewBase<CNetworkView>, 1)
@@ -62,6 +70,16 @@ private:
 	using Connection = ConnectionRow;
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI
+	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
+	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
+	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
+	// in the NetworkColumns setting
+	void SaveColumns() const;
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -80,6 +98,7 @@ private:
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// in the view's rebar
+	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::vector<Connection> m_All;	// the last merge: every connection, the closed ones once more
 	std::vector<Connection const*> m_Rows;	// into m_All: the list's rows, in display order
 	bool m_Loaded{ false };	// read at least once: later connections are new

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <DpiHelper.h>
 #include "ProcessInfoEx.h"
 #include "ModulesPage.h"
 #include "FormatHelper.h"
@@ -290,6 +291,12 @@ LRESULT CModulesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		menu.SetMenuDefaultItem(ID_MODULE_PROPERTIES);
+		// the icons, as the other pages' menus have them
+		MenuItemData const icons[] = {
+			{ ID_MODULE_GOTOFILELOCATION, IDI_DIRECTORY },
+			{ ID_PAGE_COPY, IDI_COPY },
+		};
+		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}

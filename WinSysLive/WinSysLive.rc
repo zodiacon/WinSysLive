@@ -340,6 +340,8 @@ IDI_STACK               ICON                    "res\\stack.ico"
 
 IDI_DELETE              ICON                    "res\\delete.ico"
 
+IDI_COPY                ICON                    "res\\copy.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

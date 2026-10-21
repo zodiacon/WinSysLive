@@ -344,8 +344,12 @@ LRESULT CFindHandleDlg::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	// not another process that got its ID since the search
 	auto process = Process::OpenById(r.Pid, r.Created, ProcessAccessMask::DuplicateHandle);
 	if (!process) {
-		AtlMessageBox(m_hWnd, std::format(L"Failed to open the process: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-			IDR_MAINFRAME, MB_ICONERROR);
+		// ERROR_NOT_FOUND: another process has the ID now; ERROR_INVALID_PARAMETER: none has
+		auto error = ::GetLastError();
+		auto text = error == ERROR_NOT_FOUND || error == ERROR_INVALID_PARAMETER
+			? std::format(L"{} ({}) has exited since the search.", r.ProcessName, r.Pid)
+			: std::format(L"Failed to open the process: {}", WinSys::Helpers::GetErrorText(error));
+		AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONERROR);
 		return 0;
 	}
 	CHandleSheet sheet(process->Handle(), r.Pid, r.ProcessName, *r.Handle, r.Name,

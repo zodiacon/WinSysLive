@@ -3,6 +3,7 @@
 #include "resource.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
+#include "ColumnLayout.h"
 #include "Signature.h"
 #include <WinSys/KernelModules.h>
 #include <VirtualListView.h>
@@ -34,6 +35,9 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
+	void SaveSettings() override {
+		SaveColumns();
+	}
 	// the frame's image list has the new DPI's size: the rows take its height
 	void OnDpiChanged(UINT /*dpi*/) override {
 		m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
@@ -52,6 +56,8 @@ public:
 
 	BEGIN_MSG_MAP(CDriversView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_DRIVER_SIGNED, OnSigned)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
@@ -59,6 +65,8 @@ public:
 		CHAIN_MSG_MAP(CViewBase<CDriversView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
+		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_DRIVER_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_DRIVER_GOTOFILELOCATION, OnGoToFileLocation)
@@ -90,6 +98,16 @@ private:
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI
+	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
+	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
+	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
+	// in the DriverColumns setting
+	void SaveColumns() const;
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
@@ -118,6 +136,7 @@ private:
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// in the view's rebar
+	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::vector<DriverRow> m_All;	// the last merge: every module, the unloaded ones once more
 	std::vector<DriverRow const*> m_Rows;	// into m_All: the list's rows, in display order
 	std::shared_ptr<Signatures> m_Signatures{ std::make_shared<Signatures>() };

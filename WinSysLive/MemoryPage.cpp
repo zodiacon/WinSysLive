@@ -623,23 +623,34 @@ void CProcMemoryPage::Search(bool next) {
 		return;
 	auto region = GetSelectedRegion();
 	bool whole = m_Search.WholeSpace || !region;
-	uint64_t from = next && m_Found ? m_Found + 1 : GetCurrentAddress();
+	uint64_t begin = whole ? 0 : (uint64_t)region->Info.BaseAddress;
 	uint64_t to = whole ? WinSys::ProcessMemory::MaxAddress() : (uint64_t)region->Info.BaseAddress + region->Info.RegionSize;
+	// after the last match, if it's in the range (another region may have been selected since); else from the caret
+	uint64_t from = next && m_Found && m_Found + 1 >= begin && m_Found + 1 < to ? m_Found + 1 : GetCurrentAddress();
+	auto find = [&](uint64_t start, uint64_t end) {
+		return WinSys::ProcessMemory::Find(m_hProcess.get(), pattern.data(), pattern.size(), start, end,
+			m_Search.IgnoreCase && m_Search.Type != MemorySearch::Kind::Hex, m_Search.Type == MemorySearch::Kind::Unicode);
+	};
 	std::optional<uint64_t> found;
+	bool wrapped = false;
 	{
 		CWaitCursor wait;
-		found = WinSys::ProcessMemory::Find(m_hProcess.get(), pattern.data(), pattern.size(), from, to,
-			m_Search.IgnoreCase && m_Search.Type != MemorySearch::Kind::Hex, m_Search.Type == MemorySearch::Kind::Unicode);
+		found = find(from, to);
+		// then from the start of the range, to where this search began
+		if (!found && from > begin) {
+			found = find(begin, from);
+			wrapped = found.has_value();
+		}
 	}
 	if (!found) {
 		m_Found = 0;
 		::MessageBeep(MB_ICONASTERISK);
-		SetNote(std::format(L"Not found after 0x{:X}{}", from, whole ? L"" : L" in the region"));
+		SetNote(std::format(L"Not found{}", whole ? L"" : L" in the region"));
 		return;
 	}
 	m_Found = *found;
 	Reveal(*found, pattern.size());
-	SetNote(std::format(L"Found at 0x{:X} (F3: the next one)", *found));
+	SetNote(std::format(L"Found at 0x{:X}{} (F3: the next one)", *found, wrapped ? L", from the start again" : L""));
 }
 
 LRESULT CProcMemoryPage::OnFind(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

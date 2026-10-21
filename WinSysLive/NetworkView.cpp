@@ -1,5 +1,21 @@
 #include "pch.h"
 #include "NetworkView.h"
+#include "AppSettings.h"
+
+namespace {
+	// in CNetworkView::Column order; the keys are stored in the NetworkColumns setting (widths at 96 DPI)
+	const ColumnLayout::ColumnDef s_Columns[] = {
+		{ L"Process", L"Process", 180, LVCFMT_LEFT, true, true },
+		{ L"PID", L"Pid", 60, LVCFMT_RIGHT, true },
+		{ L"Protocol", L"Protocol", 65, LVCFMT_LEFT, true },
+		{ L"Local Address", L"LocalAddress", 170, LVCFMT_LEFT, true },
+		{ L"Local Port", L"LocalPort", 70, LVCFMT_RIGHT, true },
+		{ L"Remote Address", L"RemoteAddress", 170, LVCFMT_LEFT, true },
+		{ L"Remote Port", L"RemotePort", 80, LVCFMT_RIGHT, true },
+		{ L"State", L"State", 90, LVCFMT_LEFT, true },
+		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
+	};
+}
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
@@ -18,17 +34,8 @@ LRESULT CNetworkView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 
-	auto cm = GetColumnManager(m_List);
-	// widths at 96 DPI: the column manager scales them to the list's DPI
-	cm->AddColumn(L"Process", LVCFMT_LEFT, 180, Column::Process);
-	cm->AddColumn(L"PID", LVCFMT_RIGHT, 60, Column::Pid);
-	cm->AddColumn(L"Protocol", LVCFMT_LEFT, 65, Column::Protocol);
-	cm->AddColumn(L"Local Address", LVCFMT_LEFT, 170, Column::LocalAddress);
-	cm->AddColumn(L"Local Port", LVCFMT_RIGHT, 70, Column::LocalPort);
-	cm->AddColumn(L"Remote Address", LVCFMT_LEFT, 170, Column::RemoteAddress);
-	cm->AddColumn(L"Remote Port", LVCFMT_RIGHT, 80, Column::RemotePort);
-	cm->AddColumn(L"State", LVCFMT_LEFT, 90, Column::State);
-	cm->AddColumn(L"Created", LVCFMT_LEFT, 150, Column::Created);
+	static_assert(_countof(s_Columns) == (int)Column::_Count);
+	SetColumns(ColumnLayout::Parse(AppSettings::Get().NetworkColumns(), s_Columns));
 
 	int filterWidth = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, filterWidth, L"Filter: process, PID, protocol, address, port or state (Ctrl+F)",
@@ -43,6 +50,8 @@ LRESULT CNetworkView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 }
 
 void CNetworkView::OnActivate(bool active) {
+	// the Processes and Services views handle it too
+	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
 	m_Active = active;
 	if (active && m_RowsPending)
 		ShowRows(m_PendingSelection);
@@ -284,12 +293,12 @@ LRESULT CNetworkView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 	auto c = GetSelected();
 	if (!c)
 		return 0;
-	// the columns, tab separated
+	// the shown columns in display order, tab separated
 	std::wstring text;
-	for (int column = 0; column < (int)Column::_Count; column++) {
-		if (column > 0)
+	for (auto& column : GetShownColumns()) {
+		if (!text.empty())
 			text += L'\t';
-		text += GetText(*c, (Column)column);
+		text += GetText(*c, (Column)column.Id);
 	}
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;
@@ -302,5 +311,62 @@ LRESULT CNetworkView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 
 LRESULT CNetworkView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CNetworkView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the widths and the order also change by dragging in the header
+	SaveColumns();
+	bHandled = FALSE;
+	return 0;
+}
+
+std::vector<ColumnLayout::ShownColumn> CNetworkView::GetShownColumns() const {
+	return ColumnLayout::GetShownColumns(m_List, GetColumnManager(m_List));
+}
+
+void CNetworkView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
+	ClearSort(m_List.m_hWnd);
+	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
+}
+
+void CNetworkView::SaveColumns() const {
+	auto& settings = AppSettings::Get();
+	settings.NetworkColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	settings.Save();
+}
+
+LRESULT CNetworkView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
+		SetColumns(*columns);
+		SaveColumns();
+		ShowRows(GetSelectedKey());
+	}
+	return 0;
+}
+
+LRESULT CNetworkView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	// the header's WM_CONTEXTMENU, told from a row's by the position; the rows have their own menu (OnRightClickList)
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
+	if (!column) {
+		bHandled = FALSE;
+		return 0;
+	}
+	m_MenuColumn = *column;
+	CMenu menu;
+	Frame()->ShowContextMenu(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, s_Columns), pt, TPM_RIGHTBUTTON);
+	return 0;
+}
+
+LRESULT CNetworkView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
+		return 0;
+	auto columns = GetShownColumns();
+	std::erase_if(columns, [&](auto& c) { return c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	ShowRows(GetSelectedKey());
 	return 0;
 }

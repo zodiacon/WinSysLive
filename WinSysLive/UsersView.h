@@ -4,6 +4,7 @@
 #include "ViewBase.h"
 #include <TreeListView/include/TreeListView.h>
 #include <WinSys/Sessions.h>
+#include "ColumnLayout.h"
 
 //
 // The sessions (the console, remote desktop sessions, session 0 for services) with totals of their processes,
@@ -28,6 +29,9 @@ public:
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
 	void OnFontChanged(HFONT font) override;
+	void SaveSettings() override {
+		SaveColumns();
+	}
 	// the frame's image list has the new DPI's size: the rows take its height
 	void OnDpiChanged(UINT /*dpi*/) override {
 		m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
@@ -35,6 +39,7 @@ public:
 
 	BEGIN_MSG_MAP(CUsersView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
@@ -46,6 +51,8 @@ public:
 		COMMAND_ID_HANDLER(ID_USER_LOGOFF, OnLogoff)
 		COMMAND_ID_HANDLER(ID_USER_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
+		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CUsersView>, 1)
 	END_MSG_MAP()
 
@@ -77,6 +84,9 @@ private:
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnGetDispInfo(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSort(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
@@ -87,6 +97,12 @@ private:
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
+	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI
+	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
+	// Name stays list column 0, which draws the tree; the others follow it, in the order given (the header's order array)
+	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
+	// in the UserColumns setting
+	void SaveColumns() const;
 	void SyncSessions();
 	void SyncProcesses();
 	void Sort();
@@ -103,6 +119,8 @@ private:
 	std::unordered_map<uint32_t, Row> m_Sessions;
 	std::unordered_map<WinSys::ProcessOrThreadKey, Row> m_Processes;
 	std::vector<HTLITEM> m_AddedSessions;	// by SyncSessions; collapsed once their processes are in
+	std::vector<Column> m_Columns;	// by list column: the Column it shows
+	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	int m_SortColumn{ -1 };	// a Column, or -1
 	bool m_SortAscending{ true };
 };

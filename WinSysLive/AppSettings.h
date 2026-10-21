@@ -8,7 +8,8 @@ struct AppSettings : Settings {
 		SETTING(UpdateInterval, 1000, SettingType::Int32);
 		SETTING(ActiveTab, 0, SettingType::Int32);
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
-		SETTING(PerfPage, 0, SettingType::Int32);
+		SETTING(PerfPage, 0, SettingType::Int32);	// before PerfPageKey: the page's index, which drives coming and going shift
+		SETTING_STRING(PerfPageKey, L"");	// the Performance view's page: "CPU", "Disk:C", "GPU:0"... (CPerfView::PageKey)
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
 		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
 		SETTING(ProcessSplitterPos, 60, SettingType::Int32);	// percent of the height for the process list
@@ -18,6 +19,9 @@ struct AppSettings : Settings {
 		SETTING_STRING(ThreadColumns, L"");
 		SETTING_STRING(ModuleColumns, L"");
 		SETTING_STRING(HandleColumns, L"");
+		SETTING_STRING(NetworkColumns, L"");
+		SETTING_STRING(DriverColumns, L"");
+		SETTING_STRING(UserColumns, L"");
 		SETTING(ResolveSymbols, 1, SettingType::Bool);
 		// the Symbol Settings (see SymbolPathOptions)
 		SETTING(SymbolUseEnvPath, 1, SettingType::Bool);
@@ -38,6 +42,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(ActiveTab, int)
 	DEF_SETTING(ProcessTreeMode, int)
 	DEF_SETTING(PerfPage, int)
+	DEF_SETTING_STRING(PerfPageKey)
 	DEF_SETTING(ProcessLowerPane, int)
 	DEF_SETTING(ProcessKeepSelectionVisible, int)
 	DEF_SETTING(ProcessSplitterPos, int)
@@ -47,6 +52,9 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ThreadColumns)
 	DEF_SETTING_STRING(ModuleColumns)
 	DEF_SETTING_STRING(HandleColumns)
+	DEF_SETTING_STRING(NetworkColumns)
+	DEF_SETTING_STRING(DriverColumns)
+	DEF_SETTING_STRING(UserColumns)
 	DEF_SETTING_STRING(ProcessColors)
 	DEF_SETTING(ResolveSymbols, int)
 	DEF_SETTING(SymbolUseEnvPath, int)

@@ -8,26 +8,24 @@
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
 #include <unordered_set>
+#include "AppSettings.h"
 
 using namespace WinSys;
 
 namespace {
-	const struct {
-		PCWSTR Name;
-		int Width;
-		int Format;
-	} s_Columns[] = {	// in CUsersView::Column order
-		{ L"User / Process", 260, LVCFMT_LEFT },
-		{ L"PID", 70, LVCFMT_RIGHT },
-		{ L"Session ID", 80, LVCFMT_RIGHT },
-		{ L"Session", 110, LVCFMT_LEFT },
-		{ L"State", 100, LVCFMT_LEFT },
-		{ L"Client", 120, LVCFMT_LEFT },
-		{ L"Logon Time", 150, LVCFMT_LEFT },
-		{ L"Processes", 80, LVCFMT_RIGHT },
-		{ L"CPU (%)", 70, LVCFMT_RIGHT },
-		{ L"Private Bytes", 110, LVCFMT_RIGHT },
-		{ L"Working Set", 110, LVCFMT_RIGHT },
+	// in CUsersView::Column order; the keys are stored in the UserColumns setting (widths at 96 DPI)
+	const ColumnLayout::ColumnDef s_Columns[] = {
+		{ L"User / Process", L"Name", 260, LVCFMT_LEFT, true, true },
+		{ L"PID", L"ProcessId", 70, LVCFMT_RIGHT, true },
+		{ L"Session ID", L"SessionId", 80, LVCFMT_RIGHT, true },
+		{ L"Session", L"Session", 110, LVCFMT_LEFT, true },
+		{ L"State", L"State", 100, LVCFMT_LEFT, true },
+		{ L"Client", L"Client", 120, LVCFMT_LEFT, true },
+		{ L"Logon Time", L"LogonTime", 150, LVCFMT_LEFT, true },
+		{ L"Processes", L"Processes", 80, LVCFMT_RIGHT, true },
+		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
+		{ L"Private Bytes", L"PrivateBytes", 110, LVCFMT_RIGHT, true },
+		{ L"Working Set", L"WorkingSet", 110, LVCFMT_RIGHT, true },
 	};
 
 	PCWSTR SessionStateToString(SessionState state) {
@@ -64,11 +62,7 @@ LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	// the widths are at 96 DPI; the TreeListView doesn't scale them to a new DPI by itself
 	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
-	for (int i = 0; i < _countof(s_Columns); i++) {
-		auto& c = s_Columns[i];
-		m_Tree.InsertColumn(i, c.Name, DpiHelper::Scale(c.Width, m_Tree.m_hWnd), c.Format);
-		m_Tree.SetColumnSortable(i, true);
-	}
+	SetColumns(ColumnLayout::Parse(AppSettings::Get().UserColumns(), s_Columns));
 
 	m_Tree.BeginUpdate();
 	SyncSessions();
@@ -84,6 +78,8 @@ LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 }
 
 void CUsersView::OnActivate(bool active) {
+	// the Processes and Services views handle it too
+	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
 	if (active)
 		m_Tree.SetFocus();
 }
@@ -234,8 +230,8 @@ std::wstring CUsersView::GetSessionTitle(SessionInfo const& session) {
 LRESULT CUsersView::OnGetDispInfo(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto di = reinterpret_cast<NMTLVDISPINFO*>(hdr);
 	auto& row = *reinterpret_cast<Row*>(m_Tree.GetItemData(di->hItem));
-	if (di->iSubItem < (int)Column::_Count)
-		wcsncpy_s(di->pszText, di->cchTextMax, GetColumnText(row, (Column)di->iSubItem).c_str(), _TRUNCATE);
+	if (di->iSubItem < (int)m_Columns.size())
+		wcsncpy_s(di->pszText, di->cchTextMax, GetColumnText(row, m_Columns[di->iSubItem]).c_str(), _TRUNCATE);
 	return 0;
 }
 
@@ -271,7 +267,7 @@ std::wstring CUsersView::GetColumnText(Row& row, Column column) const {
 
 LRESULT CUsersView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto ns = reinterpret_cast<NMTLVSORT*>(hdr);
-	m_SortColumn = ns->iSubItem;
+	m_SortColumn = (int)m_Columns[ns->iSubItem];
 	m_SortAscending = ns->iDirection > 0;
 
 	auto selected = m_Tree.GetSelectedItem();
@@ -340,6 +336,20 @@ LRESULT CUsersView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/
 }
 
 LRESULT CUsersView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	// the header's: told from a row's by the position (it comes up through the list view and the TreeListView)
+	CPoint ptHeader(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	CRect rcHeader;
+	m_Tree.GetHeader().GetWindowRect(&rcHeader);
+	if (rcHeader.PtInRect(ptHeader)) {
+		HDHITTESTINFO hit{};
+		hit.pt = ptHeader;
+		m_Tree.GetHeader().ScreenToClient(&hit.pt);
+		m_Tree.GetHeader().HitTest(&hit);
+		m_MenuColumn = hit.iItem >= 0 && hit.iItem < (int)m_Columns.size() ? (int)m_Columns[hit.iItem] : -1;
+		CMenu menu;
+		Frame()->ShowContextMenu(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, s_Columns), ptHeader, TPM_RIGHTBUTTON);
+		return 0;
+	}
 	// from the keyboard (Shift+F10, the menu key) the position is -1, -1; a mouse click has its menu from NM_RCLICK
 	auto hItem = m_Tree.GetSelectedItem();
 	if (GET_X_LPARAM(lParam) != -1 || GET_Y_LPARAM(lParam) != -1 || !hItem) {
@@ -419,12 +429,12 @@ LRESULT CUsersView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/,
 	if (!row)
 		return 0;
 
-	// all columns, tab separated
+	// the shown columns in display order, tab separated
 	std::wstring text;
-	for (int i = 0; i < (int)Column::_Count; i++) {
-		if (i > 0)
+	for (auto& column : GetShownColumns()) {
+		if (!text.empty())
 			text += L'\t';
-		text += GetColumnText(*row, (Column)i);
+		text += GetColumnText(*row, (Column)column.Id);
 	}
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;
@@ -433,4 +443,81 @@ LRESULT CUsersView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/,
 void CUsersView::ShowError(PCWSTR operation) const {
 	auto error = ::GetLastError();
 	AtlMessageBox(m_hWnd, std::format(L"{} failed: {}", operation, Helpers::GetErrorText(error)).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+}
+
+LRESULT CUsersView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the widths and the order also change by dragging in the header
+	SaveColumns();
+	bHandled = FALSE;
+	return 0;
+}
+
+std::vector<ColumnLayout::ShownColumn> CUsersView::GetShownColumns() const {
+	int count = (int)m_Columns.size();
+	std::vector<int> order(count);
+	m_Tree.GetHeader().GetOrderArray(count, order.data());
+	std::vector<ColumnLayout::ShownColumn> columns;
+	auto dpi = DpiHelper::GetDpi(m_Tree);
+	for (int index : order)
+		columns.push_back({ (int)m_Columns[index], DpiHelper::Scale(m_Tree.GetColumnWidth(index), USER_DEFAULT_SCREEN_DPI, dpi) });
+	return columns;
+}
+
+void CUsersView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
+	m_Tree.SetSortColumn(-1, 0);
+	while (m_Tree.GetColumnCount() > 1)
+		m_Tree.DeleteColumn(m_Tree.GetColumnCount() - 1);
+	m_Columns = { Column::Name };
+	for (auto& c : columns)
+		if ((Column)c.Id != Column::Name)
+			m_Columns.push_back((Column)c.Id);
+
+	for (int i = 0; i < (int)m_Columns.size(); i++) {
+		auto& def = s_Columns[(int)m_Columns[i]];
+		auto shown = std::ranges::find(columns, (int)m_Columns[i], &ColumnLayout::ShownColumn::Id);
+		int width = DpiHelper::Scale(shown != columns.end() ? shown->Width : def.Width, m_Tree.m_hWnd);
+		if (i == 0 && m_Tree.GetColumnCount() == 1)
+			m_Tree.SetColumnWidth(0, width);
+		else
+			m_Tree.InsertColumn(i, def.Name, width, def.Format);
+		m_Tree.SetColumnSortable(i, true);
+	}
+
+	std::vector<int> order;
+	for (auto& c : columns)
+		order.push_back((int)(std::ranges::find(m_Columns, (Column)c.Id) - m_Columns.begin()));
+	m_Tree.GetHeader().SetOrderArray((int)order.size(), order.data());
+
+	// the sort stays if its column is still shown
+	auto sorted = std::ranges::find(m_Columns, (Column)m_SortColumn);
+	if (m_SortColumn >= 0 && sorted != m_Columns.end())
+		m_Tree.SetSortColumn((int)(sorted - m_Columns.begin()), m_SortAscending ? 1 : -1);
+	else
+		m_SortColumn = -1;
+	m_Tree.Invalidate();
+}
+
+void CUsersView::SaveColumns() const {
+	auto& settings = AppSettings::Get();
+	settings.UserColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	settings.Save();
+}
+
+LRESULT CUsersView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
+		SetColumns(*columns);
+		SaveColumns();
+	}
+	return 0;
+}
+
+LRESULT CUsersView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
+		return 0;
+	auto columns = GetShownColumns();
+	std::erase_if(columns, [&](auto& c) { return c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	return 0;
 }

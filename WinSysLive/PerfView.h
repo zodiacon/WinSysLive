@@ -52,6 +52,9 @@ private:
 	void UpdateNav(PerfSample const& sample);
 	void UpdateTimeSpan();
 	void ShowPage(int index);
+	// a page's name for the PerfPageKey setting, which stays when drives come and go; the page with a name (-1: none)
+	std::wstring PageKey(int index) const;
+	int FindPage(std::wstring const& key) const;
 	void Layout();
 
 	// the drive pages follow, from FirstDiskItem, in drive letter order (m_DiskLetters), then the GPU pages (in

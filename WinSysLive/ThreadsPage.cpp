@@ -314,6 +314,7 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 			{ ID_THREAD_STACK, IDI_STACK },
 			{ suspended ? ID_THREAD_RESUME : ID_THREAD_SUSPEND, suspended ? IDI_RUN : IDI_PAUSE },
 			{ ID_THREAD_TERMINATE, IDI_DELETE },
+			{ ID_PAGE_COPY, IDI_COPY },
 		};
 		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);

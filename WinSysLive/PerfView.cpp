@@ -62,7 +62,11 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	UpdateNav(sample);
 
 	m_Nav.OnSelectionChanged = [this](int index) { ShowPage(index); };
-	m_Nav.SelectItem(std::clamp(AppSettings::Get().PerfPage(), 0, m_Nav.GetItemCount() - 1));
+	// the page by its name (an index from before the names, else Summary)
+	auto& settings = AppSettings::Get();
+	auto key = settings.PerfPageKey();
+	int page = key.empty() ? settings.PerfPage() : FindPage(key);
+	m_Nav.SelectItem(std::clamp(page, 0, m_Nav.GetItemCount() - 1));
 
 	return 0;
 }
@@ -295,7 +299,26 @@ void CPerfView::ShowPage(int index) {
 	::ShowWindow(m_Pages[index]->GetHwnd(), SW_SHOW);
 	if (old >= 0)
 		::ShowWindow(m_Pages[old]->GetHwnd(), SW_HIDE);
-	AppSettings::Get().PerfPage(index);
+	AppSettings::Get().PerfPageKey(PageKey(index));
+}
+
+std::wstring CPerfView::PageKey(int index) const {
+	switch (index) {
+		case SummaryItem: return L"Summary";
+		case CpuItem: return L"CPU";
+		case MemoryItem: return L"Memory";
+		case NetworkItem: return L"Network";
+	}
+	if (index >= FirstDiskItem && index < FirstGpuItem())
+		return std::wstring(L"Disk:") + m_DiskLetters[index - FirstDiskItem];
+	return L"GPU:" + std::to_wstring(index - FirstGpuItem());
+}
+
+int CPerfView::FindPage(std::wstring const& key) const {
+	for (int i = 0; i < (int)m_Pages.size(); i++)
+		if (PageKey(i) == key)
+			return i;
+	return -1;
 }
 
 void CPerfView::OnFontChanged(HFONT font) {

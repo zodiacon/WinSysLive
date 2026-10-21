@@ -1,5 +1,21 @@
 #include "pch.h"
 #include "DriversView.h"
+#include "AppSettings.h"
+
+namespace {
+	// in CDriversView::Column order; the keys are stored in the DriverColumns setting (widths at 96 DPI)
+	const ColumnLayout::ColumnDef s_Columns[] = {
+		{ L"Name", L"Name", 160, LVCFMT_LEFT, true, true },
+		{ L"Base", L"Base", 130, LVCFMT_RIGHT, true },
+		{ L"Size", L"Size", 80, LVCFMT_RIGHT, true },
+		{ L"Load Order", L"LoadOrder", 75, LVCFMT_RIGHT, true },
+		{ L"Description", L"Description", 250, LVCFMT_LEFT, true },
+		{ L"Company", L"Company", 170, LVCFMT_LEFT, true },
+		{ L"Version", L"Version", 130, LVCFMT_LEFT, true },
+		{ L"Signature", L"Signature", 280, LVCFMT_LEFT, true },
+		{ L"Path", L"Path", 380, LVCFMT_LEFT, true },
+	};
+}
 #include "FormatHelper.h"
 #include "VersionInfo.h"
 #include "Symbols.h"
@@ -30,17 +46,8 @@ LRESULT CDriversView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	SuspendHookWhilePainting(m_List);
 	m_Signatures->Notify = m_hWnd;
 
-	auto cm = GetColumnManager(m_List);
-	// widths at 96 DPI: the column manager scales them to the list's DPI
-	cm->AddColumn(L"Name", LVCFMT_LEFT, 160, Column::Name);
-	cm->AddColumn(L"Base", LVCFMT_RIGHT, 130, Column::Base);
-	cm->AddColumn(L"Size", LVCFMT_RIGHT, 80, Column::Size);
-	cm->AddColumn(L"Load Order", LVCFMT_RIGHT, 75, Column::LoadOrder);
-	cm->AddColumn(L"Description", LVCFMT_LEFT, 250, Column::Description);
-	cm->AddColumn(L"Company", LVCFMT_LEFT, 170, Column::Company);
-	cm->AddColumn(L"Version", LVCFMT_LEFT, 130, Column::Version);
-	cm->AddColumn(L"Signature", LVCFMT_LEFT, 280, Column::Signature);
-	cm->AddColumn(L"Path", LVCFMT_LEFT, 380, Column::Path);
+	static_assert(_countof(s_Columns) == (int)Column::_Count);
+	SetColumns(ColumnLayout::Parse(AppSettings::Get().DriverColumns(), s_Columns));
 
 	int filterWidth = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, filterWidth, L"Filter: name, path, description or company (Ctrl+F)",
@@ -55,6 +62,8 @@ LRESULT CDriversView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 }
 
 void CDriversView::OnActivate(bool active) {
+	// the Processes and Services views handle it too
+	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
 	m_Active = active;
 	if (active) {
 		// verified only once the tab is shown: hundreds of files, some of them through the system catalogs
@@ -378,12 +387,12 @@ LRESULT CDriversView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 	auto row = GetSelected();
 	if (!row)
 		return 0;
-	// the columns, tab separated
+	// the shown columns in display order, tab separated
 	std::wstring text;
-	for (int column = 0; column < (int)Column::_Count; column++) {
-		if (column > 0)
+	for (auto& column : GetShownColumns()) {
+		if (!text.empty())
 			text += L'\t';
-		text += GetText(*row, (Column)column);
+		text += GetText(*row, (Column)column.Id);
 	}
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;
@@ -396,5 +405,62 @@ LRESULT CDriversView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 
 LRESULT CDriversView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CDriversView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the widths and the order also change by dragging in the header
+	SaveColumns();
+	bHandled = FALSE;
+	return 0;
+}
+
+std::vector<ColumnLayout::ShownColumn> CDriversView::GetShownColumns() const {
+	return ColumnLayout::GetShownColumns(m_List, GetColumnManager(m_List));
+}
+
+void CDriversView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
+	ClearSort(m_List.m_hWnd);
+	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
+}
+
+void CDriversView::SaveColumns() const {
+	auto& settings = AppSettings::Get();
+	settings.DriverColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	settings.Save();
+}
+
+LRESULT CDriversView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
+		SetColumns(*columns);
+		SaveColumns();
+		ShowRows(GetSelectedKey());
+	}
+	return 0;
+}
+
+LRESULT CDriversView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	// the header's WM_CONTEXTMENU, told from a row's by the position; the rows have their own menu (OnRightClickList)
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
+	if (!column) {
+		bHandled = FALSE;
+		return 0;
+	}
+	m_MenuColumn = *column;
+	CMenu menu;
+	Frame()->ShowContextMenu(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, s_Columns), pt, TPM_RIGHTBUTTON);
+	return 0;
+}
+
+LRESULT CDriversView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
+		return 0;
+	auto columns = GetShownColumns();
+	std::erase_if(columns, [&](auto& c) { return c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	ShowRows(GetSelectedKey());
 	return 0;
 }

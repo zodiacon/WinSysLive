@@ -511,6 +511,7 @@
     <Image Include="res\color_wheel.ico" />
     <Image Include="res\cpu.ico" />
     <Image Include="res\delete.ico" />
+    <Image Include="res\copy.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />
