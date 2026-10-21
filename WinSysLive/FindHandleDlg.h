@@ -4,6 +4,7 @@
 #include <VirtualListView.h>
 #include <thread>
 #include <mutex>
+#include <WinSys/Handles.h>
 
 struct IMainFrame;
 
@@ -13,7 +14,8 @@ struct IMainFrame;
 // when a new search starts or the dialog closes) and posts the results as it finds them. Handle names are the Handles
 // page's (WinSys HandleNames::QueryName); a file's name query can hang, so it has a timeout, and a process with a hung one has the
 // rest of its files skipped (and past a limit, all files are). Processes that can't be opened (other users', protected ones; most without elevation) are counted.
-// Double-clicking a result (or Go to Process) selects its process in the Processes view.
+// Double-clicking a result (or Go to Process) selects its process in the Processes view; Properties (also in a result's
+// context menu) opens a handle's properties (CHandleSheet).
 //
 class CFindHandleDlg :
 	public CDialogImpl<CFindHandleDlg>,
@@ -35,6 +37,7 @@ public:
 		DLGRESIZE_CONTROL(IDC_FIND_SEARCH, DLSZ_MOVE_X)
 		DLGRESIZE_CONTROL(IDC_FIND_LIST, DLSZ_SIZE_X | DLSZ_SIZE_Y)
 		DLGRESIZE_CONTROL(IDC_FIND_STATUS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_FIND_PROPERTIES, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_FIND_GOTO, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDCANCEL, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 	END_DLGRESIZE_MAP()
@@ -44,7 +47,9 @@ public:
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_FIND_PROGRESS, OnProgress)
 		COMMAND_ID_HANDLER(IDC_FIND_SEARCH, OnSearch)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		COMMAND_ID_HANDLER(IDC_FIND_GOTO, OnGoToProcess)
+		COMMAND_ID_HANDLER(IDC_FIND_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		COMMAND_HANDLER(IDC_FIND_TEXT, EN_CHANGE, OnTextChanged)
 		NOTIFY_HANDLER(IDC_FIND_LIST, LVN_ITEMCHANGED, OnItemChanged)
@@ -66,6 +71,8 @@ private:
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnProgress(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSearch(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnClose(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnTextChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -79,6 +86,7 @@ private:
 		std::wstring Type;	// the object type, or "DLL"
 		uint64_t Value;		// the handle, or the module's base address
 		std::wstring Name;
+		std::optional<WinSys::HandleEntry> Handle;	// a handle's, for its properties
 	};
 
 	// what the worker and the dialog share (the worker may outlive nothing: the dialog joins it)
@@ -98,6 +106,7 @@ private:
 	static void Search(std::stop_token stop, std::shared_ptr<SearchState> state, HWND hWnd, std::wstring text, bool handles, bool dlls);
 	void UpdateStatus(bool done);
 	Result const* GetSelected() const;
+	void UpdateButtons();
 
 	IMainFrame* m_Frame;
 	CListViewCtrl m_List;

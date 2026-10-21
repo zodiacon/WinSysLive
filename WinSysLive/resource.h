@@ -171,6 +171,45 @@
 #define IDC_WAITCHAIN_REFRESH       1185
 #define IDC_WAITCHAIN_COPY          1186
 #define ID_THREAD_WAITCHAIN         32850
+#define IDD_HANDLE_PAGE             262
+#define IDC_HANDLEPROPS_LIST        1187
+#define IDC_HANDLEPROPS_REFRESH     1189
+#define IDC_HANDLEPROPS_COPY        1190
+#define IDC_FIND_PROPERTIES         1191
+#define IDC_TOKEN_SECURITY          1192
+#define IDD_SERVICE_GENERAL         263
+#define IDD_SERVICE_LOGON           264
+#define IDD_SERVICE_RECOVERY        265
+#define IDC_SVC_NAME                1193
+#define IDC_SVC_DISPLAYNAME         1194
+#define IDC_SVC_DESCRIPTION         1195
+#define IDC_SVC_PATH                1196
+#define IDC_SVC_STARTTYPE           1197
+#define IDC_SVC_ERRORCONTROL        1198
+#define IDC_SVC_STATE               1199
+#define IDC_SVC_LOCALSYSTEM         1200
+#define IDC_SVC_LOCALSERVICE        1201
+#define IDC_SVC_NETWORKSERVICE      1202
+#define IDC_SVC_THISACCOUNT         1203
+#define IDC_SVC_ACCOUNT             1204
+#define IDC_SVC_PASSWORD            1205
+#define IDC_SVC_CONFIRM             1206
+#define IDC_SVC_LOGON_NOTE          1207
+#define IDC_SVC_FIRST               1208
+#define IDC_SVC_SECOND              1209
+#define IDC_SVC_SUBSEQUENT          1210
+#define IDC_SVC_RESETDAYS           1211
+#define IDC_SVC_RESTARTMIN          1212
+#define IDC_SVC_NONCRASH            1213
+#define IDC_SVC_COMMAND             1214
+#define IDC_SVC_REBOOTMIN           1215
+#define IDC_SVC_RECOVERY_NOTE       1216
+#define ID_SERVICE_START_AUTO       32856
+#define ID_SERVICE_START_DELAYED    32857
+#define ID_SERVICE_START_MANUAL     32858
+#define ID_SERVICE_START_DISABLED   32859
+#define ID_HANDLE_PROPERTIES        32854
+#define ID_HANDLE_CLOSE             32855
 #define ID_PROCESS_WAITCHAIN        32851
 #define ID_FILE_EXPORT              32852
 #define ID_EDIT_COPYALL             32853
@@ -306,9 +345,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	262
-#define _APS_NEXT_CONTROL_VALUE		1187
+#define _APS_NEXT_RESOURCE_VALUE	266
+#define _APS_NEXT_CONTROL_VALUE		1217
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32854
+#define _APS_NEXT_COMMAND_VALUE		32860
 #endif
 #endif

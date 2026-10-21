@@ -117,6 +117,15 @@
     <ClCompile Include="ListExport.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="HandleSheet.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="ServiceSheet.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectSecurity.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="WaitChainDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -250,6 +259,15 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ListExport.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="HandleSheet.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ServiceSheet.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectSecurity.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="WaitChainDlg.h">

@@ -27,7 +27,8 @@ namespace {
 CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)) {
 	m_Title = std::format(L"{} ({}) Properties", m_Props.ImageName, m_Props.Id);
 	SetTitle(m_Title.c_str());
-	m_psh.dwFlags |= PSH_NOAPPLYNOW | PSH_NOCONTEXTHELP;
+	// Apply stays for the Security page's changes (disabled until there are some; Close applies them too, as OK does)
+	m_psh.dwFlags |= PSH_NOCONTEXTHELP;
 
 	if (m_Props.ImagePath.empty() || ::ExtractIconEx(m_Props.ImagePath.c_str(), 0, &m_Icon.m_hIcon, &m_SmallIcon.m_hIcon, 1) == 0
 		|| !m_Icon) {
@@ -46,6 +47,12 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Memory);
 	m_Token = std::make_unique<CProcTokenPage>(m_Props);
 	AddPage(*m_Token);
+	m_Security = CObjectSecurityInfo::Open([&](DWORD access) { return OpenSheetProcess(m_Props, access).release(); }, L"Process",
+		std::format(L"{} ({})", m_Props.ImageName, m_Props.Id));
+	if (auto page = ::CreateSecurityPage(m_Security)) {
+		m_SecurityTab = GetPageCount();
+		AddPage(page);
+	}
 	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Threads);
 	m_TcpIp = std::make_unique<CProcTcpIpPage>(m_Props, m_Snapshot);
@@ -60,8 +67,16 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	}
 }
 
+CProcessSheet::~CProcessSheet() {
+	if (m_Security)
+		m_Security->Release();
+}
+
 void CProcessSheet::OnSheetInitialized() {
 	BaseSheet::OnSheetInitialized();
+	if (m_SecurityTab >= 0)
+		SetSecurityTabIcon(m_hWnd, m_SecurityTab);
+	m_AclTheming.Install(m_hWnd);
 
 	// a window of its own: the main window belongs to another thread
 	ModifyStyleEx(0, WS_EX_APPWINDOW);

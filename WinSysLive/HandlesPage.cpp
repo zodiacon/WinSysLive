@@ -6,6 +6,7 @@
 #include "AppSettings.h"
 #include "ViewBase.h"
 #include "HandleIcons.h"
+#include "HandleSheet.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/Sid.h>
 #include <WTLHelper.h>
@@ -182,6 +183,41 @@ void CHandlesPage::CloseSelected() {
 	Refresh();
 }
 
+bool CHandlesPage::CanShowProperties() const {
+	return m_hProcess && m_Process && GetSelectedRow();
+}
+
+void CHandlesPage::ShowProperties() {
+	auto row = GetSelectedRow();
+	if (!row || !CanShowProperties())
+		return;
+	// the row may go with a refresh while the dialog runs: copies
+	auto data = row->Data;
+	auto name = GetName(*data, false);
+	CHandleSheet sheet(m_hProcess.get(), m_Process->Id, m_Process->GetImageName(), data->Entry, name,
+		[this](DWORD pid) { return m_Frame ? m_Frame->GetProcessManager().GetProcessNameById(pid) : std::wstring(); });
+	sheet.DoModal(m_hWnd);
+}
+
+LRESULT CHandlesPage::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+	// posted, so the dialog doesn't run inside the list's mouse handling
+	if (CanShowProperties())
+		PostMessage(WM_COMMAND, ID_HANDLE_PROPERTIES);
+	return 0;
+}
+
+LRESULT CHandlesPage::OnHandleCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (wID == ID_HANDLE_PROPERTIES)
+		ShowProperties();
+	else
+		CloseSelected();
+	return 0;
+}
+
 void CHandlesPage::SelectHandle(uint64_t value) {
 	// the list view keeps the selection by index, which the new rows and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
@@ -320,7 +356,29 @@ LRESULT CHandlesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
 	if (!column) {
-		bHandled = FALSE;
+		// a row's
+		if (!GetSelectedRow()) {
+			bHandled = FALSE;
+			return 0;
+		}
+		if (pt.x == -1 && pt.y == -1) {
+			// from the keyboard: at the selected row
+			CRect rc;
+			m_List.GetItemRect(m_List.GetSelectedIndex(), &rc, LVIR_LABEL);
+			m_List.ClientToScreen(&rc);
+			pt = { rc.left, rc.bottom };
+		}
+		CMenu menu;
+		menu.CreatePopupMenu();
+		menu.AppendMenu(CanShowProperties() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_PROPERTIES, L"&Properties...");
+		menu.SetMenuDefaultItem(ID_HANDLE_PROPERTIES);
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(CanCloseSelected() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_CLOSE, L"&Close Handle");
+		MenuItemData const icons[] = {
+			{ ID_HANDLE_CLOSE, IDI_DELETE },
+		};
+		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons));
+		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}
 	m_MenuColumn = *column;

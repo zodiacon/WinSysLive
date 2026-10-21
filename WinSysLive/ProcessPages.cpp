@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ProcessPages.h"
+#include "ObjectSecurity.h"
 #include "FormatHelper.h"
 #include "Signature.h"
 #include "NetworkTracking.h"
@@ -405,6 +406,19 @@ LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 
 	InitDynamicLayout(false, false);
 	return TRUE;
+}
+
+LRESULT CProcTokenPage::OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto info = CObjectSecurityInfo::Open([&](DWORD access) -> HANDLE {
+		HANDLE hToken = nullptr;
+		if (auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION); hProcess && ::OpenProcessToken(hProcess.get(), access, &hToken))
+			return hToken;
+		return nullptr;
+		}, L"Token", std::format(L"Token of {} ({})", m_Props.ImageName, m_Props.Id));
+	// its dialogs are owned by the sheet, which themes them (CAclDialogTheming)
+	::EditSecurity(m_hWnd, info);
+	info->Release();
+	return 0;
 }
 
 void CProcTokenPage::ShowProperties(WinSys::Token const& token) {

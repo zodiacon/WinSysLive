@@ -359,6 +359,9 @@ exit /b 0</Command>
     <ClCompile Include="StackDlg.cpp" />
     <ClCompile Include="ListExport.cpp" />
     <ClCompile Include="WaitChainDlg.cpp" />
+    <ClCompile Include="HandleSheet.cpp" />
+    <ClCompile Include="ServiceSheet.cpp" />
+    <ClCompile Include="ObjectSecurity.cpp" />
     <ClCompile Include="AffinityDlg.cpp" />
     <ClCompile Include="FindHandleDlg.cpp" />
     <ClCompile Include="SymbolSettingsDlg.cpp" />
@@ -411,6 +414,9 @@ exit /b 0</Command>
     <ClInclude Include="StackDlg.h" />
     <ClInclude Include="ListExport.h" />
     <ClInclude Include="WaitChainDlg.h" />
+    <ClInclude Include="HandleSheet.h" />
+    <ClInclude Include="ServiceSheet.h" />
+    <ClInclude Include="ObjectSecurity.h" />
     <ClInclude Include="AffinityDlg.h" />
     <ClInclude Include="FindHandleDlg.h" />
     <ClInclude Include="SymbolSettingsDlg.h" />

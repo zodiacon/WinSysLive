@@ -855,7 +855,9 @@ void CProcessesView::UpdateUI() {
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
-	ui.UIEnable(ID_VIEW_PROPERTIES, m_Active && item && !item->Terminated);
+	// the Services view has Properties too (its OnFrameIdle)
+	if (m_Active)
+		ui.UIEnable(ID_VIEW_PROPERTIES, item && !item->Terminated);
 	for (int i = 0; i < _countof(s_Priorities); i++) {
 		ui.UIEnable(ID_PRIORITY_REALTIME + i, live);
 		ui.UISetRadio(ID_PRIORITY_REALTIME + i, false);
@@ -1151,6 +1153,11 @@ LRESULT CProcessesView::OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 }
 
 LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// with the lower pane's Handles page focused: the handle's
+	if (GetKillTarget() == KillTarget::Handle) {
+		m_Details.GetHandlesPage().ShowProperties();
+		return 0;
+	}
 	auto item = GetSelectedProcess();
 	if (!item || item->Terminated)
 		return 0;

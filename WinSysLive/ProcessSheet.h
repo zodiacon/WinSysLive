@@ -7,6 +7,7 @@
 #include "JobPage.h"
 #include "ServicesPage.h"
 #include "TcpIpPage.h"
+#include "ObjectSecurity.h"
 
 //
 // A process's properties: a modeless, resizable property sheet with tab icons, run on a thread of its own (see
@@ -19,6 +20,7 @@ class CProcessSheet :
 	using BaseSheet = CIconPropertySheetImpl<CProcessSheet, CResizablePropertySheetImpl<CProcessSheet>>;
 public:
 	explicit CProcessSheet(ProcessProperties props);
+	~CProcessSheet();
 
 	void OnSheetInitialized();
 
@@ -47,6 +49,11 @@ private:
 	std::unique_ptr<CProcTcpIpPage> m_TcpIp;
 	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job
 	std::unique_ptr<CProcServicesPage> m_Services;	// only for a process hosting services
+	// the Security page: the ACL editor's (CreateSecurityPage), on the process opened with the most of READ_CONTROL,
+	// WRITE_DAC and WRITE_OWNER it allows
+	CObjectSecurityInfo* m_Security{ nullptr };
+	int m_SecurityTab{ -1 };
+	CAclDialogTheming m_AclTheming;	// the ACL editor's dialogs (also the Token page's)
 };
 
 // opens the sheet on a new thread, which ends when the sheet is closed

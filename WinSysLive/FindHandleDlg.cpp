@@ -2,6 +2,8 @@
 #include "FindHandleDlg.h"
 #include "Interfaces.h"
 #include "HandleIcons.h"
+#include "HandleSheet.h"
+#include <WinSys/Helpers.h>
 #include <WinSys/Processes.h>
 #include "FilterBox.h"
 #include "ColumnLayout.h"
@@ -39,7 +41,7 @@ LRESULT CFindHandleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	CheckDlgButton(IDC_FIND_HANDLES, BST_CHECKED);
 	CheckDlgButton(IDC_FIND_DLLS, BST_CHECKED);
 	GetDlgItem(IDC_FIND_SEARCH).EnableWindow(FALSE);
-	GetDlgItem(IDC_FIND_GOTO).EnableWindow(FALSE);
+	UpdateButtons();
 	CEdit(GetDlgItem(IDC_FIND_TEXT)).SetCueBannerText(L"Part of a handle's name or a DLL's path", TRUE);
 
 	DlgResize_Init(true, true);
@@ -92,7 +94,7 @@ void CFindHandleDlg::StartSearch() {
 	m_State->Id = ++m_LastId;
 	m_Searching = true;
 	SetDlgItemText(IDC_FIND_SEARCH, L"&Stop");
-	GetDlgItem(IDC_FIND_GOTO).EnableWindow(FALSE);
+	UpdateButtons();
 	m_Worker = std::jthread(Search, m_State, m_hWnd, std::move(filter), handles, dlls);
 	UpdateStatus(false);
 }
@@ -178,7 +180,7 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 					if (file && nameQuery.GetAbandonedCount() > hung)
 						files = false;
 					if (!handleName.empty() && CFilterBox::Contains(handleName, text)
-						&& !add({ pid, name, ObjectTypes::GetName(entry.TypeIndex), entry.Value, std::move(handleName) }))
+						&& !add({ pid, name, ObjectTypes::GetName(entry.TypeIndex), entry.Value, std::move(handleName), entry }))
 						break;
 				}
 			}
@@ -287,9 +289,65 @@ CFindHandleDlg::Result const* CFindHandleDlg::GetSelected() const {
 	return selected >= 0 && selected < (int)m_Results.size() ? &m_Results[selected] : nullptr;
 }
 
+void CFindHandleDlg::UpdateButtons() {
+	auto result = GetSelected();
+	GetDlgItem(IDC_FIND_GOTO).EnableWindow(result != nullptr);
+	GetDlgItem(IDC_FIND_PROPERTIES).EnableWindow(result && result->Handle);
+}
+
 LRESULT CFindHandleDlg::OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& bHandled) {
-	GetDlgItem(IDC_FIND_GOTO).EnableWindow(GetSelected() != nullptr);
+	UpdateButtons();
 	bHandled = FALSE;
+	return 0;
+}
+
+LRESULT CFindHandleDlg::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	auto result = GetSelected();
+	if ((HWND)wParam != m_List || !result) {
+		bHandled = FALSE;
+		return 0;
+	}
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	if (pt.x == -1 && pt.y == -1) {
+		// from the keyboard: at the selected row
+		CRect rc;
+		m_List.GetItemRect(m_List.GetSelectedIndex(), &rc, LVIR_LABEL);
+		m_List.ClientToScreen(&rc);
+		pt = { rc.left, rc.bottom };
+	}
+	else {
+		// the header's isn't a row's
+		CRect header;
+		m_List.GetHeader().GetWindowRect(&header);
+		if (header.PtInRect(pt)) {
+			bHandled = FALSE;
+			return 0;
+		}
+	}
+	CMenu menu;
+	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING, IDC_FIND_GOTO, L"&Go to Process");
+	menu.AppendMenu(result->Handle ? MF_STRING : MF_STRING | MF_GRAYED, IDC_FIND_PROPERTIES, L"&Properties...");
+	menu.SetMenuDefaultItem(IDC_FIND_GOTO);
+	::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
+	return 0;
+}
+
+LRESULT CFindHandleDlg::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto result = GetSelected();
+	if (!result || !result->Handle)
+		return 0;
+	// copies: a search in progress may add results while the dialog runs
+	auto r = *result;
+	wil::unique_handle hProcess(::OpenProcess(PROCESS_DUP_HANDLE, FALSE, r.Pid));
+	if (!hProcess) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to open the process: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	CHandleSheet sheet(hProcess.get(), r.Pid, r.ProcessName, *r.Handle, r.Name,
+		[this](DWORD pid) { return m_Frame->GetProcessManager().GetProcessNameById(pid); });
+	sheet.DoModal(m_hWnd);
 	return 0;
 }
 

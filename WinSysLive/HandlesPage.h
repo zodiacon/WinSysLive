@@ -31,6 +31,9 @@ public:
 	// after asking. Not the app's own handles
 	bool CanCloseSelected() const;
 	void CloseSelected();
+	// the selected handle's properties (CHandleSheet): double-click, the row's menu, Properties (Alt+Enter)
+	bool CanShowProperties() const;
+	void ShowProperties();
 	void SetListFont(HFONT font) {
 		m_List.SetFont(font);
 		// a hidden page's header isn't all repainted otherwise
@@ -51,6 +54,9 @@ public:
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
+		COMMAND_ID_HANDLER(ID_HANDLE_PROPERTIES, OnHandleCommand)
+		COMMAND_ID_HANDLER(ID_HANDLE_CLOSE, OnHandleCommand)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		CHAIN_MSG_MAP(CVirtualListView<CHandlesPage>)
@@ -86,6 +92,8 @@ private:
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnHandleCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 

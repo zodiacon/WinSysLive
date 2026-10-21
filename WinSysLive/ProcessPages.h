@@ -129,12 +129,15 @@ public:
 
 	BEGIN_MSG_MAP(CProcTokenPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		COMMAND_ID_HANDLER(IDC_TOKEN_SECURITY, OnSecurity)
 		CHAIN_MSG_MAP(CDynamicDialogLayout<CProcTokenPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcTokenPage>)
 	END_MSG_MAP()
 
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the token's own security, in the ACL editor (EditSecurity)
+	LRESULT OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	void ShowProperties(WinSys::Token const& token);
 	void ShowPrivileges(WinSys::Token const& token);

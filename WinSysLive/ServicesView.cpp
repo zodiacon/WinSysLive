@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "resource.h"
 #include "ServicesView.h"
+#include "ServiceSheet.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
 #include <WinSys/Helpers.h>
@@ -91,6 +92,11 @@ std::wstring const& CServicesView::ServiceItem::GetTriggers() {
 		}
 	}
 	return m_Triggers;
+}
+
+void CServicesView::ServiceItem::Reload() {
+	m_Config.reset();
+	m_ConfigLoaded = m_DescriptionLoaded = m_PrivilegesLoaded = m_TriggersLoaded = false;
 }
 
 CString CServicesView::GetTitle() const {
@@ -475,6 +481,15 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	enable(ID_SERVICE_CONTINUE, pauseContinue && state == ServiceState::Paused);
 	enable(ID_SERVICE_RESTART, canStop && state == ServiceState::Running && m_RestartName.empty());
 	enable(ID_SERVICE_GOTOPROCESS, status.ProcessId != 0);
+	// the current start type, checked in its submenu
+	if (auto config = item.GetConfig()) {
+		auto id = config->StartType == ServiceStartType::Auto ? (config->DelayedAutoStart ? ID_SERVICE_START_DELAYED : ID_SERVICE_START_AUTO)
+			: config->StartType == ServiceStartType::Demand ? ID_SERVICE_START_MANUAL
+			: config->StartType == ServiceStartType::Disabled ? ID_SERVICE_START_DISABLED : 0;
+		for (int i = 0; i < popup.GetMenuItemCount(); i++)
+			if (CMenuHandle sub = popup.GetSubMenu(i); sub && id)
+				sub.CheckMenuRadioItem(ID_SERVICE_START_AUTO, ID_SERVICE_START_DISABLED, id, MF_BYCOMMAND);
+	}
 
 	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
 	return true;
@@ -569,6 +584,41 @@ LRESULT CServicesView::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL
 	auto service = WinSys::Service::Open(name, ServiceAccessMask::Start);
 	if (!service || !service->Start())
 		ShowError(L"Starting the service", ::GetLastError());
+	return 0;
+}
+
+void CServicesView::OnFrameIdle() {
+	Frame()->GetUI().UIEnable(ID_VIEW_PROPERTIES, GetSelectedService() != nullptr);
+}
+
+LRESULT CServicesView::OnStartType(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedService();
+	if (!item)
+		return 0;
+	auto type = wID == ID_SERVICE_START_MANUAL ? ServiceStartType::Demand
+		: wID == ID_SERVICE_START_DISABLED ? ServiceStartType::Disabled : ServiceStartType::Auto;
+	bool changed = Control(ServiceAccessMask::ChangeConfig | ServiceAccessMask::QueryConfig, L"Changing the start type", [&](WinSys::Service& svc) {
+		ServiceConfigChange change;
+		change.StartType = type;
+		return svc.ChangeConfig(change) && (type != ServiceStartType::Auto || svc.SetDelayedAutoStart(wID == ID_SERVICE_START_DELAYED));
+		});
+	if (changed) {
+		item->Reload();
+		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	}
+	return 0;
+}
+
+LRESULT CServicesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedService();
+	if (!item)
+		return 0;
+	CServiceSheet sheet(item->Info.GetName());
+	sheet.DoModal(m_hWnd);
+	if (sheet.Applied()) {
+		item->Reload();
+		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	}
 	return 0;
 }
 
