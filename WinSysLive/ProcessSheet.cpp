@@ -185,19 +185,17 @@ void CloseProcessProperties() {
 		s_Closing = true;
 		threads = std::move(s_Threads);
 	}
-	std::vector<HANDLE> handles;
-	for (auto& t : threads) {
+	for (auto& t : threads)
 		if (DWORD tid = *t.ThreadId)
 			::PostThreadMessage(tid, WM_QUIT, 0, 0);
-		handles.push_back(t.Thread.native_handle());
-	}
-	// a sheet stuck in a page's query isn't waited for long: the process is exiting anyway
-	if (!handles.empty() && ::WaitForMultipleObjects((DWORD)handles.size(), handles.data(), TRUE, 3000) != WAIT_TIMEOUT) {
-		for (auto& t : threads)
+	// a sheet stuck in a page's query isn't waited for long: the process is exiting anyway. One by one, as
+	// WaitForMultipleObjects takes at most 64 handles
+	auto deadline = ::GetTickCount64() + 3000;
+	for (auto& t : threads) {
+		auto now = ::GetTickCount64();
+		if (::WaitForSingleObject(t.Thread.native_handle(), now < deadline ? DWORD(deadline - now) : 0) == WAIT_OBJECT_0)
 			t.Thread.join();
-	}
-	else {
-		for (auto& t : threads)
+		else
 			t.Thread.detach();
 	}
 }

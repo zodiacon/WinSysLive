@@ -86,6 +86,9 @@ public:
 //	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
+	// puts the column layout in its setting and saves it (also done when the page is destroyed)
+	void SaveColumns() const;
+
 private:
 	enum class Column {
 		Id, CPU, CpuTime, KernelTime, UserTime, Cycles, CyclesDelta, State, WaitReason, Priority, BasePriority, IdealCpu,
@@ -165,7 +168,6 @@ private:
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
-	void SaveColumns() const;
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list

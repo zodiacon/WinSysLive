@@ -61,6 +61,9 @@ public:
 //	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
+	// puts the column layout in its setting and saves it (also done when the page is destroyed)
+	void SaveColumns() const;
+
 private:
 	enum class Column {
 		Name, BaseAddress, Size, Type, ImageBase, Description, Company, Version, Characteristics, Path,
@@ -96,7 +99,6 @@ private:
 	void SelectModule(void* base);
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
-	void SaveColumns() const;
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list

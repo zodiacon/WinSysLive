@@ -28,6 +28,8 @@ public:
 	void Refresh();
 	// the pages' lists
 	void SetListFont(HFONT font);
+	// the pages' column layouts, saved in the settings
+	void SaveColumns() const;
 
 	// CNativeCustomTabViewImpl
 	void OnPageActivated(int page);

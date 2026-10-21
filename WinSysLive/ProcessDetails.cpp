@@ -45,6 +45,12 @@ void CProcessDetails::SetListFont(HFONT font) {
 	m_Threads.SetListFont(font);
 }
 
+void CProcessDetails::SaveColumns() const {
+	m_Handles.SaveColumns();
+	m_Modules.SaveColumns();
+	m_Threads.SaveColumns();
+}
+
 void CProcessDetails::Refresh() {
 	m_Threads.Refresh();
 	switch (GetActivePage()) {

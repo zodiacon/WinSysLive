@@ -20,6 +20,9 @@ public:
 		return m_List;
 	}
 	void OnActivate(bool active) override;
+	void SaveSettings() override {
+		SaveColumns();
+	}
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
 	// Properties (Alt+Enter) for the selected service

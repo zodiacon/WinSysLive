@@ -8,9 +8,12 @@
 #include <ShlObj.h>
 
 CDriversView::~CDriversView() {
-	// the worker may be verifying a file: it finishes that one and exits (the jthread joins it)
+	// the worker may be verifying a file, which can take seconds through the catalogs: it isn't waited for, but
+	// finishes that one and exits without posting (it shares only m_Signatures)
 	m_Verifier.request_stop();
 	m_Signatures->Wake.notify_all();
+	if (m_Verifier.joinable())
+		m_Verifier.detach();
 }
 
 CString CDriversView::GetTitle() const {

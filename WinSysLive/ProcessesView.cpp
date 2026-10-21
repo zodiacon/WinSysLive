@@ -143,13 +143,23 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	return 0;
 }
 
-LRESULT CProcessesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+void CProcessesView::SaveSettings() {
+	SaveLayout();
+	m_Details.SaveColumns();
+}
+
+void CProcessesView::SaveLayout() const {
 	// the widths and the order also change by dragging in the header
 	SaveColumns();
 	// the splitter keeps its position while the lower pane is hidden
 	auto& settings = AppSettings::Get();
 	settings.ProcessSplitterPos(m_Splitter.GetSplitterPosPct());
 	settings.Save();
+}
+
+LRESULT CProcessesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the lower pane's pages save their columns as they're destroyed
+	SaveLayout();
 	bHandled = FALSE;
 	return 0;
 }

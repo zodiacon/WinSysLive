@@ -12,6 +12,14 @@ CWaitChainDlg::CWaitChainDlg(uint32_t pid, std::wstring name, std::vector<uint32
 	m_Pid(pid), m_Name(std::move(name)), m_Tids(std::move(tids)) {
 }
 
+CWaitChainDlg::~CWaitChainDlg() {
+	// a worker waiting on a hung process isn't waited for: it fills its own result, and its message finds no window
+	if (m_Worker.joinable()) {
+		m_Worker.request_stop();
+		m_Worker.detach();
+	}
+}
+
 LRESULT CWaitChainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	SetWindowText((m_Tids.size() == 1 ? std::format(L"Wait Chain: Thread {} ({}, {})", m_Tids[0], m_Name, m_Pid)
 		: std::format(L"Wait Chains: {} ({})", m_Name, m_Pid)).c_str());
@@ -41,9 +49,10 @@ void CWaitChainDlg::Read() {
 	SetDlgItemText(IDC_WAITCHAIN_STATUS, L"Reading the wait chains...");
 	if (m_Worker.joinable())
 		m_Worker.join();
-	m_Worker = std::jthread([this, hWnd = m_hWnd](std::stop_token stop) {
+	m_Result = std::make_shared<ReadResult>();
+	m_Worker = std::jthread([result = m_Result, tids = m_Tids, hWnd = m_hWnd](std::stop_token stop) {
 		std::vector<ThreadChain> chains;
-		for (auto tid : m_Tids) {
+		for (auto tid : tids) {
 			if (stop.stop_requested())
 				return;
 			ThreadChain chain{ tid, WaitChainTraversal::GetThreadWaitChain(tid) };
@@ -54,8 +63,8 @@ void CWaitChainDlg::Read() {
 		std::unordered_map<uint32_t, std::wstring> names;
 		for (auto& [pid, name] : Process::EnumProcessNames())
 			names[pid] = name;
-		m_Chains = std::move(chains);
-		m_ProcessNames = std::move(names);
+		result->Chains = std::move(chains);
+		result->ProcessNames = std::move(names);
 		::PostMessage(hWnd, WM_WAITCHAINS_READ, 0, 0);
 		});
 }
@@ -96,6 +105,8 @@ int CWaitChainDlg::NodeImage(WaitChainNode const& node) const {
 }
 
 LRESULT CWaitChainDlg::OnChainsRead(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	m_Chains = std::move(m_Result->Chains);
+	m_ProcessNames = std::move(m_Result->ProcessNames);
 	GetDlgItem(IDC_WAITCHAIN_REFRESH).EnableWindow(TRUE);
 	ShowChains();
 	return 0;
@@ -213,7 +224,7 @@ LRESULT CWaitChainDlg::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 }
 
 LRESULT CWaitChainDlg::OnClose(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// a read in progress stops after its current thread (the jthread joins it when the dialog goes)
+	// a read in progress stops after its current thread, or is left behind (see the destructor)
 	m_Worker.request_stop();
 	EndDialog(wID);
 	return 0;

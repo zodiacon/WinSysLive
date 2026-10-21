@@ -28,6 +28,7 @@ public:
 		return item ? m_Tree.GetCellText(item, 0) : std::wstring();
 	}
 	void OnActivate(bool active) override;
+	void SaveSettings() override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;
 	void OnFontChanged(HFONT font) override;
@@ -148,6 +149,8 @@ private:
 	static std::vector<ShownColumn> LoadColumns();
 	static std::vector<ColumnLayout::ShownColumn> ToLayout(std::vector<ShownColumn> const& columns);
 	void SaveColumns() const;
+	// the columns and the splitter
+	void SaveLayout() const;
 	bool ShowsNetwork() const;
 	// a GPU column is shown: the processes' GPU usage is queried (a call per engine of each process using the GPU)
 	bool ShowsGpu() const;

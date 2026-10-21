@@ -410,6 +410,18 @@ LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	return 1;
 }
 
+LRESULT CMainFrame::OnEndSession(UINT /*uMsg*/, WPARAM ending, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// logoff or shutdown: the process ends after this returns, without WM_DESTROY, so the views save now
+	// what they'd save as they're destroyed
+	if (ending) {
+		KillTimer(TimerId);
+		for (auto view : m_Views)
+			view->SaveSettings();
+		SaveSettings();
+	}
+	return 0;
+}
+
 LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
 	if (id != TimerId) {
 		bHandled = FALSE;

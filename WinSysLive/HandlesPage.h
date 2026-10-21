@@ -75,6 +75,9 @@ public:
 //	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
+	// puts the column layout in its setting and saves it (also done when the page is destroyed)
+	void SaveColumns() const;
+
 private:
 	enum class Column {
 		Handle, Type, Name, Address, Access, DecodedAccess, Attributes,
@@ -119,7 +122,6 @@ private:
 	bool ShowsAddresses() const;
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
-	void SaveColumns() const;
 
 	IMainFrame* m_Frame{ nullptr };
 	CListViewCtrl m_List;

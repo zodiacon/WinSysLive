@@ -56,4 +56,7 @@ struct IView abstract {
 	// for a list of the view's that's a TreeListView's: column 0's text of a row (the TreeListView draws that column
 	// itself, so the list has none); nullopt for other lists
 	virtual std::optional<std::wstring> GetTreeColumnText(HWND /*hList*/, int /*row*/) { return std::nullopt; }
+	// saves what the view saves when it's destroyed (columns, splitter...): the session is ending, and no window
+	// will be destroyed
+	virtual void SaveSettings() {}
 };

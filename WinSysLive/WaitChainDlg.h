@@ -18,6 +18,7 @@ public:
 
 	// tids: the threads whose chains are shown (one, or the process's); name: the process's image name, for the title
 	CWaitChainDlg(uint32_t pid, std::wstring name, std::vector<uint32_t> tids);
+	~CWaitChainDlg();
 
 	BEGIN_DLGRESIZE_MAP(CWaitChainDlg)
 		DLGRESIZE_CONTROL(IDC_WAITCHAIN_LIST, DLSZ_SIZE_X | DLSZ_SIZE_Y)
@@ -50,6 +51,12 @@ private:
 		std::optional<WinSys::WaitChain> Chain;
 		DWORD Error{ 0 };	// when there's no chain
 	};
+	// what a read's worker fills, taken when it posts WM_WAITCHAINS_READ; shared with the worker, which is left behind
+	// if the dialog closes while it waits in WCT on a hung process
+	struct ReadResult {
+		std::vector<ThreadChain> Chains;
+		std::unordered_map<uint32_t, std::wstring> ProcessNames;
+	};
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnChainsRead(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -69,8 +76,8 @@ private:
 	std::vector<uint32_t> m_Tids;
 	CListViewCtrl m_List;
 	CImageList m_Images;
-	// written by the worker, read once it posts WM_WAITCHAINS_READ (the worker is joined before another read and when
-	// the dialog goes)
+	// the last read's (Refresh is disabled while one runs)
+	std::shared_ptr<ReadResult> m_Result;
 	std::vector<ThreadChain> m_Chains;
 	std::unordered_map<uint32_t, std::wstring> m_ProcessNames;
 	std::vector<bool> m_DeadlockRows;	// by row: in a deadlocked chain
