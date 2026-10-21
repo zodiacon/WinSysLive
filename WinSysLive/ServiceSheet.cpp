@@ -88,8 +88,10 @@ CServiceSheet::CServiceSheet(std::wstring const& name) {
 		m_Data.Config = *config;
 	m_Data.Description = ServiceManager::GetServiceDescription(name);
 	m_Data.Status = ServiceManager::GetServiceStatus(name);
-	if (auto service = WinSys::Service::Open(name, ServiceAccessMask::QueryConfig))
+	if (auto service = WinSys::Service::Open(name, ServiceAccessMask::QueryConfig)) {
 		m_Data.Failure = service->GetFailureActions();
+		m_Data.Triggers = service->GetTriggerDetails();
+	}
 
 	m_Title = std::format(L"{} Properties", m_Data.Config.DisplayName.empty() ? name : m_Data.Config.DisplayName);
 	SetTitle(m_Title.c_str());
@@ -102,6 +104,8 @@ CServiceSheet::CServiceSheet(std::wstring const& name) {
 		AddPage(m_Recovery);
 	}
 	AddPage(m_Dependencies);
+	if (!m_Data.Triggers.empty())
+		AddPage(m_Triggers);
 	m_Security = CServiceSecurityInfo::Open(name, m_Data.Config.DisplayName.empty() ? name : m_Data.Config.DisplayName);
 	if (auto page = ::CreateSecurityPage(m_Security))
 		AddPage(page);
@@ -635,4 +639,143 @@ LRESULT CServiceDependenciesPage::OnTreeRightClick(int /*idCtrl*/, LPNMHDR hdr, 
 		sheet.DoModal(GetParent());
 	}
 	return TRUE;
+}
+
+namespace {
+	// the subtypes the trigger types define (winsvc.h's GUIDs; INITGUID is off, so they're not linked from there)
+	struct KnownSubtype {
+		GUID Id;
+		PCWSTR Name;
+	};
+	const KnownSubtype s_Subtypes[] = {
+		{ { 0x4f27f2de, 0x14e2, 0x430b, { 0xa5, 0x49, 0x7c, 0xd4, 0x8c, 0xbc, 0x82, 0x45 } }, L"First IP address arrival" },
+		{ { 0xcc4ba62a, 0x162e, 0x4648, { 0x84, 0x7a, 0xb6, 0xbd, 0xf9, 0x93, 0xe3, 0x35 } }, L"Last IP address removal" },
+		{ { 0x1ce20aba, 0x9851, 0x4421, { 0x94, 0x30, 0x1d, 0xde, 0xb7, 0x66, 0xe8, 0x09 } }, L"Domain joined" },
+		{ { 0xddaf516e, 0x58c2, 0x4866, { 0x95, 0x74, 0xc3, 0xb6, 0x15, 0xd4, 0x2e, 0xa1 } }, L"Domain left" },
+		{ { 0xb7569e07, 0x8421, 0x4ee0, { 0xad, 0x10, 0x86, 0x91, 0x5a, 0xfd, 0xad, 0x09 } }, L"Firewall port opened" },
+		{ { 0xa144ed38, 0x8e12, 0x4de4, { 0x9d, 0x96, 0xe6, 0x47, 0x40, 0xb1, 0xa5, 0x24 } }, L"Firewall port closed" },
+		{ { 0x659fcae6, 0x5bdb, 0x4da9, { 0xb1, 0xff, 0xca, 0x2a, 0x17, 0x8d, 0x46, 0xe0 } }, L"Machine policy present" },
+		{ { 0x54fb46c8, 0xf089, 0x464c, { 0xb1, 0xfd, 0x59, 0xd1, 0xb6, 0x2c, 0x3b, 0x50 } }, L"User policy present" },
+		{ { 0xbc90d167, 0x9470, 0x4139, { 0xa9, 0xba, 0xbe, 0x0b, 0xbb, 0xf5, 0xb7, 0x4d } }, L"RPC interface" },
+		{ { 0x1f81d131, 0x3fac, 0x4537, { 0x9e, 0x0c, 0x7e, 0x7b, 0x0c, 0x2f, 0x4b, 0x55 } }, L"Named pipe" },
+	};
+
+	std::wstring GuidText(GUID const& id) {
+		WCHAR text[64];
+		return ::StringFromGUID2(id, text, _countof(text)) ? text : L"";
+	}
+
+	std::wstring SubtypeText(ServiceTriggerDetails const& t) {
+		if (auto it = std::ranges::find_if(s_Subtypes, [&](auto& s) { return s.Id == t.Subtype; }); it != std::end(s_Subtypes))
+			return it->Name;
+		auto guid = GuidText(t.Subtype);
+		switch (t.Type) {
+			case ServiceTriggerType::Custom:
+				// an ETW provider
+				if (auto name = WinSys::Service::GetEventProviderName(t.Subtype); !name.empty())
+					return std::format(L"{} {}", name, guid);
+				break;
+			case ServiceTriggerType::DeviceInterfaceArrival:
+				return L"Device interface " + guid;
+		}
+		return guid;
+	}
+
+	PCWSTR DataTypeName(ServiceTriggerDataType type) {
+		switch (type) {
+			case ServiceTriggerDataType::Binary: return L"Binary";
+			case ServiceTriggerDataType::String: return L"String";
+			case ServiceTriggerDataType::Level: return L"Level";
+			case ServiceTriggerDataType::KeywordAny: return L"Any keyword";
+			case ServiceTriggerDataType::KeywordAll: return L"All keywords";
+		}
+		return L"Unknown";
+	}
+
+	// a data item's values: a string item's strings one each, the others one
+	std::vector<std::wstring> DataValues(ServiceTriggerData const& item) {
+		std::vector<std::wstring> values;
+		auto& data = item.Data;
+		switch (item.Type) {
+			case ServiceTriggerDataType::String: {
+				std::wstring_view text((PCWSTR)data.data(), data.size() / sizeof(WCHAR));
+				for (size_t start = 0; start < text.size(); ) {
+					auto end = text.find(L'\0', start);
+					if (end == std::wstring_view::npos)
+						end = text.size();
+					if (end > start)
+						values.emplace_back(text.substr(start, end - start));
+					start = end + 1;
+				}
+				break;
+			}
+			case ServiceTriggerDataType::Level:
+				if (!data.empty()) {
+					PCWSTR const levels[] = { L"", L"Critical", L"Error", L"Warning", L"Information", L"Verbose" };
+					values.push_back(data[0] < _countof(levels) ? std::format(L"{} ({})", data[0], levels[data[0]]) : std::to_wstring(data[0]));
+				}
+				break;
+			case ServiceTriggerDataType::KeywordAny:
+			case ServiceTriggerDataType::KeywordAll:
+				if (data.size() >= sizeof(ULONGLONG))
+					values.push_back(std::format(L"0x{:016X}", *(ULONGLONG const*)data.data()));
+				break;
+			default: {
+				std::wstring hex;
+				for (size_t i = 0; i < data.size() && i < 64; i++)
+					hex += std::format(L"{}{:02X}", i ? L" " : L"", data[i]);
+				if (data.size() > 64)
+					hex += std::format(L" ... ({} bytes)", data.size());
+				values.push_back(std::move(hex));
+				break;
+			}
+		}
+		return values;
+	}
+
+	void InitColumns(CListViewCtrl& list, HWND hList, std::initializer_list<std::pair<PCWSTR, int>> columns) {
+		list.Attach(hList);
+		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
+		auto dpi = ::GetDpiForWindow(hList);
+		int i = 0;
+		for (auto& [name, width] : columns)
+			list.InsertColumn(i++, name, LVCFMT_LEFT, ::MulDiv(width, dpi, 96));
+	}
+}
+
+LRESULT CServiceTriggersPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	InitColumns(m_List, GetDlgItem(IDC_SVC_TRIGGERS), { { L"Action", 50 }, { L"Trigger", 110 }, { L"Subtype", 300 } });
+	InitColumns(m_DataList, GetDlgItem(IDC_SVC_TRIGGERDATA), { { L"Type", 80 }, { L"Value", 380 } });
+	int row = 0;
+	for (auto& t : m_Data.Triggers) {
+		// "Start: Device arrival"
+		auto text = FormatHelper::ServiceTriggerToString(t.Type, t.Action);
+		auto colon = text.find(L": ");
+		m_List.InsertItem(row, text.substr(0, colon).c_str());
+		m_List.SetItemText(row, 1, colon == std::wstring::npos ? L"" : text.substr(colon + 2).c_str());
+		m_List.SetItemText(row, 2, SubtypeText(t).c_str());
+		row++;
+	}
+	if (row)
+		m_List.SetItemState(0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+	return TRUE;
+}
+
+LRESULT CServiceTriggersPage::OnItemChanged(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	auto lv = (NMLISTVIEW*)hdr;
+	if ((lv->uChanged & LVIF_STATE) && ((lv->uNewState ^ lv->uOldState) & LVIS_SELECTED))
+		ShowData(m_List.GetNextItem(-1, LVNI_SELECTED));
+	return 0;
+}
+
+void CServiceTriggersPage::ShowData(int index) {
+	m_DataList.DeleteAllItems();
+	if (index < 0 || index >= (int)m_Data.Triggers.size())
+		return;
+	int row = 0;
+	for (auto& item : m_Data.Triggers[index].Data)
+		for (auto& value : DataValues(item)) {
+			m_DataList.InsertItem(row, DataTypeName(item.Type));
+			m_DataList.SetItemText(row++, 1, value.c_str());
+		}
 }

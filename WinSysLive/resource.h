@@ -325,6 +325,24 @@
 #define IDD_SERVICE_DEPENDENCIES    277
 #define IDC_SVC_DEPENDSON           1241
 #define IDC_SVC_DEPENDENTS          1242
+#define IDD_SERVICE_TRIGGERS        278
+#define IDC_SVC_TRIGGERS            1243
+#define IDC_SVC_TRIGGERDATA         1244
+#define IDD_SERVICE_INSTALL         279
+#define IDC_SVCI_NAME               1245
+#define IDC_SVCI_DISPLAYNAME        1246
+#define IDC_SVCI_DESCRIPTION        1247
+#define IDC_SVCI_PATH               1248
+#define IDC_SVCI_BROWSE             1249
+#define IDC_SVCI_TYPE               1250
+#define IDC_SVCI_STARTTYPE          1251
+#define IDC_SVCI_ERRORCONTROL       1252
+#define IDC_SVCI_ACCOUNT            1253
+#define IDC_SVCI_PASSWORD           1254
+#define IDC_SVCI_DEPENDENCIES       1255
+#define IDC_SVCI_START              1256
+#define ID_SERVICE_INSTALL          32882
+#define ID_SERVICE_DELETE           32883
 #define IDD_FIND_HANDLE             259
 #define IDC_FIND_TEXT               1133
 #define IDC_FIND_SEARCH             1134
@@ -405,9 +423,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	278
-#define _APS_NEXT_CONTROL_VALUE		1243
+#define _APS_NEXT_RESOURCE_VALUE	280
+#define _APS_NEXT_CONTROL_VALUE		1257
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32882
+#define _APS_NEXT_COMMAND_VALUE		32884
 #endif
 #endif

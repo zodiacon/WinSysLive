@@ -3,6 +3,7 @@
 #include "resource.h"
 #include "ServicesView.h"
 #include "ServiceSheet.h"
+#include "ServiceInstallDlg.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
 #include <WinSys/KernelModules.h>
@@ -495,8 +496,14 @@ void CServicesView::SelectService(std::wstring const& name) {
 }
 
 bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
-	if (row < 0 || row >= (int)m_Items.size())
-		return false;
+	if (row < 0 || row >= (int)m_Items.size()) {
+		// below the rows: only New Service
+		CMenu menu;
+		menu.CreatePopupMenu();
+		menu.AppendMenu(MF_STRING, ID_SERVICE_INSTALL, m_Kind == Kind::Drivers ? L"&New Driver..." : L"&New Service...");
+		Frame()->ShowContextMenu(menu.m_hMenu, pt, TPM_RIGHTBUTTON);
+		return true;
+	}
 
 	auto& item = *m_Items[row];
 	auto& status = item.Info.GetStatusProcess();
@@ -721,6 +728,43 @@ LRESULT CServicesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 LRESULT CServicesView::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto item = GetSelectedService(); item && item->Info.GetStatusProcess().ProcessId)
 		Frame()->GoToProcess(item->Info.GetStatusProcess().ProcessId);
+	return 0;
+}
+
+LRESULT CServicesView::OnInstall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CServiceInstallDlg dlg(m_Kind == Kind::Drivers);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	OnRefresh(true);
+	auto it = m_ItemsByName.find(dlg.GetName());
+	if (it == m_ItemsByName.end())
+		return 0;
+	// a filter that hides it goes
+	if (!Matches(*it->second))
+		m_Filter.Clear();
+	SelectService(dlg.GetName());
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		m_List.EnsureVisible(selected, FALSE);
+	m_List.SetFocus();
+	return 0;
+}
+
+LRESULT CServicesView::OnDelete(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedService();
+	if (!item)
+		return 0;
+	auto name = item->Info.GetName();
+	bool running = item->Info.GetStatusProcess().CurrentState != ServiceState::Stopped;
+	auto text = std::format(L"Delete {} ({})?\n\nIts configuration is removed from the registry; the file stays.", item->Info.GetDisplayName(), name);
+	if (running)
+		text += L" It's running, so it goes once it stops and every handle to it is closed.";
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	if (!ServiceManager::Uninstall(name)) {
+		ShowError(L"Deleting the service", ::GetLastError());
+		return 0;
+	}
+	OnRefresh(true);
 	return 0;
 }
 

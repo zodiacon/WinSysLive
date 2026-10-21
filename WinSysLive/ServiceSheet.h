@@ -14,6 +14,7 @@ struct ServiceSheetData {
 	std::wstring Description;
 	WinSys::ServiceStatusProcess Status{};
 	std::optional<WinSys::ServiceFailureActions> Failure;	// nothing if it can't be read
+	std::vector<WinSys::ServiceTriggerDetails> Triggers;	// the Triggers page is added only if there are some
 	bool Driver{ false };	// a kernel or file system driver: only the General page applies, with a driver's start types
 	bool Applied{ false };
 };
@@ -181,9 +182,30 @@ private:
 	std::optional<std::unordered_map<std::wstring, std::vector<std::wstring>>> m_Groups;
 };
 
+// the triggers (event, subtype) and the selected one's data items (strings, bytes, ETW levels and keywords); read-only
+class CServiceTriggersPage : public CPropertyPageImpl<CServiceTriggersPage> {
+public:
+	enum { IDD = IDD_SERVICE_TRIGGERS };
+	explicit CServiceTriggersPage(ServiceSheetData& data) : m_Data(data) {}
+
+	BEGIN_MSG_MAP(CServiceTriggersPage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		NOTIFY_HANDLER(IDC_SVC_TRIGGERS, LVN_ITEMCHANGED, OnItemChanged)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CServiceTriggersPage>)
+	END_MSG_MAP()
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	void ShowData(int index);
+
+	ServiceSheetData& m_Data;
+	CListViewCtrl m_List, m_DataList;
+};
+
 //
 // A service's properties, as services.msc has them: General (display name, description, path, start type, error
-// control), Log On (the account), Recovery (the failure actions), Dependencies and Security (the system's ACL editor on
+// control), Log On (the account), Recovery (the failure actions), Dependencies, Triggers (only if it has some) and Security (the system's ACL editor on
 // the service's descriptor, CServiceSecurityInfo; it applies its own changes). Modal; the configuration is read when
 // it's created.
 //
@@ -206,6 +228,7 @@ private:
 	CServiceLogOnPage m_LogOn{ m_Data };
 	CServiceRecoveryPage m_Recovery{ m_Data };
 	CServiceDependenciesPage m_Dependencies{ m_Data };
+	CServiceTriggersPage m_Triggers{ m_Data };
 	CServiceSecurityInfo* m_Security{ nullptr };
 	CAclDialogTheming m_AclTheming;
 };

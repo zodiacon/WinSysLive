@@ -132,6 +132,9 @@
     <ClCompile Include="ServiceSteps.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ServiceInstallDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="MemoryDialogs.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -290,6 +293,9 @@
     </ClInclude>
     <ClInclude Include="ServiceSteps.h">
       <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ServiceInstallDlg.h">
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="MemoryDialogs.h">
       <Filter>Dialogs</Filter>

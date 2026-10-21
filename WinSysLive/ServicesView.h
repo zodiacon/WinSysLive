@@ -67,6 +67,8 @@ public:
 		COMMAND_ID_HANDLER(ID_SERVICE_CONTINUE, OnContinue)
 		COMMAND_ID_HANDLER(ID_SERVICE_RESTART, OnRestart)
 		COMMAND_ID_HANDLER(ID_SERVICE_GOTOPROCESS, OnGoToProcess)
+		COMMAND_ID_HANDLER(ID_SERVICE_INSTALL, OnInstall)
+		COMMAND_ID_HANDLER(ID_SERVICE_DELETE, OnDelete)
 		COMMAND_ID_HANDLER(ID_SERVICE_GOTOKMODULE, OnGoToKernelModule)
 		COMMAND_RANGE_HANDLER(ID_SERVICE_START_AUTO, ID_SERVICE_START_DISABLED, OnStartType)
 		COMMAND_ID_HANDLER(ID_SERVICE_START_BOOT, OnStartType)
@@ -118,6 +120,10 @@ private:
 	LRESULT OnContinue(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// New Service (CServiceInstallDlg) and Delete Service (after a confirmation): the list is refreshed at once, and a
+	// new service selected (its filter cleared if it hides it)
+	LRESULT OnInstall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDelete(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToKernelModule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// a driver service's image as a Win32 path (WinSys KernelModules::DriverImagePath); empty if its configuration can't be read
 	std::wstring DriverPath(ServiceItem& item) const;
