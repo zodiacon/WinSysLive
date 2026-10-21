@@ -606,7 +606,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Processor Affinity"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    LTEXT           "The processors the process's threads may run on:",IDC_STATIC,7,7,246,9
+    LTEXT           "The processors the process's threads may run on:",IDC_AFF_LABEL,7,7,246,9
     LTEXT           "",IDC_AFF_AREA,7,20,246,70,NOT WS_VISIBLE
     PUSHBUTTON      "Select &All",IDC_AFF_ALL,7,99,50,14
     PUSHBUTTON      "&Clear",IDC_AFF_NONE,61,99,50,14

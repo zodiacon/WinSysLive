@@ -12,6 +12,7 @@
 #include <IconHelper.h>
 #include "StackDlg.h"
 #include "WaitChainDlg.h"
+#include "AffinityDlg.h"
 #include <WinSys/Helpers.h>
 
 using namespace WinSys;
@@ -206,6 +207,72 @@ bool CThreadsPage::IsSuspended(ThreadRow const& row) {
 	return row.State == 5 && (row.WaitReason == 5 || row.WaitReason == 12);
 }
 
+namespace {
+	// in the Set Priority submenu's order (ID_THREAD_PRIORITY_TIMECRITICAL...)
+	const struct {
+		ThreadPriorityLevel Level;
+		PCWSTR Name;
+	} s_ThreadPriorities[] = {
+		{ ThreadPriorityLevel::TimeCritical, L"&Time Critical" },
+		{ ThreadPriorityLevel::Highest, L"&Highest" },
+		{ ThreadPriorityLevel::AboveNormal, L"&Above Normal" },
+		{ ThreadPriorityLevel::Normal, L"&Normal" },
+		{ ThreadPriorityLevel::BelowNormal, L"&Below Normal" },
+		{ ThreadPriorityLevel::Lowest, L"&Lowest" },
+		{ ThreadPriorityLevel::Idle, L"&Idle" },
+	};
+	static_assert(_countof(s_ThreadPriorities) == ID_THREAD_PRIORITY_IDLE - ID_THREAD_PRIORITY_TIMECRITICAL + 1);
+}
+
+std::unique_ptr<Thread> CThreadsPage::OpenRowThread(ThreadRow const& row, ThreadAccessMask access) const {
+	auto thread = Thread::OpenById(row.Key.Id, access | ThreadAccessMask::QueryLimitedInformation);
+	if (thread) {
+		// the thread ID may belong to another thread by now
+		auto created = thread->GetCreateTime();
+		if (created && created != row.Key.Created) {
+			::SetLastError(ERROR_INVALID_PARAMETER);
+			return nullptr;
+		}
+	}
+	return thread;
+}
+
+LRESULT CThreadsPage::OnThreadPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto row = GetSelectedThread();
+	if (!row || !CanControl())
+		return 0;
+	auto level = s_ThreadPriorities[wID - ID_THREAD_PRIORITY_TIMECRITICAL].Level;
+	auto thread = OpenRowThread(*row, ThreadAccessMask::SetLimitedInformation);
+	if (!thread || !thread->SetPriority(level))
+		AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's priority: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	// the new priority shows with the next refresh
+	return 0;
+}
+
+LRESULT CThreadsPage::OnThreadAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto row = GetSelectedThread();
+	if (!row || !CanControl())
+		return 0;
+	auto thread = OpenRowThread(*row, ThreadAccessMask::SetInformation | ThreadAccessMask::QueryInformation);
+	uint16_t group = 0;
+	KAFFINITY mask = 0, allowed = 0;
+	if (!thread || !thread->GetAffinity(group, mask, allowed)) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to get the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	// the processors of the thread's group, numbered within it
+	auto title = std::format(L"Thread {} of {} ({})", row->Key.Id, m_ProcessName, m_Pid);
+	if (::GetActiveProcessorGroupCount() > 1)
+		title += std::format(L", group {}", group);
+	CAffinityDlg dlg(title, mask, allowed, true);
+	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !thread->SetAffinity(dlg.GetMask()))
+		AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	return 0;
+}
+
 bool CThreadsPage::CanControl() const {
 	return m_Pid > 4 && m_Pid != ::GetCurrentProcessId();
 }
@@ -308,6 +375,20 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		else
 			menu.AppendMenu(control, ID_THREAD_SUSPEND, L"S&uspend");
 		menu.AppendMenu(control, ID_THREAD_TERMINATE, L"&Terminate");
+		menu.AppendMenu(MF_SEPARATOR);
+		// the priority (the current one checked, from the handle the page keeps) and the affinity
+		CMenu priorities;
+		priorities.CreatePopupMenu();
+		for (int i = 0; i < _countof(s_ThreadPriorities); i++)
+			priorities.AppendMenu(MF_STRING, ID_THREAD_PRIORITY_TIMECRITICAL + i, s_ThreadPriorities[i].Name);
+		if (auto state = m_Threads.find(GetSelectedThread()->Key); state != m_Threads.end() && state->second.Handle) {
+			auto current = state->second.Handle->GetPriority();
+			for (int i = 0; i < _countof(s_ThreadPriorities); i++)
+				if (s_ThreadPriorities[i].Level == current)
+					priorities.CheckMenuRadioItem(ID_THREAD_PRIORITY_TIMECRITICAL, ID_THREAD_PRIORITY_IDLE, ID_THREAD_PRIORITY_TIMECRITICAL + i, MF_BYCOMMAND);
+		}
+		menu.AppendMenu(control | MF_POPUP, (UINT_PTR)priorities.Detach(), L"Set &Priority");
+		menu.AppendMenu(control, ID_THREAD_AFFINITY, L"&Affinity...");
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		// the icons, as the frame's menus have them

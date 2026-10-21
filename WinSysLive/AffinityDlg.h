@@ -3,15 +3,17 @@
 #include "resource.h"
 
 //
-// A process's processor affinity: a check box for each processor in the system's mask (one processor group: a process
-// whose threads span groups has no single mask), laid out in rows of eight when the dialog opens.
+// A process's or a thread's processor affinity: a check box for each processor in the system's mask (one processor
+// group: a process whose threads span groups has no single mask; a thread's group), laid out in rows of eight when the
+// dialog opens.
 //
 class CAffinityDlg : public CDialogImpl<CAffinityDlg> {
 public:
 	enum { IDD = IDD_AFFINITY };
 
-	// title: for the caption (the process); mask: the current affinity; systemMask: the processors there are
-	CAffinityDlg(std::wstring title, DWORD_PTR mask, DWORD_PTR systemMask);
+	// title: for the caption (the process or thread); mask: the current affinity; systemMask: the processors there are;
+	// thread: the label speaks of the thread
+	CAffinityDlg(std::wstring title, DWORD_PTR mask, DWORD_PTR systemMask, bool thread = false);
 
 	// after IDOK
 	DWORD_PTR GetMask() const;
@@ -45,4 +47,5 @@ private:
 
 	std::wstring m_Title;
 	DWORD_PTR m_Mask, m_SystemMask;
+	bool m_Thread;
 };

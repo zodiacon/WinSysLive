@@ -76,6 +76,8 @@ public:
 		COMMAND_ID_HANDLER(ID_THREAD_TERMINATE, OnThreadControl)
 		COMMAND_ID_HANDLER(ID_THREAD_SUSPEND, OnThreadControl)
 		COMMAND_ID_HANDLER(ID_THREAD_RESUME, OnThreadControl)
+		COMMAND_RANGE_HANDLER(ID_THREAD_PRIORITY_TIMECRITICAL, ID_THREAD_PRIORITY_IDLE, OnThreadPriority)
+		COMMAND_ID_HANDLER(ID_THREAD_AFFINITY, OnThreadAffinity)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFO, OnGetTipText)
@@ -150,6 +152,11 @@ private:
 	LRESULT OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnThreadPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnThreadAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the row's thread, with the access (and limited query access, to tell it from a later thread with its ID by its
+	// creation time); nullptr with the last error set
+	std::unique_ptr<WinSys::Thread> OpenRowThread(ThreadRow const& row, WinSys::ThreadAccessMask access) const;
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnGetTipText(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 

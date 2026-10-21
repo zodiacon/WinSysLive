@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "AffinityDlg.h"
 
-CAffinityDlg::CAffinityDlg(std::wstring title, DWORD_PTR mask, DWORD_PTR systemMask) :
-	m_Title(std::move(title)), m_Mask(mask), m_SystemMask(systemMask) {
+CAffinityDlg::CAffinityDlg(std::wstring title, DWORD_PTR mask, DWORD_PTR systemMask, bool thread) :
+	m_Title(std::move(title)), m_Mask(mask), m_SystemMask(systemMask), m_Thread(thread) {
 }
 
 DWORD_PTR CAffinityDlg::GetMask() const {
@@ -11,6 +11,8 @@ DWORD_PTR CAffinityDlg::GetMask() const {
 
 LRESULT CAffinityDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	SetWindowText(std::format(L"Processor Affinity: {}", m_Title).c_str());
+	if (m_Thread)
+		SetDlgItemText(IDC_AFF_LABEL, L"The processors the thread may run on:");
 
 	// the check boxes fill the template's (hidden) area in rows of eight; the dialog grows to fit them
 	CRect area;
