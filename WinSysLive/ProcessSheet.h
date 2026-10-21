@@ -46,6 +46,8 @@ private:
 	std::unique_ptr<CProcMemoryPage> m_Memory;
 	std::unique_ptr<CProcTokenPage> m_Token;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
+	std::unique_ptr<CProcModulesPage> m_Modules;
+	std::unique_ptr<CProcHandlesPage> m_Handles;
 	std::unique_ptr<CProcTcpIpPage> m_TcpIp;
 	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job
 	std::unique_ptr<CProcServicesPage> m_Services;	// only for a process hosting services

@@ -34,10 +34,6 @@ namespace {
 	const int MaxHungQueries = 4;
 }
 
-void CHandlesPage::SetFrame(IMainFrame* frame) {
-	m_Frame = frame;
-}
-
 LRESULT CHandlesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
@@ -45,14 +41,13 @@ LRESULT CHandlesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP | LVS_EX_SUBITEMIMAGES);
 	// the type icons, in the leftmost column
-	if (m_Frame)
-		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
+	ResetImageList();
 	SuspendHookWhilePainting(m_List);
 	m_Filter.Create(m_hWnd, IDC_PAGE_FILTER, 200, L"Filter (Ctrl+F)", m_List, [this](std::wstring const&) {
 		int selected = m_List.GetSelectedIndex();
 		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Data->Entry.Value : static_cast<uint64_t>(0));
 		});
-	SetColumns(ColumnLayout::Parse(AppSettings::Get().HandleColumns(), s_Columns));
+	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().HandleColumns(), s_Columns));
 	return 0;
 }
 
@@ -89,8 +84,19 @@ void CHandlesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enume
 	if (process == m_Process)
 		return;
 	m_Process = std::move(process);
+	Attach(m_Process ? m_Process->Id : 0, m_Process ? m_Process->GetImageName() : L"", enumerate);
+}
+
+void CHandlesPage::SetProcess(uint32_t pid, std::wstring imageName) {
+	m_Process.reset();
+	Attach(pid, std::move(imageName), false);
+}
+
+void CHandlesPage::Attach(uint32_t pid, std::wstring imageName, bool enumerate) {
+	m_Pid = pid;
+	m_ImageName = std::move(imageName);
 	// the Idle process has no handles
-	m_hProcess.reset(m_Process && m_Process->Id ? ::OpenProcess(PROCESS_DUP_HANDLE, FALSE, m_Process->Id) : nullptr);
+	m_hProcess.reset(pid ? ::OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid) : nullptr);
 	m_Handles.clear();
 	m_FirstEnum = true;
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
@@ -114,9 +120,9 @@ void CHandlesPage::Refresh() {
 	uint64_t selectedValue = selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Data->Entry.Value : 0;
 
 	m_Rows.clear();
-	if (m_Process && m_Process->Id) {
-		auto handles = ShowsAddresses() ? m_Enumerator.EnumProcessHandlesWithAddresses(m_Process->Id)
-			: HandleEnumerator::EnumProcessHandles(m_Process->Id);
+	if (m_Pid) {
+		auto handles = ShowsAddresses() ? m_Enumerator.EnumProcessHandlesWithAddresses(m_Pid)
+			: HandleEnumerator::EnumProcessHandles(m_Pid);
 		if (handles) {
 			decltype(m_Handles) current;
 			current.reserve(handles->size());
@@ -164,7 +170,7 @@ CHandlesPage::HandleRow const* CHandlesPage::GetSelectedRow() const {
 
 bool CHandlesPage::CanCloseSelected() const {
 	// closing the app's own handles could break it
-	return m_hProcess && m_Process && m_Process->Id != ::GetCurrentProcessId() && GetSelectedRow();
+	return m_hProcess && m_Pid != ::GetCurrentProcessId() && GetSelectedRow();
 }
 
 void CHandlesPage::CloseSelected() {
@@ -175,7 +181,7 @@ void CHandlesPage::CloseSelected() {
 	auto type = ObjectTypes::GetName(entry.TypeIndex);
 	auto name = GetName(*row->Data, false);
 	auto question = std::format(L"Close handle 0x{:X} ({}{}{}) in {} ({})?\n\nThe process may fail when it uses the handle.",
-		entry.Value, type, name.empty() ? L"" : L": ", name, m_Process->GetImageName(), m_Process->Id);
+		entry.Value, type, name.empty() ? L"" : L": ", name, m_ImageName, m_Pid);
 	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
 		return;
 
@@ -196,7 +202,7 @@ void CHandlesPage::CloseSelected() {
 }
 
 bool CHandlesPage::CanShowProperties() const {
-	return m_hProcess && m_Process && GetSelectedRow();
+	return m_hProcess && GetSelectedRow();
 }
 
 void CHandlesPage::ShowProperties() {
@@ -206,8 +212,8 @@ void CHandlesPage::ShowProperties() {
 	// the row may go with a refresh while the dialog runs: copies
 	auto data = row->Data;
 	auto name = GetName(*data, false);
-	CHandleSheet sheet(m_hProcess.get(), m_Process->Id, m_Process->GetImageName(), data->Entry, name,
-		[this](DWORD pid) { return m_Frame ? m_Frame->GetProcessManager().GetProcessNameById(pid) : std::wstring(); });
+	CHandleSheet sheet(m_hProcess.get(), m_Pid, m_ImageName, data->Entry, name,
+		[this](DWORD pid) { return m_ProcessNames ? m_ProcessNames(pid) : std::wstring(); });
 	sheet.DoModal(m_hWnd);
 }
 
@@ -249,7 +255,7 @@ std::wstring const& CHandlesPage::GetName(HandleData& data, bool closed) const {
 std::wstring CHandlesPage::QueryName(HandleEntry const& entry) const {
 	// when name queries have hung (their workers are stuck), files aren't queried anymore
 	return HandleNames::QueryName(m_hProcess.get(), entry, m_NameQuery, m_DosNames,
-		[this](DWORD pid) { return m_Frame ? m_Frame->GetProcessManager().GetProcessNameById(pid) : L""; },
+		[this](DWORD pid) { return m_ProcessNames ? m_ProcessNames(pid) : std::wstring(); },
 		m_NameQuery.GetAbandonedCount() < MaxHungQueries);
 }
 
@@ -282,12 +288,12 @@ std::wstring CHandlesPage::GetText(HandleRow const& row, Column column) const {
 }
 
 int CHandlesPage::GetRowImage(HWND, int row, int col) const {
-	if (row >= (int)m_Rows.size() || !m_Frame || !ColumnLayout::IsLeftmostColumn(m_List, col))
+	if (row >= (int)m_Rows.size() || !m_Icons || !ColumnLayout::IsLeftmostColumn(m_List, col))
 		return -1;
 	auto& r = m_Rows[row];
 	auto& type = ObjectTypes::GetName(r.Data->Entry.TypeIndex);
 	// only a file's icon depends on its name
-	return m_Frame->GetIconIndex(GetHandleIcon(type, type == L"File" ? GetName(*r.Data, r.Closed) : std::wstring()));
+	return m_Icons->GetIconIndex(GetHandleIcon(type, type == L"File" ? GetName(*r.Data, r.Closed) : std::wstring()));
 }
 
 int CHandlesPage::GetSaveColumnRange(HWND, int&) const {
@@ -359,6 +365,8 @@ void CHandlesPage::SetColumns(std::vector<ColumnLayout::ShownColumn> const& colu
 }
 
 void CHandlesPage::SaveColumns() const {
+	if (m_Columns)
+		return;
 	auto& settings = AppSettings::Get();
 	settings.HandleColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
 	settings.Save();

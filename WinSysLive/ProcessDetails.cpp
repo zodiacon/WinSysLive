@@ -13,8 +13,9 @@ void CProcessDetails::Init(IMainFrame* frame) {
 	m_Frame = frame;
 	SetImageList(frame->GetImageList());
 
-	m_Handles.SetFrame(frame);
-	m_Modules.SetFrame(frame);
+	m_Handles.SetIcons(frame);
+	m_Handles.SetProcessNames([frame](DWORD pid) { return frame->GetProcessManager().GetProcessNameById(pid); });
+	m_Modules.SetIcons(frame);
 	m_Handles.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Modules.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);

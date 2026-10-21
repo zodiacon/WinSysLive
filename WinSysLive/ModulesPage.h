@@ -4,15 +4,16 @@
 #include <WinSys/ProcessModuleTracker.h>
 #include "ColumnLayout.h"
 #include "FilterBox.h"
+#include "IconSource.h"
 #include "resource.h"
-
-struct IMainFrame;
 
 //
 // The Modules tab of the Processes view's lower pane: the images and mapped data files of the selected process,
 // from WinSys's ProcessModuleTracker (which walks the address space, so it needs the process opened with
 // VM read access). Modules that were loaded are highlighted for a while, unloaded ones are shown for one refresh.
-// The columns are chosen from the header's context menu and kept in the ModuleColumns setting.
+// The columns are chosen from the header's context menu and kept in the ModuleColumns setting. A process property
+// sheet's Modules page is one too, on the sheet's thread: with icons of its own, a copy of the column layout
+// (UseColumns) and the process by ID (SetProcess(pid)).
 //
 class CModulesPage :
 	public CWindowImpl<CModulesPage>,
@@ -20,14 +21,21 @@ class CModulesPage :
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLive_ModulesPage", 0, COLOR_WINDOW)
 
-	// for the frame's image list (the icon of a module's mapping type); before Create
-	void SetFrame(IMainFrame* frame) {
-		m_Frame = frame;
+	// the icons of the mappings' types (the frame's image list, or a sheet's own); before Create
+	void SetIcons(IIconSource* icons) {
+		m_Icons = icons;
+	}
+	// the column layout to start with, instead of the ModuleColumns setting, which changes don't go to (a property
+	// sheet's thread: the settings belong to the UI thread); before Create
+	void UseColumns(std::wstring layout) {
+		m_Columns = std::move(layout);
 	}
 	// the frame's image list again, after it took a new DPI's size, so the rows take its height
 	void ResetImageList();
 	// nullptr: no process. Without enumerating, the list is empty until the next Refresh
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
+	// by ID (a property sheet's process, which has no ProcessInfoEx); listed on the next Refresh
+	void SetProcess(uint32_t pid);
 	// enumerates the modules again
 	void Refresh();
 	// Ctrl+F while the page has the focus
@@ -105,6 +113,8 @@ private:
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
+	// the process's (0: none, or Idle or System, which have no user-mode address space)
+	void Attach(uint32_t pid, bool enumerate);
 	std::wstring GetText(ModuleRow const& row, Column column) const;
 	void SelectModule(void* base);
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
@@ -113,7 +123,8 @@ private:
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list
 	std::vector<ModuleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
-	IMainFrame* m_Frame{ nullptr };
+	IIconSource* m_Icons{ nullptr };
+	std::optional<std::wstring> m_Columns;	// see UseColumns
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::unique_ptr<WinSys::ProcessModuleTracker> m_Tracker;
 	std::vector<ModuleRow> m_Rows;	// in display order

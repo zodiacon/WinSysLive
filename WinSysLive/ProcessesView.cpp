@@ -1382,6 +1382,8 @@ LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	props.User = p.GetUser();
 	props.Description = p.GetDescription();
 	props.ThreadColumns = AppSettings::Get().ThreadColumns();
+	props.ModuleColumns = AppSettings::Get().ModuleColumns();
+	props.HandleColumns = AppSettings::Get().HandleColumns();
 	props.UpdateInterval = AppSettings::Get().UpdateInterval();
 	// the parent, if it's still the process that created this one
 	if (auto parent = Frame()->GetProcessManager().GetProcessById(p.ParentId); parent && parent->Key.Created <= p.Key.Created)

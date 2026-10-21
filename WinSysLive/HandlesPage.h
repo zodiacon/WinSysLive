@@ -4,9 +4,9 @@
 #include <WinSys/Handles.h>
 #include "ColumnLayout.h"
 #include "FilterBox.h"
+#include "IconSource.h"
 #include "resource.h"
-
-struct IMainFrame;
+#include <functional>
 
 //
 // The Handles tab of the Processes view's lower pane: the handles of the selected process (WinSys HandleEnumerator).
@@ -14,7 +14,8 @@ struct IMainFrame;
 // Address column is shown. Names are queried when a row is shown or sorted by name (through a duplicate of the
 // handle, with a timeout: see ObjectNameQuery) and kept for the handle's lifetime. New handles are highlighted for
 // a while, closed ones are shown for one refresh. The columns are chosen from the header's context menu and kept in
-// the HandleColumns setting.
+// the HandleColumns setting. A process property sheet's Handles page is one too, on the sheet's thread: with icons of
+// its own, a copy of the column layout (UseColumns) and the process by ID and name (SetProcess(pid, name)).
 //
 class CHandlesPage :
 	public CWindowImpl<CHandlesPage>,
@@ -22,10 +23,24 @@ class CHandlesPage :
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLive_HandlesPage", 0, COLOR_WINDOW)
 
-	// for the names of the processes and threads that handles refer to
-	void SetFrame(IMainFrame* frame);
+	// the object types' icons (the frame's image list, or a sheet's own); before Create
+	void SetIcons(IIconSource* icons) {
+		m_Icons = icons;
+	}
+	// the names of the processes (and threads' processes) handles refer to, by ID; without it, a process's name comes
+	// from the handle
+	void SetProcessNames(std::function<std::wstring(DWORD)> names) {
+		m_ProcessNames = std::move(names);
+	}
+	// the column layout to start with, instead of the HandleColumns setting, which changes don't go to (a property
+	// sheet's thread: the settings belong to the UI thread); before Create
+	void UseColumns(std::wstring layout) {
+		m_Columns = std::move(layout);
+	}
 	// nullptr: no process. Without enumerating, the list is empty until the next Refresh
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
+	// by ID and image name (a property sheet's process, which has no ProcessInfoEx); listed on the next Refresh
+	void SetProcess(uint32_t pid, std::wstring imageName);
 	// enumerates the handles again
 	void Refresh();
 	// the Kill command (the toolbar, Del) while the page has the focus: closes the selected handle in its process,
@@ -79,8 +94,8 @@ public:
 	void SaveColumns() const;
 	// the frame's image list again, after it took a new DPI's size, so the rows take its height
 	void ResetImageList() {
-		if (m_Frame)
-			m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
+		if (m_Icons)
+			m_List.SetImageList(m_Icons->GetImageList(), LVSIL_SMALL);
 	}
 
 private:
@@ -129,7 +144,14 @@ private:
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
 
-	IMainFrame* m_Frame{ nullptr };
+	// the process's: opens it for the names and clears the handles (pid 0: none, or the Idle process)
+	void Attach(uint32_t pid, std::wstring imageName, bool enumerate);
+
+	IIconSource* m_Icons{ nullptr };
+	std::function<std::wstring(DWORD)> m_ProcessNames;
+	std::optional<std::wstring> m_Columns;	// see UseColumns
+	uint32_t m_Pid{ 0 };
+	std::wstring m_ImageName;
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list
 	std::vector<HandleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones

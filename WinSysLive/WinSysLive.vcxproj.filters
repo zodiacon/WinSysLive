@@ -132,6 +132,9 @@
     <ClCompile Include="ServiceSteps.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="IconSource.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ServiceInstallDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -292,6 +295,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ServiceSteps.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="IconSource.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ServiceInstallDlg.h">

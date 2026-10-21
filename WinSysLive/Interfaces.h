@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ProcessInfoEx.h"
+#include "IconSource.h"
 
 // Order matters: tabs are created in this order, and View menu commands map to it (see CMainFrame::s_Tabs)
 enum class TabType {
@@ -13,15 +14,13 @@ enum class TabType {
 	Drivers,	// the driver services (the Services view for drivers)
 };
 
-struct IMainFrame abstract {
+// the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)
+struct IMainFrame abstract : IIconSource {
 	virtual HWND GetHwnd() const = 0;
 	virtual CUpdateUIBase& GetUI() = 0;
 	virtual void SetStatusText(int index, PCWSTR text) = 0;
 	virtual BOOL ShowContextMenu(HMENU hMenu, POINT const& pt, DWORD flags = 0) = 0;
 
-	// shared 16x16 image list with the app's icons (views should use LVS_SHAREIMAGELISTS)
-	virtual HIMAGELIST GetImageList() const = 0;
-	virtual int GetIconIndex(UINT iconId) const = 0;
 	// the process's icon in the image list (from its executable, cached by path), or the default process icon
 	virtual int GetProcessIcon(ProcessInfoEx& process) = 0;
 

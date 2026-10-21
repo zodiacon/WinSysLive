@@ -414,6 +414,7 @@
     <ClCompile Include="HandleSheet.cpp" />
     <ClCompile Include="ServiceSheet.cpp" />
     <ClCompile Include="ServiceSteps.cpp" />
+    <ClCompile Include="IconSource.cpp" />
     <ClCompile Include="ServiceInstallDlg.cpp" />
     <ClCompile Include="MemoryDialogs.cpp" />
     <ClCompile Include="ObjectSecurity.cpp" />
@@ -476,6 +477,7 @@
     <ClInclude Include="HandleSheet.h" />
     <ClInclude Include="ServiceSheet.h" />
     <ClInclude Include="ServiceSteps.h" />
+    <ClInclude Include="IconSource.h" />
     <ClInclude Include="ServiceInstallDlg.h" />
     <ClInclude Include="MemoryDialogs.h" />
     <ClInclude Include="ObjectSecurity.h" />

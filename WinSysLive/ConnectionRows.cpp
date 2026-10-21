@@ -41,26 +41,34 @@ namespace ConnectionRows {
 
 void ConnectionBytes::Update(WinSys::ProcessNetworkTracker const& tracker, std::vector<ConnectionRow> const& rows) {
 	auto now = ::GetTickCount64();
-	double seconds = m_Time ? (now - m_Time) / 1000.0 : 0;
 	std::map<ConnectionRows::Key, Bytes> bytes;
+	std::map<ConnectionRows::Key, std::deque<Count>> history;
 	for (auto& c : rows) {
 		auto counters = tracker.GetConnectionCounters(WinSys::ProcessNetworkTracker::IdOf(c));
 		auto key = ConnectionRows::KeyOf(c);
 		Bytes b{ counters.Sent, counters.Received };
-		// a rate from the last update's counts, which a row new since has none of
-		if (auto it = m_Bytes.find(key); it != m_Bytes.end() && seconds > 0) {
-			b.SendRate = (b.Sent - (std::min)(b.Sent, it->second.Sent)) / seconds;
-			b.ReceiveRate = (b.Received - (std::min)(b.Received, it->second.Received)) / seconds;
+		// the rows gone take their counts along
+		auto& counts = history[key];
+		if (auto it = m_History.find(key); it != m_History.end())
+			counts = std::move(it->second);
+		counts.push_back({ now, b.Sent, b.Received });
+		while (counts.size() > RateUpdates + 1)
+			counts.pop_front();
+		// from the oldest count kept, which a row new since the last update has none of
+		auto& first = counts.front();
+		if (double seconds = (now - first.Time) / 1000.0; seconds > 0) {
+			b.SendRate = (b.Sent - (std::min)(b.Sent, first.Sent)) / seconds;
+			b.ReceiveRate = (b.Received - (std::min)(b.Received, first.Received)) / seconds;
 		}
 		bytes[key] = b;
 	}
 	m_Bytes.swap(bytes);
-	m_Time = now;
+	m_History.swap(history);
 }
 
 void ConnectionBytes::Clear() {
 	m_Bytes.clear();
-	m_Time = 0;
+	m_History.clear();
 }
 
 ConnectionBytes::Bytes const* ConnectionBytes::Get(WinSys::Connection const& c) const {

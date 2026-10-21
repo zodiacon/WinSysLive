@@ -74,7 +74,7 @@ LRESULT CModulesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		int selected = m_List.GetSelectedIndex();
 		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Module->Base : static_cast<void*>(0));
 		});
-	SetColumns(ColumnLayout::Parse(AppSettings::Get().ModuleColumns(), s_Columns));
+	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().ModuleColumns(), s_Columns));
 	return 0;
 }
 
@@ -111,8 +111,17 @@ void CModulesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enume
 	if (process == m_Process)
 		return;
 	m_Process = std::move(process);
+	Attach(m_Process ? m_Process->Id : 0, enumerate);
+}
+
+void CModulesPage::SetProcess(uint32_t pid) {
+	m_Process.reset();
+	Attach(pid, false);
+}
+
+void CModulesPage::Attach(uint32_t pid, bool enumerate) {
 	// Idle and System have no user-mode address space
-	m_Tracker = m_Process && m_Process->Id > 4 ? std::make_unique<ProcessModuleTracker>(m_Process->Id) : nullptr;
+	m_Tracker = pid > 4 ? std::make_unique<ProcessModuleTracker>(pid) : nullptr;
 	m_NewTicks.clear();
 	m_FirstEnum = true;
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
@@ -198,15 +207,15 @@ std::wstring CModulesPage::GetText(ModuleRow const& row, Column column) const {
 }
 
 void CModulesPage::ResetImageList() {
-	if (m_Frame)
-		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
+	if (m_Icons)
+		m_List.SetImageList(m_Icons->GetImageList(), LVSIL_SMALL);
 }
 
 int CModulesPage::GetRowImage(HWND, int row, int col) const {
 	// in whichever column is leftmost (the user can drag them)
-	if (row >= (int)m_Rows.size() || !m_Frame || !ColumnLayout::IsLeftmostColumn(m_List, col))
+	if (row >= (int)m_Rows.size() || !m_Icons || !ColumnLayout::IsLeftmostColumn(m_List, col))
 		return -1;
-	return m_Frame->GetIconIndex(m_Rows[row].Module->Type == MapType::Image ? IDI_MODULE_IMAGE : IDI_MODULE_DATA);
+	return m_Icons->GetIconIndex(m_Rows[row].Module->Type == MapType::Image ? IDI_MODULE_IMAGE : IDI_MODULE_DATA);
 }
 
 int CModulesPage::GetSaveColumnRange(HWND, int&) const {
@@ -277,6 +286,8 @@ void CModulesPage::SetColumns(std::vector<ColumnLayout::ShownColumn> const& colu
 }
 
 void CModulesPage::SaveColumns() const {
+	if (m_Columns)
+		return;
 	auto& settings = AppSettings::Get();
 	settings.ModuleColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
 	settings.Save();

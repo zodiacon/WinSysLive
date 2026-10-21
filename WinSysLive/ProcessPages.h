@@ -2,6 +2,9 @@
 
 #include <VirtualListView.h>
 #include "ThreadsPage.h"
+#include "ModulesPage.h"
+#include "HandlesPage.h"
+#include <DpiHelper.h>
 #include "PerfPages.h"
 #include "resource.h"
 #include "DpiLayout.h"
@@ -23,7 +26,7 @@ struct ProcessProperties {
 	std::wstring ImageName, ImagePath, CommandLine, User, Description;
 	std::wstring ParentName;	// empty if the parent isn't running (or its ID was reused)
 	// settings, which belong to the UI thread
-	std::wstring ThreadColumns;
+	std::wstring ThreadColumns, ModuleColumns, HandleColumns;
 	int UpdateInterval{ 1000 };
 };
 
@@ -264,3 +267,89 @@ private:
 	ProcessSnapshot const& m_Snapshot;
 	CThreadsPage m_Threads;
 };
+
+//
+// The Modules and Handles pages: the lower pane's (CModulesPage, CHandlesPage) on the sheet's thread, with icons of
+// their own (CIconCache, loaded again after a DPI change: the frame's image list belongs to the UI thread) and the
+// column layouts copied into ProcessProperties (changes to them aren't saved). They list again on every sample while
+// the page is active, and when it's activated; once the process is gone, the last rows stay. A handle's process names
+// come from the handles themselves (no frame snapshot here).
+//
+template<typename TPage>
+class CProcLowerPanePage : public CPropertyPageImpl<CProcLowerPanePage<TPage>> {
+public:
+	// an empty page, titled here
+	enum { IDD = IDD_PROC_THREADS };
+
+	CProcLowerPanePage(ProcessProperties const& props, PCWSTR title, UINT icon) : m_Props(props) {
+		this->m_psp.dwFlags |= PSP_USETITLE | PSP_USEICONID;
+		this->m_psp.pszTitle = title;
+		this->m_psp.pszIcon = MAKEINTRESOURCE(icon);
+	}
+
+	void OnSample(ProcessSnapshot const& snapshot) {
+		if (snapshot.Exited())
+			m_Exited = true;
+		else if (m_Page)
+			m_Page.Refresh();
+	}
+
+	// CPropertyPageImpl (_WTL_NEW_PAGE_NOTIFY_HANDLERS, WTL's default): 0 allows the activation
+	int OnSetActive() {
+		if (!m_Exited && m_Page)
+			m_Page.Refresh();
+		return 0;
+	}
+
+	BEGIN_MSG_MAP(CProcLowerPanePage)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnDpiChanged)
+		CHAIN_MSG_MAP(CPropertyPageImpl<CProcLowerPanePage<TPage>>)
+	END_MSG_MAP()
+
+private:
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+		m_Icons.Reset(DpiHelper::SmallIconSize(this->m_hWnd));
+		m_Page.SetIcons(&m_Icons);
+		if constexpr (std::is_same_v<TPage, CHandlesPage>)
+			m_Page.UseColumns(m_Props.HandleColumns);
+		else
+			m_Page.UseColumns(m_Props.ModuleColumns);
+		// a control parent, so the dialog manager tabs into its list
+		m_Page.Create(this->m_hWnd, this->rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT);
+		if constexpr (std::is_same_v<TPage, CHandlesPage>)
+			m_Page.SetProcess(m_Props.Id, m_Props.ImageName);
+		else
+			m_Page.SetProcess(m_Props.Id);
+		return TRUE;
+	}
+
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+		if (m_Page) {
+			// the other pages' margin
+			CRect margin(0, 0, 7, 7);
+			this->MapDialogRect(&margin);
+			m_Page.MoveWindow(margin.right, margin.bottom, (std::max)(0, int(GET_X_LPARAM(lParam) - 2 * margin.right)),
+				(std::max)(0, int(GET_Y_LPARAM(lParam) - 2 * margin.bottom)));
+		}
+		return 0;
+	}
+
+	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+		// the icons in the new DPI's size, the rows taking their height
+		m_Icons.Reset(DpiHelper::SmallIconSize(this->m_hWnd));
+		if (m_Page)
+			m_Page.ResetImageList();
+		bHandled = FALSE;
+		return 0;
+	}
+
+	ProcessProperties const& m_Props;
+	// before the page, which shows it, so it goes after it
+	CIconCache m_Icons;
+	TPage m_Page;
+	bool m_Exited{ false };
+};
+using CProcModulesPage = CProcLowerPanePage<CModulesPage>;
+using CProcHandlesPage = CProcLowerPanePage<CHandlesPage>;

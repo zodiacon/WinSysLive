@@ -2,6 +2,7 @@
 
 #include <WinSys/Connections.h>
 #include <WinSys/ProcessNetwork.h>
+#include <deque>
 
 // A connection as the Network view and the TCP/IP page show it (WinSys::ConnectionInfo reads them): new ones highlighted
 // for a while, closed ones shown once more.
@@ -31,12 +32,14 @@ namespace ConnectionRows {
 }
 
 // The bytes over connection rows, from the shared ETW tracker (NetworkTracking): each Update takes every row's counts,
-// and the rates since the last Update, by row key. The Network view's and the TCP/IP page's byte columns
+// by row key, and the rates over the last RateUpdates updates: the events come in batches about once a second, as
+// the updates do, so a rate over one update was twice or none of the traffic at times. The Network view's and the
+// TCP/IP page's byte columns
 class ConnectionBytes {
 public:
 	struct Bytes {
 		uint64_t Sent{ 0 }, Received{ 0 };
-		double SendRate{ 0 }, ReceiveRate{ 0 };	// bytes a second since the last update
+		double SendRate{ 0 }, ReceiveRate{ 0 };	// bytes a second over the last updates
 	};
 	enum class Value { Sent, Received, SendRate, ReceiveRate };
 
@@ -51,6 +54,11 @@ public:
 	static std::wstring SinceText(WinSys::ProcessNetworkTracker const& tracker);
 
 private:
+	static constexpr size_t RateUpdates = 3;
+	struct Count {
+		ULONGLONG Time;
+		uint64_t Sent, Received;
+	};
 	std::map<ConnectionRows::Key, Bytes> m_Bytes;
-	ULONGLONG m_Time{ 0 };	// of the last update
+	std::map<ConnectionRows::Key, std::deque<Count>> m_History;	// the last RateUpdates + 1 counts, oldest first
 };

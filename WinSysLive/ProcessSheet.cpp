@@ -56,6 +56,10 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	}
 	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Threads);
+	m_Modules = std::make_unique<CProcModulesPage>(m_Props, L"Modules", IDI_MODULES);
+	AddPage(*m_Modules);
+	m_Handles = std::make_unique<CProcHandlesPage>(m_Props, L"Handles", IDI_HANDLES);
+	AddPage(*m_Handles);
 	m_TcpIp = std::make_unique<CProcTcpIpPage>(m_Props, m_Snapshot);
 	AddPage(*m_TcpIp);
 	if (IsInJob(m_Props)) {
@@ -113,6 +117,10 @@ void CProcessSheet::Sample() {
 	m_Performance->OnSample(m_Snapshot);
 	if (m_Threads->IsWindow() && GetActivePage() == m_Threads->m_hWnd)
 		m_Threads->OnSample(m_Snapshot);
+	if (m_Modules->IsWindow() && GetActivePage() == m_Modules->m_hWnd)
+		m_Modules->OnSample(m_Snapshot);
+	if (m_Handles->IsWindow() && GetActivePage() == m_Handles->m_hWnd)
+		m_Handles->OnSample(m_Snapshot);
 	if (m_TcpIp->IsWindow() && GetActivePage() == m_TcpIp->m_hWnd)
 		m_TcpIp->OnSample(m_Snapshot);
 	if (m_Job && m_Job->IsWindow() && GetActivePage() == m_Job->m_hWnd)
@@ -153,6 +161,8 @@ void ShowProcessProperties(ProcessProperties props) {
 			*id = ::GetCurrentThreadId();
 			// the sheet's windows themed as the main thread's are
 			WTLHelper::InitThread();
+			// the Modules page's file properties are the shell's (SHObjectProperties)
+			auto com = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			CProcessSheet sheet(std::move(props));
 			if (!s_Closing && sheet.Create(nullptr)) {
 				sheet.ShowWindow(SW_SHOW);
@@ -169,6 +179,8 @@ void ShowProcessProperties(ProcessProperties props) {
 				if (sheet.IsWindow())
 					sheet.DestroyWindow();
 			}
+			if (SUCCEEDED(com))
+				::CoUninitialize();
 		}
 		WTLHelper::TermThread();
 		*id = 0;
