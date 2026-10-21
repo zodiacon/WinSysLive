@@ -193,6 +193,9 @@ private:
 	void SaveSettings();
 	// the tray icon as the TrayIcon setting has it
 	void ShowTrayIcon(bool show);
+	// View > Toolbar and Status Bar, as their settings have them
+	void ShowToolBar(bool show);
+	void ShowStatusBar(bool show);
 	// the window back from the tray (or minimized), in front
 	void RestoreWindow();
 	void ShowTrayMenu();

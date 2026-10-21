@@ -5,10 +5,13 @@
 #include <TreeListView/include/TreeListView.h>
 #include <WinSys/Sessions.h>
 #include "ColumnLayout.h"
+#include "FilterBox.h"
 
 //
 // The sessions (the console, remote desktop sessions, session 0 for services) with totals of their processes,
-// and the processes as each session's children, like Task Manager's Users tab.
+// and the processes as each session's children, like Task Manager's Users tab. The filter box (in the view's rebar)
+// keeps the processes whose image name or PID contains its text, or whose session's title, name or client does;
+// the session rows stay (they're few, and have the totals).
 //
 class CUsersView :
 	public CViewBase<CUsersView> {
@@ -41,6 +44,7 @@ public:
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
 		NOTIFY_CODE_HANDLER(NM_RCLICK, OnRightClick)
@@ -51,6 +55,7 @@ public:
 		COMMAND_ID_HANDLER(ID_USER_LOGOFF, OnLogoff)
 		COMMAND_ID_HANDLER(ID_USER_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CUsersView>, 1)
@@ -96,6 +101,10 @@ private:
 	LRESULT OnLogoff(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// a process row: shown with the filter's text (always, without one)
+	bool Matches(Row const& row) const;
 
 	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
@@ -115,6 +124,7 @@ private:
 	void ShowError(PCWSTR operation) const;
 
 	CTreeListViewCtrl m_Tree;
+	CFilterBox m_Filter;	// in the view's rebar
 	// node-based maps: Row* (the items' data) stays valid
 	std::unordered_map<uint32_t, Row> m_Sessions;
 	std::unordered_map<WinSys::ProcessOrThreadKey, Row> m_Processes;

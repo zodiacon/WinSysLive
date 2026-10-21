@@ -130,8 +130,6 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	}
 
 	UIAddMenu(GetMenu());
-	UISetCheck(ID_VIEW_STATUS_BAR, 1);
-	UISetCheck(ID_VIEW_TOOLBAR, 1);
 
 	// register object for message filtering and idle updates
 	CMessageLoop* pLoop = _Module.GetMessageLoop();
@@ -146,6 +144,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	CreateTabs();
 
 	auto& settings = AppSettings::Get();
+	ShowToolBar(settings.ToolBar());
+	ShowStatusBar(settings.StatusBar());
 	UISetCheck(ID_OPTIONS_DARKMODE, settings.DarkMode());
 	SetDarkMode(settings.DarkMode());
 	// without a font of their own, the views keep their controls' default fonts
@@ -619,20 +619,34 @@ LRESULT CMainFrame::OnRunAsAdmin(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 }
 
 LRESULT CMainFrame::OnViewStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	BOOL bVisible = !::IsWindowVisible(m_hWndStatusBar);
-	::ShowWindow(m_hWndStatusBar, bVisible ? SW_SHOWNOACTIVATE : SW_HIDE);
-	UISetCheck(ID_VIEW_STATUS_BAR, bVisible);
-	UpdateLayout();
+	bool show = !::IsWindowVisible(m_hWndStatusBar);
+	ShowStatusBar(show);
+	auto& settings = AppSettings::Get();
+	settings.StatusBar(show);
+	settings.Save();
 	return 0;
 }
 
 LRESULT CMainFrame::OnViewToolBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// m_hWndToolBar is the rebar hosting the toolbar
-	BOOL bVisible = !::IsWindowVisible(m_hWndToolBar);
-	::ShowWindow(m_hWndToolBar, bVisible ? SW_SHOWNOACTIVATE : SW_HIDE);
-	UISetCheck(ID_VIEW_TOOLBAR, bVisible);
-	UpdateLayout();
+	bool show = !::IsWindowVisible(m_hWndToolBar);
+	ShowToolBar(show);
+	auto& settings = AppSettings::Get();
+	settings.ToolBar(show);
+	settings.Save();
 	return 0;
+}
+
+void CMainFrame::ShowStatusBar(bool show) {
+	::ShowWindow(m_hWndStatusBar, show ? SW_SHOWNOACTIVATE : SW_HIDE);
+	UISetCheck(ID_VIEW_STATUS_BAR, show);
+	UpdateLayout();
+}
+
+void CMainFrame::ShowToolBar(bool show) {
+	// m_hWndToolBar is the rebar hosting the toolbar
+	::ShowWindow(m_hWndToolBar, show ? SW_SHOWNOACTIVATE : SW_HIDE);
+	UISetCheck(ID_VIEW_TOOLBAR, show);
+	UpdateLayout();
 }
 
 LRESULT CMainFrame::OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

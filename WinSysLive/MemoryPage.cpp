@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MemoryPage.h"
+#include <unordered_set>
 #include <ListViewhelper.h>
 #include "FormatHelper.h"
 #include "ViewBase.h"
@@ -330,6 +331,12 @@ LRESULT CProcMemoryPage::OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 }
 
 void CProcMemoryPage::Load(void const* select) {
+	// the allocations expanded (by their base) stay expanded on a Refresh
+	std::unordered_set<void const*> expanded;
+	for (auto item : m_Items)
+		if (!m_Tree.GetParentItem(item) && m_Tree.GetChildItem(item) && m_Tree.IsExpanded(item))
+			expanded.insert(m_Regions[m_Tree.GetItemData(item)].Info.AllocationBase);
+
 	m_Hex.SetBufferManager(nullptr);
 	m_Bytes.reset();
 	m_Tree.DeleteAllItems();
@@ -359,10 +366,9 @@ void CProcMemoryPage::Load(void const* select) {
 	while (::VirtualQueryEx(m_hProcess.get(), address, &mbi, sizeof(mbi)) == sizeof(mbi)) {
 		Region region{ mbi };
 		if (mbi.BaseAddress == mbi.AllocationBase && (mbi.Type == MEM_IMAGE || mbi.Type == MEM_MAPPED)) {
-			WCHAR name[MAX_PATH];
-			if (::GetMappedFileName(m_hProcess.get(), mbi.BaseAddress, name, _countof(name))) {
+			// whatever its length (GetMappedFileName's buffer cut long paths)
+			if (auto name = WinSys::ProcessMemory::GetMappedFileName(m_hProcess.get(), mbi.BaseAddress); !name.empty())
 				region.Details = dosNames.Convert(name);
-			}
 		}
 		if (mbi.State == MEM_COMMIT)
 			committed += mbi.RegionSize;
@@ -390,6 +396,11 @@ void CProcMemoryPage::Load(void const* select) {
 			selected = item;
 	}
 	m_Tree.CollapseAll();
+	if (!expanded.empty())
+		for (auto item : m_Items)
+			if (!m_Tree.GetParentItem(item) && m_Tree.GetChildItem(item)
+				&& expanded.contains(m_Regions[m_Tree.GetItemData(item)].Info.AllocationBase))
+				m_Tree.Expand(item);
 	m_Tree.EndUpdate();
 
 	m_Summary = std::format(L"{} regions    Committed: {}    Reserved: {}", FormatHelper::FormatNumber(m_Regions.size()),

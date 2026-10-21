@@ -26,10 +26,11 @@ namespace {
 	}
 
 	PCWSTR WaitReasonToString(uint32_t reason) {
-		// KWAIT_REASON
+		// KWAIT_REASON; 7 to 13 are the Wr variants of 0 to 6 (named as the kernel and Process Explorer have them, so the
+		// two can be told apart)
 		static PCWSTR const names[] = {
 			L"Executive", L"Free Page", L"Page In", L"Pool Allocation", L"Delay Execution", L"Suspended", L"User Request",
-			L"Executive", L"Free Page", L"Page In", L"Pool Allocation", L"Delay Execution", L"Suspended", L"User Request",
+			L"WrExecutive", L"WrFreePage", L"WrPageIn", L"WrPoolAllocation", L"WrDelayExecution", L"WrSuspended", L"WrUserRequest",
 			L"Event Pair", L"Queue", L"LPC Receive", L"LPC Reply", L"Virtual Memory", L"Page Out", L"Rendezvous",
 			L"Keyed Event", L"Terminated", L"Process In Swap", L"CPU Rate Control", L"Callout Stack", L"Kernel",
 			L"Resource", L"Push Lock", L"Mutex", L"Quantum End", L"Dispatch Int", L"Preempted", L"Yield Execution",

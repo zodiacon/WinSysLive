@@ -8,6 +8,8 @@ struct AppSettings : Settings {
 		SETTING(UpdateInterval, 1000, SettingType::Int32);
 		SETTING(ActiveTab, 0, SettingType::Int32);
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
+		SETTING(ToolBar, 1, SettingType::Bool);	// View > Toolbar
+		SETTING(StatusBar, 1, SettingType::Bool);	// View > Status Bar
 		SETTING(PerfPage, 0, SettingType::Int32);	// before PerfPageKey: the page's index, which drives coming and going shift
 		SETTING_STRING(PerfPageKey, L"");	// the Performance view's page: "CPU", "Disk:C", "GPU:0"... (CPerfView::PageKey)
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
@@ -41,6 +43,8 @@ struct AppSettings : Settings {
 	DEF_SETTING(UpdateInterval, int)
 	DEF_SETTING(ActiveTab, int)
 	DEF_SETTING(ProcessTreeMode, int)
+	DEF_SETTING(ToolBar, int)
+	DEF_SETTING(StatusBar, int)
 	DEF_SETTING(PerfPage, int)
 	DEF_SETTING_STRING(PerfPageKey)
 	DEF_SETTING(ProcessLowerPane, int)

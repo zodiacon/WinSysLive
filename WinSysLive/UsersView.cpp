@@ -53,6 +53,8 @@ CString CUsersView::GetTitle() const {
 LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
+	// the filter box goes in a rebar of the view's own, above the tree
+	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 	m_hWndClient = m_Tree.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	// the image list is the frame's, so the list view must not destroy it
 	m_Tree.GetListCtrl().ModifyStyle(0, LVS_SHAREIMAGELISTS);
@@ -63,6 +65,10 @@ LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// the widths are at 96 DPI; the TreeListView doesn't scale them to a new DPI by itself
 	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().UserColumns(), s_Columns));
+	// a change refreshes as a tick does: only the matching processes are in the tree, and the selection is kept
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 360, L"Filter: process, PID, user, session or client (Ctrl+F)",
+		m_Tree.GetListCtrl(), [this](auto&) { OnRefresh(true); });
+	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 
 	m_Tree.BeginUpdate();
 	SyncSessions();
@@ -86,6 +92,33 @@ void CUsersView::OnActivate(bool active) {
 
 void CUsersView::OnFontChanged(HFONT font) {
 	m_Tree.SetFont(font);
+	m_Filter.SetFont(font);
+}
+
+bool CUsersView::Matches(Row const& row) const {
+	auto& filter = m_Filter.GetText();
+	if (filter.empty())
+		return true;
+	auto& p = *row.Process;
+	if (CFilterBox::Contains(p.GetImageName(), filter) || CFilterBox::Contains(std::to_wstring(p.Id), filter))
+		return true;
+	// the session's processes, if the session matches
+	auto session = m_Sessions.find(row.SessionId);
+	if (session == m_Sessions.end())
+		return false;
+	auto& s = session->second.Session;
+	return CFilterBox::Contains(GetSessionTitle(s), filter) || CFilterBox::Contains(s.Name, filter)
+		|| CFilterBox::Contains(s.ClientName, filter);
+}
+
+LRESULT CUsersView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Focus();
+	return 0;
+}
+
+LRESULT CUsersView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Changed();
+	return 0;
 }
 
 void CUsersView::OnThemeChanged(bool dark) {
@@ -195,8 +228,14 @@ void CUsersView::SyncProcesses() {
 		if (inserted) {
 			row.SessionId = info->SessionId;
 			row.Process = p;
+		}
+		// in the tree only while it matches the filter
+		if (bool show = Matches(row); show && !row.Item)
 			row.Item = m_Tree.InsertItem(session->second.Item, TLV_LAST, LPSTR_TEXTCALLBACK, Frame()->GetProcessIcon(*p),
 				reinterpret_cast<LPARAM>(&row));
+		else if (!show && row.Item) {
+			m_Tree.DeleteItem(row.Item);
+			row.Item = nullptr;
 		}
 
 		auto& totals = session->second;
@@ -210,7 +249,8 @@ void CUsersView::SyncProcesses() {
 	std::erase_if(m_Processes, [&](auto& pair) {
 		if (live.contains(pair.first))
 			return false;
-		m_Tree.DeleteItem(pair.second.Item);
+		if (pair.second.Item)
+			m_Tree.DeleteItem(pair.second.Item);
 		return true;
 		});
 
