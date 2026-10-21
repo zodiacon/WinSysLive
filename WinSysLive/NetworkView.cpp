@@ -20,28 +20,6 @@ namespace {
 		{ L"Send Rate", L"SendRate", 80, LVCFMT_RIGHT, false },
 		{ L"Receive Rate", L"ReceiveRate", 85, LVCFMT_RIGHT, false },
 	};
-
-	WinSys::ProcessNetworkTracker::ConnectionId TrackerId(WinSys::Connection const& c) {
-		using WinSys::ConnectionProtocol;
-		WinSys::ProcessNetworkTracker::ConnectionId id;
-		id.Pid = c.Id.Pid;
-		id.V6 = c.Id.Proto == ConnectionProtocol::Tcp6 || c.Id.Proto == ConnectionProtocol::Udp6;
-		id.Udp = c.Id.Proto == ConnectionProtocol::Udp || c.Id.Proto == ConnectionProtocol::Udp6;
-		id.LocalPort = c.Id.LocalPort;
-		// a UDP endpoint by its port only
-		if (!id.Udp) {
-			size_t length = id.V6 ? 16 : 4;
-			std::copy_n(c.Id.LocalAddress.begin(), length, id.LocalAddress.begin());
-			std::copy_n(c.Id.RemoteAddress.begin(), length, id.RemoteAddress.begin());
-			id.RemotePort = c.Id.RemotePort;
-		}
-		return id;
-	}
-
-	std::wstring FormatRate(double rate) {
-		auto text = FormatHelper::FormatBytes((uint64_t)rate);
-		return text.empty() ? text : text + L"/s";
-	}
 }
 #include "FormatHelper.h"
 #include "AddressResolver.h"
@@ -110,7 +88,8 @@ void CNetworkView::OnRefresh(bool active) {
 	// on the first read, all of them are new to the view, not opened
 	ConnectionRows::Merge(m_All, std::move(*current), m_Loaded);
 	m_Loaded = true;
-	UpdateBytes();
+	if (m_Network)
+		m_Bytes.Update(*m_Network, m_All);
 	if (!active) {
 		m_RowsPending = true;
 		m_PendingSelection = selected;
@@ -163,6 +142,8 @@ void CNetworkView::UpdateStatus() {
 	auto text = std::format(L"{} TCP connection{}, {} UDP endpoint{}", tcp, tcp == 1 ? L"" : L"s", udp, udp == 1 ? L"" : L"s");
 	if (!m_Filter.GetText().empty())
 		text += std::format(L"; {} match the filter", std::ranges::count_if(m_Rows, [](auto c) { return !c->Closed; }));
+	if (m_Network)
+		text += L"; " + ConnectionBytes::SinceText(*m_Network);
 	Frame()->SetStatusText(0, text.c_str());
 }
 
@@ -177,19 +158,15 @@ std::wstring CNetworkView::GetText(Connection const& c, Column column) const {
 		case Column::RemotePort: return c.RemoteText.empty() ? L"" : std::to_wstring(c.Id.RemotePort);
 		case Column::State: return WinSys::ConnectionInfo::StateName(c);
 		case Column::Created: return c.Created ? FormatHelper::FormatDateTime(c.Created) : L"";
-		case Column::Sent: case Column::Received: case Column::SendRate: case Column::ReceiveRate: {
-			auto bytes = GetBytes(c);
-			if (!bytes)
-				return L"";
-			switch (column) {
-				case Column::Sent: return FormatHelper::FormatBytes(bytes->Sent);
-				case Column::Received: return FormatHelper::FormatBytes(bytes->Received);
-				case Column::SendRate: return FormatRate(bytes->SendRate);
-				default: return FormatRate(bytes->ReceiveRate);
-			}
-		}
+		case Column::Sent: case Column::Received: case Column::SendRate: case Column::ReceiveRate:
+			return m_Network ? m_Bytes.Text(c, ByteValue(column)) : L"";
 	}
 	return L"";
+}
+
+ConnectionBytes::Value CNetworkView::ByteValue(Column column) {
+	return column == Column::Sent ? ConnectionBytes::Value::Sent : column == Column::Received ? ConnectionBytes::Value::Received
+		: column == Column::SendRate ? ConnectionBytes::Value::SendRate : ConnectionBytes::Value::ReceiveRate;
 }
 
 bool CNetworkView::ShowsBytes() const {
@@ -207,43 +184,8 @@ void CNetworkView::UpdateTracker() {
 	}
 	else {
 		m_Network.reset();
-		m_Bytes.clear();
+		m_Bytes.Clear();
 	}
-}
-
-void CNetworkView::UpdateBytes() {
-	if (!m_Network)
-		return;
-	auto now = ::GetTickCount64();
-	double seconds = m_BytesTime ? (now - m_BytesTime) / 1000.0 : 0;
-	std::map<ConnectionRows::Key, Bytes> bytes;
-	std::vector<WinSys::ProcessNetworkTracker::ConnectionId> live;
-	live.reserve(m_All.size());
-	for (auto& c : m_All) {
-		auto id = TrackerId(c);
-		auto counters = m_Network->GetConnectionCounters(id);
-		auto key = ConnectionRows::KeyOf(c);
-		Bytes b{ counters.Sent, counters.Received };
-		// a rate from the last refresh's counts, which a row new since has none of
-		if (auto it = m_Bytes.find(key); it != m_Bytes.end() && seconds > 0) {
-			b.SendRate = (b.Sent - (std::min)(b.Sent, it->second.Sent)) / seconds;
-			b.ReceiveRate = (b.Received - (std::min)(b.Received, it->second.Received)) / seconds;
-		}
-		bytes[key] = b;
-		// a closed one goes once its row does
-		if (!c.Closed)
-			live.push_back(id);
-	}
-	m_Network->RetainConnections(live);
-	m_Bytes.swap(bytes);
-	m_BytesTime = now;
-}
-
-CNetworkView::Bytes const* CNetworkView::GetBytes(Connection const& c) const {
-	if (!m_Network)
-		return nullptr;
-	auto it = m_Bytes.find(ConnectionRows::KeyOf(c));
-	return it == m_Bytes.end() ? nullptr : &it->second;
 }
 
 LRESULT CNetworkView::OnAddressResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -317,17 +259,9 @@ void CNetworkView::DoSort(SortInfo const* si) {
 			case Column::LocalPort: result = compare(c1->Id.LocalPort, c2->Id.LocalPort); break;
 			case Column::RemotePort: result = compare(c1->Id.RemotePort, c2->Id.RemotePort); break;
 			case Column::Created: result = compare(c1->Created, c2->Created); break;
-			case Column::Sent: case Column::Received: case Column::SendRate: case Column::ReceiveRate: {
-				static Bytes const none;
-				auto b1 = GetBytes(*c1), b2 = GetBytes(*c2);
-				if (!b1)
-					b1 = &none;
-				if (!b2)
-					b2 = &none;
-				result = column == Column::Sent ? compare(b1->Sent, b2->Sent) : column == Column::Received ? compare(b1->Received, b2->Received)
-					: column == Column::SendRate ? compare(b1->SendRate, b2->SendRate) : compare(b1->ReceiveRate, b2->ReceiveRate);
+			case Column::Sent: case Column::Received: case Column::SendRate: case Column::ReceiveRate:
+				result = m_Bytes.Compare(*c1, *c2, ByteValue(column));
 				break;
-			}
 			default: result = ::_wcsicmp(GetText(*c1, column).c_str(), GetText(*c2, column).c_str()); break;
 		}
 		return si->SortAscending ? result < 0 : result > 0;

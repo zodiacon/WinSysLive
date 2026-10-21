@@ -16,7 +16,7 @@
 // matches the process, PID, protocol, addresses, ports and state. Double-click or Go to Process selects the process;
 // Copy copies the selected row. The selection is kept by connection. The Sent and Received columns and their rates come
 // from the shared ETW tracker (NetworkTracking, elevated only), held while one of them is shown: the bytes since it
-// started, TCP per connection, UDP per local port.
+// started (the status line says when), TCP per connection, UDP per local port.
 //
 class CNetworkView :
 	public CViewBase<CNetworkView>,
@@ -109,13 +109,7 @@ private:
 	// the tracker is held while a byte column is shown
 	bool ShowsBytes() const;
 	void UpdateTracker();
-	// the counts and rates of the rows, from the tracker; the closed connections it counted are forgotten
-	void UpdateBytes();
-	struct Bytes {
-		uint64_t Sent{ 0 }, Received{ 0 };
-		double SendRate{ 0 }, ReceiveRate{ 0 };	// bytes a second since the last refresh
-	};
-	Bytes const* GetBytes(Connection const& c) const;
+	static ConnectionBytes::Value ByteValue(Column column);
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// in the view's rebar
@@ -129,6 +123,5 @@ private:
 	std::optional<ConnectionRows::Key> m_PendingSelection;
 	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;
 	DWORD m_NetworkError{ 0 };	// why the tracker didn't start
-	std::map<ConnectionRows::Key, Bytes> m_Bytes;	// per row, from the last refresh
-	ULONGLONG m_BytesTime{ 0 };	// when they were taken
+	ConnectionBytes m_Bytes;	// the rows', from the tracker on every refresh
 };

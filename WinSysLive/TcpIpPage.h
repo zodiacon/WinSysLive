@@ -3,13 +3,15 @@
 #include "ProcessPages.h"
 #include "ConnectionRows.h"
 #include "AddressResolver.h"
+#include "NetworkTracking.h"
 
 //
 // The TCP/IP page: the process's TCP connections (listening ones too) and UDP endpoints, IPv4 and IPv6 (WinSys
 // ConnectionInfo, which needs no elevation; merged as the Network view's, ConnectionRows). They're read again on
 // every sample while the page is active; new ones are highlighted for two samples (not on the first read), and closed
 // ones are shown once more in red. The selection (several rows, for Copy) is kept by connection. Copy and Copy All put tab-separated lines on
-// the clipboard.
+// the clipboard. Sent, Received and their rates come from the shared ETW tracker (NetworkTracking), so only when
+// elevated, held while the page exists (the sheet's network graph holds it too).
 //
 class CProcTcpIpPage :
 	public CPropertyPageImpl<CProcTcpIpPage>,
@@ -64,7 +66,8 @@ private:
 	LRESULT OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
-	enum class Column { Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, Created, _Count };
+	enum class Column { Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, Created,
+		Sent, Received, SendRate, ReceiveRate, _Count };
 	using Protocol = WinSys::ConnectionProtocol;
 	using Key = ConnectionRows::Key;
 	using Connection = ConnectionRow;
@@ -86,4 +89,6 @@ private:
 	std::vector<Connection> m_Rows;	// in display order
 	bool m_Loaded{ false };	// read at least once: later connections are new
 	bool m_Exited{ false };	// the process is gone: the rows stay as they were
+	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;	// null when not elevated
+	ConnectionBytes m_Bytes;
 };

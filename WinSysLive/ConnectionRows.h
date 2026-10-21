@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WinSys/Connections.h>
+#include <WinSys/ProcessNetwork.h>
 
 // A connection as the Network view and the TCP/IP page show it (WinSys::ConnectionInfo reads them): new ones highlighted
 // for a while, closed ones shown once more.
@@ -28,3 +29,28 @@ namespace ConnectionRows {
 	// sharing a connection key are paired up one to one, by creation time first
 	void Merge(std::vector<ConnectionRow>& rows, std::vector<WinSys::Connection> current, bool markNew, int newTicks = 2);
 }
+
+// The bytes over connection rows, from the shared ETW tracker (NetworkTracking): each Update takes every row's counts,
+// and the rates since the last Update, by row key. The Network view's and the TCP/IP page's byte columns
+class ConnectionBytes {
+public:
+	struct Bytes {
+		uint64_t Sent{ 0 }, Received{ 0 };
+		double SendRate{ 0 }, ReceiveRate{ 0 };	// bytes a second since the last update
+	};
+	enum class Value { Sent, Received, SendRate, ReceiveRate };
+
+	void Update(WinSys::ProcessNetworkTracker const& tracker, std::vector<ConnectionRow> const& rows);
+	void Clear();
+	Bytes const* Get(WinSys::Connection const& c) const;
+	// empty for none and for zero
+	std::wstring Text(WinSys::Connection const& c, Value value) const;
+	// -1, 0 or 1, for sorting; none counts as zero
+	int Compare(WinSys::Connection const& c1, WinSys::Connection const& c2, Value value) const;
+	// "bytes since <when the tracker started>": nothing before is counted
+	static std::wstring SinceText(WinSys::ProcessNetworkTracker const& tracker);
+
+private:
+	std::map<ConnectionRows::Key, Bytes> m_Bytes;
+	ULONGLONG m_Time{ 0 };	// of the last update
+};

@@ -24,6 +24,13 @@ LRESULT CProcTcpIpPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	cm->AddColumn(L"Remote Port", LVCFMT_RIGHT, 80, Column::RemotePort);
 	cm->AddColumn(L"State", LVCFMT_LEFT, 90, Column::State);
 	cm->AddColumn(L"Created", LVCFMT_LEFT, 150, Column::Created);
+	cm->AddColumn(L"Sent", LVCFMT_RIGHT, 75, Column::Sent);
+	cm->AddColumn(L"Received", LVCFMT_RIGHT, 75, Column::Received);
+	cm->AddColumn(L"Send Rate", LVCFMT_RIGHT, 80, Column::SendRate);
+	cm->AddColumn(L"Receive Rate", LVCFMT_RIGHT, 85, Column::ReceiveRate);
+	// the byte columns need the ETW trace, so elevation; without it they stay empty
+	if (WinSys::SecurityHelper::IsRunningElevated())
+		m_Network = NetworkTracking::Acquire();
 	UpdateButtons();
 
 	InitDynamicLayout(false, false);
@@ -62,8 +69,9 @@ void CProcTcpIpPage::OnSample(ProcessSnapshot const& snapshot) {
 
 	auto tcp = std::ranges::count_if(m_Rows, [](auto& c) { return !c.Closed && c.IsTcp(); });
 	auto udp = std::ranges::count_if(m_Rows, [](auto& c) { return !c.Closed && !c.IsTcp(); });
-	SetDlgItemText(IDC_TCPIP_STATUS, std::format(L"{} TCP connection{}, {} UDP endpoint{}",
-		tcp, tcp == 1 ? L"" : L"s", udp, udp == 1 ? L"" : L"s").c_str());
+	auto status = std::format(L"{} TCP connection{}, {} UDP endpoint{}", tcp, tcp == 1 ? L"" : L"s", udp, udp == 1 ? L"" : L"s");
+	status += m_Network ? L"; " + ConnectionBytes::SinceText(*m_Network) : std::wstring(L"; bytes need administrator rights");
+	SetDlgItemText(IDC_TCPIP_STATUS, status.c_str());
 	GetDlgItem(IDC_TCPIP_COPYALL).EnableWindow(!m_Rows.empty());
 	UpdateButtons();
 }
@@ -78,6 +86,8 @@ bool CProcTcpIpPage::Load() {
 	// on the first read, all of them are new to the page, not opened
 	ConnectionRows::Merge(m_Rows, std::move(*current), m_Loaded);
 	m_Loaded = true;
+	if (m_Network)
+		m_Bytes.Update(*m_Network, m_Rows);
 	return true;
 }
 
@@ -90,6 +100,10 @@ std::wstring CProcTcpIpPage::GetText(Connection const& c, Column column) const {
 		case Column::RemotePort: return c.RemoteText.empty() ? L"" : std::to_wstring(c.Id.RemotePort);
 		case Column::State: return WinSys::ConnectionInfo::StateName(c);
 		case Column::Created: return c.Created ? FormatHelper::FormatDateTime(c.Created) : L"";
+		case Column::Sent: return m_Bytes.Text(c, ConnectionBytes::Value::Sent);
+		case Column::Received: return m_Bytes.Text(c, ConnectionBytes::Value::Received);
+		case Column::SendRate: return m_Bytes.Text(c, ConnectionBytes::Value::SendRate);
+		case Column::ReceiveRate: return m_Bytes.Text(c, ConnectionBytes::Value::ReceiveRate);
 	}
 	return L"";
 }
@@ -121,6 +135,10 @@ void CProcTcpIpPage::DoSort(SortInfo const* si) {
 			case Column::RemotePort: result = compare(c1.Id.RemotePort, c2.Id.RemotePort); break;
 			case Column::State: result = ::_wcsicmp(GetText(c1, column).c_str(), GetText(c2, column).c_str()); break;
 			case Column::Created: result = compare(c1.Created, c2.Created); break;
+			case Column::Sent: result = m_Bytes.Compare(c1, c2, ConnectionBytes::Value::Sent); break;
+			case Column::Received: result = m_Bytes.Compare(c1, c2, ConnectionBytes::Value::Received); break;
+			case Column::SendRate: result = m_Bytes.Compare(c1, c2, ConnectionBytes::Value::SendRate); break;
+			case Column::ReceiveRate: result = m_Bytes.Compare(c1, c2, ConnectionBytes::Value::ReceiveRate); break;
 		}
 		return si->SortAscending ? result < 0 : result > 0;
 		});
