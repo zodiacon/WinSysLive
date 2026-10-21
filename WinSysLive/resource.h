@@ -146,6 +146,8 @@
 #define IDI_STACK                   256
 #define IDI_DELETE                  257
 #define IDI_COPY                    268
+#define IDI_MODULE_IMAGE            269
+#define IDI_MODULE_DATA             270
 #define IDD_SYMBOLS                 258
 #define ID_OPTIONS_SYMBOLSETTINGS   32824
 #define ID_KILL                     32825
@@ -365,7 +367,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	269
+#define _APS_NEXT_RESOURCE_VALUE	271
 #define _APS_NEXT_CONTROL_VALUE		1231
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32863

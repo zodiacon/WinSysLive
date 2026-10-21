@@ -30,6 +30,8 @@ namespace {
 		IDI_DIRECTX, IDI_ETW, IDI_DIRECTORY, IDI_PORT, IDI_SECTION, IDI_SESSION, IDI_TOKEN, IDI_WINSTA, IDI_JOB,
 		// thread states, for the Threads tab
 		IDI_PAUSE, IDI_CONTINUE, IDI_MEMORY,
+		// mapping types, for the Modules tab
+		IDI_MODULE_IMAGE, IDI_MODULE_DATA,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them

@@ -6,6 +6,8 @@
 #include "FilterBox.h"
 #include "resource.h"
 
+struct IMainFrame;
+
 //
 // The Modules tab of the Processes view's lower pane: the images and mapped data files of the selected process,
 // from WinSys's ProcessModuleTracker (which walks the address space, so it needs the process opened with
@@ -18,6 +20,12 @@ class CModulesPage :
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLive_ModulesPage", 0, COLOR_WINDOW)
 
+	// for the frame's image list (the icon of a module's mapping type); before Create
+	void SetFrame(IMainFrame* frame) {
+		m_Frame = frame;
+	}
+	// the frame's image list again, after it took a new DPI's size, so the rows take its height
+	void ResetImageList();
 	// nullptr: no process. Without enumerating, the list is empty until the next Refresh
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
 	// enumerates the modules again
@@ -35,6 +43,7 @@ public:
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;
+	int GetRowImage(HWND, int row, int col) const;
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
 
@@ -104,6 +113,7 @@ private:
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list
 	std::vector<ModuleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
+	IMainFrame* m_Frame{ nullptr };
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::unique_ptr<WinSys::ProcessModuleTracker> m_Tracker;
 	std::vector<ModuleRow> m_Rows;	// in display order

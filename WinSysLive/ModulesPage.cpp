@@ -65,8 +65,10 @@ LRESULT CModulesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
 	m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | LVS_REPORT | LVS_OWNERDATA |
-		LVS_SINGLESEL | LVS_SHOWSELALWAYS);
-	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
+		LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS);
+	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP | LVS_EX_SUBITEMIMAGES);
+	// the mapping type's icon (image or data), in the leftmost column
+	ResetImageList();
 	SuspendHookWhilePainting(m_List);
 	m_Filter.Create(m_hWnd, IDC_PAGE_FILTER, 200, L"Filter (Ctrl+F)", m_List, [this](std::wstring const&) {
 		int selected = m_List.GetSelectedIndex();
@@ -193,6 +195,18 @@ std::wstring CModulesPage::GetText(ModuleRow const& row, Column column) const {
 		case Column::Path: return m.Path;
 	}
 	return L"";
+}
+
+void CModulesPage::ResetImageList() {
+	if (m_Frame)
+		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
+}
+
+int CModulesPage::GetRowImage(HWND, int row, int col) const {
+	// in whichever column is leftmost (the user can drag them)
+	if (row >= (int)m_Rows.size() || !m_Frame || !ColumnLayout::IsLeftmostColumn(m_List, col))
+		return -1;
+	return m_Frame->GetIconIndex(m_Rows[row].Module->Type == MapType::Image ? IDI_MODULE_IMAGE : IDI_MODULE_DATA);
 }
 
 int CModulesPage::GetSaveColumnRange(HWND, int&) const {

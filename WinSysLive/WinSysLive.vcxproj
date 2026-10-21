@@ -512,6 +512,8 @@
     <Image Include="res\cpu.ico" />
     <Image Include="res\delete.ico" />
     <Image Include="res\copy.ico" />
+    <Image Include="res\image.ico" />
+    <Image Include="res\data.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

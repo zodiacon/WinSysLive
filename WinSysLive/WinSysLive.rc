@@ -342,6 +342,10 @@ IDI_DELETE              ICON                    "res\\delete.ico"
 
 IDI_COPY                ICON                    "res\\copy.ico"
 
+IDI_MODULE_IMAGE        ICON                    "res\\image.ico"
+
+IDI_MODULE_DATA         ICON                    "res\\data.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

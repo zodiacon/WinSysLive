@@ -14,6 +14,7 @@ void CProcessDetails::Init(IMainFrame* frame) {
 	SetImageList(frame->GetImageList());
 
 	m_Handles.SetFrame(frame);
+	m_Modules.SetFrame(frame);
 	m_Handles.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Modules.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Threads.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
@@ -54,6 +55,7 @@ void CProcessDetails::SaveColumns() const {
 void CProcessDetails::ResetImageList() {
 	SetImageList(m_Frame->GetImageList());
 	m_Handles.ResetImageList();
+	m_Modules.ResetImageList();
 }
 
 void CProcessDetails::Refresh() {

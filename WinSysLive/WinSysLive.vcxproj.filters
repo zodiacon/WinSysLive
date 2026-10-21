@@ -463,5 +463,11 @@
     <Image Include="res\copy.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\image.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\data.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
   </ItemGroup>
 </Project>
