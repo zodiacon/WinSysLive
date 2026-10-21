@@ -1,18 +1,15 @@
 #include "pch.h"
 #include "ListExport.h"
 
-namespace ListExport {
-	std::vector<std::vector<std::wstring>> GetRows(HWND hList, std::function<std::wstring(int row)> const& treeColumn) {
-		CListViewCtrl list(hList);
+namespace {
+	// the shown columns in display order (a hidden one may be kept at zero width), and their titles
+	std::vector<int> GetShownColumns(CListViewCtrl list, std::vector<std::wstring>* titles = nullptr) {
 		CHeaderCtrl header(list.GetHeader());
 		int count = header.GetItemCount();
 		std::vector<int> order(count);
 		if (count)
 			list.GetColumnOrderArray(count, order.data());
-
-		// the shown columns: a hidden one may be kept at zero width
 		std::vector<int> columns;
-		std::vector<std::wstring> titles;
 		for (auto col : order) {
 			WCHAR title[128]{};
 			HDITEM hdi{ HDI_WIDTH | HDI_TEXT };
@@ -22,8 +19,36 @@ namespace ListExport {
 			if (hdi.cxy == 0)
 				continue;
 			columns.push_back(col);
-			titles.push_back(title);
+			if (titles)
+				titles->push_back(title);
 		}
+		return columns;
+	}
+}
+
+namespace ListExport {
+	std::wstring RowText(HWND hList, int row) {
+		CListViewCtrl list(hList);
+		std::wstring text, buffer(4096, L'\0');
+		bool first = true;
+		for (auto col : GetShownColumns(list)) {
+			LVITEM item{};
+			item.iSubItem = col;
+			item.pszText = buffer.data();
+			item.cchTextMax = (int)buffer.size();
+			auto len = (int)list.SendMessage(LVM_GETITEMTEXT, row, (LPARAM)&item);
+			if (!first)
+				text += L'\t';
+			first = false;
+			text.append(buffer.data(), len);
+		}
+		return text;
+	}
+
+	std::vector<std::vector<std::wstring>> GetRows(HWND hList, std::function<std::wstring(int row)> const& treeColumn) {
+		CListViewCtrl list(hList);
+		std::vector<std::wstring> titles;
+		auto columns = GetShownColumns(list, &titles);
 
 		std::vector<std::vector<std::wstring>> rows;
 		rows.reserve(list.GetItemCount() + 1);

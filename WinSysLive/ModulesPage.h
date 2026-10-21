@@ -3,6 +3,7 @@
 #include <VirtualListView.h>
 #include <WinSys/ProcessModuleTracker.h>
 #include "ColumnLayout.h"
+#include "FilterBox.h"
 #include "resource.h"
 
 //
@@ -21,8 +22,13 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
 	// enumerates the modules again
 	void Refresh();
+	// Ctrl+F while the page has the focus
+	void FocusFilter() {
+		m_Filter.Focus();
+	}
 	void SetListFont(HFONT font) {
 		m_List.SetFont(font);
+		m_Filter.SetFont(font);
 		// a hidden page's header isn't all repainted otherwise
 		m_List.GetHeader().Invalidate();
 	}
@@ -39,6 +45,11 @@ public:
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		COMMAND_HANDLER(IDC_PAGE_FILTER, EN_CHANGE, OnFilterChanged)
+		COMMAND_ID_HANDLER(ID_PAGE_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_MODULE_PROPERTIES, OnProperties)
+		COMMAND_ID_HANDLER(ID_MODULE_GOTOFILELOCATION, OnGoToFileLocation)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
@@ -68,6 +79,15 @@ private:
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	ModuleRow const* GetSelectedRow() const;
+	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept
+	void ShowRows(void* selected);
+	bool Matches(ModuleRow const& row) const;
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -79,6 +99,8 @@ private:
 	void SaveColumns() const;
 
 	CListViewCtrl m_List;
+	CFilterBox m_Filter;	// above the list
+	std::vector<ModuleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::unique_ptr<WinSys::ProcessModuleTracker> m_Tracker;
 	std::vector<ModuleRow> m_Rows;	// in display order

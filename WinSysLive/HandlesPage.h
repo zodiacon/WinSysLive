@@ -3,6 +3,7 @@
 #include <VirtualListView.h>
 #include <WinSys/Handles.h>
 #include "ColumnLayout.h"
+#include "FilterBox.h"
 #include "resource.h"
 
 struct IMainFrame;
@@ -34,8 +35,13 @@ public:
 	// the selected handle's properties (CHandleSheet): double-click, the row's menu, Properties (Alt+Enter)
 	bool CanShowProperties() const;
 	void ShowProperties();
+	// Ctrl+F while the page has the focus
+	void FocusFilter() {
+		m_Filter.Focus();
+	}
 	void SetListFont(HFONT font) {
 		m_List.SetFont(font);
+		m_Filter.SetFont(font);
 		// a hidden page's header isn't all repainted otherwise
 		m_List.GetHeader().Invalidate();
 	}
@@ -53,6 +59,8 @@ public:
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		COMMAND_HANDLER(IDC_PAGE_FILTER, EN_CHANGE, OnFilterChanged)
+		COMMAND_ID_HANDLER(ID_PAGE_COPY, OnCopy)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		COMMAND_ID_HANDLER(ID_HANDLE_PROPERTIES, OnHandleCommand)
@@ -91,6 +99,11 @@ private:
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept
+	void ShowRows(uint64_t selected);
+	bool Matches(HandleRow const& row) const;
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHandleCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -110,6 +123,8 @@ private:
 
 	IMainFrame* m_Frame{ nullptr };
 	CListViewCtrl m_List;
+	CFilterBox m_Filter;	// above the list
+	std::vector<HandleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	wil::unique_handle m_hProcess;	// with PROCESS_DUP_HANDLE, for the names; null if it can't be opened so
 	std::vector<HandleRow> m_Rows;	// in display order

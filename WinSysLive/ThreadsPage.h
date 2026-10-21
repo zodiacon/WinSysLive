@@ -4,6 +4,7 @@
 #include <WinSys/Keys.h>
 #include <WinSys/Thread.h>
 #include "ColumnLayout.h"
+#include "FilterBox.h"
 #include "Symbols.h"
 #include "resource.h"
 
@@ -34,8 +35,13 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
 	// takes the threads from the frame's current snapshot
 	void Refresh();
+	// Ctrl+F while the page has the focus
+	void FocusFilter() {
+		m_Filter.Focus();
+	}
 	void SetListFont(HFONT font) {
 		m_List.SetFont(font);
+		m_Filter.SetFont(font);
 		// a hidden page's header isn't all repainted otherwise
 		m_List.GetHeader().Invalidate();
 	}
@@ -56,6 +62,8 @@ public:
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		COMMAND_HANDLER(IDC_PAGE_FILTER, EN_CHANGE, OnFilterChanged)
+		COMMAND_ID_HANDLER(ID_PAGE_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
@@ -121,6 +129,11 @@ private:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept
+	void ShowRows(uint32_t selected);
+	bool Matches(ThreadRow const& row) const;
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -155,6 +168,8 @@ private:
 	void SaveColumns() const;
 
 	CListViewCtrl m_List;
+	CFilterBox m_Filter;	// above the list
+	std::vector<ThreadRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
 	CToolTipCtrl m_Tip;	// the start address of a row showing its symbol
 	std::wstring m_TipText;
 	std::pair<int, int> m_TipCell{ -1, -1 };	// row and Column the tooltip is for

@@ -415,6 +415,23 @@ LRESULT CProcessesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
 }
 
 LRESULT CProcessesView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// a lower pane's page with the focus has a filter of its own
+	auto focus = ::GetFocus();
+	if (m_LowerPane && focus && m_Details.IsChild(focus)) {
+		auto in = [&](CWindow page) { return focus == page.m_hWnd || page.IsChild(focus); };
+		if (in(m_Details.GetHandlesPage())) {
+			m_Details.GetHandlesPage().FocusFilter();
+			return 0;
+		}
+		if (in(m_Details.GetModulesPage())) {
+			m_Details.GetModulesPage().FocusFilter();
+			return 0;
+		}
+		if (in(m_Details.GetThreadsPage())) {
+			m_Details.GetThreadsPage().FocusFilter();
+			return 0;
+		}
+	}
 	m_Filter.Focus();
 	return 0;
 }

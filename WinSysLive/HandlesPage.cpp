@@ -5,6 +5,8 @@
 #include <WinSys/AccessMask.h>
 #include "AppSettings.h"
 #include "ViewBase.h"
+#include "ListExport.h"
+#include <ClipboardHelper.h>
 #include "HandleIcons.h"
 #include "HandleSheet.h"
 #include <WinSys/Helpers.h>
@@ -45,6 +47,10 @@ LRESULT CHandlesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	if (m_Frame)
 		m_List.SetImageList(m_Frame->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
+	m_Filter.Create(m_hWnd, IDC_PAGE_FILTER, 200, L"Filter (Ctrl+F)", m_List, [this](std::wstring const&) {
+		int selected = m_List.GetSelectedIndex();
+		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Data->Entry.Value : static_cast<uint64_t>(0));
+		});
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().HandleColumns(), s_Columns));
 	return 0;
 }
@@ -57,8 +63,15 @@ LRESULT CHandlesPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 }
 
 LRESULT CHandlesPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-	if (m_List)
-		m_List.MoveWindow(0, 0, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	if (m_List) {
+		int cx = GET_X_LPARAM(lParam), cy = GET_Y_LPARAM(lParam);
+		// the filter box keeps its height, the list takes the rest
+		CWindow filter(m_Filter.GetHwnd());
+		CRect rc;
+		filter.GetWindowRect(&rc);
+		filter.MoveWindow(0, 0, cx, rc.Height());
+		m_List.MoveWindow(0, rc.Height(), cx, (std::max)(cy - rc.Height(), 0));
+	}
 	return 0;
 }
 
@@ -84,6 +97,7 @@ void CHandlesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enume
 		Refresh();
 	else {
 		m_Rows.clear();
+		m_AllRows.clear();
 		m_List.SetItemCount(0);
 	}
 	if (m_List.GetItemCount() > 0)
@@ -138,11 +152,8 @@ void CHandlesPage::Refresh() {
 		}
 	}
 
-	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
-	if (auto si = GetSortInfo(m_List); si)
-		DoSort(si);
-	SelectHandle(selectedValue);
-	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	m_AllRows = std::move(m_Rows);
+	ShowRows(selectedValue);
 }
 
 CHandlesPage::HandleRow const* CHandlesPage::GetSelectedRow() const {
@@ -374,6 +385,8 @@ LRESULT CHandlesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		menu.SetMenuDefaultItem(ID_HANDLE_PROPERTIES);
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(CanCloseSelected() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_CLOSE, L"&Close Handle");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		MenuItemData const icons[] = {
 			{ ID_HANDLE_CLOSE, IDI_DELETE },
 		};
@@ -406,5 +419,38 @@ LRESULT CHandlesPage::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 		// the addresses come from another source
 		Refresh();
 	}
+	return 0;
+}
+
+void CHandlesPage::ShowRows(uint64_t selected) {
+	m_Rows.clear();
+	for (auto& row : m_AllRows)
+		if (Matches(row))
+			m_Rows.push_back(row);
+	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+	if (auto si = GetSortInfo(m_List); si)
+		DoSort(si);
+	SelectHandle(selected);
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+bool CHandlesPage::Matches(HandleRow const& row) const {
+	auto& filter = m_Filter.GetText();
+	if (filter.empty())
+		return true;
+	for (auto& column : GetShownColumns())
+		if (CFilterBox::Contains(GetText(row, (Column)column.Id), filter))
+			return true;
+	return false;
+}
+
+LRESULT CHandlesPage::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CHandlesPage::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		ClipboardHelper::CopyText(m_hWnd, ListExport::RowText(m_List, selected).c_str());
 	return 0;
 }

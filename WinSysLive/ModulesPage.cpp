@@ -5,6 +5,8 @@
 #include "VersionInfo.h"
 #include "AppSettings.h"
 #include "ViewBase.h"
+#include "ListExport.h"
+#include <ClipboardHelper.h>
 #include <WTLHelper.h>
 
 using namespace WinSys;
@@ -65,6 +67,10 @@ LRESULT CModulesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		LVS_SINGLESEL | LVS_SHOWSELALWAYS);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
 	SuspendHookWhilePainting(m_List);
+	m_Filter.Create(m_hWnd, IDC_PAGE_FILTER, 200, L"Filter (Ctrl+F)", m_List, [this](std::wstring const&) {
+		int selected = m_List.GetSelectedIndex();
+		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Module->Base : static_cast<void*>(0));
+		});
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().ModuleColumns(), s_Columns));
 	return 0;
 }
@@ -77,8 +83,15 @@ LRESULT CModulesPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 }
 
 LRESULT CModulesPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-	if (m_List)
-		m_List.MoveWindow(0, 0, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	if (m_List) {
+		int cx = GET_X_LPARAM(lParam), cy = GET_Y_LPARAM(lParam);
+		// the filter box keeps its height, the list takes the rest
+		CWindow filter(m_Filter.GetHwnd());
+		CRect rc;
+		filter.GetWindowRect(&rc);
+		filter.MoveWindow(0, 0, cx, rc.Height());
+		m_List.MoveWindow(0, rc.Height(), cx, (std::max)(cy - rc.Height(), 0));
+	}
 	return 0;
 }
 
@@ -104,6 +117,7 @@ void CModulesPage::SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enume
 		Refresh();
 	else {
 		m_Rows.clear();
+		m_AllRows.clear();
 		m_List.SetItemCount(0);
 	}
 	if (m_List.GetItemCount() > 0)
@@ -143,11 +157,8 @@ void CModulesPage::Refresh() {
 		}
 	}
 
-	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
-	if (auto si = GetSortInfo(m_List); si)
-		DoSort(si);
-	SelectModule(selectedBase);
-	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	m_AllRows = std::move(m_Rows);
+	ShowRows(selectedBase);
 }
 
 void CModulesPage::SelectModule(void* base) {
@@ -260,7 +271,26 @@ LRESULT CModulesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
 	if (!column) {
-		bHandled = FALSE;
+		// a row's
+		if (!GetSelectedRow()) {
+			bHandled = FALSE;
+			return 0;
+		}
+		if (pt.x == -1 && pt.y == -1) {
+			// from the keyboard: at the selected row
+			CRect rc;
+			m_List.GetItemRect(m_List.GetSelectedIndex(), &rc, LVIR_LABEL);
+			m_List.ClientToScreen(&rc);
+			pt = { rc.left, rc.bottom };
+		}
+		CMenu menu;
+		menu.CreatePopupMenu();
+		menu.AppendMenu(MF_STRING, ID_MODULE_PROPERTIES, L"&Properties...");
+		menu.AppendMenu(MF_STRING, ID_MODULE_GOTOFILELOCATION, L"Open File &Location");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
+		menu.SetMenuDefaultItem(ID_MODULE_PROPERTIES);
+		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}
 	m_MenuColumn = *column;
@@ -286,5 +316,67 @@ LRESULT CModulesPage::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 		SetColumns(*columns);
 		SaveColumns();
 	}
+	return 0;
+}
+
+void CModulesPage::ShowRows(void* selected) {
+	m_Rows.clear();
+	for (auto& row : m_AllRows)
+		if (Matches(row))
+			m_Rows.push_back(row);
+	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+	if (auto si = GetSortInfo(m_List); si)
+		DoSort(si);
+	SelectModule(selected);
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+bool CModulesPage::Matches(ModuleRow const& row) const {
+	auto& filter = m_Filter.GetText();
+	if (filter.empty())
+		return true;
+	for (auto& column : GetShownColumns())
+		if (CFilterBox::Contains(GetText(row, (Column)column.Id), filter))
+			return true;
+	return false;
+}
+
+LRESULT CModulesPage::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CModulesPage::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		ClipboardHelper::CopyText(m_hWnd, ListExport::RowText(m_List, selected).c_str());
+	return 0;
+}
+
+CModulesPage::ModuleRow const* CModulesPage::GetSelectedRow() const {
+	int selected = m_List.GetSelectedIndex();
+	return selected >= 0 && selected < (int)m_Rows.size() ? &m_Rows[selected] : nullptr;
+}
+
+LRESULT CModulesPage::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+	// posted, so the shell's dialog doesn't come up inside the list's mouse handling
+	if (GetSelectedRow())
+		PostMessage(WM_COMMAND, ID_MODULE_PROPERTIES);
+	return 0;
+}
+
+LRESULT CModulesPage::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the file's, from the shell (modeless: it has its own thread)
+	if (auto row = GetSelectedRow())
+		::SHObjectProperties(m_hWnd, SHOP_FILEPATH, row->Module->Path.c_str(), nullptr);
+	return 0;
+}
+
+LRESULT CModulesPage::OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedRow())
+		::ShellExecute(m_hWnd, L"open", L"explorer.exe", std::format(L"/select,\"{}\"", row->Module->Path).c_str(), nullptr, SW_SHOWNORMAL);
 	return 0;
 }

@@ -3,6 +3,8 @@
 #include "ThreadsPage.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
+#include "ListExport.h"
+#include <ClipboardHelper.h>
 #include "AppSettings.h"
 #include "resource.h"
 #include <WTLHelper.h>
@@ -88,6 +90,10 @@ LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		m_IconIndices[id] = m_Images.AddIcon(IconHelper::LoadCached(id, 16));
 	m_List.SetImageList(m_Images, LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
+	m_Filter.Create(m_hWnd, IDC_PAGE_FILTER, 200, L"Filter (Ctrl+F)", m_List, [this](std::wstring const&) {
+		int selected = m_List.GetSelectedIndex();
+		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Key.Id : static_cast<uint32_t>(0));
+		});
 
 	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().ThreadColumns(), s_Columns));
 
@@ -285,6 +291,8 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		else
 			menu.AppendMenu(control, ID_THREAD_SUSPEND, L"S&uspend");
 		menu.AppendMenu(control, ID_THREAD_TERMINATE, L"&Terminate");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		// the icons, as the frame's menus have them
 		MenuItemData const icons[] = {
 			{ ID_THREAD_STACK, IDI_STACK },
@@ -324,8 +332,15 @@ LRESULT CThreadsPage::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 }
 
 LRESULT CThreadsPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-	if (m_List)
-		m_List.MoveWindow(0, 0, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	if (m_List) {
+		int cx = GET_X_LPARAM(lParam), cy = GET_Y_LPARAM(lParam);
+		// the filter box keeps its height, the list takes the rest
+		CWindow filter(m_Filter.GetHwnd());
+		CRect rc;
+		filter.GetWindowRect(&rc);
+		filter.MoveWindow(0, 0, cx, rc.Height());
+		m_List.MoveWindow(0, rc.Height(), cx, (std::max)(cy - rc.Height(), 0));
+	}
 	return 0;
 }
 
@@ -461,11 +476,8 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 	}
 	m_PrevTime = now;
 
-	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
-	if (auto si = GetSortInfo(m_List); si)
-		DoSort(si);
-	SelectThread(selectedTid);
-	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	m_AllRows = std::move(m_Rows);
+	ShowRows(selectedTid);
 }
 
 void CThreadsPage::SelectThread(uint32_t tid) {
@@ -606,4 +618,37 @@ LRESULT CThreadsPage::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 		}
 	}
 	return CDRF_DODEFAULT;
+}
+
+void CThreadsPage::ShowRows(uint32_t selected) {
+	m_Rows.clear();
+	for (auto& row : m_AllRows)
+		if (Matches(row))
+			m_Rows.push_back(row);
+	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+	if (auto si = GetSortInfo(m_List); si)
+		DoSort(si);
+	SelectThread(selected);
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+bool CThreadsPage::Matches(ThreadRow const& row) const {
+	auto& filter = m_Filter.GetText();
+	if (filter.empty())
+		return true;
+	for (auto& column : GetShownColumns())
+		if (CFilterBox::Contains(GetText(row, (Column)column.Id), filter))
+			return true;
+	return false;
+}
+
+LRESULT CThreadsPage::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Filter.Changed();
+	return 0;
+}
+
+LRESULT CThreadsPage::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		ClipboardHelper::CopyText(m_hWnd, ListExport::RowText(m_List, selected).c_str());
+	return 0;
 }
