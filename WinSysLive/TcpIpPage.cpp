@@ -3,6 +3,7 @@
 #include "FormatHelper.h"
 #include "AddressResolver.h"
 #include <WinSys/Helpers.h>
+#include <WinSys/SecurityHelper.h>
 #include <WTLHelper.h>
 #include <ClipboardHelper.h>
 
@@ -190,6 +191,61 @@ LRESULT CProcTcpIpPage::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 		}
 	}
 	return CDRF_DODEFAULT;
+}
+
+std::vector<CProcTcpIpPage::Connection> CProcTcpIpPage::GetClosableSelection() const {
+	std::vector<Connection> rows;
+	for (int i = m_List.GetNextItem(-1, LVNI_SELECTED); i >= 0 && i < (int)m_Rows.size(); i = m_List.GetNextItem(i, LVNI_SELECTED))
+		if (!m_Rows[i].Closed && WinSys::ConnectionInfo::CanClose(m_Rows[i]))
+			rows.push_back(m_Rows[i]);
+	return rows;
+}
+
+bool CProcTcpIpPage::OnRightClickList(HWND, int row, int, POINT const& pt) {
+	if (row < 0 || row >= (int)m_Rows.size())
+		return false;
+	// resetting a connection needs elevation
+	auto closable = WinSys::SecurityHelper::IsRunningElevated() ? GetClosableSelection().size() : 0;
+	CMenu menu;
+	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING | (closable ? 0 : MF_GRAYED), ID_NETWORK_CLOSE, closable > 1 ? L"C&lose Connections" : L"C&lose Connection");
+	menu.AppendMenu(MF_STRING | (AddressResolver::Get().IsEnabled() ? 0 : MF_GRAYED), ID_NETWORK_RESOLVEAGAIN, L"&Resolve Again");
+	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING, IDC_TCPIP_COPY, L"&Copy");
+	::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
+	return true;
+}
+
+LRESULT CProcTcpIpPage::OnCloseConnections(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto rows = GetClosableSelection();
+	if (rows.empty())
+		return 0;
+	auto question = rows.size() == 1
+		? std::format(L"Close the connection from {}:{} to {}:{}?", rows[0].LocalText, rows[0].Id.LocalPort, rows[0].RemoteText, rows[0].Id.RemotePort)
+		: std::format(L"Close the {} selected TCP connections?", rows.size());
+	question += L"\n\nThe process sees a closed connection fail.";
+	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	int failed = 0;
+	DWORD error = 0;
+	for (auto& c : rows)
+		if (!WinSys::ConnectionInfo::Close(c)) {
+			failed++;
+			error = ::GetLastError();
+		}
+	if (failed)
+		AtlMessageBox(m_hWnd, std::format(L"Failed to close {} of the connections: {}", failed, WinSys::Helpers::GetErrorText(error)).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	// the next sample shows them closed
+	return 0;
+}
+
+LRESULT CProcTcpIpPage::OnResolveAgain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	for (int i = m_List.GetNextItem(-1, LVNI_SELECTED); i >= 0 && i < (int)m_Rows.size(); i = m_List.GetNextItem(i, LVNI_SELECTED))
+		AddressResolver::Get().Refresh(m_Rows[i]);
+	// painting asks for the names, which queues the lookups
+	m_List.Invalidate();
+	return 0;
 }
 
 LRESULT CProcTcpIpPage::OnCopy(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

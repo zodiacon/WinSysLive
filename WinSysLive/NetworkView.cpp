@@ -19,6 +19,7 @@ namespace {
 #include "FormatHelper.h"
 #include "AddressResolver.h"
 #include <WinSys/Helpers.h>
+#include <WinSys/SecurityHelper.h>
 #include <ClipboardHelper.h>
 
 CString CNetworkView::GetTitle() const {
@@ -281,7 +282,13 @@ bool CNetworkView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 		return false;
 	CMenu menu;
 	menu.CreatePopupMenu();
-	menu.AppendMenu(MF_STRING | (m_Rows[row]->Id.Pid ? 0 : MF_GRAYED), ID_NETWORK_GOTOPROCESS, L"&Go to Process");
+	auto& c = *m_Rows[row];
+	menu.AppendMenu(MF_STRING | (c.Id.Pid ? 0 : MF_GRAYED), ID_NETWORK_GOTOPROCESS, L"&Go to Process");
+	menu.AppendMenu(MF_SEPARATOR);
+	// resetting a connection needs elevation; only IPv4 TCP connections can be (WinSys ConnectionInfo::CanClose)
+	bool canClose = !c.Closed && WinSys::ConnectionInfo::CanClose(c) && WinSys::SecurityHelper::IsRunningElevated();
+	menu.AppendMenu(MF_STRING | (canClose ? 0 : MF_GRAYED), ID_NETWORK_CLOSE, L"C&lose Connection");
+	menu.AppendMenu(MF_STRING | (AddressResolver::Get().IsEnabled() ? 0 : MF_GRAYED), ID_NETWORK_RESOLVEAGAIN, L"&Resolve Again");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
 	menu.SetMenuDefaultItem(ID_NETWORK_GOTOPROCESS);
@@ -301,6 +308,33 @@ bool CNetworkView::OnDoubleClickList(HWND, int row, int, POINT const&) {
 LRESULT CNetworkView::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto c = GetSelected(); c && c->Id.Pid)
 		Frame()->GoToProcess(c->Id.Pid);
+	return 0;
+}
+
+LRESULT CNetworkView::OnCloseConnection(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto selected = GetSelected();
+	if (!selected || selected->Closed || !WinSys::ConnectionInfo::CanClose(*selected))
+		return 0;
+	// a copy: refreshes go on while the message box is up, and a merge moves the rows
+	auto const connection = *selected;
+	auto c = &connection;
+	auto question = std::format(L"Close the connection from {}:{} to {}:{} ({}, {})?\n\nThe connection is reset; the process sees it fail.",
+		c->LocalText, c->Id.LocalPort, c->RemoteText, c->Id.RemotePort, GetProcessName(c->Id.Pid), c->Id.Pid);
+	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	if (!WinSys::ConnectionInfo::Close(*c))
+		AtlMessageBox(m_hWnd, std::format(L"Failed to close the connection: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	// the next refresh shows it closed
+	return 0;
+}
+
+LRESULT CNetworkView::OnResolveAgain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto c = GetSelected()) {
+		AddressResolver::Get().Refresh(*c);
+		// painting asks for the names, which queues the lookups
+		m_List.Invalidate();
+	}
 	return 0;
 }
 

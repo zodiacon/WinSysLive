@@ -30,12 +30,16 @@ public:
 	CString GetColumnText(HWND, int row, int col) const;
 	void DoSort(SortInfo const* si);
 	void OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState);
+	// the selected rows' menu: Close Connection, Resolve Again, Copy
+	bool OnRightClickList(HWND, int row, int col, POINT const& pt);
 
 	BEGIN_MSG_MAP(CProcTcpIpPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_ADDRESS_RESOLVED, OnAddressResolved)
 		COMMAND_ID_HANDLER(IDC_TCPIP_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDC_TCPIP_COPYALL, OnCopy)
+		COMMAND_ID_HANDLER(ID_NETWORK_CLOSE, OnCloseConnections)
+		COMMAND_ID_HANDLER(ID_NETWORK_RESOLVEAGAIN, OnResolveAgain)
 		NOTIFY_HANDLER(IDC_TCPIP_LIST, LVN_ITEMCHANGED, OnItemChanged)
 		NOTIFY_HANDLER(IDC_TCPIP_LIST, NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CProcTcpIpPage>)
@@ -55,6 +59,8 @@ private:
 		return 0;
 	}
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCloseConnections(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResolveAgain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
@@ -68,6 +74,9 @@ private:
 	std::wstring GetText(Connection const& c, Column column) const;
 	// the selected rows' keys, the focused one first
 	std::vector<Key> GetSelectedKeys() const;
+	// the selected rows that can be closed (IPv4 TCP, not closed already), copied: samples go on while a message box
+	// is up, and a merge moves the rows
+	std::vector<Connection> GetClosableSelection() const;
 	void SelectConnections(std::vector<Key> const& keys);
 	void UpdateButtons();
 

@@ -59,6 +59,8 @@ public:
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_NETWORK_GOTOPROCESS, OnGoToProcess)
+		COMMAND_ID_HANDLER(ID_NETWORK_CLOSE, OnCloseConnection)
+		COMMAND_ID_HANDLER(ID_NETWORK_RESOLVEAGAIN, OnResolveAgain)
 		CHAIN_MSG_MAP_ALT(CViewBase<CNetworkView>, 1)
 	END_MSG_MAP()
 
@@ -88,6 +90,8 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCloseConnection(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResolveAgain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	std::wstring GetText(Connection const& c, Column column) const;
 	std::wstring GetProcessName(uint32_t pid) const;

@@ -12,8 +12,10 @@ constexpr UINT WM_ADDRESS_RESOLVED = WM_APP + 0x150;
 
 //
 // Options > Resolve Addresses: the DNS names of the Network view's and the TCP/IP pages' addresses (WinSys
-// ConnectionInfo::LookupName), looked up on worker threads of its own, as a lookup can take seconds, and cached for
-// the process's life (a name not found is cached too). Called from the UI thread and the property sheets' threads.
+// ConnectionInfo::LookupName), looked up on worker threads of its own, as a lookup can take seconds, and cached (a name
+// not found too). An answer is looked up again once it's an hour old (a failure: five minutes), the old one shown
+// meanwhile, or at once after Refresh; entries not asked for in an hour are dropped. Called from the UI thread and the
+// property sheets' threads.
 //
 class AddressResolver {
 public:
@@ -24,11 +26,13 @@ public:
 	bool IsEnabled() const;
 
 	// the text to show for an address (text: its formatted address, empty for none): its name once found, else the
-	// address. A lookup not done yet is queued, and notify gets WM_ADDRESS_RESOLVED when it's done
+	// address. A lookup not done yet (or due again) is queued, and notify gets WM_ADDRESS_RESOLVED when it's done
 	std::wstring GetText(std::array<BYTE, 16> const& address, bool v6, uint32_t scope, std::wstring const& text, HWND notify);
 	// the local and remote addresses of a connection
 	std::wstring GetLocalText(WinSys::Connection const& c, HWND notify);
 	std::wstring GetRemoteText(WinSys::Connection const& c, HWND notify);
+	// the connection's addresses are looked up again when next asked for (Resolve Again); their names show until then
+	void Refresh(WinSys::Connection const& c);
 
 	// stops the workers (before the app exits), without waiting for a lookup under way
 	void Shutdown();
@@ -44,10 +48,16 @@ private:
 		auto operator<=>(Key const&) const = default;
 	};
 	struct Entry {
-		bool Done{ false };
+		bool Done{ false };	// Name is an answer (possibly an old one, while Pending)
+		bool Pending{ false };	// queued or being looked up
 		std::wstring Name;	// empty: none
+		ULONGLONG Answered{ 0 };	// GetTickCount64 of the answer; 0: due again
+		ULONGLONG Used{ 0 };	// the last GetText for it
 		std::vector<HWND> Waiting;	// to notify once done
 	};
+	static Key MakeKey(std::array<BYTE, 16> const& address, bool v6, uint32_t scope);
+	// drops the entries not asked for in an hour, at most once a minute (m_Lock held)
+	void Prune(ULONGLONG now);
 
 	mutable std::mutex m_Lock;
 	std::condition_variable_any m_Wake;
@@ -56,4 +66,5 @@ private:
 	std::vector<std::jthread> m_Workers;	// started on the first lookup; workers wait on m_Wake with their stop tokens
 	std::atomic<bool> m_Enabled{ false };
 	bool m_Shutdown{ false };
+	ULONGLONG m_LastPrune{ 0 };
 };

@@ -4,6 +4,10 @@
 namespace {
 	// lookups of addresses without a name take seconds, so a few run at once
 	int const WorkerCount = 4;
+	// how long an answer is kept before it's looked up again: a name, none (a failure may be a passing DNS problem)
+	ULONGLONG const NameLifetime = 60 * 60 * 1000, NoNameLifetime = 5 * 60 * 1000;
+	// entries not asked for this long go; pruning runs at most this often
+	ULONGLONG const UnusedLifetime = 60 * 60 * 1000, PruneInterval = 60 * 1000;
 
 	bool IsV6(WinSys::ConnectionProtocol proto) {
 		return proto == WinSys::ConnectionProtocol::Tcp6 || proto == WinSys::ConnectionProtocol::Udp6;
@@ -24,29 +28,36 @@ bool AddressResolver::IsEnabled() const {
 	return m_Enabled;
 }
 
-std::wstring AddressResolver::GetText(std::array<BYTE, 16> const& address, bool v6, uint32_t scope, std::wstring const& text, HWND notify) {
-	if (!m_Enabled || text.empty() || WinSys::ConnectionInfo::IsUnspecified(address, v6))
-		return text;
+AddressResolver::Key AddressResolver::MakeKey(std::array<BYTE, 16> const& address, bool v6, uint32_t scope) {
 	Key key{ address, v6 ? scope : 0, v6 };
 	if (!v6)
 		std::fill(key.Address.begin() + 4, key.Address.end(), BYTE(0));
+	return key;
+}
+
+std::wstring AddressResolver::GetText(std::array<BYTE, 16> const& address, bool v6, uint32_t scope, std::wstring const& text, HWND notify) {
+	if (!m_Enabled || text.empty() || WinSys::ConnectionInfo::IsUnspecified(address, v6))
+		return text;
+	auto key = MakeKey(address, v6, scope);
+	auto now = ::GetTickCount64();
 	std::lock_guard lock(m_Lock);
 	if (m_Shutdown)
 		return text;
-	auto [it, added] = m_Cache.try_emplace(key);
-	auto& entry = it->second;
-	if (entry.Done)
-		return entry.Name.empty() ? text : entry.Name;
-	if (notify && std::ranges::find(entry.Waiting, notify) == entry.Waiting.end())
+	Prune(now);
+	auto& entry = m_Cache[key];
+	entry.Used = now;
+	bool due = !entry.Done || entry.Answered == 0 || now - entry.Answered > (entry.Name.empty() ? NoNameLifetime : NameLifetime);
+	if (due && notify && std::ranges::find(entry.Waiting, notify) == entry.Waiting.end())
 		entry.Waiting.push_back(notify);
-	if (added) {
+	if (due && !entry.Pending) {
+		entry.Pending = true;
 		m_Queue.push_back(key);
 		if (m_Workers.empty())
 			for (int i = 0; i < WorkerCount; i++)
 				m_Workers.emplace_back([this](std::stop_token stop) { Work(stop); });
 		m_Wake.notify_one();
 	}
-	return text;
+	return entry.Done && !entry.Name.empty() ? entry.Name : text;
 }
 
 std::wstring AddressResolver::GetLocalText(WinSys::Connection const& c, HWND notify) {
@@ -55,6 +66,24 @@ std::wstring AddressResolver::GetLocalText(WinSys::Connection const& c, HWND not
 
 std::wstring AddressResolver::GetRemoteText(WinSys::Connection const& c, HWND notify) {
 	return GetText(c.Id.RemoteAddress, IsV6(c.Id.Proto), c.Id.RemoteScope, c.RemoteText, notify);
+}
+
+void AddressResolver::Refresh(WinSys::Connection const& c) {
+	bool v6 = IsV6(c.Id.Proto);
+	std::lock_guard lock(m_Lock);
+	for (auto& key : { MakeKey(c.Id.LocalAddress, v6, c.Id.LocalScope), MakeKey(c.Id.RemoteAddress, v6, c.Id.RemoteScope) })
+		if (auto it = m_Cache.find(key); it != m_Cache.end())
+			it->second.Answered = 0;
+}
+
+void AddressResolver::Prune(ULONGLONG now) {
+	if (now - m_LastPrune < PruneInterval)
+		return;
+	m_LastPrune = now;
+	std::erase_if(m_Cache, [&](auto const& item) {
+		auto& entry = item.second;
+		return !entry.Pending && now - entry.Used > UnusedLifetime;
+		});
 }
 
 void AddressResolver::Work(std::stop_token stop) {
@@ -71,9 +100,12 @@ void AddressResolver::Work(std::stop_token stop) {
 		std::vector<HWND> waiting;
 		{
 			std::lock_guard lock(m_Lock);
+			// pending entries aren't pruned
 			auto& entry = m_Cache[key];
 			entry.Done = true;
+			entry.Pending = false;
 			entry.Name = std::move(name);
+			entry.Answered = ::GetTickCount64();
 			waiting.swap(entry.Waiting);
 		}
 		// a window may be gone by now: the post fails
