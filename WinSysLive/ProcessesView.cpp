@@ -108,6 +108,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	m_Tree.SetCallbackMode(true);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
 
+	LoadSort();
 	SetColumns(LoadColumns());
 
 	int width = ::MulDiv(360, ::GetDpiForWindow(m_hWnd), 96);
@@ -177,7 +178,6 @@ std::vector<CProcessesView::ShownColumn> CProcessesView::GetShownColumns() const
 void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 	ATLASSERT(std::ranges::count(columns, Column::Name, &ShownColumn::Id) == 1);
 	ATLASSERT(std::ranges::count(columns, Column::Id, &ShownColumn::Id) == 1);
-	auto sortDirection = m_Tree.GetSortDirection();
 	m_Tree.SetSortColumn(-1, 0);
 	// Name stays list column 0, which draws the tree; the others are inserted after it,
 	// and the header's order array puts them all in the requested order
@@ -206,7 +206,7 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 	// the sort stays if its column is still shown
 	auto sorted = std::ranges::find(m_Columns, (Column)m_SortColumn);
 	if (m_SortColumn >= 0 && sorted != m_Columns.end())
-		m_Tree.SetSortColumn((int)(sorted - m_Columns.begin()), sortDirection);
+		m_Tree.SetSortColumn((int)(sorted - m_Columns.begin()), m_SortAscending ? 1 : -1);
 	else
 		m_SortColumn = -1;
 
@@ -781,6 +781,7 @@ LRESULT CProcessesView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) 
 	auto ns = reinterpret_cast<NMTLVSORT*>(hdr);
 	m_SortColumn = (int)m_Columns[ns->iSubItem];
 	m_SortAscending = ns->iDirection > 0;
+	SaveSort();
 
 	auto selected = GetSelectedProcess();
 	auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
@@ -788,6 +789,26 @@ LRESULT CProcessesView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) 
 	// the user re-sorted: follow the selection to its new place
 	RestoreSelection(selectedKey ? &*selectedKey : nullptr, true);
 	return 0;
+}
+
+void CProcessesView::LoadSort() {
+	// "Key:asc" or "Key:desc", the key from s_Columns
+	std::wstring text = AppSettings::Get().ProcessSort();
+	auto colon = text.find(L':');
+	if (colon == std::wstring::npos)
+		return;
+	auto key = text.substr(0, colon);
+	auto it = std::ranges::find_if(s_Columns, [&](auto& c) { return key == c.Key; });
+	if (it == std::end(s_Columns))
+		return;
+	m_SortColumn = (int)(it - std::begin(s_Columns));
+	m_SortAscending = text.substr(colon + 1) != L"desc";
+}
+
+void CProcessesView::SaveSort() const {
+	auto& settings = AppSettings::Get();
+	settings.ProcessSort(m_SortColumn < 0 ? L"" : std::format(L"{}:{}", s_Columns[m_SortColumn].Key, m_SortAscending ? L"asc" : L"desc"));
+	settings.Save();
 }
 
 void CProcessesView::Sort() {
@@ -1001,9 +1022,19 @@ void CProcessesView::UpdateUI() {
 
 LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
 	auto ia = reinterpret_cast<NMITEMACTIVATE*>(hdr);
-	auto item = GetSelectedProcess();
-	if (ia->iItem < 0 || !item)
+	if (ia->iItem < 0)
 		return 0;
+	// ptAction is relative to the inner list view
+	CPoint pt(ia->ptAction);
+	m_Tree.GetListCtrl().ClientToScreen(&pt);
+	ShowRowMenu(pt);
+	return 0;
+}
+
+void CProcessesView::ShowRowMenu(CPoint pt) {
+	auto item = GetSelectedProcess();
+	if (!item)
+		return;
 
 	CMenu menu;
 	menu.LoadMenu(IDR_CONTEXT);
@@ -1038,11 +1069,7 @@ LRESULT CProcessesView::OnRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandl
 		popup.CheckMenuItem(ID_PROCESS_EFFICIENCY, MF_BYCOMMAND | (item->Process->GetEfficiencyMode().value_or(false) ? MF_CHECKED : MF_UNCHECKED));
 	}
 
-	// ptAction is relative to the inner list view
-	CPoint pt(ia->ptAction);
-	m_Tree.GetListCtrl().ClientToScreen(&pt);
 	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
-	return 0;
 }
 
 void CProcessesView::ShowError(PCWSTR operation) const {
@@ -1429,7 +1456,25 @@ LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
 	return 0;
 }
 
-LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	// the keyboard's (Shift+F10, the menu key): the selected row's menu, below the row (no mouse position to use)
+	auto hWnd = (HWND)wParam;
+	if (lParam == -1 && (hWnd == m_Tree.GetListCtrl() || hWnd == m_Tree)) {
+		auto item = GetSelectedProcess();
+		if (!item || !item->Item)
+			return 0;
+		CRect rc;
+		auto list = m_Tree.GetListCtrl();
+		list.GetClientRect(&rc);
+		CRect rcItem;
+		CPoint pt(rc.left, rc.top);
+		if (m_Tree.GetItemRect(item->Item, &rcItem) && rcItem.bottom > rc.top && rcItem.top < rc.bottom)
+			pt = CPoint(rcItem.left + ::MulDiv(24, ::GetDpiForWindow(list), 96), rcItem.bottom);
+		list.ClientToScreen(&pt);
+		ShowRowMenu(pt);
+		return 0;
+	}
+
 	// the header's WM_CONTEXTMENU comes up through the list view, the TreeListView and the splitter, and arrives
 	// with one of those as the window, so the header is found by the position; the rows have their own menu (NM_RCLICK)
 	auto header = m_Tree.GetHeader();
@@ -1437,7 +1482,7 @@ LRESULT CProcessesView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM l
 	CRect rcHeader;
 	header.GetWindowRect(&rcHeader);
 	if (!rcHeader.PtInRect(pt)) {
-		// includes the keyboard (-1, -1)
+		// a row's (NM_RCLICK), or the keyboard's from another window
 		bHandled = FALSE;
 		return 0;
 	}

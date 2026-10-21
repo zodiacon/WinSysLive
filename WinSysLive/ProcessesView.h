@@ -116,6 +116,8 @@ private:
 	LRESULT OnSelectionChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// the selected process's menu, at pt (screen)
+	void ShowRowMenu(CPoint pt);
 	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKillFocused(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -192,6 +194,9 @@ private:
 	// ensureVisible: scroll to it; otherwise the scroll position stays
 	void RestoreSelection(WinSys::ProcessOrThreadKey const* key, bool ensureVisible);
 	void Sort();
+	// the sort column and direction, in the ProcessSort setting
+	void LoadSort();
+	void SaveSort() const;
 	// columns whose values are queried (or summed) rather than read from the snapshot (see ProcessItem::SortValue)
 	static bool IsQueriedColumn(Column column);
 	int64_t GetQueriedValue(ProcessItem& item, Column column) const;

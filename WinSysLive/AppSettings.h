@@ -13,6 +13,7 @@ struct AppSettings : Settings {
 		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
 		SETTING(ProcessSplitterPos, 60, SettingType::Int32);	// percent of the height for the process list
 		SETTING_STRING(ProcessColumns, L"");	// see ColumnLayout::Parse
+		SETTING_STRING(ProcessSort, L"");	// the sort column's key and the direction ("CPU:desc"); empty: unsorted
 		SETTING_STRING(ServiceColumns, L"");
 		SETTING_STRING(ThreadColumns, L"");
 		SETTING_STRING(ModuleColumns, L"");
@@ -41,6 +42,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(ProcessKeepSelectionVisible, int)
 	DEF_SETTING(ProcessSplitterPos, int)
 	DEF_SETTING_STRING(ProcessColumns)
+	DEF_SETTING_STRING(ProcessSort)
 	DEF_SETTING_STRING(ServiceColumns)
 	DEF_SETTING_STRING(ThreadColumns)
 	DEF_SETTING_STRING(ModuleColumns)
