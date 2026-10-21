@@ -184,6 +184,8 @@ private:
 	void UpdateFilterStatus();
 	HTLITEM EnsureInserted(ProcessItem& item);
 	void RemoveItem(ProcessItem& item);
+	// hItem and its ancestors, while they don't match the filter and have no children (see EnsureInserted)
+	void RemoveUnneededAncestors(HTLITEM hItem);
 	void CollectDescendants(HTLITEM hItem, std::vector<ProcessItem*>& items) const;
 	ProcessItem* FindParent(ProcessItem const& item);
 	ProcessItem* GetSelectedProcess() const;

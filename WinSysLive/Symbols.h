@@ -62,6 +62,8 @@ public:
 	// captures the thread's user-mode stack and resolves its frames' symbols (while enabled); notify gets
 	// WM_STACK_CAPTURED
 	void CaptureStack(uint32_t pid, int64_t created, uint32_t tid, HWND notify);
+	// the window is going: its captures aren't posted (they'd leak), and those still queued aren't made
+	void CancelStacks(HWND notify);
 
 	// writes a dump file of the process (MiniDumpWriteDump is DbgHelp's, so on the engine's thread); full: all its
 	// memory, else a minidump (threads, modules, handles); notify gets WM_DUMP_WRITTEN

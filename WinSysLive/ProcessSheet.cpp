@@ -11,8 +11,9 @@ using namespace WinSys;
 namespace {
 	const UINT_PTR SampleTimerId = 1;
 
-	bool IsInJob(uint32_t pid) {
-		wil::unique_handle hProcess(::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
+	bool IsInJob(ProcessProperties const& props) {
+		// the sheet's process, not another that got its ID
+		auto hProcess = OpenSheetProcess(props, PROCESS_QUERY_LIMITED_INFORMATION);
 		BOOL inJob = FALSE;
 		return hProcess && ::IsProcessInJob(hProcess.get(), nullptr, &inJob) && inJob;
 	}
@@ -57,7 +58,7 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Threads);
 	m_TcpIp = std::make_unique<CProcTcpIpPage>(m_Props, m_Snapshot);
 	AddPage(*m_TcpIp);
-	if (IsInJob(m_Props.Id)) {
+	if (IsInJob(m_Props)) {
 		m_Job = std::make_unique<CProcJobPage>(m_Props, m_Snapshot);
 		AddPage(*m_Job);
 	}

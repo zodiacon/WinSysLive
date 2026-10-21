@@ -32,7 +32,8 @@ void CStackDlg::Capture() {
 }
 
 LRESULT CStackDlg::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
-	// captures posted before the dialog closed: nothing else would free them
+	// no captures after this; those posted before it are freed here, as nothing else would
+	SymbolEngine::Get().CancelStacks(m_hWnd);
 	MSG msg;
 	while (::PeekMessage(&msg, m_hWnd, WM_STACK_CAPTURED, WM_STACK_CAPTURED, PM_REMOVE))
 		delete reinterpret_cast<StackCapture*>(msg.lParam);

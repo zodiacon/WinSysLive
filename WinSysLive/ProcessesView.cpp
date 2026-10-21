@@ -643,6 +643,7 @@ void CProcessesView::RemoveItem(ProcessItem& item) {
 		return;
 	}
 	// DeleteItem takes the whole subtree; the children move to the top level, since their parent is gone
+	auto hParent = m_Tree.GetParentItem(item.Item);
 	std::vector<ProcessItem*> descendants;
 	CollectDescendants(item.Item, descendants);
 	m_Tree.DeleteItem(item.Item);
@@ -654,6 +655,21 @@ void CProcessesView::RemoveItem(ProcessItem& item) {
 	m_Items.erase(item.Process->Key);
 	for (auto d : descendants)
 		EnsureInserted(*d);
+	RemoveUnneededAncestors(hParent);
+}
+
+void CProcessesView::RemoveUnneededAncestors(HTLITEM hItem) {
+	// with a filter, an ancestor that doesn't match is in the tree only for its matching descendants: once it has no
+	// children left, it goes, and so may its own parent
+	while (hItem && hItem != TLV_ROOT && !m_Tree.GetChildItem(hItem)) {
+		auto ancestor = reinterpret_cast<ProcessItem*>(m_Tree.GetItemData(hItem));
+		if (!ancestor || ancestor->Match)
+			break;
+		auto hParent = m_Tree.GetParentItem(hItem);
+		m_Tree.DeleteItem(hItem);
+		ancestor->Item = nullptr;
+		hItem = hParent;
+	}
 }
 
 void CProcessesView::CollectDescendants(HTLITEM hItem, std::vector<ProcessItem*>& items) const {

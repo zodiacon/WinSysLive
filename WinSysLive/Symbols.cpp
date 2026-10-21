@@ -156,6 +156,7 @@ struct SymbolEngine::Impl {
 	std::deque<Work> Queue;
 	std::map<AddressKey, std::wstring> Cache;
 	std::map<AddressKey, std::set<HWND>> Pending;	// queued addresses, and the windows to tell
+	std::set<HWND> Abandoned;	// windows gone (CancelStacks): no captures for them
 	bool Stopping{ false };
 	std::thread Thread;
 
@@ -221,8 +222,16 @@ struct SymbolEngine::Impl {
 			}
 			else {
 				auto& stack = std::get<StackWork>(work);
+				auto abandoned = [&] { return Abandoned.contains(stack.Notify); };
+				{
+					std::lock_guard lock(Lock);
+					if (abandoned())
+						continue;
+				}
 				auto capture = std::make_unique<StackCapture>(Capture(stack.Process, stack.Tid, stack.Resolve));
-				if (::PostMessage(stack.Notify, WM_STACK_CAPTURED, 0, (LPARAM)capture.get()))
+				// under the lock, so a window that cancels (before draining its queue) gets nothing after that
+				std::lock_guard lock(Lock);
+				if (!abandoned() && ::PostMessage(stack.Notify, WM_STACK_CAPTURED, 0, (LPARAM)capture.get()))
 					capture.release();
 			}
 		}
@@ -382,7 +391,19 @@ std::optional<std::wstring> SymbolEngine::Lookup(uint32_t pid, int64_t created, 
 }
 
 void SymbolEngine::CaptureStack(uint32_t pid, int64_t created, uint32_t tid, HWND notify) {
-	GetImpl().Post(Impl::StackWork{ { pid, created }, tid, notify, m_Enabled });
+	auto& impl = GetImpl();
+	{
+		// a window handle is reused
+		std::lock_guard lock(impl.Lock);
+		impl.Abandoned.erase(notify);
+	}
+	impl.Post(Impl::StackWork{ { pid, created }, tid, notify, m_Enabled });
+}
+
+void SymbolEngine::CancelStacks(HWND notify) {
+	auto& impl = GetImpl();
+	std::lock_guard lock(impl.Lock);
+	impl.Abandoned.insert(notify);
 }
 
 void SymbolEngine::WriteDump(uint32_t pid, int64_t created, std::wstring path, bool full, HWND notify) {

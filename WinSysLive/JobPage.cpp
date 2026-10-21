@@ -4,6 +4,7 @@
 #include <WinSys/Handles.h>
 #include <WinSys/Job.h>
 #include <WinSys/Helpers.h>
+#include <WinSys/Processes.h>
 #include <unordered_set>
 
 namespace {
@@ -358,21 +359,20 @@ void CProcJobPage::ShowProcesses(HANDLE hJob, ProcessSnapshot const& snapshot) {
 		Row row{ (LPARAM)pid };
 		auto& texts = row.Texts;
 		auto p = snapshot.Find(pid);
+		std::wstring name;
 		if (p) {
-			m_Names[pid] = std::wstring(p->ImageName.Buffer, p->ImageName.Length / sizeof(WCHAR));
+			name.assign(p->ImageName.Buffer ? p->ImageName.Buffer : L"", p->ImageName.Length / sizeof(WCHAR));
+			m_Names[{ p->CreateTime.QuadPart, pid }] = name;
 		}
-		else if (!m_Names.contains(pid)) {
+		else if (auto process = WinSys::Process::OpenById(pid)) {
 			// not in the snapshot: newer than it, or the sheet's process is gone and the sheet takes no more
-			wil::unique_handle hProcess(::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
-			WCHAR path[MAX_PATH];
-			DWORD size = _countof(path);
-			if (hProcess && ::QueryFullProcessImageName(hProcess.get(), 0, path, &size)) {
-				auto name = wcsrchr(path, L'\\');
-				m_Names[pid] = name ? name + 1 : path;
-			}
+			WinSys::ProcessOrThreadKey key{ process->GetCreateTime(), pid };
+			if (auto it = m_Names.find(key); it != m_Names.end())
+				name = it->second;
+			else
+				name = m_Names[key] = process->GetName();
 		}
-		auto name = m_Names.find(pid);
-		texts.push_back(name == m_Names.end() ? L"" : name->second);
+		texts.push_back(name);
 		texts.push_back(std::to_wstring(pid));
 		if (p) {
 			texts.push_back(std::to_wstring(p->SessionId));

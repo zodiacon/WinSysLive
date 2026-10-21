@@ -311,6 +311,8 @@ LRESULT CServicesView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 }
 
 CString CServicesView::GetColumnText(HWND, int row, int col) const {
+	if (row < 0 || row >= (int)m_Items.size())
+		return L"";
 	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(col);
 	return GetText(*m_Items[row], column).c_str();
 }
@@ -352,6 +354,8 @@ std::wstring CServicesView::GetText(ServiceItem& item, Column column) const {
 }
 
 int CServicesView::GetRowImage(HWND, int row, int) const {
+	if (row < 0 || row >= (int)m_Items.size())
+		return -1;
 	switch (m_Items[row]->Info.GetStatusProcess().CurrentState) {
 		case ServiceState::Running: return Frame()->GetIconIndex(IDI_RUN);
 		case ServiceState::Stopped: return Frame()->GetIconIndex(IDI_KILL);	// stop.ico
@@ -458,7 +462,7 @@ void CServicesView::SelectService(std::wstring const& name) {
 }
 
 bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
-	if (row < 0)
+	if (row < 0 || row >= (int)m_Items.size())
 		return false;
 
 	auto& item = *m_Items[row];
@@ -504,7 +508,7 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 }
 
 bool CServicesView::OnDoubleClickList(HWND, int row, int, POINT const&) {
-	if (row < 0)
+	if (row < 0 || row >= (int)m_Items.size())
 		return false;
 	if (auto pid = m_Items[row]->Info.GetStatusProcess().ProcessId; pid)
 		Frame()->GoToProcess(pid);

@@ -2,6 +2,7 @@
 
 #include <wil/resource.h>
 #include <WinSys/Job.h>
+#include <WinSys/Keys.h>
 #include "ProcessPages.h"
 
 //
@@ -53,7 +54,8 @@ private:
 	CComboBox m_JobList;
 	CListViewCtrl m_Limits, m_Stats, m_Processes;
 	std::vector<WinSys::ProcessJob> m_Jobs;	// innermost first (WinSys JobInfo::FindProcessJobs)
-	std::unordered_map<uint32_t, std::wstring> m_Names;	// the processes' image names, for when the snapshot is gone
+	// the processes' image names, for when the snapshot is gone; by ID and creation time, as an ID is reused
+	std::unordered_map<WinSys::ProcessOrThreadKey, std::wstring> m_Names;
 	bool m_Loaded{ false };
 	bool m_Selected{ false };	// the sheet's process was selected in the list
 };
