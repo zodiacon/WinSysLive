@@ -113,7 +113,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	int width = ::MulDiv(360, ::GetDpiForWindow(m_hWnd), 96);
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, PID, user, description or command line (Ctrl+F)",
 		m_Tree, [this](auto&) {
-			BuildItems();
+			RebuildTree();
 			UpdateFilterStatus();
 		});
 	m_Filter.SetFont(m_Tree.GetFont());
@@ -287,6 +287,12 @@ void CProcessesView::OnActivate(bool active) {
 	m_Active = active;
 	// the Services view handles it too, so it's set here rather than on every refresh (UpdateUI)
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	if (active && m_SortPending) {
+		auto selected = GetSelectedProcess();
+		auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
+		Sort();
+		RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
+	}
 	UpdateUI();
 	// the status line's count is this view's
 	if (!m_Filter.GetText().empty())
@@ -453,20 +459,12 @@ void CProcessesView::BuildItems() {
 	m_Tree.BeginUpdate();
 	m_Tree.DeleteAllItems();
 	m_Items.clear();
-	m_Tree.SetTreeLines(m_TreeMode);
 
 	auto& processes = Frame()->GetProcessManager().GetProcesses();
 	m_Items.reserve(processes.size() + 64);
 	for (auto& p : processes)
 		m_Items.insert({ p->Key, ProcessItem{ p } });
-	// in snapshot order (not the map's), so unsorted siblings keep the system's order; parents are inserted first anyway.
-	// With a filter, only the matching processes, which bring their ancestors along (EnsureInserted)
-	for (auto& p : processes) {
-		auto& item = m_Items.at(p->Key);
-		item.Match = Matches(item);
-		if (item.Match)
-			EnsureInserted(item);
-	}
+	InsertItems();
 
 	UpdateServicePids();
 	for (auto& [key, item] : m_Items) {
@@ -483,6 +481,44 @@ void CProcessesView::BuildItems() {
 
 	// the list was rebuilt, so the selection is shown wherever it ended up
 	RestoreSelection(selectedKey ? &*selectedKey : nullptr, true);
+}
+
+void CProcessesView::RebuildTree() {
+	auto selected = GetSelectedProcess();
+	auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
+
+	m_Tree.BeginUpdate();
+	m_Tree.DeleteAllItems();
+	for (auto& [key, item] : m_Items)
+		item.Item = nullptr;
+	InsertItems();
+	if (m_SortColumn >= 0)
+		Sort();
+	m_Tree.EndUpdate();
+
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, true);
+}
+
+void CProcessesView::InsertItems() {
+	m_Tree.SetTreeLines(m_TreeMode);
+	// in snapshot order (not the map's), so unsorted siblings keep the system's order; parents are inserted first anyway.
+	// With a filter, only the matching processes, which bring their ancestors along (EnsureInserted)
+	for (auto& p : Frame()->GetProcessManager().GetProcesses()) {
+		auto it = m_Items.find(p->Key);
+		if (it == m_Items.end())
+			continue;
+		auto& item = it->second;
+		item.Match = Matches(item);
+		if (item.Match)
+			EnsureInserted(item);
+	}
+	// exited processes, still shown for this refresh
+	for (auto& [key, item] : m_Items)
+		if (item.Terminated) {
+			item.Match = Matches(item);
+			if (item.Match)
+				EnsureInserted(item);
+		}
 }
 
 void CProcessesView::OnRefresh(bool /*active*/) {
@@ -554,9 +590,13 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
 		}
 
-	// values change on every update, so the order may too
-	if (m_SortColumn >= 0)
-		Sort();
+	// values change on every update, so the order may too; a hidden list is sorted when it's shown
+	if (m_SortColumn >= 0) {
+		if (m_Active)
+			Sort();
+		else
+			m_SortPending = true;
+	}
 	m_Tree.EndUpdate();
 
 	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
@@ -735,8 +775,37 @@ LRESULT CProcessesView::OnSort(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) 
 }
 
 void CProcessesView::Sort() {
+	m_SortPending = false;
+	// a queried value once per item, not twice per comparison
+	if (auto column = (Column)m_SortColumn; m_SortColumn >= 0 && IsQueriedColumn(column))
+		for (auto& [key, item] : m_Items)
+			if (item.Item)
+				item.SortValue = GetQueriedValue(item, column);
 	// in tree mode this sorts siblings; in flat mode everything is top level, so it's a full sort
 	m_Tree.SortChildren(TLV_ROOT, CompareItems, reinterpret_cast<LPARAM>(this), true);
+}
+
+bool CProcessesView::IsQueriedColumn(Column column) {
+	switch (column) {
+		case Column::ContextSwitches: case Column::GdiObjects: case Column::UserObjects: case Column::MemoryPriority:
+		case Column::IoPriority: case Column::NetworkSend: case Column::NetworkReceive:
+			return true;
+	}
+	return false;
+}
+
+int64_t CProcessesView::GetQueriedValue(ProcessItem& item, Column column) const {
+	auto& p = *item.Process;
+	switch (column) {
+		case Column::ContextSwitches: return (int64_t)GetContextSwitches(p);
+		case Column::GdiObjects: return p.GetGdiObjects();
+		case Column::UserObjects: return p.GetUserObjects();
+		case Column::MemoryPriority: return p.GetMemoryPriority();
+		case Column::IoPriority: return (int64_t)p.GetIoPriority();
+		case Column::NetworkSend: return (int64_t)NetworkCounters(p.Id).Sent;
+		case Column::NetworkReceive: return (int64_t)NetworkCounters(p.Id).Received;
+	}
+	return 0;
 }
 
 int CALLBACK CProcessesView::CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam) {
@@ -753,8 +822,10 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 	auto i1 = p1.NativeInfo, i2 = p2.NativeInfo;
 
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
-	auto compareText = [](std::wstring_view a, std::wstring_view b) { return ::_wcsicmp(std::wstring(a).c_str(), std::wstring(b).c_str()); };
+	auto compareText = [](std::wstring const& a, std::wstring const& b) { return ::_wcsicmp(a.c_str(), b.c_str()); };
 
+	if (IsQueriedColumn((Column)m_SortColumn))
+		return compare(item1.SortValue, item2.SortValue);
 	switch ((Column)m_SortColumn) {
 		case Column::Name: return compareText(p1.GetImageName(), p2.GetImageName());
 		case Column::Id: return compare(p1.Id, p2.Id);
@@ -763,7 +834,6 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::KernelTime: return compare(i1->KernelTime.QuadPart, i2->KernelTime.QuadPart);
 		case Column::UserTime: return compare(i1->UserTime.QuadPart, i2->UserTime.QuadPart);
 		case Column::CpuCycles: return compare(i1->CycleTime, i2->CycleTime);
-		case Column::ContextSwitches: return compare(GetContextSwitches(p1), GetContextSwitches(p2));
 		case Column::ContextSwitchDelta: return compare(item1.ContextSwitchDelta, item2.ContextSwitchDelta);
 		case Column::PrivateBytesDelta: return compare(item1.PrivateBytesDelta, item2.PrivateBytesDelta);
 		case Column::PeakPrivateBytes: return compare(i1->PeakPagefileUsage, i2->PeakPagefileUsage);
@@ -771,10 +841,6 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::VirtualSize: return compare(i1->VirtualSize, i2->VirtualSize);
 		case Column::PageFaults: return compare(i1->PageFaultCount, i2->PageFaultCount);
 		case Column::PeakThreads: return compare(i1->NumberOfThreadsHighWatermark, i2->NumberOfThreadsHighWatermark);
-		case Column::GdiObjects: return compare(p1.GetGdiObjects(), p2.GetGdiObjects());
-		case Column::UserObjects: return compare(p1.GetUserObjects(), p2.GetUserObjects());
-		case Column::MemoryPriority: return compare(p1.GetMemoryPriority(), p2.GetMemoryPriority());
-		case Column::IoPriority: return compare(p1.GetIoPriority(), p2.GetIoPriority());
 		case Column::IntegrityLevel: return compare(p1.GetIntegrityLevel(), p2.GetIntegrityLevel());
 		case Column::Protection: return compare(p1.GetProtection().Level, p2.GetProtection().Level);
 		case Column::PrivateBytes: return compare(i1->PrivatePageCount, i2->PrivatePageCount);
@@ -785,14 +851,12 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::User: return compareText(p1.GetUser(), p2.GetUser());
 		case Column::Priority: return compare(i1->BasePriority, i2->BasePriority);
 		case Column::StartTime: return compare(p1.Key.Created, p2.Key.Created);
-		case Column::Architecture: return compareText(p1.GetArchitecture(), p2.GetArchitecture());
+		case Column::Architecture: return ::_wcsicmp(p1.GetArchitecture(), p2.GetArchitecture());
 		case Column::Virtualization: return compare(p1.GetVirtualization(), p2.GetVirtualization());
 		case Column::JobId: return compare(GetJobId(p1), GetJobId(p2));
 		case Column::IoRead: return compare(i1->ReadTransferCount.QuadPart, i2->ReadTransferCount.QuadPart);
 		case Column::IoWrite: return compare(i1->WriteTransferCount.QuadPart, i2->WriteTransferCount.QuadPart);
 		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);
-		case Column::NetworkSend: return compare(NetworkCounters(p1.Id).Sent, NetworkCounters(p2.Id).Sent);
-		case Column::NetworkReceive: return compare(NetworkCounters(p1.Id).Received, NetworkCounters(p2.Id).Received);
 		case Column::GpuUsage: return compare(item1.Gpu.Usage, item2.Gpu.Usage);
 		case Column::GpuDedicated: return compare(item1.Gpu.Dedicated, item2.Gpu.Dedicated);
 		case Column::GpuShared: return compare(item1.Gpu.Shared, item2.Gpu.Shared);
@@ -1310,7 +1374,7 @@ LRESULT CProcessesView::OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	m_TreeMode = !m_TreeMode;
 	AppSettings::Get().ProcessTreeMode(m_TreeMode);
 	// flat mode puts every process at the top level, so sorting covers all of them
-	BuildItems();
+	RebuildTree();
 	UpdateUI();
 	return 0;
 }

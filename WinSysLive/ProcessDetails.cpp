@@ -52,10 +52,12 @@ void CProcessDetails::SaveColumns() const {
 }
 
 void CProcessDetails::Refresh() {
-	m_Threads.Refresh();
+	// the threads too only while shown: each has its handle queried four times a refresh. The deltas cover the time
+	// since the last refresh, so they're right when the tab is shown again
 	switch (GetActivePage()) {
 		case ModulesPage: m_Modules.Refresh(); break;
 		case HandlesPage: m_Handles.Refresh(); break;
+		case ThreadsPage: m_Threads.Refresh(); break;
 	}
 }
 
@@ -66,4 +68,6 @@ void CProcessDetails::OnPageActivated(int page) {
 		m_Modules.Refresh();
 	else if (page == HandlesPage && m_Handles)
 		m_Handles.Refresh();
+	else if (page == ThreadsPage && m_Threads)
+		m_Threads.Refresh();
 }

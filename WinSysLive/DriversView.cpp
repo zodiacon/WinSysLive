@@ -76,21 +76,38 @@ void CDriversView::OnRefresh(bool active) {
 	auto current = WinSys::KernelModules::Enum();
 	if (current.empty())
 		return;	// keep what we have
-	// the rows point into m_All, which the merge replaces: the selection is taken first, and the rows are rebuilt
-	auto selected = GetSelectedKey();
-	m_Rows.clear();
-	Merge(std::move(current));
-	m_Loaded = true;
-	ShowRows(selected);
-	if (!m_Queued.empty())
-		VerifySignatures();	// the new ones
+	// drivers rarely come and go: most refreshes have nothing to merge
+	if (!IsUnchanged(current)) {
+		// the rows point into m_All, which the merge replaces: the selection is taken first, and the rows are rebuilt
+		auto selected = GetSelectedKey();
+		m_Rows.clear();
+		bool loaded = Merge(std::move(current));
+		m_Loaded = true;
+		ShowRows(selected);
+		// verifying starts when the tab is first shown; after that, the new ones
+		if (loaded && !m_Queued.empty())
+			VerifySignatures();
+	}
 	if (active) {
 		UpdateStatus();
 		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 	}
 }
 
-void CDriversView::Merge(std::vector<WinSys::KernelModule> current) {
+bool CDriversView::IsUnchanged(std::vector<WinSys::KernelModule> const& current) const {
+	// the merge keeps the modules' order, with the unloaded ones after them
+	if (!m_Loaded || current.size() != m_All.size())
+		return false;
+	for (size_t i = 0; i < current.size(); i++) {
+		auto& row = m_All[i];
+		if (row.Unloaded || row.NewTicks > 0 || row.Module.Base != current[i].Base || row.Module.Path != current[i].Path)
+			return false;
+	}
+	return true;
+}
+
+bool CDriversView::Merge(std::vector<WinSys::KernelModule> current) {
+	bool loaded = false;
 	std::unordered_map<std::wstring, DriverRow*> previous;
 	for (auto& row : m_All)
 		if (!row.Unloaded)
@@ -104,9 +121,12 @@ void CDriversView::Merge(std::vector<WinSys::KernelModule> current) {
 			row.NewTicks = (std::max)(it->second->NewTicks - 1, 0);
 			previous.erase(it);
 		}
-		else if (m_Loaded)
-			// on the first read, they're all new to the view, not loaded
-			row.NewTicks = 2;
+		else {
+			loaded = true;
+			if (m_Loaded)
+				// on the first read, they're all new to the view, not loaded
+				row.NewTicks = 2;
+		}
 		merged.push_back(std::move(row));
 	}
 	for (auto& [key, row] : previous) {
@@ -116,6 +136,7 @@ void CDriversView::Merge(std::vector<WinSys::KernelModule> current) {
 		merged.push_back(std::move(unloaded));
 	}
 	m_All = std::move(merged);
+	return loaded;
 }
 
 std::wstring CDriversView::Lowercase(std::wstring text) {
@@ -128,7 +149,9 @@ void CDriversView::VerifySignatures() {
 	for (auto& row : m_All)
 		if (!row.Unloaded && m_Queued.insert(Lowercase(row.Module.Path)).second)
 			paths.push_back(row.Module.Path);
-	if (!paths.empty()) {
+	if (paths.empty())
+		return;
+	{
 		std::lock_guard lock(m_Signatures->Lock);
 		for (auto& path : paths)
 			m_Signatures->Pending.push_back(std::move(path));

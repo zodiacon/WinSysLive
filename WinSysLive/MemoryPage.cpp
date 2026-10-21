@@ -442,9 +442,17 @@ void CProcMemoryPage::LabelProcessStructures() {
 		auto top = FindRegion(stackBase - 1);
 		if (!top || top->Info.State == MEM_FREE)
 			return;
-		for (auto& r : m_Regions)
-			if (r.Info.State != MEM_FREE && r.Info.AllocationBase == top->Info.AllocationBase)
-				AddDetails(r, text);
+		// an allocation's regions are contiguous: outward from the top's, not the whole map for every thread
+		auto index = top - m_Regions.data();
+		auto allocation = top->Info.AllocationBase;
+		auto first = index, last = index;
+		while (first > 0 && m_Regions[first - 1].Info.State != MEM_FREE && m_Regions[first - 1].Info.AllocationBase == allocation)
+			first--;
+		while (last + 1 < (ptrdiff_t)m_Regions.size() && m_Regions[last + 1].Info.State != MEM_FREE
+			&& m_Regions[last + 1].Info.AllocationBase == allocation)
+			last++;
+		for (auto i = first; i <= last; i++)
+			AddDetails(m_Regions[i], text);
 	};
 
 	// the PEB, and each thread's TEB and stack (WinSys; the stacks only with PROCESS_VM_READ), the 32-bit ones of a
@@ -613,7 +621,7 @@ void CProcMemoryPage::Search(bool next) {
 	{
 		CWaitCursor wait;
 		found = WinSys::ProcessMemory::Find(m_hProcess.get(), pattern.data(), pattern.size(), from, to,
-			m_Search.IgnoreCase && m_Search.Type != MemorySearch::Kind::Hex);
+			m_Search.IgnoreCase && m_Search.Type != MemorySearch::Kind::Hex, m_Search.Type == MemorySearch::Kind::Unicode);
 	}
 	if (!found) {
 		m_Found = 0;

@@ -90,7 +90,8 @@ private:
 	ModuleRow const* GetSelectedRow() const;
 	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept
 	void ShowRows(void* selected);
-	bool Matches(ModuleRow const& row) const;
+	// columns: the shown ones, taken once for all the rows (from the header)
+	bool Matches(ModuleRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const;
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

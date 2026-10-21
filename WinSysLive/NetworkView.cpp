@@ -45,6 +45,8 @@ LRESULT CNetworkView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 void CNetworkView::OnActivate(bool active) {
 	m_Active = active;
+	if (active && m_RowsPending)
+		ShowRows(m_PendingSelection);
 	// the status line's count is this view's
 	if (active) {
 		UpdateStatus();
@@ -65,16 +67,20 @@ void CNetworkView::OnRefresh(bool active) {
 	if (!current)
 		return;	// keep what we have
 	// the rows point into m_All, which the merge replaces: the selection is taken first, and the rows are rebuilt
-	auto selected = GetSelectedKey();
+	// (while hidden, when the view is shown: filtering and sorting format the rows' texts)
+	auto selected = m_RowsPending ? m_PendingSelection : GetSelectedKey();
 	m_Rows.clear();
 	// on the first read, all of them are new to the view, not opened
 	ConnectionRows::Merge(m_All, std::move(*current), m_Loaded);
 	m_Loaded = true;
-	ShowRows(selected);
-	if (active) {
-		UpdateStatus();
-		m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+	if (!active) {
+		m_RowsPending = true;
+		m_PendingSelection = selected;
+		return;
 	}
+	ShowRows(selected);
+	UpdateStatus();
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 }
 
 std::wstring CNetworkView::GetProcessName(uint32_t pid) const {
@@ -99,6 +105,7 @@ std::optional<WinSys::ConnectionKey> CNetworkView::GetSelectedKey() const {
 }
 
 void CNetworkView::ShowRows(std::optional<WinSys::ConnectionKey> const& selected) {
+	m_RowsPending = false;
 	m_Rows.clear();
 	for (auto& c : m_All)
 		if (Matches(c))
@@ -161,6 +168,26 @@ void CNetworkView::DoSort(SortInfo const* si) {
 
 	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(si->SortColumn);
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
+	switch (column) {
+		case Column::Pid: case Column::Protocol: case Column::LocalAddress: case Column::LocalPort:
+		case Column::RemoteAddress: case Column::RemotePort: case Column::Created:
+			break;
+		default: {
+			// a text column: each row's text formatted once (a process name is a lookup), not twice per comparison
+			std::vector<std::pair<std::wstring, Connection const*>> texts;
+			texts.reserve(m_Rows.size());
+			for (auto c : m_Rows)
+				texts.push_back({ GetText(*c, column), c });
+			std::ranges::stable_sort(texts, [&](auto const& t1, auto const& t2) {
+				int result = ::_wcsicmp(t1.first.c_str(), t2.first.c_str());
+				return si->SortAscending ? result < 0 : result > 0;
+				});
+			for (size_t i = 0; i < texts.size(); i++)
+				m_Rows[i] = texts[i].second;
+			SelectConnection(selected ? &*selected : nullptr);
+			return;
+		}
+	}
 	std::ranges::stable_sort(m_Rows, [&](Connection const* c1, Connection const* c2) {
 		int result = 0;
 		switch (column) {

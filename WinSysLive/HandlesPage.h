@@ -106,7 +106,8 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept
 	void ShowRows(uint64_t selected);
-	bool Matches(HandleRow const& row) const;
+	// columns: the shown ones, taken once for all the rows (from the header)
+	bool Matches(HandleRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const;
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHandleCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

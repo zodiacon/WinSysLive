@@ -80,4 +80,7 @@ private:
 	std::vector<Connection const*> m_Rows;	// into m_All: the list's rows, in display order
 	bool m_Loaded{ false };	// read at least once: later connections are new
 	bool m_Active{ false };
+	// merged while hidden: the rows (filtered and sorted) are rebuilt when shown, with the selection from before
+	bool m_RowsPending{ false };
+	std::optional<WinSys::ConnectionKey> m_PendingSelection;
 };

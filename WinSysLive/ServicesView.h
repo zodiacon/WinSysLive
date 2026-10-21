@@ -132,6 +132,7 @@ private:
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::vector<std::shared_ptr<ServiceItem>> m_All;	// every service, in enumeration order
 	std::vector<std::shared_ptr<ServiceItem>> m_Items;	// the list's rows (those matching the filter), in display order
+	bool m_ShowPending{ false };	// refreshed while hidden: the rows are chosen and sorted when shown
 	CFilterBox m_Filter;	// in the view's rebar
 	std::unordered_map<std::wstring, std::shared_ptr<ServiceItem>> m_ItemsByName;
 

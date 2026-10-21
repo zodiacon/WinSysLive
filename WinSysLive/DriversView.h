@@ -94,7 +94,10 @@ private:
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
-	void Merge(std::vector<WinSys::KernelModule> current);
+	// true if a module was loaded
+	bool Merge(std::vector<WinSys::KernelModule> current);
+	// the same modules as the rows, none of them highlighted: nothing to merge
+	bool IsUnchanged(std::vector<WinSys::KernelModule> const& current) const;
 	std::wstring GetText(DriverRow const& row, Column column) const;
 	std::wstring GetSignatureText(std::wstring const& path) const;
 	bool Matches(DriverRow const& row) const;

@@ -144,6 +144,8 @@ LRESULT CServicesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 void CServicesView::OnActivate(bool active) {
 	// the Processes view handles it too
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	if (active && m_ShowPending)
+		ShowItems();
 	// the status line's count is this view's
 	if (!m_Filter.GetText().empty())
 		active ? UpdateFilterStatus() : Frame()->SetStatusText(0, L"");
@@ -244,6 +246,11 @@ void CServicesView::OnRefresh(bool active) {
 	if (removed)
 		std::erase_if(m_ItemsByName, [&](auto& pair) { return !current.contains(pair.first); });
 
+	// the rows of a hidden list are chosen and sorted when it's shown
+	if (!active) {
+		m_ShowPending = true;
+		return;
+	}
 	// with a filter, a service's process may have changed whether it matches
 	if (added || removed || !m_Filter.GetText().empty()) {
 		ShowItems();
@@ -270,6 +277,7 @@ bool CServicesView::Matches(ServiceItem& item) const {
 }
 
 void CServicesView::ShowItems() {
+	m_ShowPending = false;
 	auto selected = GetSelectedService();
 	auto selectedName = selected ? selected->Info.GetName() : L"";
 	m_Items.clear();

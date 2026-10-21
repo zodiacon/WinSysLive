@@ -103,6 +103,8 @@ private:
 		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
 		uint64_t PrevContextSwitches{ 0 };
 		int64_t PrevPrivateBytes{ -1 };	// -1: no previous update yet
+		// a value that's queried (or summed) rather than read from the snapshot, taken once before a sort by its column
+		int64_t SortValue{ 0 };
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -171,6 +173,11 @@ private:
 	void UpdateDotNet(bool all);
 
 	void BuildItems();
+	// the tree again from the items, which keep their state (deltas, highlights, kinds): after a filter change or
+	// switching between tree and flat
+	void RebuildTree();
+	// the matching items into an empty tree, in snapshot order; the exited ones last
+	void InsertItems();
 	// the filter: a process matches if its image name, PID, user, description or command line contains the text
 	bool Matches(ProcessItem& item) const;
 	// the matches' count in the status line (the filter's text, from m_Filter)
@@ -183,6 +190,9 @@ private:
 	// ensureVisible: scroll to it; otherwise the scroll position stays
 	void RestoreSelection(WinSys::ProcessOrThreadKey const* key, bool ensureVisible);
 	void Sort();
+	// columns whose values are queried (or summed) rather than read from the snapshot (see ProcessItem::SortValue)
+	static bool IsQueriedColumn(Column column);
+	int64_t GetQueriedValue(ProcessItem& item, Column column) const;
 	static int CALLBACK CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam);
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;
 	std::wstring GetColumnText(ProcessItem& item, Column column) const;
@@ -221,6 +231,7 @@ private:
 	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)
 	int m_SortColumn{ -1 };	// a Column, or -1
 	bool m_SortAscending{ true };
+	bool m_SortPending{ false };	// refreshed while hidden: sorted when shown
 	bool m_TreeMode{ true };
 	// scroll to the selected process on every update; otherwise an update keeps the scroll position
 	bool m_KeepSelectionVisible{ false };

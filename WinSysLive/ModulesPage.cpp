@@ -321,8 +321,9 @@ LRESULT CModulesPage::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 
 void CModulesPage::ShowRows(void* selected) {
 	m_Rows.clear();
+	auto columns = m_Filter.GetText().empty() ? std::vector<ColumnLayout::ShownColumn>() : GetShownColumns();
 	for (auto& row : m_AllRows)
-		if (Matches(row))
+		if (Matches(row, columns))
 			m_Rows.push_back(row);
 	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 	if (auto si = GetSortInfo(m_List); si)
@@ -331,11 +332,11 @@ void CModulesPage::ShowRows(void* selected) {
 	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 }
 
-bool CModulesPage::Matches(ModuleRow const& row) const {
+bool CModulesPage::Matches(ModuleRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const {
 	auto& filter = m_Filter.GetText();
 	if (filter.empty())
 		return true;
-	for (auto& column : GetShownColumns())
+	for (auto& column : columns)
 		if (CFilterBox::Contains(GetText(row, (Column)column.Id), filter))
 			return true;
 	return false;

@@ -11,8 +11,8 @@ struct IMainFrame;
 //
 // The lower pane of the Processes view: tabs with the handles, modules and threads of the selected process.
 // SetProcess tells the pane which process to show, Refresh is called on every refresh tick while the pane is shown.
-// The pages are CHandlesPage, CModulesPage and CThreadsPage. Handles and Modules are enumerated only while their
-// tab is active (and when it's activated): they cost more than the threads, which come with the snapshot.
+// The pages are CHandlesPage, CModulesPage and CThreadsPage. Each is refreshed only while its tab is active (and when
+// it's activated): Handles and Modules enumerate, and the threads' handles are queried.
 //
 class CProcessDetails : public CNativeCustomTabViewImpl<CProcessDetails> {
 public:

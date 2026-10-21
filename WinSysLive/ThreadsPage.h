@@ -136,7 +136,8 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept
 	void ShowRows(uint32_t selected);
-	bool Matches(ThreadRow const& row) const;
+	// columns: the shown ones, taken once for all the rows (from the header)
+	bool Matches(ThreadRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const;
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
