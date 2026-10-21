@@ -102,10 +102,20 @@ CServiceSheet::CServiceSheet(std::wstring const& name) {
 		AddPage(m_Recovery);
 	}
 	AddPage(m_Dependencies);
+	m_Security = CServiceSecurityInfo::Open(name, m_Data.Config.DisplayName.empty() ? name : m_Data.Config.DisplayName);
+	if (auto page = ::CreateSecurityPage(m_Security))
+		AddPage(page);
+}
+
+CServiceSheet::~CServiceSheet() {
+	if (m_Security)
+		m_Security->Release();
 }
 
 void CServiceSheet::OnSheetInitialized() {
 	CenterWindow(GetParent());
+	// the ACL editor's dialogs, when they come
+	m_AclTheming.Install(m_hWnd);
 }
 
 LRESULT CServiceGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -477,7 +487,7 @@ LRESULT CServiceDependenciesPage::OnItemExpanding(int /*idCtrl*/, LPNMHDR hdr, B
 	m_Nodes[index].Filled = true;
 	// copied: adding nodes moves them
 	auto node = m_Nodes[index];
-	if (!AddChildren(tree, tv->itemNew.hItem, node.Name, node.Dependents)) {
+	if (!AddChildren(tree, tv->itemNew.hItem, node.Name, node.Dependents, node.Group)) {
 		TVITEM item{ TVIF_CHILDREN, tv->itemNew.hItem };
 		item.cChildren = 0;
 		tree.SetItem(&item);
@@ -485,8 +495,15 @@ LRESULT CServiceDependenciesPage::OnItemExpanding(int /*idCtrl*/, LPNMHDR hdr, B
 	return FALSE;
 }
 
-bool CServiceDependenciesPage::AddChildren(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool dependents) {
+bool CServiceDependenciesPage::AddChildren(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool dependents, bool group) {
 	bool any = false;
+	if (group) {
+		for (auto& member : GroupMembers(name)) {
+			AddNode(tree, parent, member, false, false);
+			any = true;
+		}
+		return any;
+	}
 	if (dependents) {
 		auto direct = DirectDependents(name);
 		// the SCM's order is the stop order
@@ -515,20 +532,25 @@ bool CServiceDependenciesPage::AddChildren(CTreeViewCtrl tree, HTREEITEM parent,
 void CServiceDependenciesPage::AddNode(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool group, bool dependents) {
 	std::wstring text;
 	bool children = false;
-	if (group)
+	bool installed = false;
+	if (group) {
 		text = std::format(L"{} (load order group)", name);
+		// its services are found when it's expanded
+		children = true;
+	}
 	else if (auto config = ServiceManager::GetServiceConfiguration(name); !config)
 		text = std::format(L"{} (not installed)", name);
 	else {
 		auto& display = config->DisplayName;
 		text = display.empty() || _wcsicmp(display.c_str(), name.c_str()) == 0 ? name : std::format(L"{} ({})", display, name);
 		text += std::format(L": {}", FormatHelper::ServiceStateToString(ServiceManager::GetServiceState(name)));
+		installed = true;
 		if (InPath(tree, parent, name))
 			text += L" (a cycle)";
 		else
 			children = dependents ? HasDependents(name) : !config->Dependencies.empty();
 	}
-	m_Nodes.push_back({ name, group, dependents });
+	m_Nodes.push_back({ name, group, dependents, installed });
 	TVINSERTSTRUCT insert{ parent, TVI_LAST };
 	insert.item.mask = TVIF_TEXT | TVIF_CHILDREN | TVIF_PARAM;
 	insert.item.pszText = text.data();
@@ -546,4 +568,71 @@ bool CServiceDependenciesPage::InPath(CTreeViewCtrl tree, HTREEITEM item, std::w
 			return true;
 	}
 	return false;
+}
+
+std::vector<std::wstring> const& CServiceDependenciesPage::GroupMembers(std::wstring const& group) {
+	if (!m_Groups) {
+		m_Groups.emplace();
+		for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices | ServiceEnumType::AllDrivers)) {
+			auto config = ServiceManager::GetServiceConfiguration(svc.GetName());
+			if (!config || config->LoadOrderGroup.empty())
+				continue;
+			auto key = config->LoadOrderGroup;
+			std::ranges::transform(key, key.begin(), ::towlower);
+			(*m_Groups)[key].push_back(svc.GetName());
+		}
+		for (auto& [key, members] : *m_Groups)
+			std::ranges::sort(members, [](auto& a, auto& b) { return _wcsicmp(a.c_str(), b.c_str()) < 0; });
+	}
+	auto key = group;
+	std::ranges::transform(key, key.begin(), ::towlower);
+	static std::vector<std::wstring> const none;
+	auto it = m_Groups->find(key);
+	return it == m_Groups->end() ? none : it->second;
+}
+
+CServiceDependenciesPage::Node const* CServiceDependenciesPage::ServiceAtCursor(CTreeViewCtrl tree, HTREEITEM* item) const {
+	// the cursor's, which is where the click was
+	POINT pt;
+	::GetCursorPos(&pt);
+	tree.ScreenToClient(&pt);
+	UINT flags = 0;
+	auto hItem = tree.HitTest(pt, &flags);
+	if (!hItem || (flags & TVHT_ONITEM) == 0)
+		return nullptr;
+	if (item)
+		*item = hItem;
+	auto index = (size_t)tree.GetItemData(hItem);
+	return index < m_Nodes.size() && m_Nodes[index].Installed ? &m_Nodes[index] : nullptr;
+}
+
+LRESULT CServiceDependenciesPage::OnTreeDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	auto node = ServiceAtCursor(hdr->hwndFrom);
+	if (!node)
+		return FALSE;
+	auto name = node->Name;
+	CServiceSheet sheet(name);
+	sheet.DoModal(GetParent());
+	// no expanding or collapsing too
+	return TRUE;
+}
+
+LRESULT CServiceDependenciesPage::OnTreeRightClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	CTreeViewCtrl tree(hdr->hwndFrom);
+	HTREEITEM item = nullptr;
+	auto node = ServiceAtCursor(tree, &item);
+	if (!node)
+		return TRUE;
+	auto name = node->Name;
+	tree.SelectItem(item);
+	CMenu menu;
+	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING, ID_VIEW_PROPERTIES, L"&Properties");
+	POINT pt;
+	::GetCursorPos(&pt);
+	if (menu.TrackPopupMenuEx(TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, m_hWnd) == ID_VIEW_PROPERTIES) {
+		CServiceSheet sheet(name);
+		sheet.DoModal(GetParent());
+	}
+	return TRUE;
 }

@@ -3,6 +3,7 @@
 #include "ProcessPages.h"
 #include <WinSys/ServiceInfo.h>
 #include <functional>
+#include "ServiceSteps.h"
 
 namespace WinSys {
 	class Service;
@@ -13,8 +14,9 @@ namespace WinSys {
 // The Service(s) page, added only for a process hosting running services: the services in a list, with their DLLs for
 // svchost.exe, and the selected service's details below it (configuration, description, DLL version, privileges,
 // triggers...). The services are read when the page is first shown and on Refresh, which keeps the selection by name.
-// Start and Stop control the selected service; a service stopped from the page stays listed (so it can be started
-// again), and the states are polled until no service is pending, then read again in full.
+// Start and Stop control the selected service (Stop with its running dependents, after a confirmation: ServiceSteps.h);
+// a service stopped from the page stays listed (so it can be started again), and the states are polled until no
+// service is pending, then read again in full.
 //
 class CProcServicesPage :
 	public CPropertyPageImpl<CProcServicesPage>,
@@ -71,12 +73,15 @@ private:
 	// opens the selected service and runs the action on it; false (after saying why) if either fails
 	bool Control(WinSys::ServiceAccessMask access, PCWSTR operation, std::function<bool(WinSys::Service&)> const& action);
 	int GetSelected() const;
+	// the Stop's steps; the timer runs while steps remain, then everything is read again
+	void RunSteps();
 
 	ProcessProperties const& m_Props;
 	CListViewCtrl m_List, m_Details;
 	std::vector<ServiceData> m_Services;	// in the list's order
 	std::vector<std::wstring> m_Known;	// every service listed, so one stopped from here stays listed
-	int m_Polls{ 0 };	// state polls left after a Start or Stop
+	int m_Polls{ 0 };	// state polls left after a Start
+	ServiceControlSteps m_Control;
 	bool m_Svchost;	// the list has a Service DLL column
 	bool m_Loaded{ false };
 };

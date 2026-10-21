@@ -3,6 +3,7 @@
 #include "resource.h"
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Service.h>
+#include "ObjectSecurity.h"
 
 //
 // What the service sheet's pages share: the service's configuration as it was read, and whether a page applied a change
@@ -135,7 +136,8 @@ private:
 	RoundedValue m_Reset{ IDC_SVC_RESETDAYS }, m_RestartDelay{ IDC_SVC_RESTARTMIN }, m_RebootDelay{ IDC_SVC_REBOOTMIN };
 };
 
-// what the service depends on and what depends on it (directly; a node expands to the next level when it's opened)
+// what the service depends on and what depends on it (directly; a node expands to the next level when it's opened, a
+// load order group to its services); double-clicking a service, or its context menu, opens its properties
 class CServiceDependenciesPage : public CPropertyPageImpl<CServiceDependenciesPage> {
 public:
 	enum { IDD = IDD_SERVICE_DEPENDENCIES };
@@ -144,38 +146,51 @@ public:
 	BEGIN_MSG_MAP(CServiceDependenciesPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		NOTIFY_CODE_HANDLER(TVN_ITEMEXPANDING, OnItemExpanding)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnTreeDoubleClick)
+		NOTIFY_CODE_HANDLER(NM_RCLICK, OnTreeRightClick)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CServiceDependenciesPage>)
 	END_MSG_MAP()
 
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnItemExpanding(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnTreeDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnTreeRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
 	// a tree item's (its lParam is its index)
 	struct Node {
 		std::wstring Name;
 		bool Group;	// a load order group ("+Group" in the dependencies), not a service
 		bool Dependents;	// in the dependents' tree
+		bool Installed{ false };	// a service that exists (its properties can be shown)
 		bool Filled{ false };	// its children were added
 	};
-	// the services and groups name depends on, or the services depending on it directly; false if there are none
-	bool AddChildren(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool dependents);
+	// the services and groups name depends on, the services depending on it directly, or a group's services; false if
+	// there are none
+	bool AddChildren(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool dependents, bool group = false);
 	void AddNode(CTreeViewCtrl tree, HTREEITEM parent, std::wstring const& name, bool group, bool dependents);
 	// name is the sheet's service, the item's or one of its ancestors' (a cycle, which the SCM shouldn't allow)
 	bool InPath(CTreeViewCtrl tree, HTREEITEM item, std::wstring const& name) const;
+	// the service node under the cursor, or nullptr
+	Node const* ServiceAtCursor(CTreeViewCtrl tree, HTREEITEM* item = nullptr) const;
+	// the services of each load order group (lowercase names), read on the first group expanded
+	std::vector<std::wstring> const& GroupMembers(std::wstring const& group);
 
 	ServiceSheetData& m_Data;
 	std::vector<Node> m_Nodes;
+	std::optional<std::unordered_map<std::wstring, std::vector<std::wstring>>> m_Groups;
 };
 
 //
 // A service's properties, as services.msc has them: General (display name, description, path, start type, error
-// control), Log On (the account), Recovery (the failure actions) and Dependencies. Modal; the configuration is read when
+// control), Log On (the account), Recovery (the failure actions), Dependencies and Security (the system's ACL editor on
+// the service's descriptor, CServiceSecurityInfo; it applies its own changes). Modal; the configuration is read when
 // it's created.
 //
 class CServiceSheet : public CPropertySheetImpl<CServiceSheet> {
 public:
 	explicit CServiceSheet(std::wstring const& name);
+	~CServiceSheet();
 
 	// a page changed the configuration
 	bool Applied() const {
@@ -191,4 +206,6 @@ private:
 	CServiceLogOnPage m_LogOn{ m_Data };
 	CServiceRecoveryPage m_Recovery{ m_Data };
 	CServiceDependenciesPage m_Dependencies{ m_Data };
+	CServiceSecurityInfo* m_Security{ nullptr };
+	CAclDialogTheming m_AclTheming;
 };

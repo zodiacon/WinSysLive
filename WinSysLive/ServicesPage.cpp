@@ -11,7 +11,7 @@
 using namespace WinSys;
 
 namespace {
-	const UINT_PTR PollTimerId = 1;
+	const UINT_PTR PollTimerId = 1, StepTimerId = 2;
 	const int PollInterval = 500, MaxPolls = 60;	// 30 seconds
 
 	bool IsPending(ServiceState state) {
@@ -259,8 +259,10 @@ int CProcServicesPage::GetSelected() const {
 void CProcServicesPage::UpdateButtons() {
 	int index = GetSelected();
 	auto status = index < 0 ? nullptr : &m_Services[index].Status;
-	GetDlgItem(IDC_SVC_START).EnableWindow(status && status->CurrentState == ServiceState::Stopped);
-	GetDlgItem(IDC_SVC_STOP).EnableWindow(status && status->CurrentState == ServiceState::Running
+	// nothing while a stop's steps run
+	bool busy = m_Control.IsBusy();
+	GetDlgItem(IDC_SVC_START).EnableWindow(!busy && status && status->CurrentState == ServiceState::Stopped);
+	GetDlgItem(IDC_SVC_STOP).EnableWindow(!busy && status && status->CurrentState == ServiceState::Running
 		&& (status->ControlsAccepted & ServiceControlsAccepted::Stop) == ServiceControlsAccepted::Stop);
 }
 
@@ -292,8 +294,22 @@ LRESULT CProcServicesPage::OnStart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 }
 
 LRESULT CProcServicesPage::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	Control(ServiceAccessMask::Stop | ServiceAccessMask::QueryStatus, L"Stopping", [](auto& svc) { return svc.Stop(); });
+	int index = GetSelected();
+	if (index >= 0 && m_Control.Plan(m_hWnd, m_Services[index].Name, m_Services[index].DisplayName, false))
+		RunSteps();
 	return 0;
+}
+
+void CProcServicesPage::RunSteps() {
+	bool more = m_Control.Run(m_hWnd);
+	if (more) {
+		UpdateStates();
+		SetTimer(StepTimerId, 250);
+		return;
+	}
+	KillTimer(StepTimerId);
+	int index = GetSelected();
+	Load(index >= 0 ? m_Services[index].Name : L"");
 }
 
 bool CProcServicesPage::UpdateStates() {
@@ -318,6 +334,10 @@ bool CProcServicesPage::UpdateStates() {
 }
 
 LRESULT CProcServicesPage::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id == StepTimerId) {
+		RunSteps();
+		return 0;
+	}
 	if (id != PollTimerId) {
 		bHandled = FALSE;
 		return 0;

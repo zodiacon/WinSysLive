@@ -3,6 +3,7 @@
 #include "ObjectSecurity.h"
 #include <WinSys/ObjectDetails.h>
 #include <WinSys/AccessMask.h>
+#include <WinSys/Service.h>
 #include <WTLHelper.h>
 
 #pragma comment(lib, "aclui")
@@ -139,6 +140,50 @@ CObjectSecurityInfo* CObjectSecurityInfo::Open(std::function<HANDLE(DWORD access
 	}
 	// the editor shows why
 	return new CObjectSecurityInfo(nullptr, std::move(type), std::move(name), 0, GENERIC_MAPPING{});
+}
+
+CServiceSecurityInfo::CServiceSecurityInfo(std::unique_ptr<WinSys::Service> service, std::wstring displayName, uint32_t access, DWORD error) :
+	CObjectSecurityInfo(nullptr, L"Service", std::move(displayName), access, WinSys::Service::GetGenericMapping()),
+	m_Service(std::move(service)), m_OpenError(error) {
+}
+
+CServiceSecurityInfo::~CServiceSecurityInfo() = default;
+
+CServiceSecurityInfo* CServiceSecurityInfo::Open(std::wstring const& name, std::wstring displayName) {
+	for (DWORD access : { READ_CONTROL | WRITE_DAC | WRITE_OWNER, READ_CONTROL | WRITE_DAC, READ_CONTROL }) {
+		if (auto service = WinSys::Service::Open(name, (ServiceAccessMask)access))
+			return new CServiceSecurityInfo(std::move(service), std::move(displayName), access, 0);
+	}
+	// the editor shows why
+	return new CServiceSecurityInfo(nullptr, std::move(displayName), 0, ::GetLastError());
+}
+
+STDMETHODIMP CServiceSecurityInfo::GetSecurity(SECURITY_INFORMATION RequestedInformation, PSECURITY_DESCRIPTOR* ppSecurityDescriptor,
+	BOOL fDefault) {
+	if (fDefault)
+		return E_NOTIMPL;
+	if (!m_Service)
+		return HRESULT_FROM_WIN32(m_OpenError);
+	// a SACL needs ACCESS_SYSTEM_SECURITY
+	auto sd = m_Service->GetSecurity(RequestedInformation & (OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION
+		| DACL_SECURITY_INFORMATION | LABEL_SECURITY_INFORMATION));
+	if (sd.empty())
+		return HRESULT_FROM_WIN32(::GetLastError());
+	// the editor frees it with LocalFree
+	auto copy = ::LocalAlloc(LPTR, sd.size());
+	if (!copy)
+		return E_OUTOFMEMORY;
+	memcpy(copy, sd.data(), sd.size());
+	*ppSecurityDescriptor = copy;
+	return S_OK;
+}
+
+STDMETHODIMP CServiceSecurityInfo::SetSecurity(SECURITY_INFORMATION SecurityInformation, PSECURITY_DESCRIPTOR pSecurityDescriptor) {
+	if (!m_Service)
+		return HRESULT_FROM_WIN32(m_OpenError);
+	if (!m_Service->SetSecurity(SecurityInformation, pSecurityDescriptor))
+		return HRESULT_FROM_WIN32(::GetLastError());
+	return S_OK;
 }
 
 CAclDialogTheming::~CAclDialogTheming() {

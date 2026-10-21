@@ -4,6 +4,10 @@
 #include <unordered_set>
 #include <functional>
 
+namespace WinSys {
+	class Service;
+}
+
 //
 // What the ACL editor (CreateSecurityPage, EditSecurity) needs (ISecurityInformation): an object's security descriptor,
 // read and written (WinSys ObjectInspector) through a handle with the access the caller could get, which decides what
@@ -20,6 +24,7 @@ public:
 	// opens the object with the most it can of READ_CONTROL | WRITE_DAC | WRITE_OWNER (open: a new handle with the
 	// access, or null with the last error); type: the object's, if it can't be opened
 	static CObjectSecurityInfo* Open(std::function<HANDLE(DWORD access)> const& open, std::wstring type, std::wstring name);
+	virtual ~CObjectSecurityInfo() = default;
 
 	// IUnknown
 	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override;
@@ -45,6 +50,26 @@ private:
 	std::vector<SI_ACCESS> m_Rights;
 	ULONG m_RefCount{ 1 };
 	DWORD m_Error{ 0 };	// why there's no handle
+};
+
+//
+// A service's: the SCM's objects aren't kernel objects, so the descriptor goes through WinSys Service
+// (QueryServiceObjectSecurity), with a service's rights and generic mapping
+//
+class CServiceSecurityInfo : public CObjectSecurityInfo {
+public:
+	// opened with the most of READ_CONTROL, WRITE_DAC and WRITE_OWNER it allows
+	static CServiceSecurityInfo* Open(std::wstring const& name, std::wstring displayName);
+	~CServiceSecurityInfo() override;
+
+	STDMETHOD(GetSecurity)(SECURITY_INFORMATION RequestedInformation, PSECURITY_DESCRIPTOR* ppSecurityDescriptor, BOOL fDefault) override;
+	STDMETHOD(SetSecurity)(SECURITY_INFORMATION SecurityInformation, PSECURITY_DESCRIPTOR pSecurityDescriptor) override;
+
+private:
+	CServiceSecurityInfo(std::unique_ptr<WinSys::Service> service, std::wstring displayName, uint32_t access, DWORD error);
+
+	std::unique_ptr<WinSys::Service> m_Service;
+	DWORD m_OpenError;	// why there's no service
 };
 
 //

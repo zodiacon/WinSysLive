@@ -413,6 +413,7 @@
     <ClCompile Include="WaitChainDlg.cpp" />
     <ClCompile Include="HandleSheet.cpp" />
     <ClCompile Include="ServiceSheet.cpp" />
+    <ClCompile Include="ServiceSteps.cpp" />
     <ClCompile Include="MemoryDialogs.cpp" />
     <ClCompile Include="ObjectSecurity.cpp" />
     <ClCompile Include="AddressResolver.cpp" />
@@ -473,6 +474,7 @@
     <ClInclude Include="WaitChainDlg.h" />
     <ClInclude Include="HandleSheet.h" />
     <ClInclude Include="ServiceSheet.h" />
+    <ClInclude Include="ServiceSteps.h" />
     <ClInclude Include="MemoryDialogs.h" />
     <ClInclude Include="ObjectSecurity.h" />
     <ClInclude Include="AddressResolver.h" />
