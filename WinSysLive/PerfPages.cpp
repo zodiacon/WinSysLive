@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "PerfPages.h"
 #include "FormatHelper.h"
+#include "AppSettings.h"
 
 using namespace GraphCtrl;
 
@@ -196,9 +197,73 @@ void CPerfCpuPage::CreateGraphs() {
 	m_Cores.SetHistoryLength(PerfHistoryLength);
 	m_Cores.SetSharedCrosshair(true);
 	m_Lines.resize(2);
+	m_ShowCores.Create(m_hWnd, rcDefault, L"Show &processors", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, 0, IDC_PERF_SHOWCORES);
+	bool show = AppSettings::Get().PerfShowProcessors() != 0;
+	m_ShowCores.SetCheck(show ? BST_CHECKED : BST_UNCHECKED);
+	m_Cores.ShowWindow(show ? SW_SHOWNA : SW_HIDE);
+}
+
+LRESULT CPerfCpuPage::OnEraseBkgnd(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
+	auto hdc = (HDC)wParam;
+	if (::WindowFromDC(hdc) == m_hWnd) {
+		// the page's own: WM_PAINT fills it
+		bHandled = FALSE;
+		return 0;
+	}
+	CRect rc;
+	GetClientRect(&rc);
+	CDCHandle(hdc).FillSolidRect(&rc, m_Theme.Background);
+	return 1;
+}
+
+LRESULT CPerfCpuPage::OnCtlColor(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	CDCHandle dc((HDC)wParam);
+	dc.SetTextColor(m_Theme.TextColor);
+	dc.SetBkColor(m_Theme.Background);
+	if (m_Background.IsNull())
+		m_Background.CreateSolidBrush(m_Theme.Background);
+	return (LRESULT)m_Background.m_hBrush;
+}
+
+LRESULT CPerfCpuPage::OnPrintClient(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	CRect rc;
+	GetClientRect(&rc);
+	CDCHandle((HDC)wParam).FillSolidRect(&rc, m_Theme.Background);
+	return 0;
+}
+
+LRESULT CPerfCpuPage::OnShowCores(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	bool show = m_ShowCores.GetCheck() == BST_CHECKED;
+	auto& settings = AppSettings::Get();
+	settings.PerfShowProcessors(show);
+	settings.Save();
+	m_Cores.ShowWindow(show ? SW_SHOWNA : SW_HIDE);
+	LayoutGraphs(m_GraphsRect, m_Gap);
+	return 0;
 }
 
 void CPerfCpuPage::LayoutGraphs(CRect const& rc, int gap) {
+	m_GraphsRect = rc;
+	m_Gap = gap;
+	// the check box at the end of the text's last line, in its font
+	auto& text = GetTextRect();
+	m_ShowCores.SetFont(GetTextFont());
+	{
+		CClientDC dc(m_hWnd);
+		auto old = dc.SelectFont(GetTextFont());
+		CSize size;
+		dc.GetTextExtent(L"Show processors", -1, &size);
+		dc.SelectFont(old);
+		int width = size.cx + ::GetSystemMetricsForDpi(SM_CXMENUCHECK, ::GetDpiForWindow(m_hWnd)) + Scale(8);
+		int height = std::max(GetLineHeight(), Scale(16));
+		m_ShowCores.MoveWindow(text.right - width, text.bottom - height, width, height);
+	}
+
+	// without the per-processor graphs, the CPU graph takes it all
+	if (m_ShowCores.GetCheck() != BST_CHECKED) {
+		m_Cpu.MoveWindow(rc.left, rc.top, rc.Width(), rc.Height());
+		return;
+	}
 	int height = std::max(0, rc.Height() - gap);
 	int cpuHeight = height * 45 / 100, coresHeight = height - cpuHeight;
 	m_Cpu.MoveWindow(rc.left, rc.top, rc.Width(), cpuHeight);
@@ -228,6 +293,11 @@ void CPerfCpuPage::Sample(PerfSample const& sample) {
 void CPerfCpuPage::ApplyTheme() {
 	m_Cpu.SetTheme(m_Theme);
 	m_Cores.SetTheme(m_Theme);
+	// the check box's background, made again in its colors
+	if (!m_Background.IsNull())
+		m_Background.DeleteObject();
+	if (m_ShowCores)
+		m_ShowCores.Invalidate();
 }
 
 void CPerfCpuPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {

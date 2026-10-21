@@ -11,6 +11,7 @@ struct AppSettings : Settings {
 		SETTING(ToolBar, 1, SettingType::Bool);	// View > Toolbar
 		SETTING(StatusBar, 1, SettingType::Bool);	// View > Status Bar
 		SETTING(PerfPage, 0, SettingType::Int32);	// before PerfPageKey: the page's index, which drives coming and going shift
+		SETTING(PerfShowProcessors, 1, SettingType::Bool);	// the CPU page's per-processor graphs
 		SETTING_STRING(PerfPageKey, L"");	// the Performance view's page: "CPU", "Disk:C", "GPU:0"... (CPerfView::PageKey)
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
 		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
@@ -53,6 +54,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(StatusBar, int)
 	DEF_SETTING(PerfPage, int)
 	DEF_SETTING_STRING(PerfPageKey)
+	DEF_SETTING(PerfShowProcessors, int)
 	DEF_SETTING(ProcessLowerPane, int)
 	DEF_SETTING(ProcessKeepSelectionVisible, int)
 	DEF_SETTING(ProcessSplitterPos, int)

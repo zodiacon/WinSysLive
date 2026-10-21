@@ -1,5 +1,6 @@
 #pragma once
 
+#include "resource.h"
 #include <GraphControl/include/GraphControl.h>
 #include <GraphControl/include/GraphGrid.h>
 #include <GraphControl/include/CompositionBar.h>
@@ -131,6 +132,17 @@ public:
 protected:
 	int Scale(int value) const {
 		return ::MulDiv(value, ::GetDpiForWindow(this->m_hWnd), 96);
+	}
+	// where the text lines go (set before LayoutGraphs), their font and line height: a control of the derived class's
+	// may sit there
+	CRect const& GetTextRect() const {
+		return m_TextRect;
+	}
+	HFONT GetTextFont() const {
+		return m_Font;
+	}
+	int GetLineHeight() const {
+		return m_LineHeight;
 	}
 
 	GraphCtrl::GraphTheme m_Theme;
@@ -269,9 +281,33 @@ public:
 	void ApplyTheme();
 	void ApplyTimeSpan(std::wstring const& text, UINT interval);
 
+	BEGIN_MSG_MAP(CPerfCpuPage)
+		MESSAGE_HANDLER(WM_CTLCOLORSTATIC, OnCtlColor)
+		MESSAGE_HANDLER(WM_CTLCOLORBTN, OnCtlColor)
+		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
+		MESSAGE_HANDLER(WM_PRINTCLIENT, OnPrintClient)
+		COMMAND_ID_HANDLER(IDC_PERF_SHOWCORES, OnShowCores)
+		CHAIN_MSG_MAP(CPerfPage<CPerfCpuPage>)
+	END_MSG_MAP()
+
 private:
+	// the check box takes the graphs' colors
+	LRESULT OnCtlColor(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the check box (WTLHelper's dark mode paints it) draws the page's background under it with
+	// DrawThemeParentBackground: WM_ERASEBKGND on its DC, then WM_PRINTCLIENT if that wasn't done. The page paints its
+	// own background in WM_PAINT and leaves its WM_ERASEBKGND undone, so a DC of another window's is filled here
+	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnPrintClient(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// Show processors: the per-processor graphs shown or not (the PerfShowProcessors setting); hidden, they still
+	// take the samples, so their history is there when they're shown
+	LRESULT OnShowCores(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
 	CCpuGraph m_Cpu;
 	GraphCtrl::CGraphGrid m_Cores;
+	CButton m_ShowCores;
+	CBrush m_Background;
+	CRect m_GraphsRect;	// the last layout's, to lay out again when the check box changes
+	int m_Gap{ 0 };
 	size_t m_Processors;
 };
 
