@@ -70,7 +70,8 @@ BEGIN
         MENUITEM "P&erformance\tCtrl+3",        ID_VIEW_PERFORMANCE
         MENUITEM "&Users\tCtrl+4",              ID_VIEW_USERS
         MENUITEM "&Network\tCtrl+5",            ID_VIEW_NETWORK
-        MENUITEM "&Drivers\tCtrl+6",            ID_VIEW_DRIVERS
+        MENUITEM "&Kernel Modules\tCtrl+6",     ID_VIEW_KERNELMODULES
+        MENUITEM "&Drivers\tCtrl+7",            ID_VIEW_DRIVERS
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -350,6 +351,10 @@ IDI_MODULE_IMAGE        ICON                    "res\\image.ico"
 IDI_MODULE_DATA         ICON                    "res\\data.ico"
 
 IDI_RUN_COMMAND         ICON                    "res\\Run.ico"
+
+IDI_ATOM                ICON                    "res\\atom.ico"
+
+IDI_DRIVER              ICON                    "res\\Driver.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -904,7 +909,8 @@ BEGIN
     "3",            ID_VIEW_PERFORMANCE,    VIRTKEY, CONTROL
     "4",            ID_VIEW_USERS,          VIRTKEY, CONTROL
     "5",            ID_VIEW_NETWORK,        VIRTKEY, CONTROL
-    "6",            ID_VIEW_DRIVERS,        VIRTKEY, CONTROL
+    "6",            ID_VIEW_KERNELMODULES,  VIRTKEY, CONTROL
+    "7",            ID_VIEW_DRIVERS,        VIRTKEY, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1229,9 +1235,10 @@ BEGIN
     ID_PROCESS_AFFINITY     "Choose the processors the selected process may run on\nSet Affinity"
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
-    ID_VIEW_DRIVERS         "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nDrivers"
-    ID_DRIVER_PROPERTIES    "Show the properties of the selected driver's file\nProperties"
-    ID_DRIVER_GOTOFILELOCATION 
+    ID_VIEW_KERNELMODULES   "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nKernel Modules"
+    ID_VIEW_DRIVERS         "Show the driver services: kernel and file system drivers\nDrivers"
+    ID_KMODULE_PROPERTIES    "Show the properties of the selected driver's file\nProperties"
+    ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"
     ID_OPTIONS_TRAYICON     "Show a CPU usage graph in the notification area\nTray Icon"
     ID_OPTIONS_MINIMIZETOTRAY 

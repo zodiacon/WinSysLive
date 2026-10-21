@@ -151,6 +151,9 @@
 #define IDD_RUN                     271
 #define IDD_RUNAS                   272
 #define IDI_RUN_COMMAND             273
+#define IDI_ATOM                    274
+#define IDI_DRIVER                  275
+#define ID_VIEW_KERNELMODULES       32865
 #define IDC_RUN_COMMAND             1231
 #define IDC_RUN_BROWSE              1232
 #define IDC_RUN_ELEVATED            1233
@@ -250,8 +253,8 @@
 #define ID_FILE_EXPORT              32852
 #define ID_EDIT_COPYALL             32853
 #define ID_VIEW_DRIVERS             32842
-#define ID_DRIVER_PROPERTIES        32843
-#define ID_DRIVER_GOTOFILELOCATION  32844
+#define ID_KMODULE_PROPERTIES        32843
+#define ID_KMODULE_GOTOFILELOCATION  32844
 #define ID_OPTIONS_TRAYICON         32845
 #define ID_OPTIONS_MINIMIZETOTRAY   32846
 #define ID_OPTIONS_ALWAYSONTOP      32847
@@ -381,9 +384,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	274
+#define _APS_NEXT_RESOURCE_VALUE	276
 #define _APS_NEXT_CONTROL_VALUE		1240
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32865
+#define _APS_NEXT_COMMAND_VALUE		32866
 #endif
 #endif

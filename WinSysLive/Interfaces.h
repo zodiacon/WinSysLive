@@ -9,7 +9,8 @@ enum class TabType {
 	Performance,
 	Users,
 	Network,
-	Drivers,
+	KernelModules,
+	Drivers,	// the driver services (the Services view for drivers)
 };
 
 struct IMainFrame abstract {

@@ -9,11 +9,19 @@
 #include <WinSys/Service.h>
 #include <functional>
 
+//
+// The Services tab, and the Drivers tab: the same view for Win32 services or driver services (kernel and file system
+// drivers), which differ in what's enumerated, the columns shown by default (drivers have no process or account), the
+// setting the columns are kept in (ServiceColumns, DriverServiceColumns) and the start types (a driver has Boot and System,
+// and no delayed start).
+//
 class CServicesView :
 	public CViewBase<CServicesView>,
 	public CVirtualListView<CServicesView> {
 public:
-	using CViewBase::CViewBase;
+	enum class Kind { Services, Drivers };
+
+	explicit CServicesView(IMainFrame* frame, Kind kind = Kind::Services) : CViewBase(frame), m_Kind(kind) {}
 
 	CString GetTitle() const override;
 	HWND GetExportList() override {
@@ -132,6 +140,11 @@ private:
 	bool Control(WinSys::ServiceAccessMask access, PCWSTR operation, std::function<bool(WinSys::Service&)> const& action);
 	void ShowError(PCWSTR operation, DWORD error) const;
 
+	// the column table of the view's kind (the same columns, other defaults)
+	std::span<ColumnLayout::ColumnDef const> Columns() const;
+	WinSys::ServiceEnumType EnumType() const;
+
+	Kind m_Kind;
 	CListViewCtrl m_List;
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::vector<std::shared_ptr<ServiceItem>> m_All;	// every service, in enumeration order

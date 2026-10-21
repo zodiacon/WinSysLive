@@ -14,19 +14,19 @@
 #include <unordered_set>
 
 //
-// The Drivers tab: the kernel's loaded modules (WinSys KernelModules: the kernel, the HAL, drivers), read again on every
+// The Kernel Modules tab: the kernel's loaded modules (WinSys KernelModules: the kernel, the HAL, drivers), read again on every
 // refresh tick (also while hidden, so the highlighting stays right): new ones green for two refreshes, unloaded ones red
 // once. Their bases need elevation. The version strings come from the files (GetCachedVersionInfo, as they're shown);
 // the signatures are verified on a worker thread once the tab is first shown (WinSys FileSignature: WinVerifyTrust, no
-// revocation checks), which posts WM_DRIVER_SIGNED as each is done. The filter box matches the name, path,
+// revocation checks), which posts WM_KMODULE_SIGNED as each is done. The filter box matches the name, path,
 // description and company. Double-click or Properties opens the file's properties; Copy copies the selected row.
 //
-class CDriversView :
-	public CViewBase<CDriversView>,
-	public CVirtualListView<CDriversView> {
+class CKernelModulesView :
+	public CViewBase<CKernelModulesView>,
+	public CVirtualListView<CKernelModulesView> {
 public:
 	using CViewBase::CViewBase;
-	~CDriversView();
+	~CKernelModulesView();
 
 	CString GetTitle() const override;
 	HWND GetExportList() override {
@@ -52,25 +52,25 @@ public:
 	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt);
 
 	// posted by the signature worker when a file's signature is verified
-	static constexpr UINT WM_DRIVER_SIGNED = WM_APP + 0x120;
+	static constexpr UINT WM_KMODULE_SIGNED = WM_APP + 0x120;
 
-	BEGIN_MSG_MAP(CDriversView)
+	BEGIN_MSG_MAP(CKernelModulesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
-		MESSAGE_HANDLER(WM_DRIVER_SIGNED, OnSigned)
+		MESSAGE_HANDLER(WM_KMODULE_SIGNED, OnSigned)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
-		CHAIN_MSG_MAP(CVirtualListView<CDriversView>)
-		CHAIN_MSG_MAP(CViewBase<CDriversView>)
+		CHAIN_MSG_MAP(CVirtualListView<CKernelModulesView>)
+		CHAIN_MSG_MAP(CViewBase<CKernelModulesView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
-		COMMAND_ID_HANDLER(ID_DRIVER_PROPERTIES, OnProperties)
-		COMMAND_ID_HANDLER(ID_DRIVER_GOTOFILELOCATION, OnGoToFileLocation)
-		CHAIN_MSG_MAP_ALT(CViewBase<CDriversView>, 1)
+		COMMAND_ID_HANDLER(ID_KMODULE_PROPERTIES, OnProperties)
+		COMMAND_ID_HANDLER(ID_KMODULE_GOTOFILELOCATION, OnGoToFileLocation)
+		CHAIN_MSG_MAP_ALT(CViewBase<CKernelModulesView>, 1)
 	END_MSG_MAP()
 
 // Handler prototypes (uncomment arguments if needed):
@@ -106,7 +106,7 @@ private:
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
-	// in the DriverColumns setting
+	// in the KernelModuleColumns setting
 	void SaveColumns() const;
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

@@ -3,6 +3,7 @@
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
+#include <span>
 
 using namespace WinSys;
 
@@ -19,6 +20,20 @@ namespace {
 		{ L"Manual", ServiceStartType::Demand, false },
 		{ L"Disabled", ServiceStartType::Disabled, false },
 	};
+	// a driver's: loaded by the boot loader or the kernel's initialization too, and no delayed start
+	const StartType s_DriverStartTypes[] = {
+		{ L"Boot", ServiceStartType::Boot, false },
+		{ L"System", ServiceStartType::System, false },
+		{ L"Automatic", ServiceStartType::Auto, false },
+		{ L"Manual", ServiceStartType::Demand, false },
+		{ L"Disabled", ServiceStartType::Disabled, false },
+	};
+
+	std::span<StartType const> StartTypes(bool driver) {
+		if (driver)
+			return s_DriverStartTypes;
+		return s_StartTypes;
+	}
 
 	// the built-in accounts, in the radio buttons' order (IDC_SVC_LOCALSYSTEM...); the name ChangeServiceConfig takes
 	PCWSTR const s_Accounts[] = { L"LocalSystem", L"NT AUTHORITY\\LocalService", L"NT AUTHORITY\\NetworkService" };
@@ -79,9 +94,13 @@ CServiceSheet::CServiceSheet(std::wstring const& name) {
 	m_Title = std::format(L"{} Properties", m_Data.Config.DisplayName.empty() ? name : m_Data.Config.DisplayName);
 	SetTitle(m_Title.c_str());
 	m_psh.dwFlags |= PSH_NOCONTEXTHELP;
+	// a driver has no account and no recovery actions
+	m_Data.Driver = ((DWORD)m_Data.Config.Type & (SERVICE_KERNEL_DRIVER | SERVICE_FILE_SYSTEM_DRIVER)) != 0;
 	AddPage(m_General);
-	AddPage(m_LogOn);
-	AddPage(m_Recovery);
+	if (!m_Data.Driver) {
+		AddPage(m_LogOn);
+		AddPage(m_Recovery);
+	}
 }
 
 void CServiceSheet::OnSheetInitialized() {
@@ -97,12 +116,13 @@ LRESULT CServiceGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPAR
 	SetDlgItemText(IDC_SVC_STATE, FormatHelper::ServiceStateToString(m_Data.Status.CurrentState));
 
 	CComboBox start(GetDlgItem(IDC_SVC_STARTTYPE));
-	for (auto& t : s_StartTypes)
+	auto types = StartTypes(m_Data.Driver);
+	for (auto& t : types)
 		start.AddString(t.Name);
-	auto it = std::ranges::find_if(s_StartTypes, [&](auto& t) {
+	auto it = std::ranges::find_if(types, [&](auto& t) {
 		return t.Type == config.StartType && t.Delayed == (config.StartType == ServiceStartType::Auto && config.DelayedAutoStart);
 		});
-	start.SetCurSel(it == std::end(s_StartTypes) ? -1 : (int)(it - std::begin(s_StartTypes)));
+	start.SetCurSel(it == types.end() ? -1 : (int)(it - types.begin()));
 
 	CComboBox error(GetDlgItem(IDC_SVC_ERRORCONTROL));
 	for (auto name : { L"Ignore", L"Normal", L"Severe", L"Critical" })
@@ -133,7 +153,7 @@ int CServiceGeneralPage::OnApply() {
 	int start = CComboBox(GetDlgItem(IDC_SVC_STARTTYPE)).GetCurSel();
 	bool delayedChanged = false;
 	if (start >= 0) {
-		auto& t = s_StartTypes[start];
+		auto& t = StartTypes(m_Data.Driver)[start];
 		if (t.Type != config.StartType)
 			change.StartType = t.Type;
 		delayedChanged = t.Type == ServiceStartType::Auto && t.Delayed != config.DelayedAutoStart;

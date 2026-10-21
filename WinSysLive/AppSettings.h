@@ -22,7 +22,9 @@ struct AppSettings : Settings {
 		SETTING_STRING(ModuleColumns, L"");
 		SETTING_STRING(HandleColumns, L"");
 		SETTING_STRING(NetworkColumns, L"");
-		SETTING_STRING(DriverColumns, L"");
+		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
+		SETTING_STRING(DriverColumns, L"");	// the Kernel Modules tab's, from when it was the Drivers tab: read while KernelModuleColumns is empty
+		SETTING_STRING(DriverServiceColumns, L"");	// the Drivers tab (driver services)
 		SETTING_STRING(UserColumns, L"");
 		SETTING_STRING(RunHistory, L"");	// File > Run and Run As: the last command lines, newest first, one a line
 		SETTING_STRING(RunAsUser, L"");	// File > Run As: the last user name (never the password)
@@ -59,7 +61,9 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ModuleColumns)
 	DEF_SETTING_STRING(HandleColumns)
 	DEF_SETTING_STRING(NetworkColumns)
+	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(DriverColumns)
+	DEF_SETTING_STRING(DriverServiceColumns)
 	DEF_SETTING_STRING(UserColumns)
 	DEF_SETTING_STRING(RunHistory)
 	DEF_SETTING_STRING(RunAsUser)

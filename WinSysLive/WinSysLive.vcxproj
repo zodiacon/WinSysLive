@@ -438,7 +438,7 @@
     <ClCompile Include="ServicesView.cpp" />
     <ClCompile Include="NetworkView.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
-    <ClCompile Include="DriversView.cpp" />
+    <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
     <ClCompile Include="ThreadsPage.cpp" />
@@ -491,7 +491,7 @@
     <ClInclude Include="ServicesView.h" />
     <ClInclude Include="NetworkView.h" />
     <ClInclude Include="TrayIcon.h" />
-    <ClInclude Include="DriversView.h" />
+    <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />
     <ClInclude Include="ThreadsPage.h" />
@@ -517,6 +517,8 @@
     <Image Include="res\image.ico" />
     <Image Include="res\data.ico" />
     <Image Include="res\Run.ico" />
+    <Image Include="res\atom.ico" />
+    <Image Include="res\Driver.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

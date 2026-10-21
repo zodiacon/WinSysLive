@@ -81,7 +81,7 @@
     <ClCompile Include="TrayIcon.cpp">
       <Filter>Views</Filter>
     </ClCompile>
-    <ClCompile Include="DriversView.cpp">
+    <ClCompile Include="KernelModulesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ThreadsPage.cpp">
@@ -228,7 +228,7 @@
     <ClInclude Include="TrayIcon.h">
       <Filter>Views</Filter>
     </ClInclude>
-    <ClInclude Include="DriversView.h">
+    <ClInclude Include="KernelModulesView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ThreadsPage.h">
@@ -476,6 +476,12 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\Run.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\atom.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Driver.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

@@ -38,6 +38,25 @@ namespace {
 	};
 	static_assert(_countof(s_Columns) == 14);
 
+	// the Drivers tab's: the same columns (and keys, in the DriverServiceColumns setting); a driver has no process or account
+	const ColumnLayout::ColumnDef s_DriverColumns[] = {
+		{ L"Name", L"Name", 180, LVCFMT_LEFT, true, true },
+		{ L"Display Name", L"DisplayName", 260, LVCFMT_LEFT, true },
+		{ L"State", L"State", 80, LVCFMT_LEFT, true, true },
+		{ L"Start Type", L"StartType", 120, LVCFMT_LEFT, true },
+		{ L"Type", L"Type", 120, LVCFMT_LEFT, true },
+		{ L"PID", L"ProcessId", 60, LVCFMT_RIGHT, false },
+		{ L"Process", L"ProcessName", 120, LVCFMT_LEFT, false },
+		{ L"Account", L"Account", 160, LVCFMT_LEFT, false },
+		{ L"Binary Path", L"BinaryPath", 350, LVCFMT_LEFT, true },
+		{ L"Description", L"Description", 400, LVCFMT_LEFT, true },
+		{ L"Error Control", L"ErrorControl", 90, LVCFMT_LEFT, true },
+		{ L"Dependencies", L"Dependencies", 250, LVCFMT_LEFT, false },
+		{ L"Required Privileges", L"Privileges", 350, LVCFMT_LEFT, false },
+		{ L"Triggers", L"Triggers", 300, LVCFMT_LEFT, false },
+	};
+	static_assert(_countof(s_DriverColumns) == _countof(s_Columns));
+
 	template<typename Range, typename Format>
 	std::wstring Join(Range const& range, Format format) {
 		std::wstring text;
@@ -101,7 +120,17 @@ void CServicesView::ServiceItem::Reload() {
 }
 
 CString CServicesView::GetTitle() const {
-	return L"Services";
+	return m_Kind == Kind::Drivers ? L"Drivers" : L"Services";
+}
+
+std::span<ColumnLayout::ColumnDef const> CServicesView::Columns() const {
+	if (m_Kind == Kind::Drivers)
+		return s_DriverColumns;
+	return s_Columns;
+}
+
+WinSys::ServiceEnumType CServicesView::EnumType() const {
+	return m_Kind == Kind::Drivers ? ServiceEnumType::AllDrivers : ServiceEnumType::AllServices;
 }
 
 LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -114,17 +143,19 @@ LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	SuspendHookWhilePainting(m_List);
 
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
-	SetColumns(ColumnLayout::Parse(AppSettings::Get().ServiceColumns(), s_Columns));
+	auto& settings = AppSettings::Get();
+	SetColumns(ColumnLayout::Parse(m_Kind == Kind::Drivers ? settings.DriverServiceColumns() : settings.ServiceColumns(), Columns()));
 
 	int width = 360;	// at 96 DPI
-	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, description, process or path (Ctrl+F)", m_List,
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, m_Kind == Kind::Drivers ? L"Filter: name, description or path (Ctrl+F)"
+		: L"Filter: name, description, process or path (Ctrl+F)", m_List,
 		[this](auto&) {
 			ShowItems();
 			UpdateFilterStatus();
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 
-	for (auto& svc : ServiceManager::EnumServices(ServiceEnumType::AllServices)) {
+	for (auto& svc : ServiceManager::EnumServices(EnumType())) {
 		auto item = std::make_shared<ServiceItem>(svc);
 		m_ItemsByName.insert({ svc.GetName(), item });
 		m_All.push_back(item);
@@ -160,17 +191,18 @@ std::vector<ColumnLayout::ShownColumn> CServicesView::GetShownColumns() const {
 
 void CServicesView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
 	ClearSort(m_List.m_hWnd);
-	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
+	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, Columns());
 }
 
 void CServicesView::SaveColumns() const {
 	auto& settings = AppSettings::Get();
-	settings.ServiceColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	auto layout = ColumnLayout::Format(GetShownColumns(), Columns());
+	m_Kind == Kind::Drivers ? settings.DriverServiceColumns(layout) : settings.ServiceColumns(layout);
 	settings.Save();
 }
 
 LRESULT CServicesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
+	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), Columns())) {
 		SetColumns(*columns);
 		SaveColumns();
 	}
@@ -187,12 +219,12 @@ LRESULT CServicesView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lP
 	}
 	m_MenuColumn = *column;
 	CMenu menu;
-	Frame()->ShowContextMenu(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, s_Columns), pt, TPM_RIGHTBUTTON);
+	Frame()->ShowContextMenu(ColumnLayout::PrepareHeaderMenu(menu, m_MenuColumn, Columns()), pt, TPM_RIGHTBUTTON);
 	return 0;
 }
 
 LRESULT CServicesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
+	if (m_MenuColumn < 0 || Columns()[m_MenuColumn].Mandatory)
 		return 0;
 
 	auto columns = GetShownColumns();
@@ -209,7 +241,7 @@ void CServicesView::OnFontChanged(HFONT font) {
 }
 
 void CServicesView::OnRefresh(bool active) {
-	auto services = ServiceManager::EnumServices(ServiceEnumType::AllServices);
+	auto services = ServiceManager::EnumServices(EnumType());
 	if (services.empty())
 		return;	// keep what we have if enumeration failed
 
@@ -298,7 +330,8 @@ void CServicesView::UpdateFilterStatus() {
 	if (m_Filter.GetText().empty())
 		Frame()->SetStatusText(0, L"");
 	else
-		Frame()->SetStatusText(0, std::format(L"{} of {} services match the filter", m_Items.size(), m_All.size()).c_str());
+		Frame()->SetStatusText(0, std::format(L"{} of {} {} match the filter", m_Items.size(), m_All.size(),
+			m_Kind == Kind::Drivers ? L"drivers" : L"services").c_str());
 }
 
 LRESULT CServicesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -494,6 +527,8 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	enable(ID_SERVICE_CONTINUE, pauseContinue && state == ServiceState::Paused);
 	enable(ID_SERVICE_RESTART, canStop && state == ServiceState::Running && m_RestartName.empty());
 	enable(ID_SERVICE_GOTOPROCESS, status.ProcessId != 0);
+	// a driver starts at boot, with the system, automatically or on demand: no delayed start
+	enable(ID_SERVICE_START_DELAYED, m_Kind != Kind::Drivers);
 	// the current start type, checked in its submenu
 	if (auto config = item.GetConfig()) {
 		auto id = config->StartType == ServiceStartType::Auto ? (config->DelayedAutoStart ? ID_SERVICE_START_DELAYED : ID_SERVICE_START_AUTO)

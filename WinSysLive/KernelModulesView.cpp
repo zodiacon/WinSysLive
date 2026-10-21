@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "DriversView.h"
+#include "KernelModulesView.h"
 #include "AppSettings.h"
 
 namespace {
-	// in CDriversView::Column order; the keys are stored in the DriverColumns setting (widths at 96 DPI)
+	// in CKernelModulesView::Column order; the keys are stored in the KernelModuleColumns setting (widths at 96 DPI)
 	const ColumnLayout::ColumnDef s_Columns[] = {
 		{ L"Name", L"Name", 160, LVCFMT_LEFT, true, true },
 		{ L"Base", L"Base", 130, LVCFMT_RIGHT, true },
@@ -23,7 +23,7 @@ namespace {
 #include <ClipboardHelper.h>
 #include <ShlObj.h>
 
-CDriversView::~CDriversView() {
+CKernelModulesView::~CKernelModulesView() {
 	// the worker may be verifying a file, which can take seconds through the catalogs: it isn't waited for, but
 	// finishes that one and exits without posting (it shares only m_Signatures)
 	m_Verifier.request_stop();
@@ -32,11 +32,11 @@ CDriversView::~CDriversView() {
 		m_Verifier.detach();
 }
 
-CString CDriversView::GetTitle() const {
-	return L"Drivers";
+CString CKernelModulesView::GetTitle() const {
+	return L"Kernel Modules";
 }
 
-LRESULT CDriversView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	// the filter box goes in a rebar of the view's own, above the list
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
@@ -47,7 +47,10 @@ LRESULT CDriversView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_Signatures->Notify = m_hWnd;
 
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
-	SetColumns(ColumnLayout::Parse(AppSettings::Get().DriverColumns(), s_Columns));
+	// the layout saved when this was the Drivers tab, until one is saved under the new name
+	auto& settings = AppSettings::Get();
+	auto layout = settings.KernelModuleColumns();
+	SetColumns(ColumnLayout::Parse(layout.empty() ? settings.DriverColumns() : layout, s_Columns));
 
 	int filterWidth = 360;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, filterWidth, L"Filter: name, path, description or company (Ctrl+F)",
@@ -61,7 +64,7 @@ LRESULT CDriversView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	return 0;
 }
 
-void CDriversView::OnActivate(bool active) {
+void CKernelModulesView::OnActivate(bool active) {
 	// the Processes and Services views handle it too
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
 	m_Active = active;
@@ -75,12 +78,12 @@ void CDriversView::OnActivate(bool active) {
 		Frame()->SetStatusText(0, L"");
 }
 
-void CDriversView::OnFontChanged(HFONT font) {
+void CKernelModulesView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
 	m_Filter.SetFont(font);
 }
 
-void CDriversView::OnRefresh(bool active) {
+void CKernelModulesView::OnRefresh(bool active) {
 	auto current = WinSys::KernelModules::Enum();
 	if (current.empty())
 		return;	// keep what we have
@@ -102,7 +105,7 @@ void CDriversView::OnRefresh(bool active) {
 	}
 }
 
-bool CDriversView::IsUnchanged(std::vector<WinSys::KernelModule> const& current) const {
+bool CKernelModulesView::IsUnchanged(std::vector<WinSys::KernelModule> const& current) const {
 	// the merge keeps the modules' order, with the unloaded ones after them
 	if (!m_Loaded || current.size() != m_All.size())
 		return false;
@@ -114,7 +117,7 @@ bool CDriversView::IsUnchanged(std::vector<WinSys::KernelModule> const& current)
 	return true;
 }
 
-bool CDriversView::Merge(std::vector<WinSys::KernelModule> current) {
+bool CKernelModulesView::Merge(std::vector<WinSys::KernelModule> current) {
 	bool loaded = false;
 	std::unordered_map<std::wstring, DriverRow*> previous;
 	for (auto& row : m_All)
@@ -147,12 +150,12 @@ bool CDriversView::Merge(std::vector<WinSys::KernelModule> current) {
 	return loaded;
 }
 
-std::wstring CDriversView::Lowercase(std::wstring text) {
+std::wstring CKernelModulesView::Lowercase(std::wstring text) {
 	::CharLowerBuff(text.data(), (DWORD)text.size());
 	return text;
 }
 
-void CDriversView::VerifySignatures() {
+void CKernelModulesView::VerifySignatures() {
 	std::vector<std::wstring> paths;
 	for (auto& row : m_All)
 		if (!row.Unloaded && m_Queued.insert(Lowercase(row.Module.Path)).second)
@@ -169,7 +172,7 @@ void CDriversView::VerifySignatures() {
 	m_Signatures->Wake.notify_one();
 }
 
-void CDriversView::VerifyThread(std::stop_token stop, std::shared_ptr<Signatures> signatures) {
+void CKernelModulesView::VerifyThread(std::stop_token stop, std::shared_ptr<Signatures> signatures) {
 	// WinVerifyTrust's catalog lookups may use COM
 	::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 	for (;;) {
@@ -188,15 +191,15 @@ void CDriversView::VerifyThread(std::stop_token stop, std::shared_ptr<Signatures
 			std::lock_guard lock(signatures->Lock);
 			signatures->Results[Lowercase(path)] = std::move(info);
 		}
-		::PostMessage(signatures->Notify, WM_DRIVER_SIGNED, 0, 0);
+		::PostMessage(signatures->Notify, WM_KMODULE_SIGNED, 0, 0);
 	}
 	::CoUninitialize();
 }
 
-LRESULT CDriversView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	// several may have arrived: the list repaints once (and sorts again, if it's sorted by signature)
 	MSG msg;
-	while (::PeekMessage(&msg, m_hWnd, WM_DRIVER_SIGNED, WM_DRIVER_SIGNED, PM_REMOVE))
+	while (::PeekMessage(&msg, m_hWnd, WM_KMODULE_SIGNED, WM_KMODULE_SIGNED, PM_REMOVE))
 		;
 	if (auto si = GetSortInfo(m_List); si && GetColumnManager(m_List)->GetColumnTag<Column>(si->SortColumn) == Column::Signature)
 		DoSort(si);
@@ -204,7 +207,7 @@ LRESULT CDriversView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	return 0;
 }
 
-std::wstring CDriversView::GetSignatureText(std::wstring const& path) const {
+std::wstring CKernelModulesView::GetSignatureText(std::wstring const& path) const {
 	std::lock_guard lock(m_Signatures->Lock);
 	auto it = m_Signatures->Results.find(Lowercase(path));
 	if (it != m_Signatures->Results.end())
@@ -212,7 +215,7 @@ std::wstring CDriversView::GetSignatureText(std::wstring const& path) const {
 	return m_Verifier.joinable() ? L"Verifying..." : L"";
 }
 
-bool CDriversView::Matches(DriverRow const& row) const {
+bool CKernelModulesView::Matches(DriverRow const& row) const {
 	auto& filter = m_Filter.GetText();
 	if (filter.empty())
 		return true;
@@ -222,12 +225,12 @@ bool CDriversView::Matches(DriverRow const& row) const {
 	return false;
 }
 
-std::wstring CDriversView::GetSelectedKey() const {
+std::wstring CKernelModulesView::GetSelectedKey() const {
 	auto row = GetSelected();
 	return row ? row->Key : L"";
 }
 
-void CDriversView::ShowRows(std::wstring const& selected) {
+void CKernelModulesView::ShowRows(std::wstring const& selected) {
 	m_Rows.clear();
 	for (auto& row : m_All)
 		if (Matches(row))
@@ -239,7 +242,7 @@ void CDriversView::ShowRows(std::wstring const& selected) {
 	m_List.Invalidate();
 }
 
-void CDriversView::UpdateStatus() {
+void CKernelModulesView::UpdateStatus() {
 	if (!m_Active)
 		return;
 	auto count = std::ranges::count_if(m_All, [](auto& row) { return !row.Unloaded; });
@@ -251,7 +254,7 @@ void CDriversView::UpdateStatus() {
 	Frame()->SetStatusText(0, text.c_str());
 }
 
-std::wstring CDriversView::GetText(DriverRow const& row, Column column) const {
+std::wstring CKernelModulesView::GetText(DriverRow const& row, Column column) const {
 	auto& m = row.Module;
 	switch (column) {
 		case Column::Name: return m.Name;
@@ -267,24 +270,24 @@ std::wstring CDriversView::GetText(DriverRow const& row, Column column) const {
 	return L"";
 }
 
-CString CDriversView::GetColumnText(HWND, int row, int col) const {
+CString CKernelModulesView::GetColumnText(HWND, int row, int col) const {
 	if (row >= (int)m_Rows.size())
 		return L"";
 	return GetText(*m_Rows[row], GetColumnManager(m_List)->GetColumnTag<Column>(col)).c_str();
 }
 
-int CDriversView::GetRowImage(HWND, int row, int col) const {
+int CKernelModulesView::GetRowImage(HWND, int row, int col) const {
 	if (row >= (int)m_Rows.size() || GetColumnManager(m_List)->GetColumnTag<Column>(col) != Column::Name)
 		return -1;
 	return Frame()->GetIconIndex(IDI_DEVICE);
 }
 
-int CDriversView::GetSaveColumnRange(HWND, int&) const {
+int CKernelModulesView::GetSaveColumnRange(HWND, int&) const {
 	// the selection is kept by driver (ShowRows, DoSort)
 	return -1;
 }
 
-void CDriversView::DoSort(SortInfo const* si) {
+void CKernelModulesView::DoSort(SortInfo const* si) {
 	auto selected = GetSelectedKey();
 
 	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(si->SortColumn);
@@ -302,12 +305,12 @@ void CDriversView::DoSort(SortInfo const* si) {
 	SelectDriver(selected);
 }
 
-CDriversView::DriverRow const* CDriversView::GetSelected() const {
+CKernelModulesView::DriverRow const* CKernelModulesView::GetSelected() const {
 	int selected = m_List.GetSelectedIndex();
 	return selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected] : nullptr;
 }
 
-void CDriversView::SelectDriver(std::wstring const& key) {
+void CKernelModulesView::SelectDriver(std::wstring const& key) {
 	// the list view keeps the selection by index, which new rows and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	if (key.empty())
@@ -317,7 +320,7 @@ void CDriversView::SelectDriver(std::wstring const& key) {
 		m_List.SetItemState((int)(it - m_Rows.begin()), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 }
 
-LRESULT CDriversView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+LRESULT CKernelModulesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
 	if (hdr->hwndFrom != m_List) {
 		bHandled = FALSE;
 		return 0;
@@ -349,41 +352,41 @@ LRESULT CDriversView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 	return CDRF_DODEFAULT;
 }
 
-bool CDriversView::OnRightClickList(HWND, int row, int, POINT const& pt) {
+bool CKernelModulesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	if (row < 0 || row >= (int)m_Rows.size())
 		return false;
 	CMenu menu;
 	menu.CreatePopupMenu();
-	menu.AppendMenu(MF_STRING, ID_DRIVER_PROPERTIES, L"&Properties...");
-	menu.AppendMenu(MF_STRING, ID_DRIVER_GOTOFILELOCATION, L"Open File &Location");
+	menu.AppendMenu(MF_STRING, ID_KMODULE_PROPERTIES, L"&Properties...");
+	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTOFILELOCATION, L"Open File &Location");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
-	menu.SetMenuDefaultItem(ID_DRIVER_PROPERTIES);
+	menu.SetMenuDefaultItem(ID_KMODULE_PROPERTIES);
 	// commands land in the frame and are routed to this (the active) view
 	Frame()->ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
 	return true;
 }
 
-bool CDriversView::OnDoubleClickList(HWND, int row, int, POINT const&) {
+bool CKernelModulesView::OnDoubleClickList(HWND, int row, int, POINT const&) {
 	if (row < 0 || row >= (int)m_Rows.size())
 		return false;
 	::SHObjectProperties(m_hWnd, SHOP_FILEPATH, m_Rows[row]->Module.Path.c_str(), nullptr);
 	return true;
 }
 
-LRESULT CDriversView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto row = GetSelected())
 		::SHObjectProperties(m_hWnd, SHOP_FILEPATH, row->Module.Path.c_str(), nullptr);
 	return 0;
 }
 
-LRESULT CDriversView::OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto row = GetSelected())
 		::ShellExecute(m_hWnd, L"open", L"explorer.exe", std::format(L"/select,\"{}\"", row->Module.Path).c_str(), nullptr, SW_SHOWNORMAL);
 	return 0;
 }
 
-LRESULT CDriversView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	auto row = GetSelected();
 	if (!row)
 		return 0;
@@ -398,39 +401,39 @@ LRESULT CDriversView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 	return 0;
 }
 
-LRESULT CDriversView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_Filter.Focus();
 	return 0;
 }
 
-LRESULT CDriversView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_Filter.Changed();
 	return 0;
 }
 
-LRESULT CDriversView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+LRESULT CKernelModulesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	// the widths and the order also change by dragging in the header
 	SaveColumns();
 	bHandled = FALSE;
 	return 0;
 }
 
-std::vector<ColumnLayout::ShownColumn> CDriversView::GetShownColumns() const {
+std::vector<ColumnLayout::ShownColumn> CKernelModulesView::GetShownColumns() const {
 	return ColumnLayout::GetShownColumns(m_List, GetColumnManager(m_List));
 }
 
-void CDriversView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
+void CKernelModulesView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
 	ClearSort(m_List.m_hWnd);
 	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
 }
 
-void CDriversView::SaveColumns() const {
+void CKernelModulesView::SaveColumns() const {
 	auto& settings = AppSettings::Get();
-	settings.DriverColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
+	settings.KernelModuleColumns(ColumnLayout::Format(GetShownColumns(), s_Columns));
 	settings.Save();
 }
 
-LRESULT CDriversView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
 		SetColumns(*columns);
 		SaveColumns();
@@ -439,7 +442,7 @@ LRESULT CDriversView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 	return 0;
 }
 
-LRESULT CDriversView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+LRESULT CKernelModulesView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
 	// the header's WM_CONTEXTMENU, told from a row's by the position; the rows have their own menu (OnRightClickList)
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
@@ -453,7 +456,7 @@ LRESULT CDriversView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 	return 0;
 }
 
-LRESULT CDriversView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CKernelModulesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (m_MenuColumn < 0 || s_Columns[m_MenuColumn].Mandatory)
 		return 0;
 	auto columns = GetShownColumns();

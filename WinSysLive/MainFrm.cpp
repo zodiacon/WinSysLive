@@ -33,6 +33,8 @@ namespace {
 		IDI_PAUSE, IDI_CONTINUE, IDI_MEMORY,
 		// mapping types, for the Modules tab
 		IDI_MODULE_IMAGE, IDI_MODULE_DATA,
+		// the Kernel Modules and Drivers tabs
+		IDI_ATOM, IDI_DRIVER,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them

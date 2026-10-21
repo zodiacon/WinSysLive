@@ -5,7 +5,7 @@
 #include "PerfView.h"
 #include "UsersView.h"
 #include "NetworkView.h"
-#include "DriversView.h"
+#include "KernelModulesView.h"
 
 template<typename TView>
 static std::pair<IView*, CMessageMap*> DoCreateView(TView* view, HWND hParent) {
@@ -23,7 +23,8 @@ std::pair<IView*, CMessageMap*> CMainFrame::CreateView(TabType type) {
 		case TabType::Performance: return DoCreateView(new CPerfView(this), m_Tabs);
 		case TabType::Users: return DoCreateView(new CUsersView(this), m_Tabs);
 		case TabType::Network: return DoCreateView(new CNetworkView(this), m_Tabs);
-		case TabType::Drivers: return DoCreateView(new CDriversView(this), m_Tabs);
+		case TabType::KernelModules: return DoCreateView(new CKernelModulesView(this), m_Tabs);
+		case TabType::Drivers: return DoCreateView(new CServicesView(this, CServicesView::Kind::Drivers), m_Tabs);
 	}
 	ATLASSERT(false);
 	return {};

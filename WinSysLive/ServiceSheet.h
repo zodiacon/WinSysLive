@@ -13,6 +13,7 @@ struct ServiceSheetData {
 	std::wstring Description;
 	WinSys::ServiceStatusProcess Status{};
 	std::optional<WinSys::ServiceFailureActions> Failure;	// nothing if it can't be read
+	bool Driver{ false };	// a kernel or file system driver: only the General page applies, with a driver's start types
 	bool Applied{ false };
 };
 
