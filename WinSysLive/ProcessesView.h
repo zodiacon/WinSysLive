@@ -100,7 +100,7 @@ private:
 		Threads, PeakThreads, Handles, GdiObjects, UserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
 		Architecture, IntegrityLevel, Elevation, Protection, Cfg, Mitigations, DpiAwareness, Virtualization, JobId,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
-		GpuUsage, GpuDedicated, GpuShared,
+		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
 		PackageName, WindowTitle, Description, ImagePath, CommandLine,
 		_Count
 	};
@@ -117,6 +117,9 @@ private:
 		// queried on every refresh while a GPU column is shown
 		WinSys::GpuProcessState GpuState;
 		WinSys::GpuProcessUsage Gpu;
+		// and while an NPU column is
+		WinSys::GpuProcessState NpuState;
+		WinSys::GpuProcessUsage Npu;
 		// changes since the previous update (0 on the first)
 		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
 		uint64_t PrevContextSwitches{ 0 };
@@ -202,6 +205,8 @@ private:
 	static std::wstring FormatMitigations(WinSys::ProcessMitigations const& m);
 	// a GPU column is shown: the processes' GPU usage is queried (a call per engine of each process using the GPU)
 	bool ShowsGpu() const;
+	// an NPU column is shown, and there are NPUs
+	bool ShowsNpu() const;
 	// zero without the tracker
 	WinSys::ProcessNetworkTracker::Counters NetworkCounters(uint32_t pid) const;
 	// the job's ID when the snapshot has it (elevated), else 1 for a process in a job and 0 for one not in a job

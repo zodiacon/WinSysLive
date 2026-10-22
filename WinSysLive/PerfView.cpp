@@ -60,6 +60,14 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		m_Pages.push_back(std::move(page));
 		m_Nav.AddItem(std::format(L"GPU {}", i), PerfColors::Gpu, CPerfNav::GraphType::Percent);
 	}
+	// and per NPU, after the GPUs
+	for (size_t i = 0; i < WinSys::GpuInfo::GetAdapters(WinSys::GpuAdapterKind::Npu).size(); i++) {
+		auto page = std::make_unique<CPerfGpuPage>(i, WinSys::GpuAdapterKind::Npu);
+		page->CreatePage(m_hWnd);
+		page->SetTimeSpan(m_TimeSpanText, m_Interval);
+		m_Pages.push_back(std::move(page));
+		m_Nav.AddItem(std::format(L"NPU {}", i), PerfColors::Npu, CPerfNav::GraphType::Percent);
+	}
 	SampleGpus(sample);
 	for (auto& page : m_Pages)
 		page->Update(sample, false);
@@ -219,10 +227,16 @@ void CPerfView::SampleDisks(PerfSample& sample) {
 void CPerfView::SampleGpus(PerfSample& sample) {
 	sample.HasGpu = m_Gpu.Update();
 	sample.Gpus = &m_Gpu.GetSamples();
+	sample.HasNpu = m_Npu.Update();
+	sample.Npus = &m_Npu.GetSamples();
 }
 
 int CPerfView::FirstGpuItem() const {
 	return FirstDiskItem + (int)m_DiskLetters.size();
+}
+
+int CPerfView::FirstNpuItem() const {
+	return FirstGpuItem() + (int)WinSys::GpuInfo::GetAdapters().size();
 }
 
 void CPerfView::SyncDiskPages() {
@@ -311,6 +325,14 @@ void CPerfView::UpdateNav(PerfSample const& sample) {
 			m_Nav.SetItemValue(FirstGpuItem() + (int)i, std::format(L"{:.0f}%  {}", usage, adapters[i].Name));
 		}
 	}
+	if (sample.HasNpu) {
+		auto& adapters = WinSys::GpuInfo::GetAdapters(WinSys::GpuAdapterKind::Npu);
+		for (size_t i = 0; i < sample.Npus->size() && i < adapters.size(); i++) {
+			auto usage = (*sample.Npus)[i].Usage;
+			m_Nav.PushItemSample(FirstNpuItem() + (int)i, usage);
+			m_Nav.SetItemValue(FirstNpuItem() + (int)i, std::format(L"{:.0f}%  {}", usage, adapters[i].Name));
+		}
+	}
 	if (sample.HasCpu || sample.HasMemory) {
 		m_Nav.SetItemValue(SummaryItem, std::format(L"CPU {:.0f}%    Memory {:.0f}%", sample.CpuPercent(), sample.MemoryPercent()));
 	}
@@ -350,7 +372,9 @@ std::wstring CPerfView::PageKey(int index) const {
 	}
 	if (index >= FirstDiskItem && index < FirstGpuItem())
 		return std::wstring(L"Disk:") + m_DiskLetters[index - FirstDiskItem];
-	return L"GPU:" + std::to_wstring(index - FirstGpuItem());
+	if (index < FirstNpuItem())
+		return L"GPU:" + std::to_wstring(index - FirstGpuItem());
+	return L"NPU:" + std::to_wstring(index - FirstNpuItem());
 }
 
 int CPerfView::FindPage(std::wstring const& key) const {

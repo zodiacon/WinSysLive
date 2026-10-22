@@ -23,6 +23,7 @@ namespace PerfColors {
 	const COLORREF IoOther = RGB(150, 150, 150);
 	const COLORREF Gpu = RGB(196, 84, 168);
 	const COLORREF GpuShared = RGB(96, 118, 170);
+	const COLORREF Npu = RGB(70, 170, 120);
 }
 
 //
@@ -60,6 +61,9 @@ struct PerfSample {
 	// the GPUs, in WinSys::GpuInfo::GetAdapters order; owned by CPerfView and valid for the duration of the update
 	std::vector<WinSys::GpuTracker::AdapterSample> const* Gpus{ nullptr };
 	bool HasGpu{ false };	// the utilizations are valid (not on the first tick)
+	// the NPUs, as the GPUs (WinSys::GpuAdapterKind::Npu)
+	std::vector<WinSys::GpuTracker::AdapterSample> const* Npus{ nullptr };
+	bool HasNpu{ false };
 
 	float CpuPercent() const {
 		return KernelCpu + UserCpu;
@@ -391,13 +395,14 @@ private:
 };
 //
 // A GPU: a graph per engine (3D, Copy, Video Decode...: the busiest node of each), and its dedicated and shared memory.
+// An NPU's page is the same, from its own adapter list and samples.
 //
 class CPerfGpuPage : public CPerfPage<CPerfGpuPage> {
 public:
 	DECLARE_WND_CLASS_EX(L"WinSysLivePerfGpu", CS_HREDRAW | CS_VREDRAW, -1)
 
-	// index: in WinSys::GpuInfo::GetAdapters
-	explicit CPerfGpuPage(size_t index) : m_Index(index) {}
+	// index: in WinSys::GpuInfo::GetAdapters(kind)
+	explicit CPerfGpuPage(size_t index, WinSys::GpuAdapterKind kind = WinSys::GpuAdapterKind::Gpu) : m_Index(index), m_Kind(kind) {}
 
 	void CreateGraphs();
 	void LayoutGraphs(CRect const& rc, int gap);
@@ -410,6 +415,7 @@ private:
 	GraphCtrl::CGraphControl m_Dedicated, m_Shared;
 	GraphCtrl::SeriesId m_DedicatedSeries{ GraphCtrl::InvalidSeries }, m_SharedSeries{ GraphCtrl::InvalidSeries };
 	size_t m_Index;
+	WinSys::GpuAdapterKind m_Kind;
 };
 
 //

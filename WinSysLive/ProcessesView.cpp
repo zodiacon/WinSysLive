@@ -74,6 +74,8 @@ namespace {
 		{ L"GPU (%)", L"Gpu", 70, LVCFMT_RIGHT, false },
 		{ L"Dedicated GPU Memory", L"GpuDedicated", 140, LVCFMT_RIGHT, false },
 		{ L"Shared GPU Memory", L"GpuShared", 130, LVCFMT_RIGHT, false },
+		{ L"NPU (%)", L"Npu", 70, LVCFMT_RIGHT, false },
+		{ L"NPU Memory", L"NpuMemory", 100, LVCFMT_RIGHT, false },
 		{ L"Package Name", L"PackageName", 250, LVCFMT_LEFT, false },
 		{ L"Window Title", L"WindowTitle", 250, LVCFMT_LEFT, false },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
@@ -355,6 +357,11 @@ WinSys::ProcessNetworkTracker::Counters CProcessesView::NetworkCounters(uint32_t
 
 bool CProcessesView::ShowsGpu() const {
 	return std::ranges::any_of(m_Columns, [](auto c) { return c == Column::GpuUsage || c == Column::GpuDedicated || c == Column::GpuShared; });
+}
+
+bool CProcessesView::ShowsNpu() const {
+	return !WinSys::GpuInfo::GetAdapters(WinSys::GpuAdapterKind::Npu).empty()
+		&& std::ranges::any_of(m_Columns, [](auto c) { return c == Column::NpuUsage || c == Column::NpuMemory; });
 }
 
 bool CProcessesView::ShowsNetwork() const {
@@ -866,13 +873,15 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 
 	UpdateHungProcesses();
 	UpdateWindowTitles();
-	bool gpu = ShowsGpu();
+	bool gpu = ShowsGpu(), npu = ShowsNpu();
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated) {
 			UpdateDeltas(item);
 			UpdateSuspended(item);
 			if (gpu)
 				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
+			if (npu)
+				item.Npu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.NpuState, WinSys::GpuAdapterKind::Npu);
 		}
 	// a new process may have turned out to host a service after it was inserted
 	UpdateHidden();
@@ -1095,6 +1104,12 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::GpuUsage: return item.Gpu.Known && item.Gpu.Usage >= 0.005f ? std::format(L"{:.2f}", item.Gpu.Usage) : L"";
 		case Column::GpuDedicated: return item.Gpu.Known && item.Gpu.Dedicated ? FormatHelper::FormatSize((int64_t)item.Gpu.Dedicated) : L"";
 		case Column::GpuShared: return item.Gpu.Known && item.Gpu.Shared ? FormatHelper::FormatSize((int64_t)item.Gpu.Shared) : L"";
+		case Column::NpuUsage: return item.Npu.Known && item.Npu.Usage >= 0.005f ? std::format(L"{:.2f}", item.Npu.Usage) : L"";
+		case Column::NpuMemory: {
+			// NPUs mostly use system memory: dedicated and shared together
+			auto bytes = item.Npu.Dedicated + item.Npu.Shared;
+			return item.Npu.Known && bytes ? FormatHelper::FormatSize((int64_t)bytes) : L"";
+		}
 		case Column::Description: return p.GetDescription();
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
@@ -1231,6 +1246,8 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::GpuUsage: return compare(item1.Gpu.Usage, item2.Gpu.Usage);
 		case Column::GpuDedicated: return compare(item1.Gpu.Dedicated, item2.Gpu.Dedicated);
 		case Column::GpuShared: return compare(item1.Gpu.Shared, item2.Gpu.Shared);
+		case Column::NpuUsage: return compare(item1.Npu.Usage, item2.Npu.Usage);
+		case Column::NpuMemory: return compare(item1.Npu.Dedicated + item1.Npu.Shared, item2.Npu.Dedicated + item2.Npu.Shared);
 		case Column::Description: return compareText(p1.GetDescription(), p2.GetDescription());
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());

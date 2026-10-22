@@ -632,13 +632,15 @@ void CPerfDiskPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 //
 
 void CPerfGpuPage::CreateGraphs() {
-	auto& adapter = WinSys::GpuInfo::GetAdapters()[m_Index];
+	auto& adapter = WinSys::GpuInfo::GetAdapters(m_Kind)[m_Index];
+	bool npu = m_Kind == WinSys::GpuAdapterKind::Npu;
+	auto color = npu ? PerfColors::Npu : PerfColors::Gpu;
 	m_Engines.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, GCS_GRID | GCS_FILL | GCS_TOOLTIP);
 	m_Engines.SetGraphCount(adapter.Engines.size());
 	m_Engines.SetRange(0, 100);
 	m_Engines.SetValueFormatter(Format::Percent);
 	m_Engines.SetHistoryLength(PerfHistoryLength);
-	m_Engines.SetSeriesStyle(SeriesStyle{ PerfColors::Gpu, PerfColors::Gpu });
+	m_Engines.SetSeriesStyle(SeriesStyle{ color, color });
 	m_Engines.SetSharedCrosshair(true);
 	for (size_t i = 0; i < adapter.Engines.size(); i++)
 		m_Engines.GetGraph(i)->SetTitle(adapter.Engines[i]);
@@ -651,8 +653,8 @@ void CPerfGpuPage::CreateGraphs() {
 		graph.SetValueFormatter(Format::Bytes);
 		graph.SetHistoryLength(PerfHistoryLength);
 	};
-	memoryGraph(m_Dedicated, m_DedicatedSeries, L"Dedicated GPU Memory", PerfColors::Memory, adapter.DedicatedLimit);
-	memoryGraph(m_Shared, m_SharedSeries, L"Shared GPU Memory", PerfColors::GpuShared, adapter.SharedLimit);
+	memoryGraph(m_Dedicated, m_DedicatedSeries, npu ? L"Dedicated NPU Memory" : L"Dedicated GPU Memory", PerfColors::Memory, adapter.DedicatedLimit);
+	memoryGraph(m_Shared, m_SharedSeries, npu ? L"Shared NPU Memory" : L"Shared GPU Memory", PerfColors::GpuShared, adapter.SharedLimit);
 	m_Lines.resize(2);
 }
 
@@ -671,11 +673,13 @@ void CPerfGpuPage::LayoutGraphs(CRect const& rc, int gap) {
 }
 
 void CPerfGpuPage::Sample(PerfSample const& sample) {
-	if (!sample.Gpus || m_Index >= sample.Gpus->size())
+	bool npu = m_Kind == WinSys::GpuAdapterKind::Npu;
+	auto samples = npu ? sample.Npus : sample.Gpus;
+	if (!samples || m_Index >= samples->size())
 		return;
-	auto& adapter = WinSys::GpuInfo::GetAdapters()[m_Index];
-	auto& gpu = (*sample.Gpus)[m_Index];
-	if (sample.HasGpu && gpu.Engines.size() == m_Engines.GetGraphCount())
+	auto& adapter = WinSys::GpuInfo::GetAdapters(m_Kind)[m_Index];
+	auto& gpu = (*samples)[m_Index];
+	if ((npu ? sample.HasNpu : sample.HasGpu) && gpu.Engines.size() == m_Engines.GetGraphCount())
 		m_Engines.PushSamples(gpu.Engines);
 	m_Dedicated.PushSample(m_DedicatedSeries, (float)gpu.DedicatedUsed);
 	m_Shared.PushSample(m_SharedSeries, (float)gpu.SharedUsed);
