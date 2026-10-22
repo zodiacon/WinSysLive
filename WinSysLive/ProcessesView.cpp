@@ -26,13 +26,14 @@ namespace {
 	const ColumnLayout::ColumnDef s_Columns[] = {
 		{ L"Name", L"Name", 220, LVCFMT_LEFT, true, true },
 		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true, true },
+		{ L"Status", L"Status", 100, LVCFMT_LEFT, false },
 		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
 		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false },
 		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, false },
 		{ L"User Time", L"UserTime", 100, LVCFMT_RIGHT, false },
 		{ L"CPU Cycles", L"CpuCycles", 170, LVCFMT_RIGHT, false },
-		{ L"Context Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, false },
-		{ L"Context Switch Delta", L"ContextSwitchDelta", 110, LVCFMT_RIGHT, false },
+		{ L"Ctx Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, false },
+		{ L"Ctx Switch Delta", L"ContextSwitchDelta", 110, LVCFMT_RIGHT, false },
 		{ L"Private Bytes", L"PrivateBytes", 100, LVCFMT_RIGHT, true },
 		{ L"Private Bytes Delta", L"PrivateBytesDelta", 100, LVCFMT_RIGHT, false },
 		{ L"Peak Private Bytes", L"PeakPrivateBytes", 110, LVCFMT_RIGHT, false },
@@ -49,10 +50,10 @@ namespace {
 		{ L"User Name", L"User", 180, LVCFMT_LEFT, true },
 		{ L"Priority", L"Priority", 90, LVCFMT_LEFT, true },
 		{ L"Memory Priority", L"MemoryPriority", 100, LVCFMT_RIGHT, false },
-		{ L"I/O Priority", L"IoPriority", 80, LVCFMT_LEFT, false },
+		{ L"I/O Pri", L"IoPriority", 80, LVCFMT_LEFT, false },
 		{ L"Start Time", L"StartTime", 150, LVCFMT_LEFT, true },
 		{ L"Architecture", L"Architecture", 80, LVCFMT_LEFT, false },
-		{ L"Integrity Level", L"IntegrityLevel", 90, LVCFMT_LEFT, false },
+		{ L"Integrity", L"IntegrityLevel", 90, LVCFMT_LEFT, false },
 		{ L"Protection", L"Protection", 130, LVCFMT_LEFT, false },
 		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false },
 		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false },
@@ -60,7 +61,7 @@ namespace {
 		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false },
 		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false },
 		{ L"Network Send Bytes", L"NetworkSend", 140, LVCFMT_RIGHT, false },
-		{ L"Network Receive Bytes", L"NetworkReceive", 140, LVCFMT_RIGHT, false },
+		{ L"Network Recv Bytes", L"NetworkReceive", 140, LVCFMT_RIGHT, false },
 		{ L"GPU (%)", L"Gpu", 70, LVCFMT_RIGHT, false },
 		{ L"Dedicated GPU Memory", L"GpuDedicated", 140, LVCFMT_RIGHT, false },
 		{ L"Shared GPU Memory", L"GpuShared", 130, LVCFMT_RIGHT, false },
@@ -223,7 +224,23 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 	}
 	else
 		m_Network.reset();
+	UpdateHungProcesses();
 	m_Tree.Invalidate();
+}
+
+void CProcessesView::UpdateHungProcesses() {
+	if (std::ranges::contains(m_Columns, Column::Status))
+		m_HungPids = Process::GetHungProcesses();
+	else
+		m_HungPids.clear();
+}
+
+CProcessesView::ProcessStatus CProcessesView::GetStatus(ProcessItem const& item) const {
+	if ((item.Kinds & ProcessKind::Suspended) != ProcessKind::None)
+		return ProcessStatus::Suspended;
+	if (std::ranges::binary_search(m_HungPids, item.Process->Id))
+		return ProcessStatus::NotResponding;
+	return ProcessStatus::Running;
 }
 
 WinSys::ProcessNetworkTracker::Counters CProcessesView::NetworkCounters(uint32_t pid) const {
@@ -593,6 +610,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	}
 	UpdateDotNet(false);
 
+	UpdateHungProcesses();
 	bool gpu = ShowsGpu();
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated) {
@@ -722,6 +740,14 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 	switch (column) {
 		case Column::Name: return p.GetImageName();
 		case Column::Id: return std::to_wstring(p.Id);
+		case Column::Status:
+			if (item.Terminated)
+				return L"";
+			switch (GetStatus(item)) {
+				case ProcessStatus::Suspended: return L"Suspended";
+				case ProcessStatus::NotResponding: return L"Not responding";
+			}
+			return L"Running";
 		case Column::CPU: return p.Id == 0 || !item.Terminated ? FormatHelper::FormatCpu(p.CPU) : L"";
 		case Column::CpuTime: return FormatHelper::FormatTimeSpan(info->KernelTime.QuadPart + info->UserTime.QuadPart);
 		case Column::KernelTime: return FormatHelper::FormatTimeSpan(info->KernelTime.QuadPart);
@@ -878,6 +904,7 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 	switch ((Column)m_SortColumn) {
 		case Column::Name: return compareText(p1.GetImageName(), p2.GetImageName());
 		case Column::Id: return compare(p1.Id, p2.Id);
+		case Column::Status: return compare(GetStatus(item1), GetStatus(item2));
 		case Column::CPU: return compare(p1.CPU, p2.CPU);
 		case Column::CpuTime: return compare(i1->KernelTime.QuadPart + i1->UserTime.QuadPart, i2->KernelTime.QuadPart + i2->UserTime.QuadPart);
 		case Column::KernelTime: return compare(i1->KernelTime.QuadPart, i2->KernelTime.QuadPart);

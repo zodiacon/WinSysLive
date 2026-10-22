@@ -82,7 +82,7 @@ public:
 
 private:
 	enum class Column {
-		Name, Id, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
+		Name, Id, Status, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
 		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults,
 		Threads, PeakThreads, Handles, GdiObjects, UserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
 		Architecture, IntegrityLevel, Protection, Virtualization, JobId, IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
@@ -161,6 +161,11 @@ private:
 	// the columns and the splitter
 	void SaveLayout() const;
 	bool ShowsNetwork() const;
+	// Task Manager's Status: Running, Suspended (every thread, the Suspended kind) or Not responding (a hung window)
+	enum class ProcessStatus { Running, NotResponding, Suspended };
+	ProcessStatus GetStatus(ProcessItem const& item) const;
+	// m_HungPids again, while the Status column is shown (a pass over the top-level windows)
+	void UpdateHungProcesses();
 	// a GPU column is shown: the processes' GPU usage is queried (a call per engine of each process using the GPU)
 	bool ShowsGpu() const;
 	// zero without the tracker
@@ -235,6 +240,7 @@ private:
 	DWORD m_NetworkError{ 0 };	// why it didn't start
 	std::vector<ProcessColors::Entry> m_Colors;	// the ProcessColors setting
 	std::unordered_set<uint32_t> m_ServicePids;
+	std::vector<uint32_t> m_HungPids;	// sorted; empty while the Status column is hidden
 	std::wstring m_CurrentUser;	// DOMAIN\user, for the Own kind
 	// refreshes left to enumerate the services again; set when processes start, as a service host is a new process
 	int m_ServiceRechecks{ 0 };
