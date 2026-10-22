@@ -2,6 +2,7 @@
 #include "PerfPages.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
+#include <WinSys/SystemInfo.h>
 
 using namespace GraphCtrl;
 
@@ -189,6 +190,13 @@ void CPerfSummaryPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 
 void CPerfCpuPage::CreateGraphs() {
 	m_Cpu.Create(m_hWnd);
+	// the model, padded with spaces by some processors (ASCII)
+	auto brand = WinSys::SystemInfo::GetProcessorBrandString();
+	std::wstring model(brand.begin(), brand.end());
+	model.erase(0, model.find_first_not_of(L' '));
+	model.erase(model.find_last_not_of(L' ') + 1);
+	if (!model.empty())
+		m_Cpu.SetTitle(std::format(L"CPU Usage ({})", model));
 	m_Cores.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, GCS_GRID | GCS_FILL | GCS_TOOLTIP);
 	m_Cores.SetGraphCount(m_Processors);
 	m_Cores.SetTitlePrefix(L"CPU ");
