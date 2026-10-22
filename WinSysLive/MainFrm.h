@@ -86,6 +86,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_KERNELMODULES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_DRIVERS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_IPC, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_ZOMBIES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
@@ -166,6 +167,7 @@ private:
 	HIMAGELIST GetImageList() const override;
 	int GetIconIndex(UINT iconId) const override;
 	int GetProcessIcon(ProcessInfoEx& process) override;
+	int GetProcessIcon(std::wstring const& imagePath) override;
 	ProcessManager& GetProcessManager() override;
 	void GoToProcess(uint32_t pid) override;
 	void GoToKernelModule(std::wstring const& path) override;
@@ -190,6 +192,7 @@ private:
 		{ TabType::KernelModules, ID_VIEW_KERNELMODULES, IDI_ATOM, L"KernelModules" },
 		{ TabType::Drivers, ID_VIEW_DRIVERS, IDI_DRIVER, L"Drivers" },
 		{ TabType::Ipc, ID_VIEW_IPC, IDI_ALPC, L"Ipc" },
+		{ TabType::Zombies, ID_VIEW_ZOMBIES, IDI_PROCESS_KILL, L"Zombies" },
 	};
 	static TabInfo const* FindTab(TabType type);
 

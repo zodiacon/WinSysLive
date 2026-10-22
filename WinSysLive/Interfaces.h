@@ -13,6 +13,7 @@ enum class TabType {
 	KernelModules,
 	Drivers,	// the driver services (the Services view for drivers)
 	Ipc,		// RPC/ALPC
+	Zombies,	// zombie processes
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)
@@ -24,6 +25,8 @@ struct IMainFrame abstract : IIconSource {
 
 	// the process's icon in the image list (from its executable, cached by path), or the default process icon
 	virtual int GetProcessIcon(ProcessInfoEx& process) = 0;
+	// the same by the executable's path, for a process that's not in the snapshot (a zombie)
+	virtual int GetProcessIcon(std::wstring const& imagePath) = 0;
 
 	// snapshot updated by the frame on every refresh tick, before IView::OnRefresh is called
 	virtual ProcessManager& GetProcessManager() = 0;

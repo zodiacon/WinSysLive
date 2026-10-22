@@ -74,13 +74,14 @@ BEGIN
         MENUITEM "&Kernel Modules\tCtrl+6",     ID_VIEW_KERNELMODULES
         MENUITEM "&Drivers\tCtrl+7",            ID_VIEW_DRIVERS
         MENUITEM "RPC/&ALPC\tCtrl+8",           ID_VIEW_IPC
+        MENUITEM "&Zombie Processes\tCtrl+9",   ID_VIEW_ZOMBIES
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
         MENUITEM "&Keep Selection Visible",     ID_VIEW_KEEPSELECTIONVISIBLE
         POPUP "&Hide Processes"
         BEGIN
-            MENUITEM "Other &Users' Processes",    ID_VIEW_HIDEOTHERUSERS
+            MENUITEM "Other &Users' Processes",     ID_VIEW_HIDEOTHERUSERS
             MENUITEM "&Services",                   ID_VIEW_HIDESERVICES
             MENUITEM "&Windows Processes",          ID_VIEW_HIDEWINDOWS
             MENUITEM "Si&gned Processes",           ID_VIEW_HIDESIGNED
@@ -1001,6 +1002,7 @@ BEGIN
     "6",            ID_VIEW_KERNELMODULES,  VIRTKEY, CONTROL
     "7",            ID_VIEW_DRIVERS,        VIRTKEY, CONTROL
     "8",            ID_VIEW_IPC,            VIRTKEY, CONTROL
+    "9",            ID_VIEW_ZOMBIES,        VIRTKEY, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1019,8 +1021,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,0
- PRODUCTVERSION 1,0,0,0
+ FILEVERSION 1,2,0,0
+ PRODUCTVERSION 1,2,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1036,13 +1038,13 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
-            VALUE "FileDescription", "WinSysLive App"
-            VALUE "FileVersion", "1.0.0.0"
+            VALUE "FileDescription", "WinSysLive - Windows Live System Explorer"
+            VALUE "FileVersion", "1.2.0.0"
             VALUE "InternalName", "WinSysLive"
             VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
-            VALUE "ProductName", "WinSysLive Module"
-            VALUE "ProductVersion", "1.0.0.0"
+            VALUE "ProductName", "WinSysLive"
+            VALUE "ProductVersion", "1.2.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -1158,7 +1160,7 @@ BEGIN
     25, 0, 75, 40,
     25, 40, 0, 0,
     25, 40, 75, 60,
-    100, 0, 0, 0,
+    100, 0, 0, 0
 END
 
 IDD_PROC_GENERAL AFX_DIALOG_LAYOUT
@@ -1308,18 +1310,30 @@ END
 
 STRINGTABLE
 BEGIN
+    ID_FIND_WINDOW          "Drag onto a window to select the process that owns it\nFind Window's Process (drag onto a window)"
     ID_PROCESS_KILLTREE     "Terminate the selected process and all its descendants\nKill Process Tree"
     ID_PROCESS_RESTART      "Terminate the selected process and start it again with the same command line, directory and environment\nRestart"
     ID_PROCESS_EMPTYWORKINGSET 
                             "Remove all the pages from the selected process's working set\nReduce Working Set"
     ID_PROCESS_DEBUG        "Attach the registered debugger (AeDebug) to the selected process\nDebug"
     ID_VIEW_HIDEOTHERUSERS  "Hide the processes that run as other users\nHide Other Users' Processes"
+END
+
+STRINGTABLE
+BEGIN
     ID_VIEW_HIDESERVICES    "Hide the processes that host running services\nHide Services"
     ID_VIEW_HIDEWINDOWS     "Hide the processes whose executable is in the Windows directory, and the system's own\nHide Windows Processes"
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
+    ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
+    ID_IPC_GOTOCLIENT       "Select the client process in the Processes tab\nGo to Client"
+    ID_IPC_GOTOSERVER       "Select the server process in the Processes tab\nGo to Server"
+    ID_VIEW_ZOMBIES         "Show the processes that exited but are kept alive by open handles, and who holds them\nZombie Processes (Ctrl+9)"
+    ID_ZOMBIE_GOTOHOLDER    "Select the process holding the handle in the Processes tab\nGo to Holder"
+    ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
+    ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
 END
 
 STRINGTABLE
@@ -1345,11 +1359,6 @@ END
 
 STRINGTABLE
 BEGIN
-    ID_FIND_WINDOW          "Drag onto a window to select the process that owns it\nFind Window's Process (drag onto a window)"
-END
-
-STRINGTABLE
-BEGIN
     ID_VIEW_SELECTCOLUMNS   "Choose the columns of the list and their order\nSelect Columns"
     ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
@@ -1364,9 +1373,6 @@ BEGIN
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
     ID_VIEW_DRIVERS         "Show the driver services: kernel and file system drivers\nDrivers"
-    ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
-    ID_IPC_GOTOCLIENT       "Select the client process in the Processes tab\nGo to Client"
-    ID_IPC_GOTOSERVER       "Select the server process in the Processes tab\nGo to Server"
     ID_KMODULE_PROPERTIES   "Show the properties of the selected driver's file\nProperties"
     ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"

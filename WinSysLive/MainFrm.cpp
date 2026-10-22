@@ -36,6 +36,8 @@ namespace {
 		IDI_MODULE_IMAGE, IDI_MODULE_DATA,
 		// the Kernel Modules and Drivers tabs; Kernel Modules' drivers
 		IDI_ATOM, IDI_DRIVER, IDI_SYSTEM_DRIVER,
+		// the Zombie Processes tab
+		IDI_PROCESS_KILL,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
@@ -58,6 +60,7 @@ namespace {
 		{ ID_VIEW_KERNELMODULES, IDI_ATOM, BTNS_CHECK },
 		{ ID_VIEW_DRIVERS, IDI_DRIVER, BTNS_CHECK },
 		{ ID_VIEW_IPC, IDI_ALPC, BTNS_CHECK },
+		{ ID_VIEW_ZOMBIES, IDI_PROCESS_KILL, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 
@@ -1071,8 +1074,11 @@ int CMainFrame::GetIconIndex(UINT iconId) const {
 }
 
 int CMainFrame::GetProcessIcon(ProcessInfoEx& process) {
+	return GetProcessIcon(process.GetImagePath());
+}
+
+int CMainFrame::GetProcessIcon(std::wstring const& path) {
 	auto defaultIcon = GetIconIndex(IDI_PROCESS);
-	auto& path = process.GetImagePath();
 	if (path.empty())
 		return defaultIcon;
 

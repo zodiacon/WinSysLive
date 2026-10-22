@@ -7,6 +7,7 @@
 #include "NetworkView.h"
 #include "KernelModulesView.h"
 #include "IpcView.h"
+#include "ZombiesView.h"
 
 template<typename TView>
 static std::pair<IView*, CMessageMap*> DoCreateView(TView* view, HWND hParent) {
@@ -27,6 +28,7 @@ std::pair<IView*, CMessageMap*> CMainFrame::CreateView(TabType type) {
 		case TabType::KernelModules: return DoCreateView(new CKernelModulesView(this), m_Tabs);
 		case TabType::Drivers: return DoCreateView(new CServicesView(this, CServicesView::Kind::Drivers), m_Tabs);
 		case TabType::Ipc: return DoCreateView(new CIpcView(this), m_Tabs);
+		case TabType::Zombies: return DoCreateView(new CZombiesView(this), m_Tabs);
 	}
 	ATLASSERT(false);
 	return {};
