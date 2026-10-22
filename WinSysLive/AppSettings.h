@@ -28,6 +28,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(ModuleColumns, L"");
 		SETTING_STRING(HandleColumns, L"");
 		SETTING_STRING(NetworkColumns, L"");
+		SETTING_STRING(IpcColumns, L"");	// the RPC/ALPC tab
 		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
 		SETTING_STRING(DriverColumns, L"");	// the Kernel Modules tab's, from when it was the Drivers tab: read while KernelModuleColumns is empty
 		SETTING_STRING(DriverServiceColumns, L"");	// the Drivers tab (driver services)
@@ -74,6 +75,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ModuleColumns)
 	DEF_SETTING_STRING(HandleColumns)
 	DEF_SETTING_STRING(NetworkColumns)
+	DEF_SETTING_STRING(IpcColumns)
 	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(DriverColumns)
 	DEF_SETTING_STRING(DriverServiceColumns)

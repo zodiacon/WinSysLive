@@ -232,6 +232,9 @@
 #define ID_VIEW_HIDEMENU            32899
 #define ID_FILE_RUNLIMITED          32900
 #define ID_PROCESS_CRITICAL         32901
+#define ID_VIEW_IPC                 32902
+#define ID_IPC_GOTOCLIENT           32903
+#define ID_IPC_GOTOSERVER           32904
 #define IDC_RUN_PROMPT              1262
 #define IDD_SERVICE_GENERAL         263
 #define IDD_SERVICE_LOGON           264
@@ -452,6 +455,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	282
 #define _APS_NEXT_CONTROL_VALUE		1263
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32902
+#define _APS_NEXT_COMMAND_VALUE		32905
 #endif
 #endif

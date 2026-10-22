@@ -73,6 +73,7 @@ BEGIN
         MENUITEM "&Network\tCtrl+5",            ID_VIEW_NETWORK
         MENUITEM "&Kernel Modules\tCtrl+6",     ID_VIEW_KERNELMODULES
         MENUITEM "&Drivers\tCtrl+7",            ID_VIEW_DRIVERS
+        MENUITEM "RPC/&ALPC\tCtrl+8",           ID_VIEW_IPC
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -999,6 +1000,7 @@ BEGIN
     "5",            ID_VIEW_NETWORK,        VIRTKEY, CONTROL
     "6",            ID_VIEW_KERNELMODULES,  VIRTKEY, CONTROL
     "7",            ID_VIEW_DRIVERS,        VIRTKEY, CONTROL
+    "8",            ID_VIEW_IPC,            VIRTKEY, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1362,6 +1364,9 @@ BEGIN
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
     ID_VIEW_DRIVERS         "Show the driver services: kernel and file system drivers\nDrivers"
+    ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
+    ID_IPC_GOTOCLIENT       "Select the client process in the Processes tab\nGo to Client"
+    ID_IPC_GOTOSERVER       "Select the server process in the Processes tab\nGo to Server"
     ID_KMODULE_PROPERTIES   "Show the properties of the selected driver's file\nProperties"
     ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"

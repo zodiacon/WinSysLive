@@ -12,6 +12,7 @@ enum class TabType {
 	Network,
 	KernelModules,
 	Drivers,	// the driver services (the Services view for drivers)
+	Ipc,		// RPC/ALPC
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)

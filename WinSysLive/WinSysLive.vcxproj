@@ -443,6 +443,7 @@
     <ClCompile Include="ProcessesView.cpp" />
     <ClCompile Include="ServicesView.cpp" />
     <ClCompile Include="NetworkView.cpp" />
+    <ClCompile Include="IpcView.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
@@ -502,6 +503,7 @@
     <ClInclude Include="ProcessesView.h" />
     <ClInclude Include="ServicesView.h" />
     <ClInclude Include="NetworkView.h" />
+    <ClInclude Include="IpcView.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />

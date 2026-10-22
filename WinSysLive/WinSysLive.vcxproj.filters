@@ -81,6 +81,9 @@
     <ClCompile Include="NetworkView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="IpcView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="TrayIcon.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -244,6 +247,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="NetworkView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="IpcView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="TrayIcon.h">
