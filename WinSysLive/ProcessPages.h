@@ -138,6 +138,8 @@ public:
 		NOTIFY_HANDLER(IDC_TOKEN_GROUPS, LVN_COLUMNCLICK, OnColumnClick)
 		COMMAND_ID_HANDLER(IDC_TOKEN_LOWERINTEGRITY, OnLowerIntegrity)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
+		// before the layout's, which handles it too
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnDpiChanged)
 		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcTokenPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcTokenPage>)
 	END_MSG_MAP()
@@ -152,6 +154,10 @@ private:
 	LRESULT OnLowerIntegrity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the privileges list's: Enable or Disable the selected privilege
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the privileges' icons in the new size
+	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the enabled and disabled icons (PrivilegeImage order), for the page's DPI
+	void AddPrivilegeImages();
 
 	// the process's token with access (and TOKEN_QUERY); nullptr with the last error if it can't be opened
 	std::unique_ptr<WinSys::Token> OpenToken(WinSys::TokenAccessMask access) const;
@@ -162,6 +168,10 @@ private:
 
 	ProcessProperties const& m_Props;
 	CListViewCtrl m_Privileges, m_Groups;
+	// the privileges' state icons: an image list of the page's own, as the frame's belongs to the UI thread (the sheet
+	// runs on another); owned by the list
+	CImageList m_PrivilegeImages;
+	enum PrivilegeImage { EnabledImage, DisabledImage };
 	// the first column's sort direction; unsorted (the token's order) until its header is clicked
 	std::optional<bool> m_PrivilegesAscending, m_GroupsAscending;
 	// the privileges as listed; each row's item data is its index here

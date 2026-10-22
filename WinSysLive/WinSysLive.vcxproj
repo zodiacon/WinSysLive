@@ -540,6 +540,8 @@
     <Image Include="res\System.ico" />
     <Image Include="res\target.ico" />
     <Image Include="res\process-hide.ico" />
+    <Image Include="res\enabled.ico" />
+    <Image Include="res\disabled.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

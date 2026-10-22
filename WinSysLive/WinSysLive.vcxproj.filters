@@ -547,5 +547,11 @@
     <Image Include="res\process-hide.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\enabled.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\disabled.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
   </ItemGroup>
 </Project>

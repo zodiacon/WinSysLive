@@ -388,6 +388,10 @@ IDI_TARGET              ICON                    "res\\target.ico"
 
 IDI_PROCESS_HIDE        ICON                    "res\\process-hide.ico"
 
+IDI_ENABLED             ICON                    "res\\enabled.ico"
+
+IDI_DISABLED            ICON                    "res\\disabled.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

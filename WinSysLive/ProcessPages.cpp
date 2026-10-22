@@ -11,6 +11,8 @@
 #include <WinSys/LsaSecurity.h>
 #include <WTLHelper.h>
 #include <ClipboardHelper.h>
+#include <DpiHelper.h>
+#include <IconHelper.h>
 
 namespace {
 	void SetIconId(PROPSHEETPAGE& psp, UINT icon) {
@@ -413,6 +415,10 @@ CProcTokenPage::CProcTokenPage(ProcessProperties const& props) : m_Props(props) 
 LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	InitList(m_Privileges, GetDlgItem(IDC_TOKEN_PRIVS), { { L"Privilege", 190 }, { L"State", 110 }, { L"Description", 300 } });
 	InitList(m_Groups, GetDlgItem(IDC_TOKEN_GROUPS), { { L"Name", 260 }, { L"Attributes", 220 }, { L"Type", 110 }, { L"SID", 300 } });
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_PrivilegeImages.Create(size, size, ILC_COLOR32 | ILC_MASK, 2, 0);
+	AddPrivilegeImages();
+	m_Privileges.SetImageList(m_PrivilegeImages, LVSIL_SMALL);
 
 	// its source needs more access to the token
 	auto token = OpenToken(WinSys::TokenAccessMask::QuerySource);
@@ -645,6 +651,23 @@ void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
 	set(IDC_TOKEN_EXPIRES, expires <= 0 || expires >= Year2900 ? L"Never" : FormatHelper::FormatDateTime(expires));
 }
 
+void CProcTokenPage::AddPrivilegeImages() {
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	for (auto id : { IDI_ENABLED, IDI_DISABLED })
+		m_PrivilegeImages.AddIcon(IconHelper::LoadCached(id, size));
+}
+
+LRESULT CProcTokenPage::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// at the same indices; the list gets its image list again, so the rows take its height
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_PrivilegeImages.SetIconSize(size, size);
+	AddPrivilegeImages();
+	m_Privileges.SetImageList(m_PrivilegeImages, LVSIL_SMALL);
+	// the layout's too
+	bHandled = FALSE;
+	return 0;
+}
+
 void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
 	// the selection, by privilege
 	std::optional<LUID> selected;
@@ -663,7 +686,9 @@ void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
 		if (p.Name.empty() || !::LookupPrivilegeDisplayName(nullptr, p.Name.c_str(), description, &size, &language))
 			description[0] = 0;
 		AddRow(m_Privileges, { p.Name.empty() ? FormatLuid(p.Privilege) : p.Name, state, description });
-		m_Privileges.SetItemData(m_Privileges.GetItemCount() - 1, &p - privileges.data());
+		int row = m_Privileges.GetItemCount() - 1;
+		m_Privileges.SetItemData(row, &p - privileges.data());
+		m_Privileges.SetItem(row, 0, LVIF_IMAGE, nullptr, (attributes & SE_PRIVILEGE_ENABLED) ? EnabledImage : DisabledImage, 0, 0, 0);
 	}
 	SetDlgItemText(IDC_TOKEN_PRIVS_LABEL, std::format(L"Privileges ({}):", privileges.size()).c_str());
 	if (m_PrivilegesAscending)
