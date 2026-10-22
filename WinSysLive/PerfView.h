@@ -5,7 +5,7 @@
 #include "PerfNav.h"
 
 //
-// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, a page per drive and per GPU)
+// System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, I/O, a page per drive and per GPU)
 // and the selected page on the right.
 // Samples are taken on every refresh tick and handed to every page, also while the tab or the page is hidden,
 // so the history is there when it's shown.
@@ -43,7 +43,9 @@ private:
 	// per logical processor, across all processor groups
 	static std::vector<CpuTimes> GetCpuTimes();
 	void SampleCpu(PerfSample& sample);
-	void SampleMemory(PerfSample& sample);
+	void SampleMemory(PerfSample& sample, SYSTEM_PERFORMANCE_INFORMATION const* perf);
+	// rates from the previous call's counters (none on the first)
+	void SampleIo(PerfSample& sample, SYSTEM_PERFORMANCE_INFORMATION const* perf);
 	void SampleNetwork(PerfSample& sample);
 	void SampleDisks(PerfSample& sample);
 	void SampleGpus(PerfSample& sample);
@@ -59,7 +61,7 @@ private:
 
 	// the drive pages follow, from FirstDiskItem, in drive letter order (m_DiskLetters), then the GPU pages (in
 	// WinSys::GpuInfo::GetAdapters order), which move as drives come and go
-	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem, FirstDiskItem };
+	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem, IoItem, FirstDiskItem };
 	int FirstGpuItem() const;
 
 	CPerfNav m_Nav;
@@ -70,6 +72,13 @@ private:
 	int64_t m_PhysicalTotal{ 0 }, m_PageSize{ 0 };
 	// the memory lists (modified, standby, free) may need elevation; without them, the composition is in use/available
 	bool m_HasMemoryLists{ false };
+	// the system's I/O counters at the previous sample
+	struct IoCounters {
+		int64_t ReadBytes, WriteBytes, OtherBytes;
+		uint32_t ReadOps, WriteOps, OtherOps;	// 32-bit counters, which wrap around
+	};
+	IoCounters m_PrevIo{};
+	int64_t m_PrevIoTime{ 0 };	// QPC; 0: no previous sample
 	int m_Interval{ 0 };	// the update interval the time span text was built for
 	std::wstring m_TimeSpanText;
 	GraphCtrl::GraphTheme m_Theme;	// for pages created later

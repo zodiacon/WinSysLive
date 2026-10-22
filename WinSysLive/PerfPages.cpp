@@ -492,6 +492,66 @@ void CPerfNetworkPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 	}
 }
 //
+// I/O
+//
+
+void CPerfIoPage::CreateGraph(CGraphControl& graph, PCWSTR title, ValueFormatFn formatter) {
+	graph.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP);
+	graph.AddSeries(L"Read", SeriesStyle{ PerfColors::DiskRead, PerfColors::DiskRead });
+	graph.AddSeries(L"Write", SeriesStyle{ PerfColors::DiskWrite, PerfColors::DiskWrite });
+	graph.AddSeries(L"Other", SeriesStyle{ PerfColors::IoOther, PerfColors::IoOther });
+	graph.SetTitle(title);
+	graph.SetRange(0, 1000);
+	graph.SetAutoScale(true);
+	graph.SetValueFormatter(std::move(formatter));
+	graph.SetHistoryLength(PerfHistoryLength);
+}
+
+void CPerfIoPage::CreateGraphs() {
+	CreateGraph(m_Transfer, L"I/O Transfer Rate", Format::BytesPerSec);
+	CreateGraph(m_Operations, L"I/O Operations", [](float value, wchar_t* buffer, size_t cch) {
+		auto text = std::format(L"{}/s", FormatHelper::FormatNumber((int64_t)std::lround(value)));
+		wcsncpy_s(buffer, cch, text.c_str(), _TRUNCATE);
+	});
+	m_Lines.resize(1);
+}
+
+void CPerfIoPage::LayoutGraphs(CRect const& rc, int gap) {
+	int height = std::max(0, rc.Height() - gap);
+	int transferHeight = height * 55 / 100;
+	m_Transfer.MoveWindow(rc.left, rc.top, rc.Width(), transferHeight);
+	m_Operations.MoveWindow(rc.left, rc.top + transferHeight + gap, rc.Width(), height - transferHeight);
+}
+
+void CPerfIoPage::Sample(PerfSample const& sample) {
+	auto valid = [&](double value) { return sample.HasIo ? (float)value : MissingSample; };
+	float transfer[] = { valid(sample.IoRead), valid(sample.IoWrite), valid(sample.IoOther) };
+	m_Transfer.PushSamples(transfer, _countof(transfer));
+	float operations[] = { valid(sample.IoReadOps), valid(sample.IoWriteOps), valid(sample.IoOtherOps) };
+	m_Operations.PushSamples(operations, _countof(operations));
+	if (!sample.HasIo)
+		return;
+
+	auto ops = [](double value) { return FormatHelper::FormatNumber((int64_t)std::lround(value)); };
+	m_Lines[0] = std::format(L"Read: {} ({}/s)    Write: {} ({}/s)    Other: {} ({}/s)    Total: {} ({}/s)",
+		FormatRate(sample.IoRead), ops(sample.IoReadOps), FormatRate(sample.IoWrite), ops(sample.IoWriteOps),
+		FormatRate(sample.IoOther), ops(sample.IoOtherOps),
+		FormatRate(sample.IoRead + sample.IoWrite + sample.IoOther), ops(sample.IoReadOps + sample.IoWriteOps + sample.IoOtherOps));
+}
+
+void CPerfIoPage::ApplyTheme() {
+	m_Transfer.SetTheme(m_Theme);
+	m_Operations.SetTheme(m_Theme);
+}
+
+void CPerfIoPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
+	for (CGraphControl* graph : { &m_Transfer, &m_Operations }) {
+		graph->SetTimeSpanText(text);
+		graph->SetExpectedInterval(interval);
+	}
+}
+
+//
 // Disk
 //
 

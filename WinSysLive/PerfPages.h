@@ -52,6 +52,11 @@ struct PerfSample {
 	bool HasDisks{ false };	// at least one drive has counters
 	double DiskRead{ 0 }, DiskWrite{ 0 };	// all drives, bytes per second
 
+	// the I/O of all processes (files, devices, the network...), from the system's counters, per second
+	bool HasIo{ false };	// not on the first tick
+	double IoRead{ 0 }, IoWrite{ 0 }, IoOther{ 0 };	// bytes
+	double IoReadOps{ 0 }, IoWriteOps{ 0 }, IoOtherOps{ 0 };	// operations
+
 	// the GPUs, in WinSys::GpuInfo::GetAdapters order; owned by CPerfView and valid for the duration of the update
 	std::vector<WinSys::GpuTracker::AdapterSample> const* Gpus{ nullptr };
 	bool HasGpu{ false };	// the utilizations are valid (not on the first tick)
@@ -362,6 +367,27 @@ private:
 	UINT m_Interval{ 0 };
 	CRect m_GraphRect;	// from the last LayoutGraphs, for laying out again when adapters change
 	int m_Gap{ 0 };
+};
+
+//
+// I/O: the system-wide read, write and other (neither, such as device controls) transfer rates and operations per
+// second, of all processes: files, devices and the network alike.
+//
+class CPerfIoPage : public CPerfPage<CPerfIoPage> {
+public:
+	DECLARE_WND_CLASS_EX(L"WinSysLivePerfIo", CS_HREDRAW | CS_VREDRAW, -1)
+
+	void CreateGraphs();
+	void LayoutGraphs(CRect const& rc, int gap);
+	void Sample(PerfSample const& sample);
+	void ApplyTheme();
+	void ApplyTimeSpan(std::wstring const& text, UINT interval);
+
+private:
+	// read, write and other series, auto-scaled
+	void CreateGraph(GraphCtrl::CGraphControl& graph, PCWSTR title, GraphCtrl::ValueFormatFn formatter);
+
+	GraphCtrl::CGraphControl m_Transfer, m_Operations;
 };
 //
 // A GPU: a graph per engine (3D, Copy, Video Decode...: the busiest node of each), and its dedicated and shared memory.

@@ -35,17 +35,21 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	m_Nav.AddItem(L"CPU", PerfColors::User, CPerfNav::GraphType::Percent);
 	m_Nav.AddItem(L"Memory", PerfColors::Memory, CPerfNav::GraphType::Percent);
 	m_Nav.AddItem(L"Network", PerfColors::Receive, CPerfNav::GraphType::AutoScale);
+	m_Nav.AddItem(L"I/O", PerfColors::DiskRead, CPerfNav::GraphType::AutoScale);
 
 	m_Pages.push_back(std::make_unique<CPerfSummaryPage>(m_PhysicalTotal));
 	m_Pages.push_back(std::make_unique<CPerfCpuPage>(m_PrevCpu.size()));
 	m_Pages.push_back(std::make_unique<CPerfMemoryPage>(m_PhysicalTotal, m_HasMemoryLists));
 	m_Pages.push_back(std::make_unique<CPerfNetworkPage>());
+	m_Pages.push_back(std::make_unique<CPerfIoPage>());
 	for (auto& page : m_Pages)
 		page->CreatePage(m_hWnd);
 
 	UpdateTimeSpan();
 	PerfSample sample;
-	SampleMemory(sample);
+	auto perf = SystemInfo::GetPerformanceInformation();
+	SampleMemory(sample, perf ? &*perf : nullptr);
+	SampleIo(sample, perf ? &*perf : nullptr);	// the baseline for the rates
 	SampleNetwork(sample);	// the first update sets the baseline: all rates are 0
 	SampleDisks(sample);	// creates the drive pages
 	// a page per GPU, after the drives; the first sample is the baseline for the utilizations
@@ -91,7 +95,9 @@ void CPerfView::OnRefresh(bool active) {
 	UpdateTimeSpan();
 	PerfSample sample;
 	SampleCpu(sample);
-	SampleMemory(sample);
+	auto perf = SystemInfo::GetPerformanceInformation();
+	SampleMemory(sample, perf ? &*perf : nullptr);
+	SampleIo(sample, perf ? &*perf : nullptr);
 	SampleNetwork(sample);
 	SampleDisks(sample);
 	SampleGpus(sample);
@@ -136,8 +142,33 @@ void CPerfView::SampleCpu(PerfSample& sample) {
 	sample.HasCpu = true;
 }
 
-void CPerfView::SampleMemory(PerfSample& sample) {
-	auto perf = SystemInfo::GetPerformanceInformation();
+void CPerfView::SampleIo(PerfSample& sample, SYSTEM_PERFORMANCE_INFORMATION const* perf) {
+	if (!perf)
+		return;
+	LARGE_INTEGER now, frequency;
+	::QueryPerformanceCounter(&now);
+	::QueryPerformanceFrequency(&frequency);
+	IoCounters io{ perf->IoReadTransferCount.QuadPart, perf->IoWriteTransferCount.QuadPart, perf->IoOtherTransferCount.QuadPart,
+		perf->IoReadOperationCount, perf->IoWriteOperationCount, perf->IoOtherOperationCount };
+	if (m_PrevIoTime) {
+		auto seconds = double(now.QuadPart - m_PrevIoTime) / frequency.QuadPart;
+		if (seconds > 0) {
+			auto rate = [&](int64_t current, int64_t previous) { return std::max(0.0, double(current - previous) / seconds); };
+			sample.IoRead = rate(io.ReadBytes, m_PrevIo.ReadBytes);
+			sample.IoWrite = rate(io.WriteBytes, m_PrevIo.WriteBytes);
+			sample.IoOther = rate(io.OtherBytes, m_PrevIo.OtherBytes);
+			// unsigned subtraction: right across a wrap-around
+			sample.IoReadOps = uint32_t(io.ReadOps - m_PrevIo.ReadOps) / seconds;
+			sample.IoWriteOps = uint32_t(io.WriteOps - m_PrevIo.WriteOps) / seconds;
+			sample.IoOtherOps = uint32_t(io.OtherOps - m_PrevIo.OtherOps) / seconds;
+			sample.HasIo = true;
+		}
+	}
+	m_PrevIo = io;
+	m_PrevIoTime = now.QuadPart;
+}
+
+void CPerfView::SampleMemory(PerfSample& sample, SYSTEM_PERFORMANCE_INFORMATION const* perf) {
 	if (!perf || m_PageSize == 0)
 		return;
 
@@ -256,6 +287,13 @@ void CPerfView::UpdateNav(PerfSample const& sample) {
 		m_Nav.PushItemSample(NetworkItem, (float)(sample.NetReceive + sample.NetSend));
 		m_Nav.SetItemValue(NetworkItem, std::format(L"R: {}  S: {}", receive, send));
 	}
+	if (sample.HasIo) {
+		wchar_t read[32], write[32];
+		Format::BytesPerSec((float)sample.IoRead, read, _countof(read));
+		Format::BytesPerSec((float)sample.IoWrite, write, _countof(write));
+		m_Nav.PushItemSample(IoItem, (float)(sample.IoRead + sample.IoWrite + sample.IoOther));
+		m_Nav.SetItemValue(IoItem, std::format(L"R: {}  W: {}", read, write));
+	}
 	for (auto& v : *sample.Disks) {
 		int index = FirstDiskItem + int(std::ranges::find(m_DiskLetters, v.Letter) - m_DiskLetters.begin());
 		if (!v.HasPerformance) {
@@ -308,6 +346,7 @@ std::wstring CPerfView::PageKey(int index) const {
 		case CpuItem: return L"CPU";
 		case MemoryItem: return L"Memory";
 		case NetworkItem: return L"Network";
+		case IoItem: return L"IO";
 	}
 	if (index >= FirstDiskItem && index < FirstGpuItem())
 		return std::wstring(L"Disk:") + m_DiskLetters[index - FirstDiskItem];
