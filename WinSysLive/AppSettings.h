@@ -6,7 +6,8 @@ struct AppSettings : Settings {
 	BEGIN_SETTINGS(AppSettings)
 		SETTING(DarkMode, 0, SettingType::Bool);
 		SETTING(UpdateInterval, 1000, SettingType::Int32);
-		SETTING(ActiveTab, 0, SettingType::Int32);
+		SETTING(ActiveTab, 0, SettingType::Int32);	// among the open tabs
+		SETTING_STRING(Tabs, L"Processes,Performance,Services");	// the open tabs' keys (CMainFrame::s_Tabs), in tab order
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
 		SETTING(ToolBar, 1, SettingType::Bool);	// View > Toolbar
 		SETTING(StatusBar, 1, SettingType::Bool);	// View > Status Bar
@@ -55,6 +56,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(DarkMode, int)
 	DEF_SETTING(UpdateInterval, int)
 	DEF_SETTING(ActiveTab, int)
+	DEF_SETTING_STRING(Tabs)
 	DEF_SETTING(ProcessTreeMode, int)
 	DEF_SETTING(ToolBar, int)
 	DEF_SETTING(StatusBar, int)

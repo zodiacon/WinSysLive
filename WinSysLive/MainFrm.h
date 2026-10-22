@@ -13,15 +13,26 @@
 #include "TrayIcon.h"
 #include "WindowFinder.h"
 
-// tabs are fixed, so no close button; the image list is the frame's shared one
+// the tabs have close buttons (the frame decides, TBVN_TABCLOSEBTN), but the fixed page (Processes) none; the image
+// list is the frame's shared one
 class CMainTabView : public CNativeCustomTabViewImpl<CMainTabView> {
 public:
 	DECLARE_WND_CLASS_EX(_T("WinSysLive_TabView"), 0, COLOR_APPWORKSPACE)
 
 	CMainTabView() {
-		m_bTabCloseButton = false;
 		m_bDestroyImageList = false;
 	}
+
+	// the base's, except for the fixed page: an empty rectangle, so its button can't be seen or clicked
+	void CalcCloseButtonRect(int nItem, RECT& rcClose) {
+		if (GetPageHWND(nItem) == FixedPage) {
+			::SetRectEmpty(&rcClose);
+			return;
+		}
+		CNativeCustomTabViewImpl::CalcCloseButtonRect(nItem, rcClose);
+	}
+
+	HWND FixedPage{ nullptr };
 };
 
 class CMainFrame :
@@ -55,6 +66,7 @@ public:
 		MESSAGE_HANDLER(s_TaskbarCreated, OnTaskbarCreated)
 		MESSAGE_HANDLER(ActivateMessage, OnActivateMessage)
 		NOTIFY_CODE_HANDLER(TBVN_PAGEACTIVATED, OnPageActivated)
+		NOTIFY_CODE_HANDLER(TBVN_TABCLOSEBTN, OnTabClose)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipText)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_FILE_RUNASADMIN, OnRunAsAdmin)
@@ -105,6 +117,8 @@ public:
 	LRESULT OnEndSession(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnPageActivated(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// a tab's close button: 0 lets the tab view remove the page (and destroy the view), 1 keeps it
+	LRESULT OnTabClose(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnToolTipText(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRun(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -156,25 +170,47 @@ private:
 	void GoToProcess(uint32_t pid) override;
 	void GoToKernelModule(std::wstring const& path) override;
 	void GoToDriver(std::wstring const& path) override;
-	// switches to the tab; its view
+	// switches to the tab, opening it if it's closed; its view
 	IView* ActivateTab(TabType type);
 
 	struct TabInfo {
 		TabType Type;
 		UINT CommandId;
 		UINT Icon;
+		PCWSTR Key;	// in the Tabs setting; must not change
 	};
-	// one entry per tab, in tab order; each command also needs a COMMAND_ID_HANDLER for OnViewTab
+	// one entry per tab, in the View menu's order; each command also needs a COMMAND_ID_HANDLER for OnViewTab. Only
+	// Processes is always open; the others are opened and closed (the Tabs setting has the open ones, in tab order)
 	static constexpr TabInfo s_Tabs[] = {
-		{ TabType::Processes, ID_VIEW_PROCESSES, IDI_PROCESSES },
-		{ TabType::Services, ID_VIEW_SERVICES, IDI_SERVICES },
-		{ TabType::Performance, ID_VIEW_PERFORMANCE, IDI_PERFORMANCE },
-		{ TabType::Users, ID_VIEW_USERS, IDI_USERS },
-		{ TabType::Network, ID_VIEW_NETWORK, IDI_NETWORK },
-		{ TabType::KernelModules, ID_VIEW_KERNELMODULES, IDI_ATOM },
-		{ TabType::Drivers, ID_VIEW_DRIVERS, IDI_DRIVER },
-		{ TabType::Ipc, ID_VIEW_IPC, IDI_ALPC },
+		{ TabType::Processes, ID_VIEW_PROCESSES, IDI_PROCESSES, L"Processes" },
+		{ TabType::Services, ID_VIEW_SERVICES, IDI_SERVICES, L"Services" },
+		{ TabType::Performance, ID_VIEW_PERFORMANCE, IDI_PERFORMANCE, L"Performance" },
+		{ TabType::Users, ID_VIEW_USERS, IDI_USERS, L"Users" },
+		{ TabType::Network, ID_VIEW_NETWORK, IDI_NETWORK, L"Network" },
+		{ TabType::KernelModules, ID_VIEW_KERNELMODULES, IDI_ATOM, L"KernelModules" },
+		{ TabType::Drivers, ID_VIEW_DRIVERS, IDI_DRIVER, L"Drivers" },
+		{ TabType::Ipc, ID_VIEW_IPC, IDI_ALPC, L"Ipc" },
 	};
+	static TabInfo const* FindTab(TabType type);
+
+	// an open tab; the tab view's pages are found by their windows, as dragging reorders them
+	struct OpenView {
+		TabType Type;
+		IView* View;
+	};
+	OpenView const* GetPageView(int page) const;
+	// the page with the tab type, or -1 if it's closed
+	int FindPage(TabType type) const;
+	// creates the view and adds its tab (activated); its view
+	IView* OpenTab(TabType type);
+	// removes the tab, which destroys its view (not Processes)
+	void CloseTab(int page);
+	// before a page is removed: the frame stops talking to its view
+	void ForgetView(int page);
+	// the View menu's and the toolbar's check marks: the open tabs
+	void UpdateTabCommands();
+	// the open tabs, in tab order, into the Tabs setting
+	void SaveTabs();
 
 	struct IntervalInfo {
 		UINT CommandId;
@@ -236,7 +272,9 @@ private:
 	CImageListManaged m_Images;
 	std::unordered_map<UINT, int> m_IconIndices;
 	std::unordered_map<std::wstring, int> m_ProcessIcons;	// image path (lowercase) to image list index
-	std::vector<IView*> m_Views;	// index == tab index
+	std::vector<OpenView> m_Views;	// the open tabs' views, in no particular order
+	IView* m_ActiveView{ nullptr };
+	bool m_Started{ false };	// OnCreate is done: a view opened from now on gets the theme and font itself
 	std::wstring m_TipText;	// a toolbar tooltip from the active view (OnToolTipText)
 	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
@@ -245,7 +283,6 @@ private:
 	std::optional<std::wstring> m_FinderSavedStatus;	// the status text before the drag, restored after it
 	static inline UINT const s_TaskbarCreated = ::RegisterWindowMessage(L"TaskbarCreated");
 	ProcessManager m_ProcessManager;
-	int m_ActivePage{ -1 };
 	bool m_Paused{ false };
 	bool m_CpuValid{ false };
 };

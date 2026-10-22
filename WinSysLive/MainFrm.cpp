@@ -48,6 +48,16 @@ namespace {
 		{ ID_KILL, IDI_DELETE },	// the process, thread or handle selected in the list with the focus
 		{ 0 },
 		{ ID_FIND_WINDOW, IDI_TARGET },	// dragged onto a window, not clicked (CWindowFinder)
+		{ 0 },
+		// the tabs, as their View menu commands (checked: open); in CMainFrame::s_Tabs order
+		{ ID_VIEW_PROCESSES, IDI_PROCESSES, BTNS_CHECK },
+		{ ID_VIEW_SERVICES, IDI_SERVICES, BTNS_CHECK },
+		{ ID_VIEW_PERFORMANCE, IDI_PERFORMANCE, BTNS_CHECK },
+		{ ID_VIEW_USERS, IDI_USERS, BTNS_CHECK },
+		{ ID_VIEW_NETWORK, IDI_NETWORK, BTNS_CHECK },
+		{ ID_VIEW_KERNELMODULES, IDI_ATOM, BTNS_CHECK },
+		{ ID_VIEW_DRIVERS, IDI_DRIVER, BTNS_CHECK },
+		{ ID_VIEW_IPC, IDI_ALPC, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 
@@ -103,8 +113,8 @@ LRESULT CMainFrame::OnToolTipText(int idCtrl, LPNMHDR hdr, BOOL& bHandled) {
 		bHandled = FALSE;
 		return 0;
 	}
-	if (m_ActivePage >= 0 && m_ActivePage < (int)m_Views.size())
-		m_TipText = m_Views[m_ActivePage]->GetCommandTip(idCtrl);
+	if (m_ActiveView)
+		m_TipText = m_ActiveView->GetCommandTip(idCtrl);
 	if (m_TipText.empty())
 		m_TipText = L"Kill (Del)";
 	// never with TTF_DI_SETITEM (as CFrameWindowImpl's handler sets it), so the tooltip asks every time: the text a
@@ -115,8 +125,8 @@ LRESULT CMainFrame::OnToolTipText(int idCtrl, LPNMHDR hdr, BOOL& bHandled) {
 
 BOOL CMainFrame::OnIdle() {
 	// the active view's commands may depend on the focus, which changes without telling the views
-	if (m_ActivePage >= 0 && m_ActivePage < (int)m_Views.size())
-		m_Views[m_ActivePage]->OnFrameIdle();
+	if (m_ActiveView)
+		m_ActiveView->OnFrameIdle();
 	bool list = GetExportList() != nullptr;
 	UIEnable(ID_FILE_EXPORT, list);
 	UIEnable(ID_EDIT_COPYALL, list);
@@ -186,6 +196,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
 	UIEnable(ID_OPTIONS_REPLACETASKMANAGER, elevated);
 
+	m_Started = true;
 	return 0;
 }
 
@@ -236,8 +247,8 @@ LRESULT CMainFrame::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam
 	if (!m_Font.IsNull())
 		ApplyFont();
 	auto dpi = DpiHelper::GetDpi(m_hWnd);
-	for (auto view : m_Views)
-		view->OnDpiChanged(dpi);
+	for (auto& v : m_Views)
+		v.View->OnDpiChanged(dpi);
 	UpdateLayout();
 	return 0;
 }
@@ -518,14 +529,121 @@ void CMainFrame::InitStatusBar() {
 }
 
 void CMainFrame::CreateTabs() {
-	for (auto& tab : s_Tabs) {
-		auto [view, map] = CreateView(tab.Type);
-		ATLASSERT(view);
-		m_Tabs.AddPage(view->GetHwnd(), view->GetTitle(), GetIconIndex(tab.Icon), map);
-		m_Views.push_back(view);
+	// the open tabs by their keys, in tab order; Processes is always there (first, if the setting lacks it)
+	std::vector<TabType> types{ TabType::Processes };
+	std::wstring keys = AppSettings::Get().Tabs();
+	for (size_t start = 0; start <= keys.size(); ) {
+		auto end = keys.find(L',', start);
+		if (end == std::wstring::npos)
+			end = keys.size();
+		auto key = keys.substr(start, end - start);
+		start = end + 1;
+		auto tab = std::ranges::find_if(s_Tabs, [&](auto& t) { return key == t.Key; });
+		if (tab == std::end(s_Tabs))
+			continue;
+		if (tab->Type == TabType::Processes)
+			// where the setting has it
+			std::erase(types, TabType::Processes);
+		if (!std::ranges::contains(types, tab->Type))
+			types.push_back(tab->Type);
 	}
+	if (!std::ranges::contains(types, TabType::Processes))
+		types.insert(types.begin(), TabType::Processes);
+
+	for (auto type : types)
+		OpenTab(type);
+	for (auto& v : m_Views)
+		if (v.Type == TabType::Processes)
+			m_Tabs.FixedPage = v.View->GetHwnd();
 	int active = AppSettings::Get().ActiveTab();
-	m_Tabs.SetActivePage(active >= 0 && active < (int)m_Views.size() ? active : 0);
+	m_Tabs.SetActivePage(active >= 0 && active < m_Tabs.GetPageCount() ? active : 0);
+	UpdateTabCommands();
+}
+
+CMainFrame::TabInfo const* CMainFrame::FindTab(TabType type) {
+	auto tab = std::ranges::find(s_Tabs, type, &TabInfo::Type);
+	return tab == std::end(s_Tabs) ? nullptr : &*tab;
+}
+
+CMainFrame::OpenView const* CMainFrame::GetPageView(int page) const {
+	if (page < 0 || page >= m_Tabs.GetPageCount())
+		return nullptr;
+	auto hWnd = m_Tabs.GetPageHWND(page);
+	auto it = std::ranges::find_if(m_Views, [&](auto& v) { return v.View->GetHwnd() == hWnd; });
+	return it == m_Views.end() ? nullptr : &*it;
+}
+
+int CMainFrame::FindPage(TabType type) const {
+	for (int i = 0; i < m_Tabs.GetPageCount(); i++)
+		if (auto v = GetPageView(i); v && v->Type == type)
+			return i;
+	return -1;
+}
+
+IView* CMainFrame::OpenTab(TabType type) {
+	auto tab = FindTab(type);
+	auto [view, map] = CreateView(type);
+	ATLASSERT(view);
+	// known before the page is added, which activates it (TBVN_PAGEACTIVATED)
+	m_Views.push_back({ type, view });
+	// a view opened later gets what the others got at startup (OnCreate)
+	if (m_Started) {
+		view->OnThemeChanged(AppSettings::Get().DarkMode());
+		if (!m_Font.IsNull())
+			view->OnFontChanged(m_Font);
+	}
+	m_Tabs.AddPage(view->GetHwnd(), view->GetTitle(), GetIconIndex(tab->Icon), map);
+	return view;
+}
+
+void CMainFrame::ForgetView(int page) {
+	auto v = GetPageView(page);
+	if (!v)
+		return;
+	auto view = v->View;
+	if (view == m_ActiveView) {
+		view->OnActivate(false);
+		m_ActiveView = nullptr;
+	}
+	std::erase_if(m_Views, [&](auto& open) { return open.View == view; });
+}
+
+void CMainFrame::CloseTab(int page) {
+	auto v = GetPageView(page);
+	if (!v || v->Type == TabType::Processes)
+		return;
+	ForgetView(page);
+	// the tab view destroys the page's window, and the view deletes itself
+	m_Tabs.RemovePage(page);
+	UpdateTabCommands();
+	SaveTabs();
+}
+
+LRESULT CMainFrame::OnTabClose(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	int page = (int)hdr->idFrom;
+	auto v = GetPageView(page);
+	if (!v || v->Type == TabType::Processes)
+		return 1;
+	ForgetView(page);
+	// the tab view removes the page once this returns: the page without a view is left out of both
+	UpdateTabCommands();
+	SaveTabs();
+	return 0;
+}
+
+void CMainFrame::UpdateTabCommands() {
+	for (auto& tab : s_Tabs)
+		UISetCheck(tab.CommandId, std::ranges::contains(m_Views, tab.Type, &OpenView::Type));
+}
+
+void CMainFrame::SaveTabs() {
+	std::wstring keys;
+	for (int i = 0; i < m_Tabs.GetPageCount(); i++)
+		if (auto v = GetPageView(i))
+			keys += (keys.empty() ? L"" : L",") + std::wstring(FindTab(v->Type)->Key);
+	auto& settings = AppSettings::Get();
+	settings.Tabs(keys);
+	settings.Save();
 }
 
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
@@ -536,7 +654,7 @@ LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	// the views delete themselves as their windows are destroyed, and the tab view activates pages while
 	// removing them (TBVN_PAGEACTIVATED), so stop talking to the views now
 	m_Views.clear();
-	m_ActivePage = -1;
+	m_ActiveView = nullptr;
 
 	// unregister message filtering and idle updates
 	CMessageLoop* pLoop = _Module.GetMessageLoop();
@@ -553,8 +671,8 @@ LRESULT CMainFrame::OnEndSession(UINT /*uMsg*/, WPARAM ending, LPARAM /*lParam*/
 	// what they'd save as they're destroyed
 	if (ending) {
 		KillTimer(TimerId);
-		for (auto view : m_Views)
-			view->SaveSettings();
+		for (auto& v : m_Views)
+			v.View->SaveSettings();
 		SaveSettings();
 	}
 	return 0;
@@ -571,8 +689,8 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& b
 
 void CMainFrame::Refresh() {
 	m_ProcessManager.Update();
-	for (int i = 0; i < (int)m_Views.size(); i++)
-		m_Views[i]->OnRefresh(i == m_ActivePage);
+	for (auto& v : m_Views)
+		v.View->OnRefresh(v.View == m_ActiveView);
 	UpdateStatusBar();
 }
 
@@ -627,21 +745,23 @@ void CMainFrame::SetPaused(bool paused) {
 void CMainFrame::SaveSettings() {
 	auto& settings = AppSettings::Get();
 	settings.SaveWindowPosition(m_hWnd, AppSettings::MainWindowPlacement);
-	settings.ActiveTab(m_ActivePage);
+	settings.ActiveTab(m_Tabs.GetActivePage());
 	settings.Save();
+	// dragging may have reordered them
+	SaveTabs();
 }
 
 LRESULT CMainFrame::OnPageActivated(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
-	int page = static_cast<int>(hdr->idFrom);
-	if (m_ActivePage >= 0 && m_ActivePage < (int)m_Views.size())
-		m_Views[m_ActivePage]->OnActivate(false);
-	m_ActivePage = page;
-	if (page >= 0 && page < (int)m_Views.size())
-		m_Views[page]->OnActivate(true);
-
-	for (int i = 0; i < _countof(s_Tabs); i++)
-		UISetCheck(s_Tabs[i].CommandId, i == page);
-
+	// by the view, not the index: removing a page and dragging tabs shift the indices
+	auto v = GetPageView(static_cast<int>(hdr->idFrom));
+	auto view = v ? v->View : nullptr;
+	if (view == m_ActiveView)
+		return 0;
+	if (m_ActiveView)
+		m_ActiveView->OnActivate(false);
+	m_ActiveView = view;
+	if (view)
+		view->OnActivate(true);
 	return 0;
 }
 
@@ -726,11 +846,20 @@ LRESULT CMainFrame::OnUpdateInterval(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 }
 
 LRESULT CMainFrame::OnViewTab(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	for (int i = 0; i < _countof(s_Tabs); i++)
-		if (s_Tabs[i].CommandId == id) {
-			m_Tabs.SetActivePage(i);
-			break;
-		}
+	// a closed tab opens; an open one becomes active, and the active one closes (except Processes)
+	auto tab = std::ranges::find(s_Tabs, (UINT)id, &TabInfo::CommandId);
+	if (tab == std::end(s_Tabs))
+		return 0;
+	int page = FindPage(tab->Type);
+	if (page < 0) {
+		OpenTab(tab->Type);
+		UpdateTabCommands();
+		SaveTabs();
+	}
+	else if (page != m_Tabs.GetActivePage())
+		m_Tabs.SetActivePage(page);
+	else
+		CloseTab(page);
 	return 0;
 }
 
@@ -789,8 +918,8 @@ LRESULT CMainFrame::OnProcessColors(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 	if (dlg.DoModal(m_hWnd) != IDOK)
 		return 0;
 	ProcessColors::Save(dlg.GetEntries());
-	for (auto view : m_Views)
-		view->OnProcessColorsChanged();
+	for (auto& v : m_Views)
+		v.View->OnProcessColorsChanged();
 	return 0;
 }
 
@@ -817,9 +946,9 @@ LRESULT CMainFrame::OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 }
 
 HWND CMainFrame::GetExportList() {
-	if (m_ActivePage < 0 || m_ActivePage >= (int)m_Views.size())
+	auto view = m_ActiveView;
+	if (!view)
 		return nullptr;
-	auto view = m_Views[m_ActivePage];
 	auto focus = ::GetFocus();
 	WCHAR className[32];
 	if (focus && ::IsChild(view->GetHwnd(), focus) && ::GetClassName(focus, className, _countof(className))
@@ -829,7 +958,7 @@ HWND CMainFrame::GetExportList() {
 }
 
 std::vector<std::vector<std::wstring>> CMainFrame::GetExportRows(HWND hList) {
-	auto view = m_Views[m_ActivePage];
+	auto view = m_ActiveView;
 	// a TreeListView's tree column comes from the view
 	if (view->GetTreeColumnText(hList, 0))
 		return ListExport::GetRows(hList, [&](int row) { return view->GetTreeColumnText(hList, row).value_or(L""); });
@@ -842,7 +971,7 @@ LRESULT CMainFrame::OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 		return 0;
 	// read before the dialog: the list goes on changing while it's open
 	auto rows = GetExportRows(hList);
-	CString title = m_Views[m_ActivePage]->GetTitle();
+	CString title = m_ActiveView->GetTitle();
 	SuspendResumeHook sr;
 	CSimpleFileDialog dlg(FALSE, L"csv", title + L".csv", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
 		L"CSV Files (*.csv)\0*.csv\0Text Files, Tab Separated (*.txt)\0*.txt\0", m_hWnd);
@@ -891,8 +1020,8 @@ void CMainFrame::ApplyFont() {
 	// the views switch to the new font before the old one is deleted
 	CFont font;
 	font.CreateFontIndirect(&lf);
-	for (auto view : m_Views)
-		view->OnFontChanged(font);
+	for (auto& v : m_Views)
+		v.View->OnFontChanged(font);
 	m_Font.Attach(font.Detach());
 }
 
@@ -904,8 +1033,8 @@ void CMainFrame::SetDarkMode(bool dark) {
 
 	CStatusBarCtrl(m_hWndStatusBar).SetBkColor(dark ? DarkMode::getBackgroundColor() : CLR_DEFAULT);
 
-	for (auto view : m_Views)
-		view->OnThemeChanged(dark);
+	for (auto& v : m_Views)
+		v.View->OnThemeChanged(dark);
 
 	::EnumThreadWindows(::GetCurrentThreadId(), [](auto h, auto) {
 		::RedrawWindow(h, nullptr, nullptr, RDW_ERASENOW | RDW_INTERNALPAINT | RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
@@ -963,12 +1092,16 @@ ProcessManager& CMainFrame::GetProcessManager() {
 }
 
 IView* CMainFrame::ActivateTab(TabType type) {
-	for (int i = 0; i < _countof(s_Tabs); i++)
-		if (s_Tabs[i].Type == type && i < (int)m_Views.size()) {
-			m_Tabs.SetActivePage(i);
-			return m_Views[i];
-		}
-	return nullptr;
+	int page = FindPage(type);
+	if (page < 0) {
+		// opening it activates it
+		auto view = OpenTab(type);
+		UpdateTabCommands();
+		SaveTabs();
+		return view;
+	}
+	m_Tabs.SetActivePage(page);
+	return GetPageView(page)->View;
 }
 
 void CMainFrame::GoToKernelModule(std::wstring const& path) {
@@ -1011,11 +1144,6 @@ void CMainFrame::OnWindowFound(HWND hWnd) {
 }
 
 void CMainFrame::GoToProcess(uint32_t pid) {
-	for (int i = 0; i < _countof(s_Tabs); i++) {
-		if (s_Tabs[i].Type == TabType::Processes) {
-			m_Tabs.SetActivePage(i);
-			m_Views[i]->ShowProcess(pid);
-			break;
-		}
-	}
+	if (auto view = ActivateTab(TabType::Processes))
+		view->ShowProcess(pid);
 }
