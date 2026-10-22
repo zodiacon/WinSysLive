@@ -53,7 +53,7 @@ IDR_MAINFRAME MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&Run...\tCtrl+R",              ID_FILE_RUN
+        MENUITEM "&Run...\tCtrl+R",             ID_FILE_RUN
         MENUITEM "Run &As...",                  ID_FILE_RUNAS
         MENUITEM SEPARATOR
         MENUITEM "Run as &Administrator",       ID_FILE_RUNASADMIN
@@ -158,7 +158,7 @@ BEGIN
     END
     POPUP "&Help"
     BEGIN
-        MENUITEM "&About WinSysLive",           ID_APP_ABOUT
+        MENUITEM "&About WinSysLive...",        ID_APP_ABOUT
     END
 END
 
@@ -362,6 +362,7 @@ IDI_ATOM                ICON                    "res\\atom.ico"
 IDI_DRIVER              ICON                    "res\\Driver.ico"
 
 IDI_SYSTEM_DRIVER       ICON                    "res\\System.ico"
+
 IDI_TARGET              ICON                    "res\\target.ico"
 
 
@@ -487,7 +488,8 @@ BEGIN
     LTEXT           "Virtualization:",IDC_STATIC,144,278,50,9
     EDITTEXT        IDC_TOKEN_VIRTUALIZATION,196,276,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Integrity level:",IDC_STATIC,14,292,58,9
-    EDITTEXT        IDC_TOKEN_INTEGRITY,74,290,196,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_INTEGRITY,74,290,150,12,ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "&Lower...",IDC_TOKEN_LOWERINTEGRITY,228,289,42,14
     LTEXT           "Elevation type:",IDC_STATIC,14,306,58,9
     EDITTEXT        IDC_TOKEN_ELEVATIONTYPE,74,304,196,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Mandatory policy:",IDC_STATIC,14,320,58,9
@@ -769,7 +771,7 @@ BEGIN
     LTEXT           "&Account:",IDC_STATIC,7,136,70,9
     EDITTEXT        IDC_SVCI_ACCOUNT,80,134,203,12,ES_AUTOHSCROLL
     LTEXT           "Pass&word:",IDC_STATIC,7,154,70,9
-    EDITTEXT        IDC_SVCI_PASSWORD,80,152,203,12,ES_AUTOHSCROLL | ES_PASSWORD
+    EDITTEXT        IDC_SVCI_PASSWORD,80,152,203,12,ES_PASSWORD | ES_AUTOHSCROLL
     LTEXT           "Dependen&cies:",IDC_STATIC,7,172,70,9
     EDITTEXT        IDC_SVCI_DEPENDENCIES,80,170,203,12,ES_AUTOHSCROLL
     LTEXT           "Empty account: LocalSystem (else NT AUTHORITY\\LocalService, .\\user, DOMAIN\\user...). Dependencies: separated by semicolons, +Name for a load order group.",IDC_STATIC,80,186,203,27
@@ -825,7 +827,8 @@ BEGIN
     LTEXT           "Pass&word:",IDC_STATIC,7,56,42,9
     EDITTEXT        IDC_RUNAS_PASSWORD,52,54,221,13,ES_PASSWORD | ES_AUTOHSCROLL
     CONTROL         "&Load the user's profile",IDC_RUNAS_PROFILE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,52,74,221,10
-    CONTROL         "Use the credentials for &network access only",IDC_RUNAS_NETONLY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,52,88,221,10
+    CONTROL         "Use the credentials for &network access only",IDC_RUNAS_NETONLY,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,52,88,221,10
     DEFPUSHBUTTON   "OK",IDOK,169,119,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,223,119,50,14
 END
@@ -915,8 +918,8 @@ CAPTION "About WinSysLive"
 FONT 9, "Segoe UI", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,73,56,50,14
-    CTEXT           "WinSysLive v1.0\n\n(C)2026 Pavel Yosifovich",IDC_STATIC,55,17,78,27
-    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,18,17
+    CTEXT           "WinSysLive v1.0\n\n©2026 Pavel Yosifovich",IDC_STATIC,55,17,78,27
+    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,20,20
 END
 
 
@@ -1122,6 +1125,7 @@ BEGIN
     20, 0, 20, 0,
     0, 0, 0, 0,
     0, 0, 40, 0,
+    40, 0, 0, 0,
     0, 0, 0, 0,
     0, 0, 40, 0,
     0, 0, 0, 0,
@@ -1259,9 +1263,25 @@ END
 STRINGTABLE
 BEGIN
     ID_FILE_RUNASADMIN      "Restart with administrator rights\nRun as Administrator"
-    ID_FILE_RUN             "Start a program, folder, document or Internet resource\nRun"
-    ID_FILE_RUNAS           "Start a program as another user\nRun As"
     ID_VIEW_PAUSE           "Stop or resume periodic updates\nPause/Resume Updates (Space)"
+END
+
+STRINGTABLE
+BEGIN
+    ID_OPTIONS_REPLACETASKMANAGER 
+                            "Start WinSysLive instead of Task Manager, also for Ctrl+Shift+Esc (needs elevation)\nReplace Task Manager"
+    ID_TRAY_SHOW            "Show or hide the window\nShow"
+    ID_THREAD_WAITCHAIN     "Show what the selected thread waits for, and who owns that\nWait Chain"
+    ID_PROCESS_WAITCHAIN    "Show what the selected process's threads wait for, deadlocks first\nAnalyze Wait Chain"
+    ID_FILE_EXPORT          "Save the list with the focus (or the tab's list) as a CSV or tab-separated file\nExport List (Ctrl+S)"
+    ID_EDIT_COPYALL         "Copy every row of the list with the focus (or the tab's list), tab separated\nCopy All Rows"
+    ID_FILE_RUN             "Start a program, folder, document or Internet resource\nRun"
+END
+
+STRINGTABLE
+BEGIN
+    ID_FILE_RUNAS           "Start a program as another user\nRun As"
+    ID_VIEW_KERNELMODULES   "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nKernel Modules"
 END
 
 STRINGTABLE
@@ -1283,6 +1303,10 @@ BEGIN
     ID_PROCESS_MINIDUMP     "Write a minidump of the selected process (threads, modules, handles)\nMinidump"
     ID_PROCESS_FULLDUMP     "Write a dump of the selected process with all its memory\nFull Dump"
     ID_FIND_HANDLE          "Find the processes with a handle or a DLL whose name contains a text\nFind Handle or DLL"
+END
+
+STRINGTABLE
+BEGIN
     ID_FIND_WINDOW          "Drag onto a window to select the process that owns it\nFind Window's Process (drag onto a window)"
 END
 
@@ -1301,26 +1325,14 @@ BEGIN
     ID_PROCESS_AFFINITY     "Choose the processors the selected process may run on\nSet Affinity"
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
-    ID_VIEW_KERNELMODULES   "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nKernel Modules"
     ID_VIEW_DRIVERS         "Show the driver services: kernel and file system drivers\nDrivers"
-    ID_KMODULE_PROPERTIES    "Show the properties of the selected driver's file\nProperties"
+    ID_KMODULE_PROPERTIES   "Show the properties of the selected driver's file\nProperties"
     ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"
     ID_OPTIONS_TRAYICON     "Show a CPU usage graph in the notification area\nTray Icon"
     ID_OPTIONS_MINIMIZETOTRAY 
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
     ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
-END
-
-STRINGTABLE
-BEGIN
-    ID_OPTIONS_REPLACETASKMANAGER 
-                            "Start WinSysLive instead of Task Manager, also for Ctrl+Shift+Esc (needs elevation)\nReplace Task Manager"
-    ID_TRAY_SHOW            "Show or hide the window\nShow"
-    ID_THREAD_WAITCHAIN     "Show what the selected thread waits for, and who owns that\nWait Chain"
-    ID_PROCESS_WAITCHAIN    "Show what the selected process's threads wait for, deadlocks first\nAnalyze Wait Chain"
-    ID_FILE_EXPORT          "Save the list with the focus (or the tab's list) as a CSV or tab-separated file\nExport List (Ctrl+S)"
-    ID_EDIT_COPYALL         "Copy every row of the list with the focus (or the tab's list), tab separated\nCopy All Rows"
 END
 
 STRINGTABLE

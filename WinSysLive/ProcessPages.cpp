@@ -370,6 +370,29 @@ namespace {
 		ListViewHelper::EnableColumnDpiScaling(list);
 	}
 
+	// by the first column's text, case-insensitively; the header shows the direction
+	void SortByFirstColumn(CListViewCtrl& list, bool ascending) {
+		struct Context {
+			CListViewCtrl List;
+			bool Ascending;
+		} context{ list, ascending };
+		// LVM_SORTITEMSEX passes the rows' indices
+		list.SortItemsEx([](LPARAM i1, LPARAM i2, LPARAM param) {
+			auto& ctx = *reinterpret_cast<Context*>(param);
+			CString t1, t2;
+			ctx.List.GetItemText((int)i1, 0, t1);
+			ctx.List.GetItemText((int)i2, 0, t2);
+			auto result = t1.CompareNoCase(t2);
+			return ctx.Ascending ? result : -result;
+			}, reinterpret_cast<LPARAM>(&context));
+
+		HDITEM item{ HDI_FORMAT };
+		auto header = list.GetHeader();
+		header.GetItem(0, &item);
+		item.fmt = (item.fmt & ~(HDF_SORTUP | HDF_SORTDOWN)) | (ascending ? HDF_SORTUP : HDF_SORTDOWN);
+		header.SetItem(0, &item);
+	}
+
 	void AddRow(CListViewCtrl& list, std::initializer_list<std::wstring> texts) {
 		int row = list.GetItemCount();
 		int col = 0;
@@ -391,15 +414,11 @@ LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	InitList(m_Privileges, GetDlgItem(IDC_TOKEN_PRIVS), { { L"Privilege", 190 }, { L"State", 110 }, { L"Description", 300 } });
 	InitList(m_Groups, GetDlgItem(IDC_TOKEN_GROUPS), { { L"Name", 260 }, { L"Attributes", 220 }, { L"Type", 110 }, { L"SID", 300 } });
 
-	// the token's security decides; the process needs only limited access. Its source needs more access to the token
-	auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
-	std::unique_ptr<WinSys::Token> token;
-	if (hProcess) {
-		token = std::make_unique<WinSys::Token>(hProcess.get(), WinSys::TokenAccessMask(TOKEN_QUERY | TOKEN_QUERY_SOURCE));
-		if (!*token)
-			token = std::make_unique<WinSys::Token>(hProcess.get(), WinSys::TokenAccessMask::Query);
-	}
-	if (!token || !*token) {
+	// its source needs more access to the token
+	auto token = OpenToken(WinSys::TokenAccessMask::QuerySource);
+	if (!token)
+		token = OpenToken(WinSys::TokenAccessMask::Query);
+	if (!token) {
 		SetDlgItemText(IDC_TOKEN_USER, std::format(L"Can't open the token: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
 	}
 	else {
@@ -407,6 +426,7 @@ LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 		ShowPrivileges(*token);
 		ShowGroups(*token);
 	}
+	GetDlgItem(IDC_TOKEN_LOWERINTEGRITY).EnableWindow(m_Integrity != WinSys::IntegrityLevel::Error && m_Integrity > WinSys::IntegrityLevel::Untrusted);
 
 	InitDynamicLayout(false, false);
 	return TRUE;
@@ -422,6 +442,126 @@ LRESULT CProcTokenPage::OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	// its dialogs are owned by the sheet, which themes them (CAclDialogTheming)
 	::EditSecurity(m_hWnd, info);
 	info->Release();
+	return 0;
+}
+
+LRESULT CProcTokenPage::OnColumnClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	auto lv = reinterpret_cast<NMLISTVIEW*>(hdr);
+	if (lv->iSubItem != 0)
+		return 0;
+	CListViewCtrl list(hdr->hwndFrom);
+	auto& ascending = list == m_Privileges ? m_PrivilegesAscending : m_GroupsAscending;
+	ascending = !ascending.value_or(false);
+	SortByFirstColumn(list, *ascending);
+
+	auto selected = list.GetNextItem(-1, LVNI_SELECTED);
+	if (selected >= 0)
+		list.EnsureVisible(selected, FALSE);
+	return 0;
+}
+
+std::unique_ptr<WinSys::Token> CProcTokenPage::OpenToken(WinSys::TokenAccessMask access) const {
+	// the token's security decides; the process needs only limited access
+	auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION);
+	if (!hProcess)
+		return nullptr;
+	auto token = std::make_unique<WinSys::Token>(hProcess.get(), access | WinSys::TokenAccessMask::Query);
+	return *token ? std::move(token) : nullptr;
+}
+
+LRESULT CProcTokenPage::OnLowerIntegrity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND hWndCtl, BOOL& /*bHandled*/) {
+	using enum WinSys::IntegrityLevel;
+	static const struct {
+		UINT Id;
+		WinSys::IntegrityLevel Level;
+		PCWSTR Name;
+	} levels[] = {
+		{ ID_INTEGRITY_MEDIUMPLUS, MediumPlus, L"Medium Plus" },
+		{ ID_INTEGRITY_MEDIUM, Medium, L"Medium" },
+		{ ID_INTEGRITY_LOW, Low, L"Low" },
+		{ ID_INTEGRITY_UNTRUSTED, Untrusted, L"Untrusted" },
+	};
+	CMenu menu;
+	menu.CreatePopupMenu();
+	for (auto& l : levels)
+		if (l.Level < m_Integrity)
+			menu.AppendMenu(MF_STRING, l.Id, l.Name);
+	if (menu.GetMenuItemCount() == 0)
+		return 0;
+
+	CRect rc;
+	::GetWindowRect(hWndCtl, &rc);
+	auto id = (UINT)menu.TrackPopupMenu(TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, rc.left, rc.bottom, m_hWnd);
+	auto chosen = std::ranges::find(levels, id, [](auto& l) { return l.Id; });
+	if (chosen == std::end(levels))
+		return 0;
+
+	auto text = std::format(L"Lower the integrity level of {} ({}) to {}?\n\nIt can't be raised again, and the process may lose access to "
+		L"objects it uses and stop working properly.", m_Props.ImageName, m_Props.Id, chosen->Name);
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+
+	auto token = OpenToken(WinSys::TokenAccessMask::AdjustDefault);
+	if (!token || !token->SetIntegrityLevel(chosen->Level)) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to set the integrity level: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	// the integrity group's SID changed too, and the kernel disabled the enabled privileges
+	ShowProperties(*token);
+	ShowPrivileges(*token);
+	ShowGroups(*token);
+	GetDlgItem(IDC_TOKEN_LOWERINTEGRITY).EnableWindow(m_Integrity > Untrusted);
+	return 0;
+}
+
+LRESULT CProcTokenPage::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	if ((HWND)wParam != m_Privileges) {
+		bHandled = FALSE;
+		return 0;
+	}
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	int row = -1;
+	if (pt.x == -1 && pt.y == -1) {
+		// from the keyboard: below the selected row
+		row = m_Privileges.GetNextItem(-1, LVNI_SELECTED);
+		CRect rc;
+		if (row < 0 || !m_Privileges.GetItemRect(row, &rc, LVIR_LABEL))
+			return 0;
+		pt = { rc.left, rc.bottom };
+		m_Privileges.ClientToScreen(&pt);
+	}
+	else {
+		// the header's menu comes here too
+		CRect header;
+		m_Privileges.GetHeader().GetWindowRect(&header);
+		if (header.PtInRect(pt))
+			return 0;
+		CPoint client(pt);
+		m_Privileges.ScreenToClient(&client);
+		row = m_Privileges.HitTest(client, nullptr);
+	}
+	if (row < 0)
+		return 0;
+	m_Privileges.SelectItem(row);
+
+	auto& privilege = m_PrivilegeList[m_Privileges.GetItemData(row)];
+	bool enabled = (privilege.Attributes & SE_PRIVILEGE_ENABLED) != 0;
+	CMenu menu;
+	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING | (enabled ? MF_GRAYED : 0), ID_PRIVILEGE_ENABLE, L"&Enable");
+	menu.AppendMenu(MF_STRING | (enabled ? 0 : MF_GRAYED), ID_PRIVILEGE_DISABLE, L"&Disable");
+	auto id = (UINT)menu.TrackPopupMenu(TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd);
+	if (id != ID_PRIVILEGE_ENABLE && id != ID_PRIVILEGE_DISABLE)
+		return 0;
+
+	auto token = OpenToken(WinSys::TokenAccessMask::AdjustPrivileges);
+	if (!token || !token->EnablePrivilege(privilege.Privilege, id == ID_PRIVILEGE_ENABLE)) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to {} the privilege: {}", id == ID_PRIVILEGE_ENABLE ? L"enable" : L"disable",
+			WinSys::Helpers::GetErrorText(::GetLastError())).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	ShowPrivileges(*token);
 	return 0;
 }
 
@@ -471,7 +611,8 @@ void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
 		using enum WinSys::ElevationType;
 		return type == Full ? L"Full (elevated half of a split token)" : type == Limited ? L"Limited (filtered half of a split token)" : L"Default";
 		}));
-	set(IDC_TOKEN_INTEGRITY, FormatHelper::IntegrityLevelToString(token.GetIntegrityLevel()));
+	m_Integrity = token.GetIntegrityLevel();
+	set(IDC_TOKEN_INTEGRITY, FormatHelper::IntegrityLevelToString(m_Integrity));
 	set(IDC_TOKEN_POLICY, unknown(token.GetMandatoryPolicy(), [](uint32_t policy) -> std::wstring {
 		std::wstring text;
 		if (policy & TOKEN_MANDATORY_POLICY_NO_WRITE_UP)
@@ -505,7 +646,13 @@ void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
 }
 
 void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
-	auto privileges = token.EnumPrivileges();
+	// the selection, by privilege
+	std::optional<LUID> selected;
+	if (auto row = m_Privileges.GetNextItem(-1, LVNI_SELECTED); row >= 0)
+		selected = m_PrivilegeList[m_Privileges.GetItemData(row)].Privilege;
+	m_Privileges.DeleteAllItems();
+	m_PrivilegeList = token.EnumPrivileges();
+	auto& privileges = m_PrivilegeList;
 	for (auto& p : privileges) {
 		auto attributes = p.Attributes;
 		std::wstring state = (attributes & SE_PRIVILEGE_ENABLED) ? L"Enabled" : L"Disabled";
@@ -516,11 +663,23 @@ void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
 		if (p.Name.empty() || !::LookupPrivilegeDisplayName(nullptr, p.Name.c_str(), description, &size, &language))
 			description[0] = 0;
 		AddRow(m_Privileges, { p.Name.empty() ? FormatLuid(p.Privilege) : p.Name, state, description });
+		m_Privileges.SetItemData(m_Privileges.GetItemCount() - 1, &p - privileges.data());
 	}
 	SetDlgItemText(IDC_TOKEN_PRIVS_LABEL, std::format(L"Privileges ({}):", privileges.size()).c_str());
+	if (m_PrivilegesAscending)
+		SortByFirstColumn(m_Privileges, *m_PrivilegesAscending);
+	if (selected)
+		for (int i = 0; i < m_Privileges.GetItemCount(); i++) {
+			auto& luid = privileges[m_Privileges.GetItemData(i)].Privilege;
+			if (luid.LowPart == selected->LowPart && luid.HighPart == selected->HighPart) {
+				m_Privileges.SelectItem(i);
+				break;
+			}
+		}
 }
 
 void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
+	m_Groups.DeleteAllItems();
 	auto groups = token.EnumGroups();
 	for (auto& g : groups)
 		AddRow(m_Groups, { g.Name, GroupAttributesToString(g.Attributes), SidUseToString(g.Use), g.Sid });
@@ -530,6 +689,8 @@ void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
 		AddRow(m_Groups, { c.Name, GroupAttributesToString(c.Attributes), L"Capability", c.Sid });
 	SetDlgItemText(IDC_TOKEN_GROUPS_LABEL, (capabilities.empty() ? std::format(L"Groups ({}):", groups.size())
 		: std::format(L"Groups ({}) and capabilities ({}):", groups.size(), capabilities.size())).c_str());
+	if (m_GroupsAscending)
+		SortByFirstColumn(m_Groups, *m_GroupsAscending);
 }
 
 ProcessSnapshot::ProcessSnapshot(ProcessProperties const& props) : m_Props(props) {

@@ -8,9 +8,9 @@
 #include "PerfPages.h"
 #include "resource.h"
 #include "DpiLayout.h"
+#include <WinSys/Token.h>
 
 namespace WinSys {
-	class Token;
 	class ProcessNetworkTracker;
 }
 
@@ -134,6 +134,10 @@ public:
 	BEGIN_MSG_MAP(CProcTokenPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_ID_HANDLER(IDC_TOKEN_SECURITY, OnSecurity)
+		NOTIFY_HANDLER(IDC_TOKEN_PRIVS, LVN_COLUMNCLICK, OnColumnClick)
+		NOTIFY_HANDLER(IDC_TOKEN_GROUPS, LVN_COLUMNCLICK, OnColumnClick)
+		COMMAND_ID_HANDLER(IDC_TOKEN_LOWERINTEGRITY, OnLowerIntegrity)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcTokenPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcTokenPage>)
 	END_MSG_MAP()
@@ -142,13 +146,27 @@ private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	// the token's own security, in the ACL editor (EditSecurity)
 	LRESULT OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// sorts by the first column (Privilege, Name) only; a click again reverses it
+	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// a menu of the levels below the token's; the chosen one is set after a confirmation (it can't be raised again)
+	LRESULT OnLowerIntegrity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the privileges list's: Enable or Disable the selected privilege
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
+	// the process's token with access (and TOKEN_QUERY); nullptr with the last error if it can't be opened
+	std::unique_ptr<WinSys::Token> OpenToken(WinSys::TokenAccessMask access) const;
 	void ShowProperties(WinSys::Token const& token);
+	// both lists are filled again (after a change), keeping their sort
 	void ShowPrivileges(WinSys::Token const& token);
 	void ShowGroups(WinSys::Token const& token);
 
 	ProcessProperties const& m_Props;
 	CListViewCtrl m_Privileges, m_Groups;
+	// the first column's sort direction; unsorted (the token's order) until its header is clicked
+	std::optional<bool> m_PrivilegesAscending, m_GroupsAscending;
+	// the privileges as listed; each row's item data is its index here
+	std::vector<WinSys::TokenPrivilege> m_PrivilegeList;
+	WinSys::IntegrityLevel m_Integrity{ WinSys::IntegrityLevel::Error };
 };
 
 //
