@@ -4,7 +4,9 @@
 
 //
 // File > Run: a command line (with the last ones in its list, the RunHistory setting) started as the shell starts it
-// (WinSys Process::Run: a program, a folder, a document or a URL), elevated if asked. File > Run As: a program started as
+// (WinSys Process::Run: a program, a folder, a document or a URL), elevated if asked. File > Run as Limited User: the same
+// dialog (limited), a program started without administrator rights, at medium integrity (WinSys Process::RunLimited).
+// File > Run As: a program started as
 // another user (WinSys Process::RunAs: CreateProcessWithLogonW), with the user's profile loaded or the credentials used for
 // network access only; the user name is kept (RunAsUser), the password never is. A failure is reported and keeps the
 // dialog open.
@@ -12,6 +14,9 @@
 class CRunDlg : public CDialogImpl<CRunDlg> {
 public:
 	enum { IDD = IDD_RUN };
+
+	// limited: Run as Limited User
+	explicit CRunDlg(bool limited = false) : m_Limited(limited) {}
 
 	BEGIN_MSG_MAP(CRunDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -30,6 +35,8 @@ private:
 	LRESULT OnBrowse(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnOK(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	bool m_Limited;
 };
 
 class CRunAsDlg : public CDialogImpl<CRunAsDlg> {

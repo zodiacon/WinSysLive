@@ -81,6 +81,12 @@ namespace {
 LRESULT CRunDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	CComboBox combo(GetDlgItem(IDC_RUN_COMMAND));
 	FillHistory(combo);
+	if (m_Limited) {
+		// a program, not a document: CreateProcessAsUser, not the shell
+		SetWindowText(L"Run as Limited User");
+		SetDlgItemText(IDC_RUN_PROMPT, L"Type a program and its arguments. It runs without administrator rights.");
+		GetDlgItem(IDC_RUN_ELEVATED).ShowWindow(SW_HIDE);
+	}
 	CenterWindow(GetParent());
 	GotoDlgCtrl(combo);
 	return FALSE;
@@ -98,8 +104,8 @@ LRESULT CRunDlg::OnOK(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL
 		GotoDlgCtrl(GetDlgItem(IDC_RUN_COMMAND));
 		return 0;
 	}
-	bool elevated = IsDlgButtonChecked(IDC_RUN_ELEVATED) == BST_CHECKED;
-	if (!WinSys::Process::Run(command, elevated, m_hWnd)) {
+	bool elevated = !m_Limited && IsDlgButtonChecked(IDC_RUN_ELEVATED) == BST_CHECKED;
+	if (!(m_Limited ? WinSys::Process::RunLimited(command) : WinSys::Process::Run(command, elevated, m_hWnd))) {
 		// a declined elevation prompt needs no message
 		if (auto error = ::GetLastError(); error != ERROR_CANCELLED)
 			ShowError(m_hWnd, std::format(L"Running \"{}\"", command).c_str(), error);

@@ -651,6 +651,12 @@ LRESULT CMainFrame::OnRun(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, 
 	return 0;
 }
 
+LRESULT CMainFrame::OnRunLimited(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CRunDlg dlg(true);
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
 LRESULT CMainFrame::OnRunAs(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CRunAsDlg dlg;
 	dlg.DoModal(m_hWnd);

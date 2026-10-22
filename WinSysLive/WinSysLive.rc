@@ -55,6 +55,7 @@ BEGIN
     BEGIN
         MENUITEM "&Run...\tCtrl+R",             ID_FILE_RUN
         MENUITEM "Run &As...",                  ID_FILE_RUNAS
+        MENUITEM "Run as &Limited User...",     ID_FILE_RUNLIMITED
         MENUITEM SEPARATOR
         MENUITEM "Run as &Administrator",       ID_FILE_RUNASADMIN
         MENUITEM SEPARATOR
@@ -821,7 +822,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Run"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    LTEXT           "Type the name of a program, folder, document or Internet resource.",IDC_STATIC,7,7,266,9
+    LTEXT           "Type the name of a program, folder, document or Internet resource.",IDC_RUN_PROMPT,7,7,266,9
     LTEXT           "&Open:",IDC_STATIC,7,24,30,9
     COMBOBOX        IDC_RUN_COMMAND,40,22,180,120,CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "&Browse...",IDC_RUN_BROWSE,223,21,50,14
@@ -1313,6 +1314,7 @@ BEGIN
     ID_VIEW_HIDEWINDOWS     "Hide the processes whose executable is in the Windows directory, and the system's own\nHide Windows Processes"
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
+    ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
 END
 
 STRINGTABLE
