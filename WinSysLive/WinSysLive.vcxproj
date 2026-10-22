@@ -445,6 +445,7 @@
     <ClCompile Include="NetworkView.cpp" />
     <ClCompile Include="IpcView.cpp" />
     <ClCompile Include="ZombiesView.cpp" />
+    <ClCompile Include="ObjectTypesView.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
@@ -506,6 +507,7 @@
     <ClInclude Include="NetworkView.h" />
     <ClInclude Include="IpcView.h" />
     <ClInclude Include="ZombiesView.h" />
+    <ClInclude Include="ObjectTypesView.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />

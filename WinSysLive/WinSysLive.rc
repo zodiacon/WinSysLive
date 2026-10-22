@@ -75,6 +75,7 @@ BEGIN
         MENUITEM "&Drivers\tCtrl+7",            ID_VIEW_DRIVERS
         MENUITEM "RPC/&ALPC\tCtrl+8",           ID_VIEW_IPC
         MENUITEM "&Zombie Processes\tCtrl+9",   ID_VIEW_ZOMBIES
+        MENUITEM "&Object Types\tCtrl+0",       ID_VIEW_OBJECTTYPES
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -1003,6 +1004,7 @@ BEGIN
     "7",            ID_VIEW_DRIVERS,        VIRTKEY, CONTROL
     "8",            ID_VIEW_IPC,            VIRTKEY, CONTROL
     "9",            ID_VIEW_ZOMBIES,        VIRTKEY, CONTROL
+    "0",            ID_VIEW_OBJECTTYPES,    VIRTKEY, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1333,6 +1335,7 @@ BEGIN
     ID_VIEW_ZOMBIES         "Show the processes that exited but are kept alive by open handles, and who holds them\nZombie Processes (Ctrl+9)"
     ID_ZOMBIE_GOTOHOLDER    "Select the process holding the handle in the Processes tab\nGo to Holder"
     ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
+    ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
     ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
 END
 

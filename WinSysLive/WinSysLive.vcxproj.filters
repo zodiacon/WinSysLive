@@ -87,6 +87,9 @@
     <ClCompile Include="ZombiesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ObjectTypesView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="TrayIcon.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -256,6 +259,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ZombiesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectTypesView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="TrayIcon.h">

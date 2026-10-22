@@ -14,6 +14,7 @@ enum class TabType {
 	Drivers,	// the driver services (the Services view for drivers)
 	Ipc,		// RPC/ALPC
 	Zombies,	// zombie processes
+	ObjectTypes,
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)
