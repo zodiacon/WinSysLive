@@ -71,6 +71,7 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_RESTART, OnRestart)
 		COMMAND_ID_HANDLER(ID_PROCESS_EMPTYWORKINGSET, OnEmptyWorkingSet)
 		COMMAND_ID_HANDLER(ID_PROCESS_DEBUG, OnDebug)
+		COMMAND_ID_HANDLER(ID_PROCESS_CRITICAL, OnCritical)
 		COMMAND_ID_HANDLER(ID_PROCESS_SUSPEND, OnSuspend)
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
 		COMMAND_RANGE_HANDLER(ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE, OnSetPriority)
@@ -98,7 +99,7 @@ private:
 		Name, Id, ParentId, ParentName, Status, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
 		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults, PagedPool, NonPagedPool,
 		Threads, PeakThreads, Handles, GdiObjects, UserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
-		Architecture, IntegrityLevel, Elevation, Protection, Cfg, Mitigations, DpiAwareness, Virtualization, JobId,
+		Architecture, IntegrityLevel, Elevation, Protection, Critical, Cfg, Mitigations, DpiAwareness, Virtualization, JobId,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
 		PackageName, WindowTitle, Description, ImagePath, CommandLine,
@@ -148,6 +149,7 @@ private:
 	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEmptyWorkingSet(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDebug(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCritical(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSuspend(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetPriority(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -272,6 +274,8 @@ private:
 	static bool CanControl(ProcessItem const* item);
 	// started again by CreateProcess: not a service's process or a packaged app's
 	static bool CanRestart(ProcessItem const* item);
+	// changing it needs SeDebugPrivilege: only elevated
+	static bool CanSetCritical(ProcessItem const* item);
 	// the selected process opened with the access (and limited query access), if it can be controlled; null (after
 	// saying why) otherwise
 	std::unique_ptr<WinSys::Process> OpenSelected(WinSys::ProcessAccessMask access) const;

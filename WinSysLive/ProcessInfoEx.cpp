@@ -203,6 +203,11 @@ HANDLE ProcessInfoEx::GetQueryInformationHandle() {
 	return m_QueryInformation ? m_QueryInformation->Handle() : nullptr;
 }
 
+std::optional<bool> ProcessInfoEx::IsCritical() {
+	auto process = GetProcess();
+	return process ? process->IsCritical() : std::nullopt;
+}
+
 std::optional<bool> ProcessInfoEx::GetEfficiencyMode() {
 	auto process = GetProcess();
 	return process ? process->GetEfficiencyMode() : std::nullopt;

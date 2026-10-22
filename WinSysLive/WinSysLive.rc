@@ -138,6 +138,7 @@ BEGIN
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
         MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
+        MENUITEM "Criti&cal Process",           ID_PROCESS_CRITICAL
         MENUITEM SEPARATOR
         MENUITEM "De&bug",                      ID_PROCESS_DEBUG
         MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
@@ -213,6 +214,7 @@ BEGIN
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
         MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
+        MENUITEM "Criti&cal Process",           ID_PROCESS_CRITICAL
         MENUITEM SEPARATOR
         MENUITEM "De&bug",                      ID_PROCESS_DEBUG
         MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
@@ -1315,6 +1317,7 @@ BEGIN
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
+    ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
 END
 
 STRINGTABLE

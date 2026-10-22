@@ -9,6 +9,7 @@
 #include <WinSys/SystemInfo.h>
 #include <WinSys/Helpers.h>
 #include <WinSys/ServiceManager.h>
+#include <WinSys/SecurityHelper.h>
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
 #include <ListViewhelper.h>
@@ -61,6 +62,7 @@ namespace {
 		{ L"Integrity", L"IntegrityLevel", 90, LVCFMT_LEFT, false },
 		{ L"Elevated", L"Elevation", 90, LVCFMT_LEFT, false },
 		{ L"Protection", L"Protection", 130, LVCFMT_LEFT, false },
+		{ L"Critical", L"Critical", 70, LVCFMT_LEFT, false },
 		{ L"CFG", L"Cfg", 90, LVCFMT_LEFT, false },
 		{ L"Mitigations", L"Mitigations", 300, LVCFMT_LEFT, false },
 		{ L"DPI Awareness", L"DpiAwareness", 120, LVCFMT_LEFT, false },
@@ -1014,6 +1016,7 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::PagedPool: return FormatHelper::FormatSize(info->QuotaPagedPoolUsage);
 		case Column::NonPagedPool: return FormatHelper::FormatSize(info->QuotaNonPagedPoolUsage);
 		case Column::Elevation: return p.GetElevation();
+		case Column::Critical: return !item.Terminated && p.IsCritical().value_or(false) ? L"Yes" : L"";
 		case Column::Cfg: {
 			auto& m = p.GetMitigations();
 			return !m ? L"" : !m->Cfg ? L"Disabled" : m->CfgStrict ? L"Enabled (strict)" : L"Enabled";
@@ -1165,7 +1168,7 @@ void CProcessesView::Sort() {
 bool CProcessesView::IsQueriedColumn(Column column) {
 	switch (column) {
 		case Column::ContextSwitches: case Column::GdiObjects: case Column::UserObjects: case Column::MemoryPriority:
-		case Column::IoPriority: case Column::NetworkSend: case Column::NetworkReceive:
+		case Column::IoPriority: case Column::NetworkSend: case Column::NetworkReceive: case Column::Critical:
 			return true;
 	}
 	return false;
@@ -1181,6 +1184,7 @@ int64_t CProcessesView::GetQueriedValue(ProcessItem& item, Column column) const 
 		case Column::IoPriority: return (int64_t)p.GetIoPriority();
 		case Column::NetworkSend: return (int64_t)NetworkCounters(p.Id).Sent;
 		case Column::NetworkReceive: return (int64_t)NetworkCounters(p.Id).Received;
+		case Column::Critical: return p.IsCritical().value_or(false) ? 1 : 0;
 	}
 	return 0;
 }
@@ -1325,6 +1329,11 @@ bool CProcessesView::CanControl(ProcessItem const* item) {
 	return item && !item->Terminated && item->Process->Id > 4;
 }
 
+bool CProcessesView::CanSetCritical(ProcessItem const* item) {
+	static const bool elevated = SecurityHelper::IsRunningElevated();
+	return elevated && CanControl(item);
+}
+
 bool CProcessesView::CanRestart(ProcessItem const* item) {
 	return CanControl(item) && (item->Kinds & (ProcessKind::Service | ProcessKind::Immersive)) == ProcessKind::None
 		&& item->Process->Id != ::GetCurrentProcessId();
@@ -1340,6 +1349,8 @@ void CProcessesView::UpdateUI() {
 		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_RESTART, m_Active && CanRestart(item));
+	ui.UIEnable(ID_PROCESS_CRITICAL, m_Active && CanSetCritical(item));
+	ui.UISetCheck(ID_PROCESS_CRITICAL, live && item->Process->IsCritical().value_or(false));
 	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
 	// the Services view has Properties too (its OnFrameIdle)
 	if (m_Active)
@@ -1416,6 +1427,8 @@ void CProcessesView::ShowRowMenu(CPoint pt) {
 		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_RESTART, MF_BYCOMMAND | (CanRestart(item) ? MF_ENABLED : MF_GRAYED));
+	popup.EnableMenuItem(ID_PROCESS_CRITICAL, MF_BYCOMMAND | (CanSetCritical(item) ? MF_ENABLED : MF_GRAYED));
+	popup.CheckMenuItem(ID_PROCESS_CRITICAL, MF_BYCOMMAND | (live && item->Process->IsCritical().value_or(false) ? MF_CHECKED : MF_UNCHECKED));
 	popup.EnableMenuItem(ID_PROCESS_GOTOFILELOCATION, MF_BYCOMMAND | (item->Process->GetImagePath().empty() ? MF_GRAYED : MF_ENABLED));
 	popup.EnableMenuItem(ID_VIEW_PROPERTIES, MF_BYCOMMAND | (item->Terminated ? MF_GRAYED : MF_ENABLED));
 	popup.SetMenuDefaultItem(ID_VIEW_PROPERTIES);
@@ -1636,6 +1649,38 @@ LRESULT CProcessesView::OnDebug(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndC
 		return 0;
 	if (!Process::AttachDebugger(info->Id))
 		ShowError(L"Starting the debugger");
+	return 0;
+}
+
+LRESULT CProcessesView::OnCritical(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanSetCritical(item))
+		return 0;
+
+	// held: refreshes go on while the box is open, and may remove the item
+	auto info = item->Process;
+	auto critical = info->IsCritical();
+	if (!critical) {
+		ShowError(L"Querying the process");
+		return 0;
+	}
+	auto text = *critical
+		? std::format(L"Make process {} ({}) no longer critical?\n\nIt can then exit without crashing Windows, "
+			L"though the system may still depend on it.", info->GetImageName(), info->Id)
+		: std::format(L"Make process {} ({}) critical?\n\nWindows will crash (CRITICAL_PROCESS_DIED) when it exits, "
+			L"however it does: closed, killed or ended normally.", info->GetImageName(), info->Id);
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+
+	auto process = Process::OpenById(info->Id, info->Key.Created, ProcessAccessMask::SetInformation);
+	if (!process) {
+		ShowError(L"Opening the process");
+		return 0;
+	}
+	if (!process->SetCritical(!*critical))
+		ShowError(L"Changing the critical flag");
+	m_Tree.Invalidate();
+	UpdateUI();
 	return 0;
 }
 
