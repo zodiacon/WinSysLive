@@ -837,7 +837,8 @@ LRESULT CMainFrame::OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	// read before the dialog: the list goes on changing while it's open
 	auto rows = GetExportRows(hList);
 	CString title = m_Views[m_ActivePage]->GetTitle();
-	CFileDialog dlg(FALSE, L"csv", title + L".csv", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(FALSE, L"csv", title + L".csv", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
 		L"CSV Files (*.csv)\0*.csv\0Text Files, Tab Separated (*.txt)\0*.txt\0", m_hWnd);
 	if (dlg.DoModal(m_hWnd) != IDOK)
 		return 0;

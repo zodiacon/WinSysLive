@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SymbolSettingsDlg.h"
 #include "AppSettings.h"
+#include <WTLHelper.h>
 
 SymbolPathOptions CSymbolSettingsDlg::LoadOptions() {
 	auto& s = AppSettings::Get();
@@ -61,6 +62,7 @@ LRESULT CSymbolSettingsDlg::OnChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 }
 
 LRESULT CSymbolSettingsDlg::OnBrowse(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	SuspendResumeHook sr;
 	CShellFileOpenDialog dlg(nullptr, FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
 	if (dlg.DoModal(m_hWnd) == IDOK) {
 		CString path;

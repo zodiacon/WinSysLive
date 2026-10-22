@@ -711,7 +711,9 @@ LRESULT CProcMemoryPage::OnSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndC
 	if (auto dot = name.rfind(L'.'); dot != std::wstring::npos)
 		name.erase(dot);
 	auto fileName = std::format(L"{}_{}_{:X}.bin", name, m_Props.Id, base);
-	CFileDialog dlg(FALSE, L"bin", fileName.c_str(), OFN_OVERWRITEPROMPT | OFN_EXPLORER | OFN_PATHMUSTEXIST,
+
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(FALSE, L"bin", fileName.c_str(), OFN_OVERWRITEPROMPT | OFN_EXPLORER | OFN_PATHMUSTEXIST,
 		L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0", m_hWnd);
 	if (dlg.DoModal() != IDOK)
 		return 0;

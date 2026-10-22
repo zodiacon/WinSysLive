@@ -4,6 +4,7 @@
 #include <WinSys/Service.h>
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
+#include <WTLHelper.h>
 
 using namespace WinSys;
 
@@ -79,7 +80,8 @@ LRESULT CServiceInstallDlg::OnTypeChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HW
 }
 
 LRESULT CServiceInstallDlg::OnBrowse(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(TRUE, nullptr, nullptr, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
 		IsDriverType() ? L"Drivers (*.sys)\0*.sys\0All Files (*.*)\0*.*\0" : L"Programs (*.exe)\0*.exe\0All Files (*.*)\0*.*\0", m_hWnd);
 	if (dlg.DoModal() != IDOK)
 		return 0;
