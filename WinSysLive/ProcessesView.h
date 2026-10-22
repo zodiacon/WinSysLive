@@ -10,6 +10,7 @@
 #include "ProcessColors.h"
 #include "FilterBox.h"
 #include "Symbols.h"
+#include "SignatureVerifier.h"
 #include <WinSys/Gpu.h>
 #include <CustomSplitterWindow.h>
 #include <unordered_set>
@@ -39,6 +40,11 @@ public:
 	void ShowProcess(uint32_t pid) override;
 	void OnFrameIdle() override;
 	std::wstring GetCommandTip(UINT id) const override;
+	// CFrameWindowImpl's, which it calls on WM_SIZE; then the rebar's bands
+	void UpdateLayout(BOOL resizeBars = TRUE);
+
+	// posted by the signature worker (View > Hide Processes > Signed Processes) when a file's signature is verified
+	static constexpr UINT WM_PROCESS_SIGNED = WM_APP + 0x160;
 
 	BEGIN_MSG_MAP(CProcessesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -46,6 +52,7 @@ public:
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_DUMP_WRITTEN, OnDumpWritten)
+		MESSAGE_HANDLER(WM_PROCESS_SIGNED, OnSigned)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
@@ -53,12 +60,17 @@ public:
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		NOTIFY_CODE_HANDLER(NM_RCLICK, OnRightClick)
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
+		NOTIFY_CODE_HANDLER(TBN_DROPDOWN, OnHideDropDown)
 		CHAIN_MSG_MAP(CViewBase<CProcessesView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILL, OnKill)
 		COMMAND_ID_HANDLER(ID_KILL, OnKillFocused)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_PROCESS_KILLALL, OnKillAll)
+		COMMAND_ID_HANDLER(ID_PROCESS_KILLTREE, OnKillTree)
+		COMMAND_ID_HANDLER(ID_PROCESS_RESTART, OnRestart)
+		COMMAND_ID_HANDLER(ID_PROCESS_EMPTYWORKINGSET, OnEmptyWorkingSet)
+		COMMAND_ID_HANDLER(ID_PROCESS_DEBUG, OnDebug)
 		COMMAND_ID_HANDLER(ID_PROCESS_SUSPEND, OnSuspend)
 		COMMAND_ID_HANDLER(ID_PROCESS_RESUME, OnResume)
 		COMMAND_RANGE_HANDLER(ID_PRIORITY_REALTIME, ID_PRIORITY_IDLE, OnSetPriority)
@@ -75,6 +87,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
 		COMMAND_ID_HANDLER(ID_VIEW_LOWERPANE, OnToggleLowerPane)
 		COMMAND_ID_HANDLER(ID_VIEW_KEEPSELECTIONVISIBLE, OnToggleKeepSelectionVisible)
+		COMMAND_RANGE_HANDLER(ID_VIEW_HIDEOTHERUSERS, ID_VIEW_HIDESIGNED, OnToggleHide)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		CHAIN_MSG_MAP_ALT(CViewBase<CProcessesView>, 1)
@@ -99,6 +112,7 @@ private:
 		bool Terminated{ false };	// highlighted for one update, then removed
 		ProcessKind Kinds{ ProcessKind::None };	// for the row color (see UpdateKinds)
 		bool Match{ true };	// matches the filter (always, without one); in the tree only if it does, or a descendant does
+		bool Hidden{ false };	// by View > Hide Processes (then it doesn't match)
 		// queried on every refresh while a GPU column is shown
 		WinSys::GpuProcessState GpuState;
 		WinSys::GpuProcessUsage Gpu;
@@ -126,6 +140,10 @@ private:
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnKillTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEmptyWorkingSet(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDebug(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSuspend(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResume(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSetPriority(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -145,6 +163,16 @@ private:
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the Hide button's menu: View > Hide Processes
+	LRESULT OnHideDropDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// the Hide button's font and size for its DPI, and its band
+	void LayoutHideBar();
+	// twice the width it would have, for its DPI
+	void SetHideButtonWidth();
+	// checked (pressed) while an option is on
+	void UpdateHideButton();
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
@@ -190,9 +218,19 @@ private:
 	void RebuildTree();
 	// the matching items into an empty tree, in snapshot order; the exited ones last
 	void InsertItems();
-	// the filter: a process matches if its image name, PID, user, description or command line contains the text
-	bool Matches(ProcessItem& item) const;
-	// the matches' count in the status line (the filter's text, from m_Filter)
+	// the filter: a process matches if it isn't hidden (sets Hidden) and its image name, PID, user, description or
+	// command line contains the text
+	bool Matches(ProcessItem& item);
+	// by View > Hide Processes; queues the image for verification while signed processes are hidden
+	bool IsHidden(ProcessItem const& item);
+	bool IsHiding() const;
+	// the filter's text or a Hide Processes option
+	bool IsFiltering() const;
+	// in the Windows directory, or without an image (the system's own: Idle, System, Registry, Memory Compression...)
+	bool IsWindowsProcess(ProcessInfoEx& process) const;
+	// the items whose Hidden changed (the kinds change, a signature is verified) go into the tree or out of it
+	void UpdateHidden();
+	// the matches' count in the status line (the filter's text, from m_Filter, or the hidden processes)
 	void UpdateFilterStatus();
 	HTLITEM EnsureInserted(ProcessItem& item);
 	void RemoveItem(ProcessItem& item);
@@ -221,6 +259,8 @@ private:
 	// the lower pane shows the selected process (none for one that exited)
 	void UpdateDetails();
 	static bool CanControl(ProcessItem const* item);
+	// started again by CreateProcess: not a service's process or a packaged app's
+	static bool CanRestart(ProcessItem const* item);
 	// the selected process opened with the access (and limited query access), if it can be controlled; null (after
 	// saying why) otherwise
 	std::unique_ptr<WinSys::Process> OpenSelected(WinSys::ProcessAccessMask access) const;
@@ -235,6 +275,9 @@ private:
 	// (arrows held down, type-ahead) doesn't enumerate the handles or modules of every process on the way
 	enum { DetailsTimerId = 1, DetailsDelay = 150 };
 	CFilterBox m_Filter;	// in the view's rebar
+	CToolBarCtrl m_HideBar;	// in the rebar after the filter: the Hide drop-down button
+	CFont m_HideBarFont;	// for its DPI
+	int m_HideButtonWidth{ 0 };	// at 96 DPI
 	// runs while a network column is shown
 	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;	// while a network column is shown (NetworkTracking)
 	DWORD m_NetworkError{ 0 };	// why it didn't start
@@ -253,5 +296,9 @@ private:
 	bool m_TreeMode{ true };
 	// scroll to the selected process on every update; otherwise an update keeps the scroll position
 	bool m_KeepSelectionVisible{ false };
+	// View > Hide Processes (the ProcessHide* settings)
+	bool m_HideOtherUsers{ false }, m_HideServices{ false }, m_HideWindows{ false }, m_HideSigned{ false };
+	std::wstring m_WindowsDirectory;	// with a backslash at the end
+	SignatureVerifier m_Signatures;	// the images', while signed processes are hidden
 	bool m_Active{ false };
 };

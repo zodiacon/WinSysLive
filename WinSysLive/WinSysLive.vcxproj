@@ -425,6 +425,7 @@
     <ClCompile Include="SymbolSettingsDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
     <ClCompile Include="Signature.cpp" />
+    <ClCompile Include="SignatureVerifier.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -489,6 +490,7 @@
     <ClInclude Include="SymbolSettingsDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
     <ClInclude Include="Signature.h" />
+    <ClInclude Include="SignatureVerifier.h" />
     <ClInclude Include="AppSettings.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="resource.h" />
@@ -531,6 +533,7 @@
     <Image Include="res\Driver.ico" />
     <Image Include="res\System.ico" />
     <Image Include="res\target.ico" />
+    <Image Include="res\process-hide.ico" />
     <Image Include="res\desktop.ico" />
     <Image Include="res\device.ico" />
     <Image Include="res\directx.ico" />

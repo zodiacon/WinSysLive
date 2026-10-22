@@ -15,6 +15,11 @@ struct AppSettings : Settings {
 		SETTING_STRING(PerfPageKey, L"");	// the Performance view's page: "CPU", "Disk:C", "GPU:0"... (CPerfView::PageKey)
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
 		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
+		// View > Hide Processes
+		SETTING(ProcessHideOtherUsers, 0, SettingType::Bool);
+		SETTING(ProcessHideServices, 0, SettingType::Bool);
+		SETTING(ProcessHideWindows, 0, SettingType::Bool);
+		SETTING(ProcessHideSigned, 0, SettingType::Bool);
 		SETTING(ProcessSplitterPos, 60, SettingType::Int32);	// percent of the height for the process list
 		SETTING_STRING(ProcessColumns, L"");	// see ColumnLayout::Parse
 		SETTING_STRING(ProcessSort, L"");	// the sort column's key and the direction ("CPU:desc"); empty: unsorted
@@ -57,6 +62,10 @@ struct AppSettings : Settings {
 	DEF_SETTING(PerfShowProcessors, int)
 	DEF_SETTING(ProcessLowerPane, int)
 	DEF_SETTING(ProcessKeepSelectionVisible, int)
+	DEF_SETTING(ProcessHideOtherUsers, int)
+	DEF_SETTING(ProcessHideServices, int)
+	DEF_SETTING(ProcessHideWindows, int)
+	DEF_SETTING(ProcessHideSigned, int)
 	DEF_SETTING(ProcessSplitterPos, int)
 	DEF_SETTING_STRING(ProcessColumns)
 	DEF_SETTING_STRING(ProcessSort)

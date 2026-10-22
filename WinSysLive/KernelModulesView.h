@@ -5,13 +5,9 @@
 #include "FilterBox.h"
 #include "ColumnLayout.h"
 #include "Signature.h"
+#include "SignatureVerifier.h"
 #include <WinSys/KernelModules.h>
 #include <VirtualListView.h>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <deque>
-#include <unordered_set>
 
 //
 // The Kernel Modules tab: the kernel's loaded modules (WinSys KernelModules: the kernel, the HAL, drivers), read again on every
@@ -26,7 +22,6 @@ class CKernelModulesView :
 	public CVirtualListView<CKernelModulesView> {
 public:
 	using CViewBase::CViewBase;
-	~CKernelModulesView();
 
 	CString GetTitle() const override;
 	HWND GetExportList() override {
@@ -90,15 +85,6 @@ private:
 		bool Unloaded{ false };	// shown once more, then removed
 	};
 
-	// the signatures, verified on a worker thread; shared with it, as it may still be verifying a file when the view goes
-	struct Signatures {
-		std::mutex Lock;
-		std::condition_variable_any Wake;
-		std::deque<std::wstring> Pending;	// paths
-		std::unordered_map<std::wstring, WinSys::SignatureInfo> Results;	// by lowercase path
-		HWND Notify{ nullptr };
-	};
-
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -134,7 +120,6 @@ private:
 	void UpdateStatus();
 	// starts the signature worker (the first time the tab is shown), and queues the paths it hasn't verified
 	void VerifySignatures();
-	static void VerifyThread(std::stop_token stop, std::shared_ptr<Signatures> signatures);
 	static std::wstring Lowercase(std::wstring text);
 
 	CListViewCtrl m_List;
@@ -142,9 +127,7 @@ private:
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::vector<DriverRow> m_All;	// the last merge: every module, the unloaded ones once more
 	std::vector<DriverRow const*> m_Rows;	// into m_All: the list's rows, in display order
-	std::shared_ptr<Signatures> m_Signatures{ std::make_shared<Signatures>() };
-	std::unordered_set<std::wstring> m_Queued;	// paths (lowercase) given to the worker
-	std::jthread m_Verifier;
+	SignatureVerifier m_Signatures;
 	bool m_Loaded{ false };	// read at least once: later modules are new
 	bool m_Active{ false };
 };

@@ -13,6 +13,7 @@
 #include <WTLHelper.h>
 #include <ListViewhelper.h>
 #include <DpiHelper.h>
+#include <ToolbarHelper.h>
 #include "ColumnLayout.h"
 #include "AffinityDlg.h"
 #include "WaitChainDlg.h"
@@ -83,6 +84,12 @@ namespace {
 		{ WinSys::ProcessPriorityClass::Idle, 4 },
 	};
 
+	// the drop-down button beside the filter
+	const ToolBarButtonInfo s_HideButton[] = {
+		{ ID_VIEW_HIDEMENU, IDI_PROCESS_HIDE, BTNS_WHOLEDROPDOWN, L"Hide Processes" },
+	};
+	const int HideButtonImageSize = 16;	// at 96 DPI
+
 	// highlighting of new processes lasts this many updates
 	const int NewProcessTicks = 2;
 	// the CLR starts after the process, so a process is checked for it again on every update until it's this old
@@ -117,22 +124,61 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	LoadSort();
 	SetColumns(LoadColumns());
 
-	int width = 360;	// at 96 DPI
-	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Filter: name, PID, user, description or command line (Ctrl+F)",
+	int width = 280;	// at 96 DPI
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Name, PID, user, command line (Ctrl+F)",
 		m_Tree, [this](auto&) {
 			RebuildTree();
 			UpdateFilterStatus();
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
+	// View > Hide Processes, beside the filter; its menu comes with TBN_DROPDOWN (through the rebar)
+	m_HideBar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_HideButton, _countof(s_HideButton), HideButtonImageSize);
+	m_HideBar.SetExtendedStyle(m_HideBar.GetExtendedStyle() | TBSTYLE_EX_DRAWDDARROWS);
+	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
+	m_HideBar.SetFont(m_HideBarFont);
+	m_HideBar.AutoSize();
+	CRect rcButton;
+	m_HideBar.GetItemRect(0, &rcButton);
+	m_HideButtonWidth = DpiHelper::Scale(rcButton.Width(), USER_DEFAULT_SCREEN_DPI, DpiHelper::GetDpi(m_HideBar));
+	SetHideButtonWidth();
+	AddSimpleReBarBand(m_HideBar, nullptr, FALSE);
+	// two bands would get grippers; the filter keeps its width, the button's band takes the rest of the row
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_STYLE | RBBIM_CHILD | RBBIM_CHILDSIZE };
+		rebar.GetBandInfo(i, &band);
+		band.fStyle |= RBBS_NOGRIPPER;
+		band.fMask = RBBIM_STYLE;
+		if (band.hwndChild == m_Filter.GetHwnd()) {
+			// its minimum as CFilterBox sets it after a DPI change (see UpdateLayout)
+			band.fMask |= RBBIM_CHILDSIZE;
+			band.cxMinChild = m_Filter.GetWidth();
+		}
+		rebar.SetBandInfo(i, &band);
+	}
 	m_Colors = ProcessColors::Load();
 
-	m_TreeMode = AppSettings::Get().ProcessTreeMode();
+	auto& settings = AppSettings::Get();
+	m_HideOtherUsers = settings.ProcessHideOtherUsers();
+	m_HideServices = settings.ProcessHideServices();
+	m_HideWindows = settings.ProcessHideWindows();
+	m_HideSigned = settings.ProcessHideSigned();
+	m_Signatures.Init(m_hWnd, WM_PROCESS_SIGNED);
+	WCHAR windows[MAX_PATH];
+	if (auto len = ::GetWindowsDirectory(windows, _countof(windows)); len && len < _countof(windows)) {
+		m_WindowsDirectory = windows;
+		if (m_WindowsDirectory.back() != L'\\')
+			m_WindowsDirectory += L'\\';
+	}
+
+	UpdateHideButton();
+
+	m_TreeMode = settings.ProcessTreeMode();
 	BuildItems();
 
 	m_Details.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_Details.Init(Frame());
 	m_Splitter.SetSplitterPanes(m_Tree, m_Details);
-	auto& settings = AppSettings::Get();
 	m_Splitter.SetSplitterPosPct(std::clamp(settings.ProcessSplitterPos(), 10, 90), false);
 	m_LowerPane = settings.ProcessLowerPane();
 	m_KeepSelectionVisible = settings.ProcessKeepSelectionVisible();
@@ -142,6 +188,8 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	Frame()->GetUI().UIEnable(ID_VIEW_PROCESSTREE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_LOWERPANE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, false);
+	for (UINT id = ID_VIEW_HIDEOTHERUSERS; id <= ID_VIEW_HIDESIGNED; id++)
+		Frame()->GetUI().UIEnable(id, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, false);
 	Frame()->GetUI().UIEnable(ID_PROCESS_KILL, false);
 	Frame()->GetUI().UIEnable(ID_KILL, false);
@@ -318,7 +366,7 @@ void CProcessesView::OnActivate(bool active) {
 	}
 	UpdateUI();
 	// the status line's count is this view's
-	if (!m_Filter.GetText().empty())
+	if (IsFiltering())
 		active ? UpdateFilterStatus() : Frame()->SetStatusText(0, L"");
 	if (active)
 		m_Tree.SetFocus();
@@ -334,6 +382,73 @@ void CProcessesView::OnDpiChanged(UINT /*dpi*/) {
 	// the frame's image list has the new DPI's size: the rows take its height
 	m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
 	m_Details.ResetImageList();
+	LayoutHideBar();
+}
+
+void CProcessesView::UpdateLayout(BOOL resizeBars) {
+	CViewBase::UpdateLayout(resizeBars);
+	// the rebar gives a row's extra width to its first band: the Hide button's band takes it, the filter keeps its width
+	if (m_HideBar) {
+		CReBarCtrl rebar(m_hWndToolBar);
+		rebar.MaximizeBand(rebar.GetBandCount() - 1, FALSE);
+	}
+}
+
+void CProcessesView::LayoutHideBar() {
+	// the icon in the new size
+	ToolbarHelper::UpdateToolBarImages(m_HideBar, s_HideButton, _countof(s_HideButton), HideButtonImageSize);
+	m_HideBarFont.DeleteObject();
+	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
+	m_HideBar.SetFont(m_HideBarFont);
+	SetHideButtonWidth();
+	// its band, as AddSimpleReBarBand sets it: the button's height, the width to its end
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_HideBar) {
+			CRect rc;
+			m_HideBar.GetItemRect(0, &rc);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = rc.right;
+			band.cyMinChild = rc.Height();
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+}
+
+void CProcessesView::SetHideButtonWidth() {
+	TBBUTTONINFO info{ sizeof(info), TBIF_SIZE };
+	info.cx = (WORD)DpiHelper::Scale(m_HideButtonWidth, m_HideBar.m_hWnd);
+	m_HideBar.SetButtonInfo(ID_VIEW_HIDEMENU, &info);
+	m_HideBar.AutoSize();
+}
+
+void CProcessesView::UpdateHideButton() {
+	m_HideBar.CheckButton(ID_VIEW_HIDEMENU, IsHiding());
+}
+
+LRESULT CProcessesView::OnHideDropDown(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_HideBar) {
+		bHandled = FALSE;
+		return 0;
+	}
+	// the View menu's Hide Processes submenu, from the resource; the frame routes the command here
+	CMenu menu;
+	menu.LoadMenu(IDR_MAINFRAME);
+	CMenuHandle view = menu.GetSubMenu(1), hide;
+	for (int i = 0; i < view.GetMenuItemCount() && !hide; i++)
+		if (CMenuHandle sub = view.GetSubMenu(i); sub && sub.GetMenuItemID(0) == ID_VIEW_HIDEOTHERUSERS)
+			hide = sub;
+	if (!hide)
+		return TBDDRET_DEFAULT;
+	for (auto [id, on] : { std::pair{ ID_VIEW_HIDEOTHERUSERS, m_HideOtherUsers }, { ID_VIEW_HIDESERVICES, m_HideServices },
+		{ ID_VIEW_HIDEWINDOWS, m_HideWindows }, { ID_VIEW_HIDESIGNED, m_HideSigned } })
+		hide.CheckMenuItem(id, MF_BYCOMMAND | (on ? MF_CHECKED : MF_UNCHECKED));
+	m_HideBar.PressButton(ID_VIEW_HIDEMENU, TRUE);
+	Frame()->ShowContextMenu(hide, ToolbarHelper::GetDropdownMenuPoint(m_HideBar, ID_VIEW_HIDEMENU), TPM_LEFTALIGN | TPM_TOPALIGN);
+	m_HideBar.PressButton(ID_VIEW_HIDEMENU, FALSE);
+	return TBDDRET_DEFAULT;
 }
 
 void CProcessesView::OnProcessColorsChanged() {
@@ -352,6 +467,10 @@ void CProcessesView::ShowProcess(uint32_t pid) {
 	auto process = Frame()->GetProcessManager().GetProcessById(pid);
 	if (!process)
 		return;
+	if (auto it = m_Items.find(process->Key); it != m_Items.end() && it->second.Hidden) {
+		Frame()->SetStatusText(0, std::format(L"{} ({}) is hidden by View > Hide Processes", process->GetImageName(), pid).c_str());
+		return;
+	}
 	// a process the filter hides is shown by clearing the filter
 	if (auto it = m_Items.find(process->Key); it != m_Items.end() && !it->second.Item && !m_Filter.GetText().empty())
 		m_Filter.Clear();
@@ -431,7 +550,82 @@ void CProcessesView::UpdateDotNet(bool all) {
 	}
 }
 
-bool CProcessesView::Matches(ProcessItem& item) const {
+bool CProcessesView::IsHiding() const {
+	return m_HideOtherUsers || m_HideServices || m_HideWindows || m_HideSigned;
+}
+
+bool CProcessesView::IsFiltering() const {
+	return IsHiding() || !m_Filter.GetText().empty();
+}
+
+bool CProcessesView::IsWindowsProcess(ProcessInfoEx& process) const {
+	auto& path = process.GetImagePath();
+	if (path.empty())
+		return true;
+	return !m_WindowsDirectory.empty() && ::_wcsnicmp(path.c_str(), m_WindowsDirectory.c_str(), m_WindowsDirectory.size()) == 0;
+}
+
+bool CProcessesView::IsHidden(ProcessItem const& item) {
+	auto& p = *item.Process;
+	// processes whose user can't be read (most of the system's, not elevated) aren't the user's own either
+	if (m_HideOtherUsers && !m_CurrentUser.empty() && (item.Kinds & ProcessKind::Own) == ProcessKind::None)
+		return true;
+	if (m_HideServices && (item.Kinds & ProcessKind::Service) != ProcessKind::None)
+		return true;
+	if (m_HideWindows && IsWindowsProcess(p))
+		return true;
+	if (m_HideSigned) {
+		// shown until it's verified (OnSigned)
+		auto& path = p.GetImagePath();
+		m_Signatures.Verify(path);
+		if (auto info = m_Signatures.GetResult(path); info && info->Status == SignatureStatus::Valid)
+			return true;
+	}
+	return false;
+}
+
+void CProcessesView::UpdateHidden() {
+	if (!IsHiding())
+		return;
+	for (auto& [key, item] : m_Items) {
+		if (item.Terminated || IsHidden(item) == item.Hidden)
+			continue;
+		item.Match = Matches(item);
+		if (item.Match)
+			EnsureInserted(item);
+		else if (item.Item)
+			// stays, gray, while it has children in the tree
+			RemoveUnneededAncestors(item.Item);
+	}
+}
+
+LRESULT CProcessesView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// several may have arrived: the tree changes once
+	MSG msg;
+	while (::PeekMessage(&msg, m_hWnd, WM_PROCESS_SIGNED, WM_PROCESS_SIGNED, PM_REMOVE))
+		;
+	if (!m_HideSigned)
+		return 0;
+	auto selected = GetSelectedProcess();
+	auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
+	m_Tree.BeginUpdate();
+	UpdateHidden();
+	if (m_SortColumn >= 0) {
+		if (m_Active)
+			Sort();
+		else
+			m_SortPending = true;
+	}
+	m_Tree.EndUpdate();
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
+	UpdateFilterStatus();
+	return 0;
+}
+
+bool CProcessesView::Matches(ProcessItem& item) {
+	item.Hidden = IsHidden(item);
+	if (item.Hidden)
+		return false;
 	auto& filter = m_Filter.GetText();
 	if (filter.empty())
 		return true;
@@ -445,13 +639,14 @@ bool CProcessesView::Matches(ProcessItem& item) const {
 void CProcessesView::UpdateFilterStatus() {
 	if (!m_Active)
 		return;
-	if (m_Filter.GetText().empty()) {
+	if (!IsFiltering()) {
 		Frame()->SetStatusText(0, L"");
 		return;
 	}
 	auto matches = std::ranges::count_if(m_Items, [](auto& i) { return i.second.Match && !i.second.Terminated; });
 	auto total = std::ranges::count_if(m_Items, [](auto& i) { return !i.second.Terminated; });
-	Frame()->SetStatusText(0, std::format(L"{} of {} processes match the filter", matches, total).c_str());
+	Frame()->SetStatusText(0, std::format(L"{} of {} processes {}", matches, total,
+		m_Filter.GetText().empty() ? L"shown" : L"match the filter").c_str());
 }
 
 LRESULT CProcessesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -493,8 +688,8 @@ void CProcessesView::BuildItems() {
 	m_Items.reserve(processes.size() + 64);
 	for (auto& p : processes)
 		m_Items.insert({ p->Key, ProcessItem{ p } });
-	InsertItems();
 
+	// the kinds first: the Hide Processes options go by them
 	UpdateServicePids();
 	for (auto& [key, item] : m_Items) {
 		SetFixedKinds(item);
@@ -503,6 +698,7 @@ void CProcessesView::BuildItems() {
 			item.Kinds |= ProcessKind::Service;
 	}
 	UpdateDotNet(true);
+	InsertItems();
 
 	if (m_SortColumn >= 0)
 		Sort();
@@ -588,10 +784,10 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 		}
 	}
 	for (auto item : added) {
+		SetFixedKinds(*item);
 		item->Match = Matches(*item);
 		if (item->Match)
 			EnsureInserted(*item);
-		SetFixedKinds(*item);
 	}
 
 	// the SCM may record a new service's PID after the snapshot, so the next update looks again too
@@ -619,6 +815,8 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 			if (gpu)
 				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
 		}
+	// a new process may have turned out to host a service after it was inserted
+	UpdateHidden();
 
 	// values change on every update, so the order may too; a hidden list is sorted when it's shown
 	if (m_SortColumn >= 0) {
@@ -631,7 +829,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 
 	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
 	UpdateUI();
-	if (!m_Filter.GetText().empty())
+	if (IsFiltering())
 		UpdateFilterStatus();
 	UpdateDetails();
 	if (m_LowerPane)
@@ -1013,14 +1211,21 @@ bool CProcessesView::CanControl(ProcessItem const* item) {
 	return item && !item->Terminated && item->Process->Id > 4;
 }
 
+bool CProcessesView::CanRestart(ProcessItem const* item) {
+	return CanControl(item) && (item->Kinds & (ProcessKind::Service | ProcessKind::Immersive)) == ProcessKind::None
+		&& item->Process->Id != ::GetCurrentProcessId();
+}
+
 void CProcessesView::UpdateUI() {
 	// the frame's commands (menu, toolbar) that this view handles; the context menu has its own state (OnRightClick)
 	auto& ui = Frame()->GetUI();
 	ui.UIEnable(ID_VIEW_PROCESSTREE, m_Active);
 	auto item = GetSelectedProcess();
 	bool live = m_Active && CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_KILLTREE, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP,
+		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG })
 		ui.UIEnable(id, live);
+	ui.UIEnable(ID_PROCESS_RESTART, m_Active && CanRestart(item));
 	ui.UIEnable(ID_PROCESS_GOTOFILELOCATION, m_Active && item && !item->Process->GetImagePath().empty());
 	// the Services view has Properties too (its OnFrameIdle)
 	if (m_Active)
@@ -1051,9 +1256,15 @@ void CProcessesView::UpdateUI() {
 	ui.UISetCheck(ID_PROCESS_EFFICIENCY, live && item->Process->GetEfficiencyMode().value_or(false));
 	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
 	ui.UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, m_Active);
+	for (UINT id = ID_VIEW_HIDEOTHERUSERS; id <= ID_VIEW_HIDESIGNED; id++)
+		ui.UIEnable(id, m_Active);
 	ui.UIEnable(ID_KILL, m_Active && CanKill());
 	if (m_Active) {
 		ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, m_KeepSelectionVisible);
+		ui.UISetCheck(ID_VIEW_HIDEOTHERUSERS, m_HideOtherUsers);
+		ui.UISetCheck(ID_VIEW_HIDESERVICES, m_HideServices);
+		ui.UISetCheck(ID_VIEW_HIDEWINDOWS, m_HideWindows);
+		ui.UISetCheck(ID_VIEW_HIDESIGNED, m_HideSigned);
 		ui.UISetCheck(ID_VIEW_PROCESSTREE, m_TreeMode);
 		ui.UISetCheck(ID_VIEW_LOWERPANE, m_LowerPane);
 	}
@@ -1087,8 +1298,10 @@ void CProcessesView::ShowRowMenu(CPoint pt) {
 	WTLHelper::InitMenu(popup, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
 
 	bool live = CanControl(item);
-	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP, ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN })
+	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_KILLTREE, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP,
+		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
+	popup.EnableMenuItem(ID_PROCESS_RESTART, MF_BYCOMMAND | (CanRestart(item) ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_GOTOFILELOCATION, MF_BYCOMMAND | (item->Process->GetImagePath().empty() ? MF_GRAYED : MF_ENABLED));
 	popup.EnableMenuItem(ID_VIEW_PROPERTIES, MF_BYCOMMAND | (item->Terminated ? MF_GRAYED : MF_ENABLED));
 	popup.SetMenuDefaultItem(ID_VIEW_PROPERTIES);
@@ -1219,6 +1432,96 @@ LRESULT CProcessesView::OnKillAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	if (failed)
 		AtlMessageBox(m_hWnd, std::format(L"Failed to terminate {} of {} processes: {}", failed, pids.size(), Helpers::GetErrorText(error)).c_str(),
 			IDR_MAINFRAME, MB_ICONERROR);
+	return 0;
+}
+
+LRESULT CProcessesView::OnKillTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return 0;
+
+	// the descendants from the snapshot (not the tree, which may be flat or filtered): a child was created after its
+	// parent, otherwise its parent ID belongs to an earlier process. The app's own process stays
+	auto root = item->Process;
+	std::vector<ProcessOrThreadKey> keys{ root->Key };
+	for (size_t i = 0; i < keys.size(); i++)
+		for (auto& [key, other] : m_Items)
+			if (CanControl(&other) && other.Process->ParentId == keys[i].Id && key.Created > keys[i].Created
+				&& key.Id != ::GetCurrentProcessId() && !std::ranges::contains(keys, key))
+				keys.push_back(key);
+
+	auto descendants = keys.size() - 1;
+	auto text = descendants == 0
+		? std::format(L"Terminate process {} ({})? It has no descendants.", root->GetImageName(), root->Id)
+		: std::format(L"Terminate process {} ({}) and its {} descendant{}?", root->GetImageName(), root->Id,
+			descendants, descendants == 1 ? L"" : L"s");
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+
+	// the root first, so it doesn't start more children meanwhile
+	int failed = 0;
+	DWORD error = ERROR_SUCCESS;
+	for (auto& key : keys) {
+		auto process = Process::OpenById(key.Id, key.Created, ProcessAccessMask::Terminate);
+		if (!process || !process->Terminate()) {
+			if (!failed++)
+				error = ::GetLastError();
+		}
+	}
+	if (failed)
+		AtlMessageBox(m_hWnd, std::format(L"Failed to terminate {} of {} processes: {}", failed, keys.size(), Helpers::GetErrorText(error)).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	return 0;
+}
+
+LRESULT CProcessesView::OnRestart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanRestart(item))
+		return 0;
+
+	// held: refreshes go on while the box is open, and may remove the item
+	auto info = item->Process;
+	auto text = std::format(L"Restart process {} ({})?\n\nIt's terminated, then started again with the same command line, current "
+		L"directory and environment, by WinSysLive: with its account and elevation, not necessarily the process's.", info->GetImageName(), info->Id);
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+
+	auto process = Process::OpenById(info->Id, info->Key.Created,
+		ProcessAccessMask::Terminate | ProcessAccessMask::QueryInformation | ProcessAccessMask::VmRead | ProcessAccessMask::Synchonize);
+	if (!process) {
+		ShowError(L"Opening the process");
+		return 0;
+	}
+	if (!process->Restart())
+		ShowError(L"Restarting the process");
+	return 0;
+}
+
+LRESULT CProcessesView::OnEmptyWorkingSet(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto process = OpenSelected(ProcessAccessMask::SetQuota);
+	if (process && !process->EmptyWorkingSet())
+		ShowError(L"Reducing the working set");
+	return 0;
+}
+
+LRESULT CProcessesView::OnDebug(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return 0;
+
+	auto debugger = Process::GetPostmortemDebugger();
+	if (debugger.empty()) {
+		AtlMessageBox(m_hWnd, L"No debugger is registered: the AeDebug key (HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug) "
+			L"has no Debugger value.", IDR_MAINFRAME, MB_ICONINFORMATION);
+		return 0;
+	}
+	auto info = item->Process;
+	auto text = std::format(L"Attach the debugger to process {} ({})?\n\n{}\n\nClosing the debugger without detaching terminates the process.",
+		info->GetImageName(), info->Id, debugger);
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONQUESTION) != IDOK)
+		return 0;
+	if (!Process::AttachDebugger(info->Id))
+		ShowError(L"Starting the debugger");
 	return 0;
 }
 
@@ -1532,6 +1835,22 @@ LRESULT CProcessesView::OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD 
 		if (auto item = GetSelectedProcess())
 			m_Tree.EnsureVisible(item->Item);
 	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnToggleHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	switch (wID) {
+		case ID_VIEW_HIDEOTHERUSERS: settings.ProcessHideOtherUsers(m_HideOtherUsers = !m_HideOtherUsers); break;
+		case ID_VIEW_HIDESERVICES: settings.ProcessHideServices(m_HideServices = !m_HideServices); break;
+		case ID_VIEW_HIDEWINDOWS: settings.ProcessHideWindows(m_HideWindows = !m_HideWindows); break;
+		case ID_VIEW_HIDESIGNED: settings.ProcessHideSigned(m_HideSigned = !m_HideSigned); break;
+	}
+	settings.Save();
+	RebuildTree();
+	UpdateFilterStatus();
+	UpdateUI();
+	UpdateHideButton();
 	return 0;
 }
 

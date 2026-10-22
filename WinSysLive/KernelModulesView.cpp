@@ -23,15 +23,6 @@ namespace {
 #include <ClipboardHelper.h>
 #include <ShlObj.h>
 
-CKernelModulesView::~CKernelModulesView() {
-	// the worker may be verifying a file, which can take seconds through the catalogs: it isn't waited for, but
-	// finishes that one and exits without posting (it shares only m_Signatures)
-	m_Verifier.request_stop();
-	m_Signatures->Wake.notify_all();
-	if (m_Verifier.joinable())
-		m_Verifier.detach();
-}
-
 CString CKernelModulesView::GetTitle() const {
 	return L"Kernel Modules";
 }
@@ -44,7 +35,7 @@ LRESULT CKernelModulesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_HEADERDRAGDROP | LVS_EX_INFOTIP);
 	m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
-	m_Signatures->Notify = m_hWnd;
+	m_Signatures.Init(m_hWnd, WM_KMODULE_SIGNED);
 
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 	// the layout saved when this was the Drivers tab, until one is saved under the new name
@@ -101,7 +92,7 @@ void CKernelModulesView::OnRefresh(bool active) {
 		m_Loaded = true;
 		ShowRows(selected);
 		// verifying starts when the tab is first shown; after that, the new ones
-		if (loaded && !m_Queued.empty())
+		if (loaded && m_Signatures.IsStarted())
 			VerifySignatures();
 	}
 	if (active) {
@@ -161,44 +152,9 @@ std::wstring CKernelModulesView::Lowercase(std::wstring text) {
 }
 
 void CKernelModulesView::VerifySignatures() {
-	std::vector<std::wstring> paths;
 	for (auto& row : m_All)
-		if (!row.Unloaded && m_Queued.insert(Lowercase(row.Module.Path)).second)
-			paths.push_back(row.Module.Path);
-	if (paths.empty())
-		return;
-	{
-		std::lock_guard lock(m_Signatures->Lock);
-		for (auto& path : paths)
-			m_Signatures->Pending.push_back(std::move(path));
-	}
-	if (!m_Verifier.joinable())
-		m_Verifier = std::jthread(VerifyThread, m_Signatures);
-	m_Signatures->Wake.notify_one();
-}
-
-void CKernelModulesView::VerifyThread(std::stop_token stop, std::shared_ptr<Signatures> signatures) {
-	// WinVerifyTrust's catalog lookups may use COM
-	::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-	for (;;) {
-		std::wstring path;
-		{
-			std::unique_lock lock(signatures->Lock);
-			if (!signatures->Wake.wait(lock, stop, [&] { return !signatures->Pending.empty(); }))
-				break;
-			path = std::move(signatures->Pending.front());
-			signatures->Pending.pop_front();
-		}
-		auto info = WinSys::FileSignature::Verify(path.c_str());
-		if (stop.stop_requested())
-			break;
-		{
-			std::lock_guard lock(signatures->Lock);
-			signatures->Results[Lowercase(path)] = std::move(info);
-		}
-		::PostMessage(signatures->Notify, WM_KMODULE_SIGNED, 0, 0);
-	}
-	::CoUninitialize();
+		if (!row.Unloaded)
+			m_Signatures.Verify(row.Module.Path);
 }
 
 LRESULT CKernelModulesView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -213,11 +169,9 @@ LRESULT CKernelModulesView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 }
 
 std::wstring CKernelModulesView::GetSignatureText(std::wstring const& path) const {
-	std::lock_guard lock(m_Signatures->Lock);
-	auto it = m_Signatures->Results.find(Lowercase(path));
-	if (it != m_Signatures->Results.end())
-		return FormatSignature(it->second);
-	return m_Verifier.joinable() ? L"Verifying..." : L"";
+	if (auto info = m_Signatures.GetResult(path))
+		return FormatSignature(*info);
+	return m_Signatures.IsStarted() ? L"Verifying..." : L"";
 }
 
 bool CKernelModulesView::Matches(DriverRow const& row) const {

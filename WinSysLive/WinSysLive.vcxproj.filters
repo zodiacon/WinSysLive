@@ -181,6 +181,9 @@
     <ClCompile Include="Signature.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="SignatureVerifier.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -347,6 +350,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Signature.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="SignatureVerifier.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
   </ItemGroup>
@@ -518,6 +524,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\target.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\process-hide.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

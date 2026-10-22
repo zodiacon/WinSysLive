@@ -76,6 +76,13 @@ BEGIN
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
         MENUITEM "&Keep Selection Visible",     ID_VIEW_KEEPSELECTIONVISIBLE
+        POPUP "&Hide Processes"
+        BEGIN
+            MENUITEM "Other &Users' Processes",    ID_VIEW_HIDEOTHERUSERS
+            MENUITEM "&Services",                   ID_VIEW_HIDESERVICES
+            MENUITEM "&Windows Processes",          ID_VIEW_HIDEWINDOWS
+            MENUITEM "Si&gned Processes",           ID_VIEW_HIDESIGNED
+        END
         MENUITEM "Select &Columns...",          ID_VIEW_SELECTCOLUMNS
         MENUITEM SEPARATOR
         MENUITEM "P&roperties...\tAlt+Enter",   ID_VIEW_PROPERTIES
@@ -96,7 +103,9 @@ BEGIN
     POPUP "&Process"
     BEGIN
         MENUITEM "&Kill Process",               ID_PROCESS_KILL
+        MENUITEM "Kill Pr&ocess Tree",          ID_PROCESS_KILLTREE
         MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
+        MENUITEM "Res&tart",                    ID_PROCESS_RESTART
         MENUITEM SEPARATOR
         MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
         MENUITEM "&Resume",                     ID_PROCESS_RESUME
@@ -127,7 +136,9 @@ BEGIN
         END
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
+        MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
         MENUITEM SEPARATOR
+        MENUITEM "De&bug",                      ID_PROCESS_DEBUG
         MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
         POPUP "Create &Dump"
         BEGIN
@@ -167,7 +178,9 @@ BEGIN
     POPUP "Process"
     BEGIN
         MENUITEM "&Kill Process",               ID_PROCESS_KILL
+        MENUITEM "Kill Pr&ocess Tree",          ID_PROCESS_KILLTREE
         MENUITEM "Kill &All with the Same Name", ID_PROCESS_KILLALL
+        MENUITEM "Res&tart",                    ID_PROCESS_RESTART
         MENUITEM SEPARATOR
         MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
         MENUITEM "&Resume",                     ID_PROCESS_RESUME
@@ -198,7 +211,9 @@ BEGIN
         END
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
+        MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
         MENUITEM SEPARATOR
+        MENUITEM "De&bug",                      ID_PROCESS_DEBUG
         MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
         POPUP "Create &Dump"
         BEGIN
@@ -364,6 +379,8 @@ IDI_DRIVER              ICON                    "res\\Driver.ico"
 IDI_SYSTEM_DRIVER       ICON                    "res\\System.ico"
 
 IDI_TARGET              ICON                    "res\\target.ico"
+
+IDI_PROCESS_HIDE        ICON                    "res\\process-hide.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1282,6 +1299,20 @@ STRINGTABLE
 BEGIN
     ID_FILE_RUNAS           "Start a program as another user\nRun As"
     ID_VIEW_KERNELMODULES   "Show the kernel's loaded modules: the kernel, the HAL and the drivers\nKernel Modules"
+END
+
+STRINGTABLE
+BEGIN
+    ID_PROCESS_KILLTREE     "Terminate the selected process and all its descendants\nKill Process Tree"
+    ID_PROCESS_RESTART      "Terminate the selected process and start it again with the same command line, directory and environment\nRestart"
+    ID_PROCESS_EMPTYWORKINGSET 
+                            "Remove all the pages from the selected process's working set\nReduce Working Set"
+    ID_PROCESS_DEBUG        "Attach the registered debugger (AeDebug) to the selected process\nDebug"
+    ID_VIEW_HIDEOTHERUSERS  "Hide the processes that run as other users\nHide Other Users' Processes"
+    ID_VIEW_HIDESERVICES    "Hide the processes that host running services\nHide Services"
+    ID_VIEW_HIDEWINDOWS     "Hide the processes whose executable is in the Windows directory, and the system's own\nHide Windows Processes"
+    ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
+    ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
 END
 
 STRINGTABLE
