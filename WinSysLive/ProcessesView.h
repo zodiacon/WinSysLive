@@ -95,12 +95,13 @@ public:
 
 private:
 	enum class Column {
-		Name, Id, Status, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
-		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults,
+		Name, Id, ParentId, ParentName, Status, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
+		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults, PagedPool, NonPagedPool,
 		Threads, PeakThreads, Handles, GdiObjects, UserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
-		Architecture, IntegrityLevel, Protection, Virtualization, JobId, IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
+		Architecture, IntegrityLevel, Elevation, Protection, Cfg, Mitigations, DpiAwareness, Virtualization, JobId,
+		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared,
-		Description, ImagePath, CommandLine,
+		PackageName, WindowTitle, Description, ImagePath, CommandLine,
 		_Count
 	};
 
@@ -194,6 +195,11 @@ private:
 	ProcessStatus GetStatus(ProcessItem const& item) const;
 	// m_HungPids again, while the Status column is shown (a pass over the top-level windows)
 	void UpdateHungProcesses();
+	// m_WindowTitles again, while the Window Title column is shown (another pass)
+	void UpdateWindowTitles();
+	// the process that created this one, if it's still running (its ID may belong to a later process)
+	ProcessInfoEx* GetParent(ProcessInfoEx const& process) const;
+	static std::wstring FormatMitigations(WinSys::ProcessMitigations const& m);
 	// a GPU column is shown: the processes' GPU usage is queried (a call per engine of each process using the GPU)
 	bool ShowsGpu() const;
 	// zero without the tracker
@@ -284,6 +290,7 @@ private:
 	std::vector<ProcessColors::Entry> m_Colors;	// the ProcessColors setting
 	std::unordered_set<uint32_t> m_ServicePids;
 	std::vector<uint32_t> m_HungPids;	// sorted; empty while the Status column is hidden
+	std::unordered_map<uint32_t, std::wstring> m_WindowTitles;	// by PID; empty while the Window Title column is hidden
 	std::wstring m_CurrentUser;	// DOMAIN\user, for the Own kind
 	// refreshes left to enumerate the services again; set when processes start, as a service host is a new process
 	int m_ServiceRechecks{ 0 };

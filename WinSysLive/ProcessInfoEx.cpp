@@ -3,6 +3,7 @@
 #include "VersionInfo.h"
 #include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
+#include <WinSys/Token.h>
 
 using namespace WinSys;
 
@@ -131,6 +132,56 @@ bool ProcessInfoEx::IsImmersive() {
 			m_Immersive = process->IsImmersive();
 	}
 	return m_Immersive;
+}
+
+const std::wstring& ProcessInfoEx::GetPackageName() {
+	if (!m_PackageNameDone) {
+		m_PackageNameDone = true;
+		// the current snapshot's (m_PackageFullName points into the first one's buffer, overwritten since), copied now
+		if (ExtendedInfo && ExtendedInfo->PackageFullNameOffset)
+			m_PackageName = reinterpret_cast<PCWSTR>((BYTE const*)ExtendedInfo + ExtendedInfo->PackageFullNameOffset);
+		else if (auto process = GetProcess())
+			m_PackageName = process->GetPackageFullName();
+	}
+	return m_PackageName;
+}
+
+DpiAwareness ProcessInfoEx::GetDpiAwareness() {
+	if (!m_DpiAwarenessDone) {
+		m_DpiAwarenessDone = true;
+		if (auto process = GetProcess())
+			m_DpiAwareness = process->GetDpiAwareness();
+	}
+	return m_DpiAwareness;
+}
+
+std::optional<ProcessMitigations> const& ProcessInfoEx::GetMitigations() {
+	if (!m_MitigationsDone) {
+		m_MitigationsDone = true;
+		// most policies need full query access; limited access gets some
+		if (GetQueryInformationHandle())
+			m_Mitigations = m_QueryInformation->GetMitigations();
+		else if (auto process = GetProcess())
+			m_Mitigations = process->GetMitigations();
+	}
+	return m_Mitigations;
+}
+
+const std::wstring& ProcessInfoEx::GetElevation() {
+	if (!m_ElevationDone) {
+		m_ElevationDone = true;
+		if (auto process = GetProcess()) {
+			if (Token token(process->Handle(), TokenAccessMask::Query); token) {
+				auto type = token.GetElevationType();
+				m_Elevation = token.IsElevated() ? L"Yes" : L"No";
+				if (type == ElevationType::Full)
+					m_Elevation += L" (full)";
+				else if (type == ElevationType::Limited)
+					m_Elevation += L" (limited)";
+			}
+		}
+	}
+	return m_Elevation;
 }
 
 int ProcessInfoEx::GetMemoryPriority() {

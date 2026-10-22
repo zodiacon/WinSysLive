@@ -22,6 +22,13 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	bool IsProtected();
 	bool IsSecure();		// runs in VTL 1 (IUM), like LsaIso
 	bool IsImmersive();		// a UWP (Store) app
+	// a packaged app's package full name (the snapshot's when elevated); empty otherwise
+	const std::wstring& GetPackageName();
+	WinSys::DpiAwareness GetDpiAwareness();	// Unknown if the process can't be queried
+	// queried once (a process may turn some on later, such as ACG); nothing if the process can't be queried
+	std::optional<WinSys::ProcessMitigations> const& GetMitigations();
+	// "Yes" or "No", with "(full)" or "(limited)" for a split (UAC) token; empty if the token can't be opened
+	const std::wstring& GetElevation();
 
 	// current values; -1 (IoPriority::Unknown) if the process can't be opened
 	int GetMemoryPriority();
@@ -49,6 +56,12 @@ private:
 	void QueryExtendedBasicInfo();
 	bool m_ExtendedBasicDone{ false }, m_Protected{ false }, m_Secure{ false };
 	bool m_ImmersiveDone{ false }, m_Immersive{ false };
+	std::wstring m_PackageName, m_Elevation;
+	bool m_PackageNameDone{ false }, m_ElevationDone{ false };
+	WinSys::DpiAwareness m_DpiAwareness{ WinSys::DpiAwareness::Unknown };
+	bool m_DpiAwarenessDone{ false };
+	std::optional<WinSys::ProcessMitigations> m_Mitigations;
+	bool m_MitigationsDone{ false };
 
 	std::wstring m_ImagePath, m_User, m_CommandLine, m_Description;
 	PCWSTR m_Architecture{ L"" };

@@ -27,6 +27,8 @@ namespace {
 	const ColumnLayout::ColumnDef s_Columns[] = {
 		{ L"Name", L"Name", 220, LVCFMT_LEFT, true, true },
 		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true, true },
+		{ L"Parent PID", L"ParentId", 70, LVCFMT_RIGHT, false },
+		{ L"Parent Name", L"ParentName", 150, LVCFMT_LEFT, false },
 		{ L"Status", L"Status", 100, LVCFMT_LEFT, false },
 		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
 		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false },
@@ -42,6 +44,8 @@ namespace {
 		{ L"Peak Working Set", L"PeakWorkingSet", 110, LVCFMT_RIGHT, false },
 		{ L"Virtual Size", L"VirtualSize", 120, LVCFMT_RIGHT, false },
 		{ L"Page Faults", L"PageFaults", 100, LVCFMT_RIGHT, false },
+		{ L"Paged Pool", L"PagedPool", 90, LVCFMT_RIGHT, false },
+		{ L"Non-Paged Pool", L"NonPagedPool", 100, LVCFMT_RIGHT, false },
 		{ L"Threads", L"Threads", 60, LVCFMT_RIGHT, true },
 		{ L"Peak Threads", L"PeakThreads", 80, LVCFMT_RIGHT, false },
 		{ L"Handles", L"Handles", 70, LVCFMT_RIGHT, true },
@@ -55,7 +59,11 @@ namespace {
 		{ L"Start Time", L"StartTime", 150, LVCFMT_LEFT, true },
 		{ L"Architecture", L"Architecture", 80, LVCFMT_LEFT, false },
 		{ L"Integrity", L"IntegrityLevel", 90, LVCFMT_LEFT, false },
+		{ L"Elevated", L"Elevation", 90, LVCFMT_LEFT, false },
 		{ L"Protection", L"Protection", 130, LVCFMT_LEFT, false },
+		{ L"CFG", L"Cfg", 90, LVCFMT_LEFT, false },
+		{ L"Mitigations", L"Mitigations", 300, LVCFMT_LEFT, false },
+		{ L"DPI Awareness", L"DpiAwareness", 120, LVCFMT_LEFT, false },
 		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false },
 		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false },
 		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false },
@@ -66,6 +74,8 @@ namespace {
 		{ L"GPU (%)", L"Gpu", 70, LVCFMT_RIGHT, false },
 		{ L"Dedicated GPU Memory", L"GpuDedicated", 140, LVCFMT_RIGHT, false },
 		{ L"Shared GPU Memory", L"GpuShared", 130, LVCFMT_RIGHT, false },
+		{ L"Package Name", L"PackageName", 250, LVCFMT_LEFT, false },
+		{ L"Window Title", L"WindowTitle", 250, LVCFMT_LEFT, false },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true },
@@ -273,6 +283,7 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 	else
 		m_Network.reset();
 	UpdateHungProcesses();
+	UpdateWindowTitles();
 	m_Tree.Invalidate();
 }
 
@@ -281,6 +292,53 @@ void CProcessesView::UpdateHungProcesses() {
 		m_HungPids = Process::GetHungProcesses();
 	else
 		m_HungPids.clear();
+}
+
+void CProcessesView::UpdateWindowTitles() {
+	if (std::ranges::contains(m_Columns, Column::WindowTitle))
+		m_WindowTitles = Process::GetMainWindowTitles();
+	else
+		m_WindowTitles.clear();
+}
+
+ProcessInfoEx* CProcessesView::GetParent(ProcessInfoEx const& process) const {
+	auto parent = Frame()->GetProcessManager().GetProcessById(process.ParentId);
+	// created after this one: a later process with the parent's ID
+	if (!parent || parent->Id == process.Id || parent->Key.Created >= process.Key.Created)
+		return nullptr;
+	return parent.get();
+}
+
+std::wstring CProcessesView::FormatMitigations(WinSys::ProcessMitigations const& m) {
+	// CFG has a column of its own
+	std::wstring text;
+	auto add = [&](bool on, PCWSTR name, std::initializer_list<std::pair<bool, PCWSTR>> details = {}) {
+		if (!on)
+			return;
+		if (!text.empty())
+			text += L"; ";
+		text += name;
+		std::wstring extra;
+		for (auto& [set, detail] : details)
+			if (set)
+				extra += (extra.empty() ? L"" : L", ") + std::wstring(detail);
+		if (!extra.empty())
+			text += L" (" + extra + L")";
+	};
+	add(m.Dep, L"DEP", { { m.DepPermanent, L"permanent" } });
+	add(m.AslrBottomUp || m.AslrForceRelocate || m.AslrHighEntropy, L"ASLR",
+		{ { m.AslrHighEntropy, L"high entropy" }, { m.AslrBottomUp, L"bottom-up" }, { m.AslrForceRelocate, L"force relocate" } });
+	add(m.Cet, L"CET", { { m.CetStrict, L"strict" } });
+	add(m.DynamicCodeProhibited, L"ACG");
+	add(m.MicrosoftSignedOnly, L"CIG (Microsoft signed)");
+	add(m.StrictHandleChecks, L"Strict handles");
+	add(m.Win32kDisabled, L"Win32k disabled");
+	add(m.ExtensionPointsDisabled, L"Extension points disabled");
+	add(m.NonSystemFontsDisabled, L"Non-system fonts disabled");
+	add(m.NoRemoteImages, L"No remote images");
+	add(m.NoLowLabelImages, L"No low-label images");
+	add(m.NoChildProcesses, L"No child processes");
+	return text;
 }
 
 CProcessesView::ProcessStatus CProcessesView::GetStatus(ProcessItem const& item) const {
@@ -807,6 +865,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	UpdateDotNet(false);
 
 	UpdateHungProcesses();
+	UpdateWindowTitles();
 	bool gpu = ShowsGpu();
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated) {
@@ -938,6 +997,36 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 	switch (column) {
 		case Column::Name: return p.GetImageName();
 		case Column::Id: return std::to_wstring(p.Id);
+		case Column::ParentId: return p.Id == 0 ? L"" : std::to_wstring(p.ParentId);
+		case Column::ParentName: {
+			auto parent = GetParent(p);
+			return parent ? parent->GetImageName() : L"";
+		}
+		case Column::PagedPool: return FormatHelper::FormatSize(info->QuotaPagedPoolUsage);
+		case Column::NonPagedPool: return FormatHelper::FormatSize(info->QuotaNonPagedPoolUsage);
+		case Column::Elevation: return p.GetElevation();
+		case Column::Cfg: {
+			auto& m = p.GetMitigations();
+			return !m ? L"" : !m->Cfg ? L"Disabled" : m->CfgStrict ? L"Enabled (strict)" : L"Enabled";
+		}
+		case Column::Mitigations: {
+			auto& m = p.GetMitigations();
+			return m ? FormatMitigations(*m) : L"";
+		}
+		case Column::DpiAwareness:
+			switch (p.GetDpiAwareness()) {
+				case DpiAwareness::None: return L"Unaware";
+				case DpiAwareness::System: return L"System";
+				case DpiAwareness::PerMonitor: return L"Per-Monitor";
+				case DpiAwareness::PerMonitorV2: return L"Per-Monitor v2";
+				case DpiAwareness::UnawareGdiScaled: return L"Unaware (GDI scaled)";
+			}
+			return L"";
+		case Column::PackageName: return p.GetPackageName();
+		case Column::WindowTitle: {
+			auto it = m_WindowTitles.find(p.Id);
+			return it == m_WindowTitles.end() || item.Terminated ? L"" : it->second;
+		}
 		case Column::Status:
 			if (item.Terminated)
 				return L"";
@@ -1102,6 +1191,14 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 	switch ((Column)m_SortColumn) {
 		case Column::Name: return compareText(p1.GetImageName(), p2.GetImageName());
 		case Column::Id: return compare(p1.Id, p2.Id);
+		case Column::ParentId: return compare(p1.ParentId, p2.ParentId);
+		case Column::PagedPool: return compare(i1->QuotaPagedPoolUsage, i2->QuotaPagedPoolUsage);
+		case Column::NonPagedPool: return compare(i1->QuotaNonPagedPoolUsage, i2->QuotaNonPagedPoolUsage);
+		case Column::DpiAwareness: return compare(p1.GetDpiAwareness(), p2.GetDpiAwareness());
+		// the others by their text
+		case Column::ParentName: case Column::Elevation: case Column::Cfg: case Column::Mitigations:
+		case Column::PackageName: case Column::WindowTitle:
+			return compareText(GetColumnText(item1, (Column)m_SortColumn), GetColumnText(item2, (Column)m_SortColumn));
 		case Column::Status: return compare(GetStatus(item1), GetStatus(item2));
 		case Column::CPU: return compare(p1.CPU, p2.CPU);
 		case Column::CpuTime: return compare(i1->KernelTime.QuadPart + i1->UserTime.QuadPart, i2->KernelTime.QuadPart + i2->UserTime.QuadPart);
