@@ -118,6 +118,15 @@ void CPoolTagsView::Update(bool marks) {
 	auto tags = WinSys::SystemInfo::GetPoolTagInformation();
 	if (tags.empty())
 		return;	// keep what we have
+	// non-elevated, Windows gives a single placeholder: tag "None", every counter zero
+	auto& first = tags[0];
+	m_Withheld = tags.size() == 1 && first.TagUlong == 'enoN' && first.PagedAllocs == 0 && first.PagedFrees == 0 && first.PagedUsed == 0
+		&& first.NonPagedAllocs == 0 && first.NonPagedFrees == 0 && first.NonPagedUsed == 0;
+	if (m_Withheld) {
+		m_Rows.clear();
+		m_All.clear();
+		return;
+	}
 	std::unordered_map<ULONG, SYSTEM_POOLTAG const*> previous;
 	for (auto& row : m_All)
 		previous[row.Tag.TagUlong] = &row.Tag;
@@ -192,6 +201,10 @@ void CPoolTagsView::SelectTag(std::optional<ULONG> tag) {
 void CPoolTagsView::UpdateStatus() {
 	if (!m_Active)
 		return;
+	if (m_Withheld) {
+		Frame()->SetStatusText(0, L"Pool tags need elevation: Windows doesn't give them to non-elevated processes");
+		return;
+	}
 	uint64_t paged = 0, nonPaged = 0;
 	for (auto& row : m_All) {
 		paged += row.Tag.PagedUsed;

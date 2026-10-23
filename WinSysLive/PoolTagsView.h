@@ -109,4 +109,5 @@ private:
 	std::vector<Row const*> m_Rows;	// into m_All: the list's rows, in display order
 	COLORREF m_RowText{ CLR_DEFAULT }, m_RowTextBk{ CLR_DEFAULT };	// the row being drawn, as the list chose them
 	bool m_Active{ false };
+	bool m_Withheld{ false };	// the tags weren't given (not elevated)
 };
