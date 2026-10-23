@@ -3,6 +3,7 @@
 #include <ResizablePropertySheet.h>
 #include <IconPropertySheet.h>
 #include "ProcessPages.h"
+#include "StatisticsPage.h"
 #include "MemoryPage.h"
 #include "JobPage.h"
 #include "ServicesPage.h"
@@ -32,8 +33,8 @@ public:
 private:
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
-	// takes a snapshot for the pages: the Performance page gets every one, the Threads, TCP/IP and Job pages only while
-	// they're active
+	// takes a snapshot for the pages: the Performance page gets every one, the Statistics, Threads, TCP/IP and Job pages
+	// only while they're active
 	void Sample();
 
 	ProcessProperties m_Props;
@@ -42,6 +43,7 @@ private:
 	CIcon m_Icon, m_SmallIcon;	// the process's, or the system's application icon
 	std::unique_ptr<CProcGeneralPage> m_General;
 	std::unique_ptr<CProcPerformancePage> m_Performance;
+	std::unique_ptr<CProcStatsPage> m_Statistics;
 	std::unique_ptr<CProcEnvironmentPage> m_Environment;
 	std::unique_ptr<CProcMemoryPage> m_Memory;
 	std::unique_ptr<CProcTokenPage> m_Token;

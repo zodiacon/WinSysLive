@@ -364,6 +364,11 @@
 #define IDI_PROCESS_HIDE            281
 #define IDI_ENABLED                 282
 #define IDI_DISABLED                283
+#define IDD_PROC_STATS              284
+#define IDC_STATS_LIST              1263
+#define IDC_STATS_STATUS            1264
+#define IDC_STATS_COPY              1265
+#define IDC_STATS_COPYALL           1266
 #define IDC_SVCI_NAME               1245
 #define IDC_SVCI_DISPLAYNAME        1246
 #define IDC_SVCI_DESCRIPTION        1247
@@ -459,8 +464,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	284
-#define _APS_NEXT_CONTROL_VALUE		1263
+#define _APS_NEXT_RESOURCE_VALUE	285
+#define _APS_NEXT_CONTROL_VALUE		1267
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32910
 #endif

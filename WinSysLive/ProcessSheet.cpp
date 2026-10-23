@@ -42,6 +42,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_General);
 	m_Performance = std::make_unique<CProcPerformancePage>(m_Props);
 	AddPage(*m_Performance);
+	m_Statistics = std::make_unique<CProcStatsPage>(m_Props, m_Snapshot);
+	AddPage(*m_Statistics);
 	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
 	AddPage(*m_Environment);
 	m_Memory = std::make_unique<CProcMemoryPage>(m_Props);
@@ -115,6 +117,8 @@ LRESULT CProcessSheet::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL
 void CProcessSheet::Sample() {
 	m_Snapshot.Take();
 	m_Performance->OnSample(m_Snapshot);
+	if (m_Statistics->IsWindow() && GetActivePage() == m_Statistics->m_hWnd)
+		m_Statistics->OnSample(m_Snapshot);
 	if (m_Threads->IsWindow() && GetActivePage() == m_Threads->m_hWnd)
 		m_Threads->OnSample(m_Snapshot);
 	if (m_Modules->IsWindow() && GetActivePage() == m_Modules->m_hWnd)
