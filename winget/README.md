@@ -30,8 +30,14 @@ link.
 
 ```powershell
 winget validate --manifest winget\ScorpioSoftware.WinSysLive\<version>
+$env:GITHUB_TOKEN = gh auth token
 komac submit winget\ScorpioSoftware.WinSysLive\<version>
 ```
+
+komac needs a GitHub token (`public_repo` scope) to fork winget-pkgs and open the pull request; without one it waits for
+it to be typed, so `gh`'s token is handed to it (or store one with `komac token update`). `komac submit --dry-run`
+shows the manifests without submitting. The release must be public: WinGet downloads the zip anonymously (a private
+repository's asset is a 404).
 
 The first submission is a new package; for later ones `komac update ScorpioSoftware.WinSysLive --version <version>
 --urls <zip url>` works too (it reads the rest from the previous version).
