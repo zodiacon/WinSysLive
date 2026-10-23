@@ -11,6 +11,8 @@
 #include "ProcessColorsDlg.h"
 #include "SymbolSettingsDlg.h"
 #include "FirmwareDlg.h"
+#include "VirusTotalDlg.h"
+#include "VirusTotalChecker.h"
 #include "FormatHelper.h"
 #include "ListExport.h"
 #include "RunDlg.h"
@@ -187,6 +189,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UISetCheck(ID_OPTIONS_RESOLVESYMBOLS, settings.ResolveSymbols());
 	AddressResolver::Get().Enable(settings.ResolveAddresses());
 	UISetCheck(ID_OPTIONS_RESOLVEADDRESSES, settings.ResolveAddresses());
+	VirusTotalChecker::Get().SetApiKey(VirusTotalChecker::Unprotect(settings.VirusTotalKey()));
+	VirusTotalChecker::Get().SetRequestsPerMinute(settings.VirusTotalRate());
 
 	SetUpdateInterval(settings.UpdateInterval());
 
@@ -940,6 +944,24 @@ LRESULT CMainFrame::OnResolveSymbols(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 	SymbolEngine::Get().Enable(resolve);
 	UISetCheck(id, resolve);
 	RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
+	return 0;
+}
+
+LRESULT CMainFrame::OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	CVirusTotalDlg dlg(VirusTotalChecker::Unprotect(settings.VirusTotalKey()), settings.VirusTotalRate());
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	auto stored = VirusTotalChecker::Protect(dlg.GetKey());
+	if (!dlg.GetKey().empty() && stored.empty()) {
+		AtlMessageBox(m_hWnd, L"The API key couldn't be encrypted, so it wasn't saved.", IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	settings.VirusTotalKey(stored);
+	settings.VirusTotalRate(dlg.GetRate());
+	settings.Save();
+	VirusTotalChecker::Get().SetRequestsPerMinute(dlg.GetRate());
+	VirusTotalChecker::Get().SetApiKey(dlg.GetKey());
 	return 0;
 }
 

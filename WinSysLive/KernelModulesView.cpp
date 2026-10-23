@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "KernelModulesView.h"
 #include "AppSettings.h"
+#include "VirusTotalDlg.h"
 
 namespace {
 	// in CKernelModulesView::Column order; the keys are stored in the KernelModuleColumns setting (widths at 96 DPI)
@@ -13,6 +14,7 @@ namespace {
 		{ L"Company", L"Company", 170, LVCFMT_LEFT, true },
 		{ L"Version", L"Version", 130, LVCFMT_LEFT, true },
 		{ L"Signature", L"Signature", 280, LVCFMT_LEFT, true },
+		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false },
 		{ L"Path", L"Path", 380, LVCFMT_LEFT, true },
 	};
 }
@@ -36,6 +38,8 @@ LRESULT CKernelModulesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
 	SuspendHookWhilePainting(m_List);
 	m_Signatures.Init(m_hWnd, WM_KMODULE_SIGNED);
+	// the VirusTotal column's results
+	VirusTotalChecker::Get().AddListener(m_hWnd);
 
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 	// the layout saved when this was the Drivers tab, until one is saved under the new name
@@ -224,6 +228,7 @@ std::wstring CKernelModulesView::GetText(DriverRow const& row, Column column) co
 		case Column::Company: return GetCachedVersionInfo(m.Path).Company;
 		case Column::Version: return GetCachedVersionInfo(m.Path).Version;
 		case Column::Signature: return GetSignatureText(m.Path);
+		case Column::VirusTotal: return m.Path.empty() ? L"" : VirusTotalChecker::Text(VirusTotalChecker::Get().Query(m.Path));
 		case Column::Path: return m.Path;
 	}
 	return L"";
@@ -264,6 +269,11 @@ void CKernelModulesView::DoSort(SortInfo const* si) {
 			case Column::Base: result = compare(r1->Module.Base, r2->Module.Base); break;
 			case Column::Size: result = compare(r1->Module.Size, r2->Module.Size); break;
 			case Column::LoadOrder: result = compare(r1->Module.LoadOrder, r2->Module.LoadOrder); break;
+			case Column::VirusTotal: {
+				auto key = [](std::wstring const& path) { return path.empty() ? -1 : VirusTotalChecker::SortKey(VirusTotalChecker::Get().Query(path)); };
+				result = compare(key(r1->Module.Path), key(r2->Module.Path));
+				break;
+			}
 			default: result = ::_wcsicmp(GetText(*r1, column).c_str(), GetText(*r2, column).c_str()); break;
 		}
 		return si->SortAscending ? result < 0 : result > 0;
@@ -326,6 +336,7 @@ bool CKernelModulesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	menu.AppendMenu(MF_STRING, ID_KMODULE_PROPERTIES, L"&Properties...");
 	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTOFILELOCATION, L"Open File &Location");
 	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTODRIVER, L"Go to &Driver");
+	VirusTotalCommands::AppendMenu(menu, !m_Rows[row]->Module.Path.empty());
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
 	menu.SetMenuDefaultItem(ID_KMODULE_PROPERTIES);
@@ -367,6 +378,28 @@ LRESULT CKernelModulesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	return 0;
 }
 
+LRESULT CKernelModulesView::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto row = GetSelected();
+	if (!row || row->Module.Path.empty())
+		return 0;
+	// a copy: a refresh may unload the driver while a message box is up
+	auto path = row->Module.Path;
+	switch (wID) {
+		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
+		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
+		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+	}
+	return 0;
+}
+
+LRESULT CKernelModulesView::OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	MSG msg;
+	while (::PeekMessage(&msg, m_hWnd, VirusTotalChecker::WM_VIRUSTOTAL, VirusTotalChecker::WM_VIRUSTOTAL, PM_REMOVE))
+		;
+	m_List.Invalidate();
+	return 0;
+}
+
 LRESULT CKernelModulesView::OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto row = GetSelected())
 		::ShellExecute(m_hWnd, L"open", L"explorer.exe", std::format(L"/select,\"{}\"", row->Module.Path).c_str(), nullptr, SW_SHOWNORMAL);
@@ -399,6 +432,7 @@ LRESULT CKernelModulesView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, 
 }
 
 LRESULT CKernelModulesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	VirusTotalChecker::Get().RemoveListener(m_hWnd);
 	// the widths and the order also change by dragging in the header
 	SaveColumns();
 	bHandled = FALSE;

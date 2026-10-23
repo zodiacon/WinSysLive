@@ -429,6 +429,8 @@
     <ClCompile Include="FirmwareDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
+    <ClCompile Include="VirusTotalDlg.cpp" />
+    <ClCompile Include="VirusTotalChecker.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -502,6 +504,8 @@
     <ClInclude Include="FirmwareDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
+    <ClInclude Include="VirusTotalDlg.h" />
+    <ClInclude Include="VirusTotalChecker.h" />
     <ClInclude Include="AppSettings.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="resource.h" />

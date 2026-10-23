@@ -18,6 +18,7 @@
 #include "ColumnLayout.h"
 #include "AffinityDlg.h"
 #include "WaitChainDlg.h"
+#include "VirusTotalDlg.h"
 #include <WinSys/DotNet.h>
 #include <ranges>
 
@@ -80,6 +81,7 @@ namespace {
 		{ L"NPU Memory", L"NpuMemory", 100, LVCFMT_RIGHT, false },
 		{ L"Package Name", L"PackageName", 250, LVCFMT_LEFT, false },
 		{ L"Window Title", L"WindowTitle", 250, LVCFMT_LEFT, false },
+		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true },
@@ -137,6 +139,8 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 
 	LoadSort();
 	SetColumns(LoadColumns());
+	// the VirusTotal column's results
+	VirusTotalChecker::Get().AddListener(m_hWnd);
 
 	int width = 280;	// at 96 DPI
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, width, L"Name, PID, user, command line (Ctrl+F)",
@@ -226,6 +230,7 @@ void CProcessesView::SaveLayout() const {
 }
 
 LRESULT CProcessesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	VirusTotalChecker::Get().RemoveListener(m_hWnd);
 	// the lower pane's pages save their columns as they're destroyed
 	SaveLayout();
 	bHandled = FALSE;
@@ -1113,6 +1118,9 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 			auto bytes = item.Npu.Dedicated + item.Npu.Shared;
 			return item.Npu.Known && bytes ? FormatHelper::FormatSize((int64_t)bytes) : L"";
 		}
+		// the image's hash, looked up as it's shown (queued at the front)
+		case Column::VirusTotal:
+			return p.GetImagePath().empty() ? L"" : VirusTotalChecker::Text(VirusTotalChecker::Get().Query(p.GetImagePath()));
 		case Column::Description: return p.GetDescription();
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
@@ -1252,6 +1260,12 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::GpuShared: return compare(item1.Gpu.Shared, item2.Gpu.Shared);
 		case Column::NpuUsage: return compare(item1.Npu.Usage, item2.Npu.Usage);
 		case Column::NpuMemory: return compare(item1.Npu.Dedicated + item1.Npu.Shared, item2.Npu.Dedicated + item2.Npu.Shared);
+		case Column::VirusTotal: {
+			auto key = [](ProcessInfoEx& p) {
+				return p.GetImagePath().empty() ? -1 : VirusTotalChecker::SortKey(VirusTotalChecker::Get().Query(p.GetImagePath()));
+			};
+			return compare(key(p1), key(p2));
+		}
 		case Column::Description: return compareText(p1.GetDescription(), p2.GetDescription());
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
@@ -1886,6 +1900,30 @@ LRESULT CProcessesView::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHand
 	BOOL handled;
 	if (reinterpret_cast<NMITEMACTIVATE*>(hdr)->iItem >= 0)
 		OnProperties(0, ID_VIEW_PROPERTIES, nullptr, handled);
+	return 0;
+}
+
+LRESULT CProcessesView::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!item || item->Process->GetImagePath().empty())
+		return 0;
+	// a copy: a refresh may remove the process while a message box is up
+	auto path = item->Process->GetImagePath();
+	switch (wID) {
+		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
+		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
+		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+	}
+	return 0;
+}
+
+LRESULT CProcessesView::OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// several results may have come: one repaint
+	MSG msg;
+	while (::PeekMessage(&msg, m_hWnd, VirusTotalChecker::WM_VIRUSTOTAL, VirusTotalChecker::WM_VIRUSTOTAL, PM_REMOVE))
+		;
+	if (std::ranges::contains(m_Columns, Column::VirusTotal))
+		m_Tree.GetListCtrl().Invalidate();
 	return 0;
 }
 

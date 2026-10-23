@@ -1,6 +1,7 @@
 #pragma once
 
 #include <VirtualListView.h>
+#include "VirusTotalChecker.h"
 #include <WinSys/ProcessModuleTracker.h>
 #include "ColumnLayout.h"
 #include "FilterBox.h"
@@ -66,6 +67,10 @@ public:
 		COMMAND_ID_HANDLER(ID_PAGE_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_MODULE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_MODULE_GOTOFILELOCATION, OnGoToFileLocation)
+		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_VT_SUBMIT, OnVirusTotalCommand)
+		MESSAGE_HANDLER(VirusTotalChecker::WM_VIRUSTOTAL, OnVirusTotal)
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
@@ -83,7 +88,7 @@ public:
 
 private:
 	enum class Column {
-		Name, BaseAddress, Size, Type, ImageBase, Description, Company, Version, Characteristics, Path,
+		Name, BaseAddress, Size, Type, ImageBase, Description, Company, Version, Characteristics, VirusTotal, Path,
 		_Count
 	};
 
@@ -95,6 +100,8 @@ private:
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);

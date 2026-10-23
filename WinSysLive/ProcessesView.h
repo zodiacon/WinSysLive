@@ -11,6 +11,7 @@
 #include "FilterBox.h"
 #include "Symbols.h"
 #include "SignatureVerifier.h"
+#include "VirusTotalChecker.h"
 #include <WinSys/Gpu.h>
 #include <CustomSplitterWindow.h>
 #include <unordered_set>
@@ -53,6 +54,7 @@ public:
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_DUMP_WRITTEN, OnDumpWritten)
 		MESSAGE_HANDLER(WM_PROCESS_SIGNED, OnSigned)
+		MESSAGE_HANDLER(VirusTotalChecker::WM_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
@@ -80,6 +82,9 @@ public:
 		COMMAND_ID_HANDLER(ID_PROCESS_AFFINITY, OnSetAffinity)
 		COMMAND_ID_HANDLER(ID_PROCESS_EFFICIENCY, OnEfficiencyMode)
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
+		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_VT_SUBMIT, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_PROCESS_MINIDUMP, OnCreateDump)
 		COMMAND_ID_HANDLER(ID_PROCESS_WAITCHAIN, OnWaitChain)
 		COMMAND_ID_HANDLER(ID_PROCESS_FULLDUMP, OnCreateDump)
@@ -102,7 +107,7 @@ private:
 		Architecture, IntegrityLevel, Elevation, Protection, Critical, Cfg, Mitigations, DpiAwareness, Virtualization, JobId,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
-		PackageName, WindowTitle, Description, ImagePath, CommandLine,
+		PackageName, WindowTitle, VirusTotal, Description, ImagePath, CommandLine,
 		_Count
 	};
 
@@ -160,6 +165,7 @@ private:
 	void SetGroupsAffinity(WinSys::Process& process, std::vector<WinSys::SystemInfo::ProcessorGroup> const& groups);
 	LRESULT OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -171,6 +177,7 @@ private:
 	LRESULT OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	// the Hide button's menu: View > Hide Processes
 	LRESULT OnHideDropDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	// the Hide button's font and size for its DPI, and its band

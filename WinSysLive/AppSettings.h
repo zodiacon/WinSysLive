@@ -35,6 +35,8 @@ struct AppSettings : Settings {
 		SETTING_STRING(ObjectManagerColumns, L"");	// the Object Manager tab
 		SETTING_STRING(ObjectManagerPath, L"\\");	// its directory
 		SETTING(ObjectManagerSplitterPos, 25, SettingType::Int32);	// the tree's width, in percent
+		SETTING_STRING(VirusTotalKey, L"");	// the API key, DPAPI-encrypted (VirusTotalChecker::Protect), as hex
+		SETTING(VirusTotalRate, 4, SettingType::Int32);	// requests a minute
 		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
 		SETTING_STRING(DriverColumns, L"");	// the Kernel Modules tab's, from when it was the Drivers tab: read while KernelModuleColumns is empty
 		SETTING_STRING(DriverServiceColumns, L"");	// the Drivers tab (driver services)
@@ -88,6 +90,8 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ObjectManagerColumns)
 	DEF_SETTING_STRING(ObjectManagerPath)
 	DEF_SETTING(ObjectManagerSplitterPos, int)
+	DEF_SETTING_STRING(VirusTotalKey)
+	DEF_SETTING(VirusTotalRate, int)
 	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(DriverColumns)
 	DEF_SETTING_STRING(DriverServiceColumns)

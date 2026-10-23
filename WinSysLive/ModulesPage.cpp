@@ -7,6 +7,7 @@
 #include "AppSettings.h"
 #include "ViewBase.h"
 #include "ListExport.h"
+#include "VirusTotalDlg.h"
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
 
@@ -24,6 +25,7 @@ namespace {
 		{ L"Company", L"Company", 180, LVCFMT_LEFT, true },
 		{ L"Version", L"Version", 140, LVCFMT_LEFT, false },
 		{ L"Characteristics", L"Characteristics", 200, LVCFMT_LEFT, true },
+		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false },
 		{ L"Path", L"Path", 450, LVCFMT_LEFT, true },
 	};
 
@@ -75,10 +77,13 @@ LRESULT CModulesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Module->Base : static_cast<void*>(0));
 		});
 	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().ModuleColumns(), s_Columns));
+	// the VirusTotal column's results (the checker is thread-safe: a sheet's page registers too)
+	VirusTotalChecker::Get().AddListener(m_hWnd);
 	return 0;
 }
 
 LRESULT CModulesPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	VirusTotalChecker::Get().RemoveListener(m_hWnd);
 	// the widths and the order also change by dragging in the header
 	SaveColumns();
 	bHandled = FALSE;
@@ -201,6 +206,9 @@ std::wstring CModulesPage::GetText(ModuleRow const& row, Column column) const {
 		case Column::Company: return VersionOf(m).Company;
 		case Column::Version: return VersionOf(m).Version;
 		case Column::Characteristics: return m.Type == MapType::Image ? CharacteristicsToString(m.Characteristics) : L"";
+		// images only (a data file is anything); looked up as it's shown
+		case Column::VirusTotal:
+			return m.Type == MapType::Image && !m.Path.empty() ? VirusTotalChecker::Text(VirusTotalChecker::Get().Query(m.Path)) : L"";
 		case Column::Path: return m.Path;
 	}
 	return L"";
@@ -237,6 +245,13 @@ void CModulesPage::DoSort(SortInfo const* si) {
 			case Column::BaseAddress: result = compare((ULONG_PTR)m1.Base, (ULONG_PTR)m2.Base); break;
 			case Column::Size: result = compare(m1.ModuleSize, m2.ModuleSize); break;
 			case Column::ImageBase: result = compare((ULONG_PTR)m1.ImageBase, (ULONG_PTR)m2.ImageBase); break;
+			case Column::VirusTotal: {
+				auto key = [](WinSys::ModuleInfo const& m) {
+					return m.Type == MapType::Image && !m.Path.empty() ? VirusTotalChecker::SortKey(VirusTotalChecker::Get().Query(m.Path)) : -1;
+				};
+				result = compare(key(m1), key(m2));
+				break;
+			}
 			default: result = ::_wcsicmp(GetText(r1, column).c_str(), GetText(r2, column).c_str()); break;
 		}
 		return si->SortAscending ? result < 0 : result > 0;
@@ -313,6 +328,7 @@ LRESULT CModulesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		menu.CreatePopupMenu();
 		menu.AppendMenu(MF_STRING, ID_MODULE_PROPERTIES, L"&Properties...");
 		menu.AppendMenu(MF_STRING, ID_MODULE_GOTOFILELOCATION, L"Open File &Location");
+		VirusTotalCommands::AppendMenu(menu, GetSelectedRow()->Module->Type == MapType::Image);
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		menu.SetMenuDefaultItem(ID_MODULE_PROPERTIES);
@@ -405,6 +421,27 @@ LRESULT CModulesPage::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	// the file's, from the shell (modeless: it has its own thread)
 	if (auto row = GetSelectedRow())
 		::SHObjectProperties(m_hWnd, SHOP_FILEPATH, row->Module->Path.c_str(), nullptr);
+	return 0;
+}
+
+LRESULT CModulesPage::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto row = GetSelectedRow();
+	if (!row || row->Module->Path.empty())
+		return 0;
+	auto path = row->Module->Path;
+	switch (wID) {
+		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
+		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
+		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+	}
+	return 0;
+}
+
+LRESULT CModulesPage::OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	MSG msg;
+	while (::PeekMessage(&msg, m_hWnd, VirusTotalChecker::WM_VIRUSTOTAL, VirusTotalChecker::WM_VIRUSTOTAL, PM_REMOVE))
+		;
+	m_List.Invalidate();
 	return 0;
 }
 

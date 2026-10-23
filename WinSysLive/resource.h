@@ -395,6 +395,15 @@
 #define IDC_ZH_STATUS               1285
 #define IDI_SYMLINK                 288
 #define IDI_OBJECTS                 289
+#define IDD_VIRUSTOTAL              290
+#define IDC_VT_KEY                  1286
+#define IDC_VT_SHOWKEY              1287
+#define IDC_VT_RATE                 1288
+#define IDC_VT_LINK                 1289
+#define ID_OPTIONS_VIRUSTOTAL       32918
+#define ID_VT_REPORT                32919
+#define ID_VT_CHECK                 32920
+#define ID_VT_SUBMIT                32921
 #define ID_VIEW_OBJECTMANAGER       32912
 #define ID_OBJMGR_OPEN              32913
 #define ID_OBJMGR_GOTOTARGET        32914
@@ -496,9 +505,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	290
-#define _APS_NEXT_CONTROL_VALUE		1286
+#define _APS_NEXT_RESOURCE_VALUE	291
+#define _APS_NEXT_CONTROL_VALUE		1290
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32918
+#define _APS_NEXT_COMMAND_VALUE		32922
 #endif
 #endif

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.h"
+#include "VirusTotalChecker.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
 #include "ColumnLayout.h"
@@ -55,6 +56,7 @@ public:
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_KMODULE_SIGNED, OnSigned)
+		MESSAGE_HANDLER(VirusTotalChecker::WM_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CKernelModulesView>)
@@ -67,6 +69,9 @@ public:
 		COMMAND_ID_HANDLER(ID_KMODULE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_KMODULE_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_KMODULE_GOTODRIVER, OnGoToDriver)
+		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_VT_SUBMIT, OnVirusTotalCommand)
 		CHAIN_MSG_MAP_ALT(CViewBase<CKernelModulesView>, 1)
 	END_MSG_MAP()
 
@@ -76,7 +81,7 @@ public:
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
 private:
-	enum class Column { Name, Base, Size, LoadOrder, Description, Company, Version, Signature, Path, _Count };
+	enum class Column { Name, Base, Size, LoadOrder, Description, Company, Version, Signature, VirusTotal, Path, _Count };
 
 	struct DriverRow {
 		WinSys::KernelModule Module;
@@ -97,6 +102,8 @@ private:
 	// in the KernelModuleColumns setting
 	void SaveColumns() const;
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

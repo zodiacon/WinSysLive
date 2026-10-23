@@ -208,6 +208,12 @@
     <ClCompile Include="SignatureVerifier.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="VirusTotalDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="VirusTotalChecker.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -401,6 +407,12 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="SignatureVerifier.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="VirusTotalDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="VirusTotalChecker.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
   </ItemGroup>
