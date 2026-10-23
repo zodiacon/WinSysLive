@@ -76,6 +76,7 @@ BEGIN
         MENUITEM "RPC/&ALPC\tCtrl+8",           ID_VIEW_IPC
         MENUITEM "&Zombie Processes\tCtrl+9",   ID_VIEW_ZOMBIES
         MENUITEM "&Object Types\tCtrl+0",       ID_VIEW_OBJECTTYPES
+        MENUITEM "Object &Manager\tCtrl+Shift+O", ID_VIEW_OBJECTMANAGER
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -351,6 +352,8 @@ IDI_DIRECTX             ICON                    "res\\directx.ico"
 IDI_ETW                 ICON                    "res\\etw.ico"
 
 IDI_DIRECTORY           ICON                    "res\\folder.ico"
+IDI_SYMLINK             ICON                    "res\\symboliclink.ico"
+IDI_OBJECTS             ICON                    "res\\objects.ico"
 
 IDI_PORT                ICON                    "res\\port.ico"
 
@@ -1066,6 +1069,7 @@ BEGIN
     "8",            ID_VIEW_IPC,            VIRTKEY, CONTROL
     "9",            ID_VIEW_ZOMBIES,        VIRTKEY, CONTROL
     "0",            ID_VIEW_OBJECTTYPES,    VIRTKEY, CONTROL
+    "O",            ID_VIEW_OBJECTMANAGER,  VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1407,6 +1411,7 @@ BEGIN
     ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
     ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
     ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
+    ID_VIEW_OBJECTMANAGER   "Browse the object manager's namespace: directories, symbolic links and named objects\nObject Manager (Ctrl+Shift+O)"
     ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
 END
 

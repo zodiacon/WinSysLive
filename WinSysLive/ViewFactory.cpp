@@ -9,6 +9,7 @@
 #include "IpcView.h"
 #include "ZombiesView.h"
 #include "ObjectTypesView.h"
+#include "ObjectManagerView.h"
 
 template<typename TView>
 static std::pair<IView*, CMessageMap*> DoCreateView(TView* view, HWND hParent) {
@@ -31,6 +32,7 @@ std::pair<IView*, CMessageMap*> CMainFrame::CreateView(TabType type) {
 		case TabType::Ipc: return DoCreateView(new CIpcView(this), m_Tabs);
 		case TabType::Zombies: return DoCreateView(new CZombiesView(this), m_Tabs);
 		case TabType::ObjectTypes: return DoCreateView(new CObjectTypesView(this), m_Tabs);
+		case TabType::ObjectManager: return DoCreateView(new CObjectManagerView(this), m_Tabs);
 	}
 	ATLASSERT(false);
 	return {};

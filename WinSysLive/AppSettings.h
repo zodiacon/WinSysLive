@@ -32,6 +32,9 @@ struct AppSettings : Settings {
 		SETTING_STRING(IpcColumns, L"");	// the RPC/ALPC tab
 		SETTING_STRING(ZombieColumns, L"");	// the Zombie Processes tab
 		SETTING_STRING(ObjectTypeColumns, L"");	// the Object Types tab
+		SETTING_STRING(ObjectManagerColumns, L"");	// the Object Manager tab
+		SETTING_STRING(ObjectManagerPath, L"\\");	// its directory
+		SETTING(ObjectManagerSplitterPos, 25, SettingType::Int32);	// the tree's width, in percent
 		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
 		SETTING_STRING(DriverColumns, L"");	// the Kernel Modules tab's, from when it was the Drivers tab: read while KernelModuleColumns is empty
 		SETTING_STRING(DriverServiceColumns, L"");	// the Drivers tab (driver services)
@@ -82,6 +85,9 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(IpcColumns)
 	DEF_SETTING_STRING(ZombieColumns)
 	DEF_SETTING_STRING(ObjectTypeColumns)
+	DEF_SETTING_STRING(ObjectManagerColumns)
+	DEF_SETTING_STRING(ObjectManagerPath)
+	DEF_SETTING(ObjectManagerSplitterPos, int)
 	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(DriverColumns)
 	DEF_SETTING_STRING(DriverServiceColumns)

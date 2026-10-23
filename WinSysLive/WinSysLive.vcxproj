@@ -450,6 +450,7 @@
     <ClCompile Include="ZombiesView.cpp" />
     <ClCompile Include="ZombieHandlesDlg.cpp" />
     <ClCompile Include="ObjectTypesView.cpp" />
+    <ClCompile Include="ObjectManagerView.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
@@ -516,6 +517,7 @@
     <ClInclude Include="ZombiesView.h" />
     <ClInclude Include="ZombieHandlesDlg.h" />
     <ClInclude Include="ObjectTypesView.h" />
+    <ClInclude Include="ObjectManagerView.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />

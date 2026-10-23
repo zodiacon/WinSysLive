@@ -393,6 +393,14 @@
 #define IDC_ZH_CLOSEALL             1283
 #define IDC_ZH_COPY                 1284
 #define IDC_ZH_STATUS               1285
+#define IDI_SYMLINK                 288
+#define IDI_OBJECTS                 289
+#define ID_VIEW_OBJECTMANAGER       32912
+#define ID_OBJMGR_OPEN              32913
+#define ID_OBJMGR_GOTOTARGET        32914
+#define ID_OBJMGR_COPYPATH          32915
+#define ID_OBJMGR_COPYDIRECTORY     32916
+#define ID_OBJMGR_DIRPROPERTIES     32917
 #define IDC_SVCI_NAME               1245
 #define IDC_SVCI_DISPLAYNAME        1246
 #define IDC_SVCI_DESCRIPTION        1247
@@ -488,9 +496,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	288
+#define _APS_NEXT_RESOURCE_VALUE	290
 #define _APS_NEXT_CONTROL_VALUE		1286
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32912
+#define _APS_NEXT_COMMAND_VALUE		32918
 #endif
 #endif

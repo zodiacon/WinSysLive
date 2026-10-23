@@ -97,6 +97,11 @@ public:
 
 	// queries the object again and refills the General and Details tabs
 	void Refresh();
+	// the sheet's title instead of the handle's ("Handle 0x... (type) in process"): for an object opened only to show it
+	void SetSheetTitle(std::wstring title) {
+		m_Title = std::move(title);
+		SetTitle(m_Title.c_str());
+	}
 
 	void OnSheetInitialized();
 
