@@ -98,6 +98,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVESYMBOLS, OnResolveSymbols)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SYMBOLSETTINGS, OnSymbolSettings)
 		COMMAND_ID_HANDLER(ID_TOOLS_FIRMWARE, OnFirmware)
+		COMMAND_ID_HANDLER(ID_SYSTEM_LOGONSESSIONS, OnLogonSessions)
 		COMMAND_ID_HANDLER(ID_OPTIONS_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
 		COMMAND_ID_HANDLER(ID_FILE_EXPORT, OnExportList)
@@ -145,6 +146,7 @@ public:
 	LRESULT OnResolveSymbols(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnLogonSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

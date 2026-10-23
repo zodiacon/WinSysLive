@@ -208,6 +208,9 @@
     <ClCompile Include="FirmwareDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="LogonSessionsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Signature.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -413,6 +416,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="FirmwareDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="LogonSessionsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Signature.h">

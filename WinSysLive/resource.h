@@ -405,9 +405,18 @@
 #define IDC_VERSION                 1291
 #define IDC_COPYRIGHT               1292
 #define IDC_LINK                    1293
+#define IDD_LOGON_SESSIONS          294
+#define IDC_LS_LIST                 1294
+#define IDC_LS_DETAILS              1295
+#define IDC_LS_STATUS               1296
+#define IDC_LS_REFRESH              1297
+#define IDC_LS_COPY                 1298
+#define ID_SYSTEM_LOGONSESSIONS     32923
 #define IDR_POOLTAGS                292
 #define ID_VIEW_POOLTAGS            32922
 #define IDI_POOLTAGS                293
+#define IDI_LOGON_SESSIONS          295
+#define IDI_PIN                     296
 #define ID_OPTIONS_VIRUSTOTAL       32918
 #define ID_VT_REPORT                32919
 #define ID_VT_CHECK                 32920
@@ -513,9 +522,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	294
-#define _APS_NEXT_CONTROL_VALUE		1294
+#define _APS_NEXT_RESOURCE_VALUE	297
+#define _APS_NEXT_CONTROL_VALUE		1299
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32923
+#define _APS_NEXT_COMMAND_VALUE		32924
 #endif
 #endif

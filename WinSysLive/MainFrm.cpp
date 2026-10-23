@@ -11,6 +11,7 @@
 #include "ProcessColorsDlg.h"
 #include "SymbolSettingsDlg.h"
 #include "FirmwareDlg.h"
+#include "LogonSessionsDlg.h"
 #include "VirusTotalDlg.h"
 #include "VirusTotalChecker.h"
 #include "FormatHelper.h"
@@ -294,6 +295,7 @@ void CMainFrame::ShowTrayMenu() {
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_APP_EXIT, L"E&xit");
 	menu.SetMenuDefaultItem(ID_TRAY_SHOW);
+	InitMenu(menu);
 
 	// so the menu closes when the user clicks elsewhere
 	SetForegroundWindow(m_hWnd);
@@ -515,6 +517,8 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_PROCESS_KILL, IDI_DELETE },
 		{ ID_PROCESS_SUSPEND, IDI_PAUSE },
 		{ ID_PROCESS_RESUME, IDI_RUN },
+		{ ID_SYSTEM_LOGONSESSIONS, IDI_LOGON_SESSIONS },
+		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
 	};
 	for (auto& tab : s_Tabs)
 		commands.push_back({ (int)tab.CommandId, (int)tab.Icon });
@@ -970,6 +974,12 @@ LRESULT CMainFrame::OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 
 LRESULT CMainFrame::OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CFirmwareDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnLogonSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CLogonSessionsDlg dlg;
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

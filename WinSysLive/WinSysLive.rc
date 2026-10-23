@@ -162,9 +162,10 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Find Handle or DLL...\tCtrl+Shift+F", ID_FIND_HANDLE
     END
-    POPUP "&Tools"
+    POPUP "&System"
     BEGIN
         MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
+        MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
     END
     POPUP "&Options"
     BEGIN
@@ -369,6 +370,8 @@ IDI_DIRECTORY           ICON                    "res\\folder.ico"
 IDI_SYMLINK             ICON                    "res\\symboliclink.ico"
 IDI_OBJECTS             ICON                    "res\\objects.ico"
 IDI_POOLTAGS            ICON                    "res\\PoolTags.ico"
+IDI_LOGON_SESSIONS      ICON                    "res\\window_logon.ico"
+IDI_PIN                 ICON                    "res\\pin.ico"
 
 // pooltag.txt from the Debugging Tools for Windows, for when they aren't installed
 IDR_POOLTAGS            RCDATA                  "res\\pooltag.txt"
@@ -540,6 +543,19 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_FW_REFRESH,293,279,50,14
     PUSHBUTTON      "&Copy",IDC_FW_COPY,348,279,50,14
     PUSHBUTTON      "Close",IDCANCEL,403,279,50,14
+END
+
+IDD_LOGON_SESSIONS DIALOGEX 0, 0, 520, 330
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Logon Sessions"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_LS_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,506,150
+    CONTROL         "",IDC_LS_DETAILS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,162,506,141
+    LTEXT           "",IDC_LS_STATUS,7,312,288,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_LS_REFRESH,353,309,50,14
+    PUSHBUTTON      "&Copy",IDC_LS_COPY,408,309,50,14
+    PUSHBUTTON      "Close",IDCANCEL,463,309,50,14
 END
 
 IDD_PROC_TCPIP DIALOGEX 0, 0, 330, 232
@@ -1462,6 +1478,7 @@ BEGIN
     ID_VIEW_ZOMBIES         "Show the processes that exited but are kept alive by open handles, and who holds them\nZombie Processes (Ctrl+9)"
     ID_ZOMBIE_GOTOHOLDER    "Select the process holding the handle in the Processes tab\nGo to Holder"
     ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
+    ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
     ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
     ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
     ID_OPTIONS_VIRUSTOTAL   "Set the VirusTotal API key and request rate\nVirusTotal"

@@ -305,25 +305,6 @@ namespace {
 		return value ? L"Yes" : L"No";
 	}
 
-	PCWSTR LogonTypeToString(WinSys::SecurityLogonType type) {
-		using enum WinSys::SecurityLogonType;
-		switch (type) {
-			case Interactive: return L"Interactive";
-			case Network: return L"Network";
-			case Batch: return L"Batch";
-			case Service: return L"Service";
-			case Proxy: return L"Proxy";
-			case Unlock: return L"Unlock";
-			case NetworkCleartext: return L"Network (cleartext)";
-			case NewCredentials: return L"New credentials";
-			case RemoteInteractive: return L"Remote interactive";
-			case CachedInteractive: return L"Cached interactive";
-			case CachedRemoteInteractive: return L"Cached remote interactive";
-			case CachedUnlock: return L"Cached unlock";
-		}
-		return L"System";
-	}
-
 	PCWSTR SidUseToString(SID_NAME_USE use) {
 		switch (use) {
 			case SidTypeUser: return L"User";
@@ -589,7 +570,7 @@ void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
 	set(IDC_TOKEN_LOGONID, FormatLuid(stats.AuthenticationId));
 	// details only for the caller's own logon sessions, or when elevated
 	if (auto logon = WinSys::LsaSecurity::GetLogonSessionData(stats.AuthenticationId)) {
-		set(IDC_TOKEN_LOGONTYPE, LogonTypeToString(logon->LogonType));
+		set(IDC_TOKEN_LOGONTYPE, WinSys::LsaSecurity::LogonTypeName(logon->LogonType));
 		set(IDC_TOKEN_PACKAGE, logon->AuthenticationPackage);
 		if (logon->LogonTime.QuadPart)
 			set(IDC_TOKEN_LOGONTIME, FormatHelper::FormatDateTime(logon->LogonTime.QuadPart));
