@@ -222,3 +222,13 @@ int ProcessInfoEx::GetUserObjects() {
 	auto process = GetProcess();
 	return process ? (int)process->GetUserObjectCount() : -1;
 }
+
+int ProcessInfoEx::GetPeakGdiObjects() {
+	auto process = GetProcess();
+	return process ? (int)process->GetPeakGdiObjectCount() : -1;
+}
+
+int ProcessInfoEx::GetPeakUserObjects() {
+	auto process = GetProcess();
+	return process ? (int)process->GetPeakUserObjectCount() : -1;
+}

@@ -132,6 +132,9 @@
     <ClCompile Include="ColumnsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="ColumnsTreeDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="StackDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -331,6 +334,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ColumnsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ColumnsTreeDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="StackDlg.h">

@@ -17,6 +17,7 @@ namespace ColumnLayout {
 		int Format;		// LVCFMT_*
 		bool Default;	// shown until the user chooses otherwise
 		bool Mandatory{ false };	// can't be hidden
+		PCWSTR Category{ nullptr };	// with categories, Select shows a tree of them (CColumnsTreeDlg)
 	};
 
 	struct ShownColumn {
@@ -29,7 +30,9 @@ namespace ColumnLayout {
 	std::wstring Format(std::vector<ShownColumn> const& columns, std::span<ColumnDef const> defs);
 
 	// Runs the column selection dialog. Columns that stay keep their width; the result is empty if it was canceled.
-	std::optional<std::vector<ShownColumn>> Select(HWND hParent, std::vector<ShownColumn> const& shown, std::span<ColumnDef const> defs);
+	// categories: the order of the columns' categories in the tree (others follow in table order)
+	std::optional<std::vector<ShownColumn>> Select(HWND hParent, std::vector<ShownColumn> const& shown, std::span<ColumnDef const> defs,
+		std::span<PCWSTR const> categories = {});
 
 	//
 	// For a list view with a ColumnManager (CVirtualListView) that holds only the shown columns, added in display

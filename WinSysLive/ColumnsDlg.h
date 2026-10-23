@@ -15,6 +15,7 @@ public:
 		std::wstring Name;
 		bool Visible;
 		bool Mandatory{ false };
+		std::wstring Category;	// for CColumnsTreeDlg
 	};
 
 	// defaults: what the Defaults button restores, in the same form as items

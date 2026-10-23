@@ -35,6 +35,8 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	WinSys::IoPriority GetIoPriority();
 	int GetGdiObjects();
 	int GetUserObjects();
+	int GetPeakGdiObjects();
+	int GetPeakUserObjects();
 	// ProcessBreakOnTermination: Windows crashes when it exits; nothing if it can't be queried
 	std::optional<bool> IsCritical();
 	// EcoQoS (Task Manager's efficiency mode): execution speed throttled; nothing if it can't be queried

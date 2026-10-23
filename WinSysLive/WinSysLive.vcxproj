@@ -401,6 +401,7 @@
     <ClCompile Include="ProcessColors.cpp" />
     <ClCompile Include="ProcessColorsDlg.cpp" />
     <ClCompile Include="ColumnsDlg.cpp" />
+    <ClCompile Include="ColumnsTreeDlg.cpp" />
     <ClCompile Include="ProcessSheet.cpp" />
     <ClCompile Include="NetworkTracking.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
@@ -476,6 +477,7 @@
     <ClInclude Include="ProcessColors.h" />
     <ClInclude Include="ProcessColorsDlg.h" />
     <ClInclude Include="ColumnsDlg.h" />
+    <ClInclude Include="ColumnsTreeDlg.h" />
     <ClInclude Include="ProcessSheet.h" />
     <ClInclude Include="NetworkTracking.h" />
     <ClInclude Include="ProcessPages.h" />

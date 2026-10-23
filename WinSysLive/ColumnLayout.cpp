@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ColumnLayout.h"
 #include "ColumnsDlg.h"
+#include "ColumnsTreeDlg.h"
 #include "resource.h"
 #include <ranges>
 
@@ -57,24 +58,40 @@ namespace ColumnLayout {
 		return text;
 	}
 
-	std::optional<std::vector<ShownColumn>> Select(HWND hParent, std::vector<ShownColumn> const& shown, std::span<ColumnDef const> defs) {
+	std::wstring CategoryOf(ColumnDef const& def) {
+		return def.Category ? def.Category : L"Other";
+	}
+
+	std::optional<std::vector<ShownColumn>> Select(HWND hParent, std::vector<ShownColumn> const& shown, std::span<ColumnDef const> defs,
+		std::span<PCWSTR const> categories) {
 		// the shown columns first, in display order, then the others in table order
 		std::vector<CColumnsDlg::Item> items, defaults;
 		for (auto& c : shown)
-			items.push_back({ c.Id, defs[c.Id].Name, true, defs[c.Id].Mandatory });
+			items.push_back({ c.Id, defs[c.Id].Name, true, defs[c.Id].Mandatory, CategoryOf(defs[c.Id]) });
 		for (int i = 0; i < (int)defs.size(); i++) {
 			if (!Contains(shown, i))
-				items.push_back({ i, defs[i].Name, false, defs[i].Mandatory });
-			defaults.push_back({ i, defs[i].Name, defs[i].Default || defs[i].Mandatory, defs[i].Mandatory });
+				items.push_back({ i, defs[i].Name, false, defs[i].Mandatory, CategoryOf(defs[i]) });
+			defaults.push_back({ i, defs[i].Name, defs[i].Default || defs[i].Mandatory, defs[i].Mandatory, CategoryOf(defs[i]) });
 		}
 		std::ranges::stable_partition(defaults, &CColumnsDlg::Item::Visible);
 
-		CColumnsDlg dlg(std::move(items), std::move(defaults));
-		if (dlg.DoModal(hParent) != IDOK)
-			return std::nullopt;
+		// with categories, the tree (ordering by the header's drag and drop); else the check list with Move Up/Down
+		std::vector<CColumnsDlg::Item> chosen;
+		if (std::ranges::any_of(defs, [](auto& d) { return d.Category != nullptr; })) {
+			CColumnsTreeDlg dlg(std::move(items), std::move(defaults), std::vector<std::wstring>(categories.begin(), categories.end()));
+			if (dlg.DoModal(hParent) != IDOK)
+				return std::nullopt;
+			chosen = dlg.GetItems();
+		}
+		else {
+			CColumnsDlg dlg(std::move(items), std::move(defaults));
+			if (dlg.DoModal(hParent) != IDOK)
+				return std::nullopt;
+			chosen = dlg.GetItems();
+		}
 
 		std::vector<ShownColumn> columns;
-		for (auto& item : dlg.GetItems()) {
+		for (auto& item : chosen) {
 			if (!item.Visible)
 				break;
 			auto current = std::ranges::find(shown, item.Id, &ShownColumn::Id);

@@ -27,64 +27,66 @@ using namespace WinSys;
 namespace {
 	// in CProcessesView::Column order; the keys are stored in the ProcessColumns setting
 	const ColumnLayout::ColumnDef s_Columns[] = {
-		{ L"Name", L"Name", 220, LVCFMT_LEFT, true, true },
-		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true, true },
-		{ L"Parent PID", L"ParentId", 70, LVCFMT_RIGHT, false },
-		{ L"Parent Name", L"ParentName", 150, LVCFMT_LEFT, false },
-		{ L"Status", L"Status", 100, LVCFMT_LEFT, false },
-		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
-		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false },
-		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, false },
-		{ L"User Time", L"UserTime", 100, LVCFMT_RIGHT, false },
-		{ L"CPU Cycles", L"CpuCycles", 170, LVCFMT_RIGHT, false },
-		{ L"Ctx Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, false },
-		{ L"Ctx Switch Delta", L"ContextSwitchDelta", 110, LVCFMT_RIGHT, false },
-		{ L"Private Bytes", L"PrivateBytes", 100, LVCFMT_RIGHT, true },
-		{ L"Private Bytes Delta", L"PrivateBytesDelta", 100, LVCFMT_RIGHT, false },
-		{ L"Peak Private Bytes", L"PeakPrivateBytes", 110, LVCFMT_RIGHT, false },
-		{ L"Working Set", L"WorkingSet", 100, LVCFMT_RIGHT, true },
-		{ L"Peak Working Set", L"PeakWorkingSet", 110, LVCFMT_RIGHT, false },
-		{ L"Virtual Size", L"VirtualSize", 120, LVCFMT_RIGHT, false },
-		{ L"Page Faults", L"PageFaults", 100, LVCFMT_RIGHT, false },
-		{ L"Paged Pool", L"PagedPool", 90, LVCFMT_RIGHT, false },
-		{ L"Non-Paged Pool", L"NonPagedPool", 100, LVCFMT_RIGHT, false },
-		{ L"Threads", L"Threads", 60, LVCFMT_RIGHT, true },
-		{ L"Peak Threads", L"PeakThreads", 80, LVCFMT_RIGHT, false },
-		{ L"Handles", L"Handles", 70, LVCFMT_RIGHT, true },
-		{ L"GDI Objects", L"GdiObjects", 80, LVCFMT_RIGHT, false },
-		{ L"User Objects", L"UserObjects", 80, LVCFMT_RIGHT, false },
-		{ L"Session", L"Session", 60, LVCFMT_RIGHT, true },
-		{ L"User Name", L"User", 180, LVCFMT_LEFT, true },
-		{ L"Priority", L"Priority", 90, LVCFMT_LEFT, true },
-		{ L"Memory Priority", L"MemoryPriority", 100, LVCFMT_RIGHT, false },
-		{ L"I/O Pri", L"IoPriority", 80, LVCFMT_LEFT, false },
-		{ L"Start Time", L"StartTime", 150, LVCFMT_LEFT, true },
-		{ L"Architecture", L"Architecture", 80, LVCFMT_LEFT, false },
-		{ L"Integrity", L"IntegrityLevel", 90, LVCFMT_LEFT, false },
-		{ L"Elevated", L"Elevation", 90, LVCFMT_LEFT, false },
-		{ L"Protection", L"Protection", 130, LVCFMT_LEFT, false },
-		{ L"Critical", L"Critical", 70, LVCFMT_LEFT, false },
-		{ L"CFG", L"Cfg", 90, LVCFMT_LEFT, false },
-		{ L"Mitigations", L"Mitigations", 300, LVCFMT_LEFT, false },
-		{ L"DPI Awareness", L"DpiAwareness", 120, LVCFMT_LEFT, false },
-		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false },
-		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false },
-		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false },
-		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false },
-		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false },
-		{ L"Network Send Bytes", L"NetworkSend", 140, LVCFMT_RIGHT, false },
-		{ L"Network Recv Bytes", L"NetworkReceive", 140, LVCFMT_RIGHT, false },
-		{ L"GPU (%)", L"Gpu", 70, LVCFMT_RIGHT, false },
-		{ L"Dedicated GPU Memory", L"GpuDedicated", 140, LVCFMT_RIGHT, false },
-		{ L"Shared GPU Memory", L"GpuShared", 130, LVCFMT_RIGHT, false },
-		{ L"NPU (%)", L"Npu", 70, LVCFMT_RIGHT, false },
-		{ L"NPU Memory", L"NpuMemory", 100, LVCFMT_RIGHT, false },
-		{ L"Package Name", L"PackageName", 250, LVCFMT_LEFT, false },
-		{ L"Window Title", L"WindowTitle", 250, LVCFMT_LEFT, false },
-		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false },
-		{ L"Description", L"Description", 220, LVCFMT_LEFT, true },
-		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true },
-		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true },
+		{ L"Name", L"Name", 220, LVCFMT_LEFT, true, true, L"General" },
+		{ L"PID", L"Id", 70, LVCFMT_RIGHT, true, true, L"General" },
+		{ L"Parent PID", L"ParentId", 70, LVCFMT_RIGHT, false, false, L"General" },
+		{ L"Parent Name", L"ParentName", 150, LVCFMT_LEFT, false, false, L"General" },
+		{ L"Status", L"Status", 100, LVCFMT_LEFT, false, false, L"General" },
+		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true, false, L"CPU" },
+		{ L"CPU Time", L"CpuTime", 100, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"Kernel Time", L"KernelTime", 100, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"User Time", L"UserTime", 100, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"CPU Cycles", L"CpuCycles", 170, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"Ctx Switches", L"ContextSwitches", 110, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"Ctx Switch Delta", L"ContextSwitchDelta", 110, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"Private Bytes", L"PrivateBytes", 100, LVCFMT_RIGHT, true, false, L"Memory" },
+		{ L"Private Bytes Delta", L"PrivateBytesDelta", 100, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Peak Private Bytes", L"PeakPrivateBytes", 110, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Working Set", L"WorkingSet", 100, LVCFMT_RIGHT, true, false, L"Memory" },
+		{ L"Peak Working Set", L"PeakWorkingSet", 110, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Virtual Size", L"VirtualSize", 120, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Page Faults", L"PageFaults", 100, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Paged Pool", L"PagedPool", 90, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Non-Paged Pool", L"NonPagedPool", 100, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"Threads", L"Threads", 60, LVCFMT_RIGHT, true, false, L"CPU" },
+		{ L"Peak Threads", L"PeakThreads", 80, LVCFMT_RIGHT, false, false, L"CPU" },
+		{ L"Handles", L"Handles", 70, LVCFMT_RIGHT, true, false, L"Handles and Objects" },
+		{ L"GDI Objects", L"GdiObjects", 80, LVCFMT_RIGHT, false, false, L"Handles and Objects" },
+		{ L"Peak GDI Objects", L"PeakGdiObjects", 125, LVCFMT_RIGHT, false, false, L"Handles and Objects" },
+		{ L"User Objects", L"UserObjects", 80, LVCFMT_RIGHT, false, false, L"Handles and Objects" },
+		{ L"Peak User Objects", L"PeakUserObjects", 125, LVCFMT_RIGHT, false, false, L"Handles and Objects" },
+		{ L"Session", L"Session", 60, LVCFMT_RIGHT, true, false, L"General" },
+		{ L"User Name", L"User", 180, LVCFMT_LEFT, true, false, L"General" },
+		{ L"Priority", L"Priority", 90, LVCFMT_LEFT, true, false, L"CPU" },
+		{ L"Memory Priority", L"MemoryPriority", 100, LVCFMT_RIGHT, false, false, L"Memory" },
+		{ L"I/O Pri", L"IoPriority", 80, LVCFMT_LEFT, false, false, L"I/O" },
+		{ L"Start Time", L"StartTime", 150, LVCFMT_LEFT, true, false, L"General" },
+		{ L"Architecture", L"Architecture", 80, LVCFMT_LEFT, false, false, L"General" },
+		{ L"Integrity", L"IntegrityLevel", 90, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"Elevated", L"Elevation", 90, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"Protection", L"Protection", 130, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"Critical", L"Critical", 70, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"CFG", L"Cfg", 90, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"Mitigations", L"Mitigations", 300, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"DPI Awareness", L"DpiAwareness", 120, LVCFMT_LEFT, false, false, L"General" },
+		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false, false, L"Security" },
+		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false, false, L"Security" },
+		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false, false, L"I/O" },
+		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false, false, L"I/O" },
+		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false, false, L"I/O" },
+		{ L"Network Send Bytes", L"NetworkSend", 140, LVCFMT_RIGHT, false, false, L"Network" },
+		{ L"Network Recv Bytes", L"NetworkReceive", 140, LVCFMT_RIGHT, false, false, L"Network" },
+		{ L"GPU (%)", L"Gpu", 70, LVCFMT_RIGHT, false, false, L"GPU and NPU" },
+		{ L"Dedicated GPU Memory", L"GpuDedicated", 140, LVCFMT_RIGHT, false, false, L"GPU and NPU" },
+		{ L"Shared GPU Memory", L"GpuShared", 130, LVCFMT_RIGHT, false, false, L"GPU and NPU" },
+		{ L"NPU (%)", L"Npu", 70, LVCFMT_RIGHT, false, false, L"GPU and NPU" },
+		{ L"NPU Memory", L"NpuMemory", 100, LVCFMT_RIGHT, false, false, L"GPU and NPU" },
+		{ L"Package Name", L"PackageName", 250, LVCFMT_LEFT, false, false, L"General" },
+		{ L"Window Title", L"WindowTitle", 250, LVCFMT_LEFT, false, false, L"General" },
+		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false, false, L"Security" },
+		{ L"Description", L"Description", 220, LVCFMT_LEFT, true, false, L"General" },
+		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true, false, L"General" },
+		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true, false, L"General" },
 	};
 
 	// ID_PRIORITY_* order
@@ -1075,6 +1077,14 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 			auto count = p.GetUserObjects();
 			return count > 0 ? FormatHelper::FormatNumber(count) : L"";
 		}
+		case Column::PeakGdiObjects: {
+			auto count = p.GetPeakGdiObjects();
+			return count > 0 ? FormatHelper::FormatNumber(count) : L"";
+		}
+		case Column::PeakUserObjects: {
+			auto count = p.GetPeakUserObjects();
+			return count > 0 ? FormatHelper::FormatNumber(count) : L"";
+		}
 		case Column::MemoryPriority: {
 			auto priority = p.GetMemoryPriority();
 			return priority >= 0 ? std::to_wstring(priority) : L"";
@@ -1176,6 +1186,7 @@ void CProcessesView::Sort() {
 bool CProcessesView::IsQueriedColumn(Column column) {
 	switch (column) {
 		case Column::ContextSwitches: case Column::GdiObjects: case Column::UserObjects: case Column::MemoryPriority:
+		case Column::PeakGdiObjects: case Column::PeakUserObjects:
 		case Column::IoPriority: case Column::NetworkSend: case Column::NetworkReceive: case Column::Critical:
 			return true;
 	}
@@ -1188,6 +1199,8 @@ int64_t CProcessesView::GetQueriedValue(ProcessItem& item, Column column) const 
 		case Column::ContextSwitches: return (int64_t)GetContextSwitches(p);
 		case Column::GdiObjects: return p.GetGdiObjects();
 		case Column::UserObjects: return p.GetUserObjects();
+		case Column::PeakGdiObjects: return p.GetPeakGdiObjects();
+		case Column::PeakUserObjects: return p.GetPeakUserObjects();
 		case Column::MemoryPriority: return p.GetMemoryPriority();
 		case Column::IoPriority: return (int64_t)p.GetIoPriority();
 		case Column::NetworkSend: return (int64_t)NetworkCounters(p.Id).Sent;
@@ -2052,7 +2065,8 @@ LRESULT CProcessesView::OnToggleHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWnd
 }
 
 LRESULT CProcessesView::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto selected = ColumnLayout::Select(m_hWnd, ToLayout(GetShownColumns()), s_Columns);
+	static PCWSTR const categories[] = { L"General", L"CPU", L"Memory", L"I/O", L"Network", L"GPU and NPU", L"Handles and Objects", L"Security" };
+	auto selected = ColumnLayout::Select(m_hWnd, ToLayout(GetShownColumns()), s_Columns, categories);
 	if (!selected)
 		return 0;
 
