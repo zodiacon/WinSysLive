@@ -154,6 +154,10 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Find Handle or DLL...\tCtrl+Shift+F", ID_FIND_HANDLE
     END
+    POPUP "&Tools"
+    BEGIN
+        MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
+    END
     POPUP "&Options"
     BEGIN
         MENUITEM "&Dark Mode",                  ID_OPTIONS_DARKMODE
@@ -468,6 +472,21 @@ BEGIN
     PUSHBUTTON      "Bring to &Front",IDC_WIN_FRONT,103,209,62,14
     PUSHBUTTON      "&Close Window...",IDC_WIN_CLOSE,169,209,62,14
     PUSHBUTTON      "&Refresh",IDC_WIN_REFRESH,273,209,50,14
+END
+
+IDD_FIRMWARE DIALOGEX 0, 0, 460, 300
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Firmware and TPM"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_FW_TABS,"SysTabControl32",WS_TABSTOP,7,7,446,262
+    CONTROL         "",IDC_FW_SUMMARY,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,13,25,434,238
+    CONTROL         "",IDC_FW_VARS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,25,434,158
+    EDITTEXT        IDC_FW_VALUE,13,187,434,76,ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL
+    LTEXT           "",IDC_FW_STATUS,7,282,228,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_FW_REFRESH,293,279,50,14
+    PUSHBUTTON      "&Copy",IDC_FW_COPY,348,279,50,14
+    PUSHBUTTON      "Close",IDCANCEL,403,279,50,14
 END
 
 IDD_PROC_TCPIP DIALOGEX 0, 0, 330, 232
@@ -1372,6 +1391,7 @@ BEGIN
     ID_VIEW_ZOMBIES         "Show the processes that exited but are kept alive by open handles, and who holds them\nZombie Processes (Ctrl+9)"
     ID_ZOMBIE_GOTOHOLDER    "Select the process holding the handle in the Processes tab\nGo to Holder"
     ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
+    ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
     ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
     ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
 END

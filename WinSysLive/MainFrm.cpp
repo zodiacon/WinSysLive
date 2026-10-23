@@ -10,6 +10,7 @@
 #include "AppSettings.h"
 #include "ProcessColorsDlg.h"
 #include "SymbolSettingsDlg.h"
+#include "FirmwareDlg.h"
 #include "FormatHelper.h"
 #include "ListExport.h"
 #include "RunDlg.h"
@@ -936,6 +937,12 @@ LRESULT CMainFrame::OnResolveSymbols(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 	SymbolEngine::Get().Enable(resolve);
 	UISetCheck(id, resolve);
 	RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
+	return 0;
+}
+
+LRESULT CMainFrame::OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CFirmwareDlg dlg;
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

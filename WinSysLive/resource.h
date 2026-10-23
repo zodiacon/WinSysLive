@@ -376,6 +376,15 @@
 #define IDC_WIN_CLOSE               1270
 #define IDC_WIN_REFRESH             1271
 #define IDC_WIN_STATUS              1272
+#define IDD_FIRMWARE                286
+#define IDC_FW_TABS                 1273
+#define IDC_FW_SUMMARY              1274
+#define IDC_FW_VARS                 1275
+#define IDC_FW_VALUE                1276
+#define IDC_FW_REFRESH              1277
+#define IDC_FW_COPY                 1278
+#define IDC_FW_STATUS               1279
+#define ID_TOOLS_FIRMWARE           32910
 #define IDC_SVCI_NAME               1245
 #define IDC_SVCI_DISPLAYNAME        1246
 #define IDC_SVCI_DESCRIPTION        1247
@@ -471,9 +480,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	286
-#define _APS_NEXT_CONTROL_VALUE		1273
+#define _APS_NEXT_RESOURCE_VALUE	287
+#define _APS_NEXT_CONTROL_VALUE		1280
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32910
+#define _APS_NEXT_COMMAND_VALUE		32911
 #endif
 #endif
