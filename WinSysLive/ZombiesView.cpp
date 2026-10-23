@@ -2,6 +2,7 @@
 #include "ZombiesView.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
+#include "ZombieHandlesDlg.h"
 #include <WinSys/Handles.h>
 #include <WinSys/Helpers.h>
 #include <WinSys/Processes.h>
@@ -20,7 +21,7 @@ namespace {
 		{ L"Holder PID", L"HolderPid", 75, LVCFMT_RIGHT, true },
 		{ L"Handles", L"Handles", 65, LVCFMT_RIGHT, true },
 		{ L"Handle Values", L"Handle", 200, LVCFMT_LEFT, true },
-		{ L"Access", L"Access", 90, LVCFMT_LEFT, true },
+		{ L"Access", L"Access", 90, LVCFMT_RIGHT, true },
 		{ L"Image Path", L"ImagePath", 350, LVCFMT_LEFT, false },
 	};
 
@@ -160,9 +161,12 @@ std::wstring CZombiesView::GetText(Row const& row, Column column) const {
 		case Column::HolderPid: return std::to_wstring(row.HolderPid);
 		case Column::Handles: return std::to_wstring(row.Handles.size());
 		case Column::Handle: {
+			// the first few: a leaking holder may have hundreds (Show All Handles lists them)
 			std::wstring text;
-			for (auto& h : row.Handles)
-				text += std::format(L"{}0x{:X}", text.empty() ? L"" : L", ", h.Handle);
+			for (size_t i = 0; i < row.Handles.size() && i < ShownHandles; i++)
+				text += std::format(L"{}0x{:X}", text.empty() ? L"" : L", ", row.Handles[i].Handle);
+			if (row.Handles.size() > ShownHandles)
+				text += std::format(L", ... (+{})", row.Handles.size() - ShownHandles);
 			return text;
 		}
 		case Column::Access: {
@@ -319,6 +323,7 @@ bool CZombiesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	CMenu menu;
 	menu.CreatePopupMenu();
 	menu.AppendMenu(MF_STRING, ID_ZOMBIE_GOTOHOLDER, L"&Go to Holder");
+	menu.AppendMenu(MF_STRING, ID_ZOMBIE_SHOWHANDLES, L"&Show All Handles...");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_ZOMBIE_CLOSEHANDLE, L"C&lose Handles...");
 	menu.AppendMenu(MF_STRING, ID_ZOMBIE_CLOSEALL, L"Close &All Handles to the Zombie...");
@@ -345,13 +350,24 @@ LRESULT CZombiesView::OnGoToHolder(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 
 DWORD CZombiesView::CloseHandles(std::vector<WinSys::ZombieHolder> const& holders) {
 	DWORD error = ERROR_SUCCESS;
-	for (auto& holder : holders) {
-		// only if the value still refers to a process (it may have been closed and reused since the scan)
-		wil::unique_handle hProcess(::OpenProcess(PROCESS_DUP_HANDLE, FALSE, holder.Pid));
-		if ((!hProcess || !WinSys::HandleNames::CloseInProcess(hProcess.get(), holder.Handle, L"Process")) && error == ERROR_SUCCESS)
-			error = ::GetLastError();
-	}
+	for (auto& holder : holders)
+		if (auto e = CZombieHandlesDlg::CloseHandle(holder); e != ERROR_SUCCESS && error == ERROR_SUCCESS)
+			error = e;
 	return error;
+}
+
+LRESULT CZombiesView::OnShowHandles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto row = GetSelected();
+	if (!row)
+		return 0;
+	// a copy: scans go on while the dialog is up, replacing the rows
+	CZombieHandlesDlg dlg(Frame(), *row->Zombie, row->HolderPid);
+	dlg.DoModal(m_hWnd);
+	if (dlg.Closed()) {
+		m_LastScan = 0;
+		StartScan();
+	}
+	return 0;
 }
 
 LRESULT CZombiesView::OnCloseHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

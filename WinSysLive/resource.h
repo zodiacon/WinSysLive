@@ -385,6 +385,14 @@
 #define IDC_FW_COPY                 1278
 #define IDC_FW_STATUS               1279
 #define ID_TOOLS_FIRMWARE           32910
+#define ID_ZOMBIE_SHOWHANDLES       32911
+#define IDD_ZOMBIE_HANDLES          287
+#define IDC_ZH_INFO                 1280
+#define IDC_ZH_LIST                 1281
+#define IDC_ZH_CLOSE                1282
+#define IDC_ZH_CLOSEALL             1283
+#define IDC_ZH_COPY                 1284
+#define IDC_ZH_STATUS               1285
 #define IDC_SVCI_NAME               1245
 #define IDC_SVCI_DISPLAYNAME        1246
 #define IDC_SVCI_DESCRIPTION        1247
@@ -480,9 +488,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	287
-#define _APS_NEXT_CONTROL_VALUE		1280
+#define _APS_NEXT_RESOURCE_VALUE	288
+#define _APS_NEXT_CONTROL_VALUE		1286
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32911
+#define _APS_NEXT_COMMAND_VALUE		32912
 #endif
 #endif

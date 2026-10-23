@@ -87,6 +87,9 @@
     <ClCompile Include="ZombiesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ZombieHandlesDlg.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ObjectTypesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -268,6 +271,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ZombiesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="ZombieHandlesDlg.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ObjectTypesView.h">

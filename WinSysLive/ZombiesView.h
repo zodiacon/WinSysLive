@@ -16,7 +16,8 @@
 // the holder's, so sorting by the zombie groups its holders. Scanned on a worker thread when the tab is shown and then
 // every ScanInterval while it's active (not on every tick: thousands of duplicates), and again after handles are closed.
 // The filter box matches the zombie, the holder, their PIDs and the image path. Double-click or Go to Holder selects the
-// holder; Close Handles closes the row's handles in its holder and Close All Handles every handle to the row's zombie
+// holder; Show All Handles opens CZombieHandlesDlg on the row's zombie (the Handle Values column has only the first
+// ShownHandles); Close Handles closes the row's handles in its holder and Close All Handles every handle to the row's zombie
 // (after a confirmation), which frees it.
 //
 class CZombiesView :
@@ -65,6 +66,7 @@ public:
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_ZOMBIE_GOTOHOLDER, OnGoToHolder)
+		COMMAND_ID_HANDLER(ID_ZOMBIE_SHOWHANDLES, OnShowHandles)
 		COMMAND_ID_HANDLER(ID_ZOMBIE_CLOSEHANDLE, OnCloseHandle)
 		COMMAND_ID_HANDLER(ID_ZOMBIE_CLOSEALL, OnCloseAll)
 		CHAIN_MSG_MAP_ALT(CViewBase<CZombiesView>, 1)
@@ -87,6 +89,7 @@ private:
 	};
 
 	enum { ScanInterval = 5000 };	// ms
+	static constexpr size_t ShownHandles = 4;	// in the Handle Values column
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -98,6 +101,7 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToHolder(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowHandles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCloseHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCloseAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
