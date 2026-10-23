@@ -10,6 +10,7 @@
 #include <ClipboardHelper.h>
 #include "HandleIcons.h"
 #include "HandleSheet.h"
+#include "Highlight.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/Sid.h>
 #include <WTLHelper.h>
@@ -28,8 +29,6 @@ namespace {
 		{ L"Attributes", L"Attributes", 110, LVCFMT_LEFT, true },
 	};
 
-	// highlighting of opened handles lasts this many refreshes
-	const int NewHandleTicks = 2;
 	// when this many name queries have hung (their workers are stuck), files aren't queried anymore
 	const int MaxHungQueries = 4;
 }
@@ -98,6 +97,7 @@ void CHandlesPage::Attach(uint32_t pid, std::wstring imageName, bool enumerate) 
 	// the Idle process has no handles
 	m_hProcess.reset(pid ? ::OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid) : nullptr);
 	m_Handles.clear();
+	m_Closed.clear();
 	m_FirstEnum = true;
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	if (enumerate)
@@ -141,7 +141,7 @@ void CHandlesPage::Refresh() {
 				else {
 					data = std::make_shared<HandleData>(h);
 					if (!m_FirstEnum)
-						data->NewTicks = NewHandleTicks;
+						data->NewTicks = Highlight::NewTicks();
 				}
 				HandleRow row{ data };
 				if (data->NewTicks > 0) {
@@ -151,9 +151,14 @@ void CHandlesPage::Refresh() {
 				current.insert({ h.Value, data });
 				m_Rows.push_back(std::move(row));
 			}
-			// the handles left were closed: shown once more
+			// the handles left were closed: shown for a while
 			for (auto& [value, data] : m_Handles)
+				m_Closed.push_back({ data, Highlight::ExitedTicks() });
+			std::erase_if(m_Closed, [](auto const& c) { return c.second <= 0; });
+			for (auto& [data, ticks] : m_Closed) {
 				m_Rows.push_back({ data, false, true });
+				ticks--;
+			}
 			m_Handles = std::move(current);
 			m_FirstEnum = false;
 		}

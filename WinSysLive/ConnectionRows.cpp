@@ -3,14 +3,21 @@
 #include "FormatHelper.h"
 
 namespace ConnectionRows {
-	void Merge(std::vector<ConnectionRow>& rows, std::vector<WinSys::Connection> current, bool markNew, int newTicks) {
+	void Merge(std::vector<ConnectionRow>& rows, std::vector<WinSys::Connection> current, bool markNew, int newTicks,
+		int closedTicks) {
 		// by key, several rows for sockets that share one
 		std::map<WinSys::ConnectionKey, std::vector<ConnectionRow*>> previous;
+		std::vector<ConnectionRow> merged;
+		merged.reserve(current.size() + rows.size());
 		for (auto& c : rows)
 			if (!c.Closed)
 				previous[c.Id].push_back(&c);
-		std::vector<ConnectionRow> merged;
-		merged.reserve(current.size() + rows.size());
+			else if (c.ClosedTicks > 1) {
+				// closed before, still shown
+				auto closed = std::move(c);
+				closed.ClosedTicks--;
+				merged.push_back(std::move(closed));
+			}
 		for (auto& c : current) {
 			ConnectionRow row{ std::move(c) };
 			if (auto it = previous.find(row.Id); it != previous.end()) {
@@ -28,13 +35,15 @@ namespace ConnectionRows {
 				row.NewTicks = newTicks;
 			merged.push_back(std::move(row));
 		}
-		for (auto& [key, same] : previous)
-			for (auto c : same) {
-				auto closed = std::move(*c);
-				closed.Closed = true;
-				closed.NewTicks = 0;
-				merged.push_back(std::move(closed));
-			}
+		if (closedTicks > 0)
+			for (auto& [key, same] : previous)
+				for (auto c : same) {
+					auto closed = std::move(*c);
+					closed.Closed = true;
+					closed.ClosedTicks = closedTicks;
+					closed.NewTicks = 0;
+					merged.push_back(std::move(closed));
+				}
 		rows = std::move(merged);
 	}
 }

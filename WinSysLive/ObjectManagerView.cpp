@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ObjectManagerView.h"
+#include "Highlight.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include "HandleIcons.h"
@@ -251,19 +252,29 @@ void CObjectManagerView::Load(bool newDirectory) {
 						row.Target = link->Target;
 						row.Created = link->CreateTime;
 					}
-				row.New = newDirectory || m_All.empty() ? 0 : 2;
+				row.New = newDirectory || m_All.empty() ? 0 : Highlight::NewTicks();
 			}
 			rows.push_back(std::move(row));
 		}
-		// the ones that went, once more
-		if (!newDirectory)
+		// the ones that went, for a while (those that went before, while they're still shown)
+		if (!newDirectory) {
+			auto ticks = Highlight::ExitedTicks();
 			for (auto& r : m_All)
-				if (!r.Removed && !std::ranges::any_of(*entries, [&](auto& e) { return e.Name == r.Name; })) {
+				if (r.Removed) {
+					if (r.RemovedTicks > 1) {
+						auto gone = r;
+						gone.RemovedTicks--;
+						rows.push_back(std::move(gone));
+					}
+				}
+				else if (ticks > 0 && !std::ranges::any_of(*entries, [&](auto& e) { return e.Name == r.Name; })) {
 					auto gone = r;
 					gone.Removed = true;
+					gone.RemovedTicks = ticks;
 					gone.New = 0;
 					rows.push_back(std::move(gone));
 				}
+		}
 		// the tree follows the selected directory's subdirectories, once it lists them
 		if (auto item = m_Tree.GetSelectedItem(); item && m_Tree.GetItemData(item))
 			SyncNode(item, *entries);

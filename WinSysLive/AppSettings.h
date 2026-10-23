@@ -6,6 +6,8 @@ struct AppSettings : Settings {
 	BEGIN_SETTINGS(AppSettings)
 		SETTING(DarkMode, 0, SettingType::Bool);
 		SETTING(UpdateInterval, 1000, SettingType::Int32);
+		SETTING(NewHighlight, 2, SettingType::Int32);	// seconds: new items are highlighted (Highlight.h)
+		SETTING(ExitedHighlight, 1, SettingType::Int32);	// seconds: exited, closed or removed items are
 		SETTING(ActiveTab, 0, SettingType::Int32);	// among the open tabs
 		SETTING_STRING(Tabs, L"Processes,Performance,Services");	// the open tabs' keys (CMainFrame::s_Tabs), in tab order
 		SETTING(ProcessTreeMode, 1, SettingType::Bool);
@@ -64,6 +66,8 @@ struct AppSettings : Settings {
 
 	DEF_SETTING(DarkMode, int)
 	DEF_SETTING(UpdateInterval, int)
+	DEF_SETTING(NewHighlight, int)
+	DEF_SETTING(ExitedHighlight, int)
 	DEF_SETTING(ActiveTab, int)
 	DEF_SETTING_STRING(Tabs)
 	DEF_SETTING(ProcessTreeMode, int)

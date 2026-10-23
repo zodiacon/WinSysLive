@@ -13,6 +13,8 @@
 #include "FirmwareDlg.h"
 #include "LogonSessionsDlg.h"
 #include "VirusTotalDlg.h"
+#include "HighlightDlg.h"
+#include "Highlight.h"
 #include "VirusTotalChecker.h"
 #include "FormatHelper.h"
 #include "ListExport.h"
@@ -747,7 +749,10 @@ void CMainFrame::SetUpdateInterval(int interval) {
 	if (it == std::end(s_Intervals))
 		it = std::ranges::find(s_Intervals, 1000, &IntervalInfo::Interval);
 
-	AppSettings::Get().UpdateInterval(it->Interval);
+	auto& settings = AppSettings::Get();
+	settings.UpdateInterval(it->Interval);
+	// the views count the highlighting in updates
+	Highlight::Set(settings.NewHighlight(), settings.ExitedHighlight(), it->Interval);
 	UISetRadioMenuItem(it->CommandId, ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000);
 	if (!m_Paused)
 		SetTimer(TimerId, it->Interval);
@@ -954,6 +959,18 @@ LRESULT CMainFrame::OnResolveSymbols(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 	SymbolEngine::Get().Enable(resolve);
 	UISetCheck(id, resolve);
 	RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
+	return 0;
+}
+
+LRESULT CMainFrame::OnHighlighting(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	CHighlightDlg dlg(settings.NewHighlight(), settings.ExitedHighlight(), settings.UpdateInterval());
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	settings.NewHighlight(dlg.GetNewSeconds());
+	settings.ExitedHighlight(dlg.GetExitedSeconds());
+	settings.Save();
+	Highlight::Set(dlg.GetNewSeconds(), dlg.GetExitedSeconds(), settings.UpdateInterval());
 	return 0;
 }
 

@@ -2,6 +2,7 @@
 #include <DpiHelper.h>
 #include "resource.h"
 #include "ServicesView.h"
+#include "Highlight.h"
 #include "ServiceSheet.h"
 #include "ServiceInstallDlg.h"
 #include "FormatHelper.h"
@@ -16,7 +17,7 @@
 using namespace WinSys;
 
 namespace {
-	// highlighting lasts this many updates
+	// highlighting of a state change lasts this many updates (new services: Highlight::NewTicks)
 	const int HighlightTicks = 2;
 
 	// in CServicesView::Column order; the keys are stored in the ServiceColumns setting
@@ -266,7 +267,7 @@ void CServicesView::OnRefresh(bool active) {
 		}
 		else {
 			auto item = std::make_shared<ServiceItem>(std::move(svc));
-			item->NewTicks = HighlightTicks;
+			item->NewTicks = Highlight::NewTicks();
 			m_ItemsByName.insert({ item->Info.GetName(), item });
 			m_All.push_back(std::move(item));
 			added = true;

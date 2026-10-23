@@ -457,6 +457,8 @@
     <ClCompile Include="ObjectManagerView.cpp" />
     <ClCompile Include="PoolTagsView.cpp" />
     <ClCompile Include="DiskView.cpp" />
+    <ClCompile Include="HighlightDlg.cpp" />
+    <ClCompile Include="Highlight.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
@@ -530,6 +532,8 @@
     <ClInclude Include="ObjectManagerView.h" />
     <ClInclude Include="PoolTagsView.h" />
     <ClInclude Include="DiskView.h" />
+    <ClInclude Include="HighlightDlg.h" />
+    <ClInclude Include="Highlight.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />

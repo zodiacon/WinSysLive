@@ -116,7 +116,8 @@ private:
 		HTLITEM Item{ nullptr };
 		int Image{ -1 };
 		int NewTicks{ 0 };			// > 0: still highlighted as new
-		bool Terminated{ false };	// highlighted for one update, then removed
+		bool Terminated{ false };	// exited: highlighted for a while (ExitTicks), then removed
+		int ExitTicks{ 0 };	// refreshes left to show it, once it exited
 		ProcessKind Kinds{ ProcessKind::None };	// for the row color (see UpdateKinds)
 		bool Match{ true };	// matches the filter (always, without one); in the tree only if it does, or a descendant does
 		bool Hidden{ false };	// by View > Hide Processes (then it doesn't match)

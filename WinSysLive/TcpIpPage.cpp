@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TcpIpPage.h"
+#include "Highlight.h"
 #include "FormatHelper.h"
 #include "AddressResolver.h"
 #include <WinSys/Helpers.h>
@@ -84,7 +85,7 @@ bool CProcTcpIpPage::Load() {
 		return false;
 	}
 	// on the first read, all of them are new to the page, not opened
-	ConnectionRows::Merge(m_Rows, std::move(*current), m_Loaded);
+	ConnectionRows::Merge(m_Rows, std::move(*current), m_Loaded, Highlight::NewTicks(), Highlight::ExitedTicks());
 	m_Loaded = true;
 	if (m_Network)
 		m_Bytes.Update(*m_Network, m_Rows);

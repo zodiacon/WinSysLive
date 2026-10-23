@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "KernelModulesView.h"
+#include "Highlight.h"
 #include "AppSettings.h"
 #include "VirusTotalDlg.h"
 
@@ -120,11 +121,17 @@ bool CKernelModulesView::IsUnchanged(std::vector<WinSys::KernelModule> const& cu
 bool CKernelModulesView::Merge(std::vector<WinSys::KernelModule> current) {
 	bool loaded = false;
 	std::unordered_map<std::wstring, DriverRow*> previous;
+	std::vector<DriverRow> merged;
+	merged.reserve(current.size() + 8);
 	for (auto& row : m_All)
 		if (!row.Unloaded)
 			previous[row.Key] = &row;
-	std::vector<DriverRow> merged;
-	merged.reserve(current.size() + 8);
+		else if (row.UnloadedTicks > 1) {
+			// unloaded before, still shown
+			auto unloaded = std::move(row);
+			unloaded.UnloadedTicks--;
+			merged.push_back(std::move(unloaded));
+		}
 	for (auto& m : current) {
 		DriverRow row{ std::move(m) };
 		row.Key = Lowercase(row.Module.Path) + L"|" + std::to_wstring(row.Module.Base);
@@ -136,16 +143,18 @@ bool CKernelModulesView::Merge(std::vector<WinSys::KernelModule> current) {
 			loaded = true;
 			if (m_Loaded)
 				// on the first read, they're all new to the view, not loaded
-				row.NewTicks = 2;
+				row.NewTicks = Highlight::NewTicks();
 		}
 		merged.push_back(std::move(row));
 	}
-	for (auto& [key, row] : previous) {
-		auto unloaded = std::move(*row);
-		unloaded.Unloaded = true;
-		unloaded.NewTicks = 0;
-		merged.push_back(std::move(unloaded));
-	}
+	if (auto ticks = Highlight::ExitedTicks(); ticks > 0)
+		for (auto& [key, row] : previous) {
+			auto unloaded = std::move(*row);
+			unloaded.Unloaded = true;
+			unloaded.UnloadedTicks = ticks;
+			unloaded.NewTicks = 0;
+			merged.push_back(std::move(unloaded));
+		}
 	m_All = std::move(merged);
 	return loaded;
 }

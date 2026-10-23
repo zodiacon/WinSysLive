@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "IpcView.h"
+#include "Highlight.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
@@ -24,8 +25,6 @@ namespace {
 
 	// the session's name is this and the process ID
 	const PCWSTR SessionPrefix = L"WinSysLive IPC";
-	// highlighting of new rows lasts this many refreshes
-	const int NewRowTicks = 2;
 
 	std::wstring GuidText(GUID const& iface) {
 		WCHAR text[64];
@@ -143,7 +142,7 @@ void CIpcView::Merge(std::vector<WinSys::IpcLink> links, double elapsed) {
 		}
 		else if (m_Loaded)
 			// on the first read, they're all new to the view, not to the system
-			row.NewTicks = NewRowTicks;
+			row.NewTicks = Highlight::NewTicks();
 		if (elapsed > 0 && row.Link.Count >= before && (before || m_Loaded))
 			row.Rate = (row.Link.Count - before) / elapsed;
 		merged.push_back(std::move(row));

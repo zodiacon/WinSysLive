@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DiskView.h"
+#include "Highlight.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
@@ -24,8 +25,6 @@ namespace {
 
 	// the session's name is this and the process ID
 	const PCWSTR SessionPrefix = L"WinSysLive Disk";
-	// highlighting of new rows lasts this many refreshes
-	const int NewRowTicks = 2;
 
 	std::wstring FormatRate(double rate) {
 		// below a byte a second is nothing
@@ -137,7 +136,7 @@ void CDiskView::Merge(std::vector<WinSys::FileIoCounters> files, int64_t now, in
 		}
 		else if (m_Loaded)
 			// on the first read, they're all new to the view, not to the system
-			row.NewTicks = NewRowTicks;
+			row.NewTicks = Highlight::NewTicks();
 
 		row.History.push_back({ now, row.File.BytesRead, row.File.BytesWritten });
 		while (row.History.size() > RateUpdates + 1)
@@ -151,11 +150,21 @@ void CDiskView::Merge(std::vector<WinSys::FileIoCounters> files, int64_t now, in
 		}
 		merged.push_back(std::move(row));
 	}
-	// the rows the tracker forgot, shown once more
+	// the rows the tracker forgot, shown for a while (those forgotten before, while they're still shown)
+	auto ticks = Highlight::ExitedTicks();
 	for (auto& [key, row] : previous)
-		if (!row->Gone) {
+		if (row->Gone) {
+			if (row->GoneTicks > 1) {
+				Row gone{ std::move(row->File) };
+				gone.Gone = true;
+				gone.GoneTicks = row->GoneTicks - 1;
+				merged.push_back(std::move(gone));
+			}
+		}
+		else if (ticks > 0) {
 			Row gone{ std::move(row->File) };
 			gone.Gone = true;
+			gone.GoneTicks = ticks;
 			merged.push_back(std::move(gone));
 		}
 	// the tracker's order is a hash table's: until a header is clicked, the rows stay by process and file

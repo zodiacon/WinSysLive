@@ -95,7 +95,7 @@ private:
 	struct ModuleRow {
 		std::shared_ptr<WinSys::ModuleInfo> Module;
 		bool New{ false };		// highlighted as loaded
-		bool Unloaded{ false };	// highlighted as unloaded, for one refresh
+		bool Unloaded{ false };	// highlighted as unloaded, for Highlight::ExitedTicks refreshes
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -136,6 +136,7 @@ private:
 	std::unique_ptr<WinSys::ProcessModuleTracker> m_Tracker;
 	std::vector<ModuleRow> m_Rows;	// in display order
 	std::unordered_map<WinSys::ModuleInfo const*, int> m_NewTicks;	// refreshes left to highlight a loaded module
+	std::vector<std::pair<std::shared_ptr<WinSys::ModuleInfo>, int>> m_Unloaded;	// still shown, with the refreshes left
 	bool m_FirstEnum{ true };	// everything is new on the first enumeration: nothing to highlight
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 };

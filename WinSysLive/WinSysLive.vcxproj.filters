@@ -102,6 +102,12 @@
     <ClCompile Include="DiskView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="HighlightDlg.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="Highlight.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="TrayIcon.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -307,6 +313,12 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="DiskView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="HighlightDlg.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="Highlight.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="TrayIcon.h">

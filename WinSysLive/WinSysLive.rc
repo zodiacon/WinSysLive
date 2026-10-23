@@ -176,6 +176,7 @@ BEGIN
         MENUITEM "Default F&ont",               ID_OPTIONS_DEFAULTFONT
         MENUITEM SEPARATOR
         MENUITEM "Process &Colors...",          ID_OPTIONS_PROCESSCOLORS
+        MENUITEM "&Highlighting...",            ID_OPTIONS_HIGHLIGHTING
         MENUITEM "Resolve &Symbols",            ID_OPTIONS_RESOLVESYMBOLS
         MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
         MENUITEM "&VirusTotal...",               ID_OPTIONS_VIRUSTOTAL
@@ -498,6 +499,25 @@ BEGIN
     PUSHBUTTON      "Bring to &Front",IDC_WIN_FRONT,103,209,62,14
     PUSHBUTTON      "&Close Window...",IDC_WIN_CLOSE,169,209,62,14
     PUSHBUTTON      "&Refresh",IDC_WIN_REFRESH,273,209,50,14
+END
+
+IDD_HIGHLIGHTING DIALOGEX 0, 0, 260, 118
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Highlighting"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "New items are highlighted in green, and exited, closed, unloaded or removed ones in red, which then stay in the lists for that long. Zero turns it off: exited items then go at once.",IDC_STATIC,7,7,246,26
+    LTEXT           "Highlight &new items for:",IDC_STATIC,7,42,100,9
+    EDITTEXT        IDC_HL_NEW,110,40,32,13,ES_NUMBER
+    CONTROL         "",IDC_HL_NEWSPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,142,40,10,13
+    LTEXT           "seconds",IDC_STATIC,148,42,40,9
+    LTEXT           "Highlight &exited items for:",IDC_STATIC,7,60,100,9
+    EDITTEXT        IDC_HL_EXITED,110,58,32,13,ES_NUMBER
+    CONTROL         "",IDC_HL_EXITEDSPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,142,58,10,13
+    LTEXT           "seconds",IDC_STATIC,148,60,40,9
+    LTEXT           "",IDC_HL_UPDATES,7,79,246,9,SS_NOPREFIX
+    DEFPUSHBUTTON   "OK",IDOK,149,97,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,203,97,50,14
 END
 
 IDD_VIRUSTOTAL DIALOGEX 0, 0, 300, 136
@@ -1484,6 +1504,7 @@ BEGIN
     ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
     ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
     ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
+    ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
     ID_OPTIONS_VIRUSTOTAL   "Set the VirusTotal API key and request rate\nVirusTotal"
     ID_VT_REPORT            "Open the file's VirusTotal report in the browser\nVirusTotal Report"
     ID_VT_CHECK             "Look the file's hash up on VirusTotal again\nCheck on VirusTotal"

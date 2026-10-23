@@ -113,7 +113,7 @@ private:
 	struct HandleRow {
 		std::shared_ptr<HandleData> Data;
 		bool New{ false };
-		bool Closed{ false };	// highlighted as closed, for one refresh
+		bool Closed{ false };	// highlighted as closed, for Highlight::ExitedTicks refreshes
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -159,6 +159,7 @@ private:
 	wil::unique_handle m_hProcess;	// with PROCESS_DUP_HANDLE, for the names; null if it can't be opened so
 	std::vector<HandleRow> m_Rows;	// in display order
 	std::unordered_map<uint64_t, std::shared_ptr<HandleData>> m_Handles;	// by handle value
+	std::vector<std::pair<std::shared_ptr<HandleData>, int>> m_Closed;	// still shown, with the refreshes left
 	WinSys::HandleEnumerator m_Enumerator;	// keeps the system handle table's buffer
 	mutable WinSys::ObjectNameQuery m_NameQuery;
 	WinSys::DosNames m_DosNames;	// for the files' names

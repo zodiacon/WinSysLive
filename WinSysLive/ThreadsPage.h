@@ -118,7 +118,7 @@ private:
 		int64_t CyclesDelta{ -1 };	// -1: not known yet
 		std::wstring const* Service{ nullptr };	// in the thread's ThreadState
 		bool New{ false };		// highlighted as created
-		bool Exited{ false };	// highlighted as exited, for one refresh
+		bool Exited{ false };	// highlighted as exited, for Highlight::ExitedTicks refreshes
 	};
 	// what's kept per thread between refreshes
 	struct ThreadState {
@@ -129,7 +129,8 @@ private:
 		std::unique_ptr<WinSys::Thread> Handle;
 		std::wstring Service;	// queried once: a thread's service doesn't change
 		int NewTicks{ 0 };	// refreshes left to highlight it as created
-		ThreadRow Last;		// shown once more when the thread exits
+		int ExitedTicks{ 0 };	// once it exited: refreshes left to show it
+		ThreadRow Last;		// shown, as it was, for a while after the thread exits
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -198,7 +199,7 @@ private:
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	std::vector<ThreadRow> m_Rows;	// in display order
 	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Threads;	// node-based: ThreadRow::Service stays valid
-	// the threads that exited on the last refresh: their rows point to their ThreadState's Service
+	// the threads that exited, still shown: their rows point to their ThreadState's Service
 	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Exited;
 	LARGE_INTEGER m_PrevTime{};	// of the previous refresh (QPC), 0 if none
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1

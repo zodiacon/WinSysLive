@@ -2,6 +2,7 @@
 #include <DpiHelper.h>
 #include "ProcessInfoEx.h"
 #include "ModulesPage.h"
+#include "Highlight.h"
 #include "FormatHelper.h"
 #include "VersionInfo.h"
 #include "AppSettings.h"
@@ -29,8 +30,6 @@ namespace {
 		{ L"Path", L"Path", 450, LVCFMT_LEFT, true },
 	};
 
-	// highlighting of loaded modules lasts this many refreshes
-	const int NewModuleTicks = 2;
 
 	std::wstring CharacteristicsToString(DllCharacteristics c) {
 		static const struct {
@@ -128,6 +127,7 @@ void CModulesPage::Attach(uint32_t pid, bool enumerate) {
 	// Idle and System have no user-mode address space
 	m_Tracker = pid > 4 ? std::make_unique<ProcessModuleTracker>(pid) : nullptr;
 	m_NewTicks.clear();
+	m_Unloaded.clear();
 	m_FirstEnum = true;
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	if (enumerate)
@@ -150,7 +150,7 @@ void CModulesPage::Refresh() {
 		m_Tracker->EnumModules();
 		if (!m_FirstEnum)
 			for (auto& m : m_Tracker->GetNewModules())
-				m_NewTicks[m.get()] = NewModuleTicks;
+				m_NewTicks[m.get()] = Highlight::NewTicks();
 		m_FirstEnum = false;
 
 		auto& modules = m_Tracker->GetModules();
@@ -161,16 +161,22 @@ void CModulesPage::Refresh() {
 				continue;
 			ModuleRow row{ m };
 			if (auto it = m_NewTicks.find(m.get()); it != m_NewTicks.end()) {
-				row.New = true;
-				if (--it->second == 0)
+				row.New = it->second > 0;
+				if (--it->second <= 0)
 					m_NewTicks.erase(it);
 			}
 			m_Rows.push_back(std::move(row));
 		}
+		// the modules unloaded, shown for a while
 		for (auto& m : m_Tracker->GetUnloadedModules()) {
 			m_NewTicks.erase(m.get());
 			if (!m->Path.empty())
-				m_Rows.push_back({ m, false, true });
+				m_Unloaded.push_back({ m, Highlight::ExitedTicks() });
+		}
+		std::erase_if(m_Unloaded, [](auto const& u) { return u.second <= 0; });
+		for (auto& [m, ticks] : m_Unloaded) {
+			m_Rows.push_back({ m, false, true });
+			ticks--;
 		}
 	}
 

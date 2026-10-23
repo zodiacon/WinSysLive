@@ -5,10 +5,11 @@
 #include <deque>
 
 // A connection as the Network view and the TCP/IP page show it (WinSys::ConnectionInfo reads them): new ones highlighted
-// for a while, closed ones shown once more.
+// for a while, closed ones shown for a while more.
 struct ConnectionRow : WinSys::Connection {
 	int NewTicks{ 0 };	// > 0: still highlighted as new
-	bool Closed{ false };	// shown once more, then removed
+	bool Closed{ false };	// shown for ClosedTicks more reads, then removed
+	int ClosedTicks{ 0 };
 };
 
 namespace ConnectionRows {
@@ -26,9 +27,10 @@ namespace ConnectionRows {
 
 	// rows: the last merge's (none at first); current: a new read. The connections still there keep their highlighting,
 	// counting down; the new ones are highlighted for newTicks reads (unless markNew: on the first read, they're all
-	// new to the list, not opened); the ones gone are kept once more as Closed, and those already closed go. Rows
-	// sharing a connection key are paired up one to one, by creation time first
-	void Merge(std::vector<ConnectionRow>& rows, std::vector<WinSys::Connection> current, bool markNew, int newTicks = 2);
+	// new to the list, not opened); the ones gone are kept as Closed for closedTicks reads (none if zero). Rows sharing a
+	// connection key are paired up one to one, by creation time first
+	void Merge(std::vector<ConnectionRow>& rows, std::vector<WinSys::Connection> current, bool markNew, int newTicks,
+		int closedTicks);
 }
 
 // The bytes over connection rows, from the shared ETW tracker (NetworkTracking): each Update takes every row's counts,

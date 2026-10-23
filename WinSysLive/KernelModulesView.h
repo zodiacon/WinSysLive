@@ -87,7 +87,8 @@ private:
 		WinSys::KernelModule Module;
 		std::wstring Key;	// the path, lowercase, and the base: a driver unloaded and loaded again is another row
 		int NewTicks{ 0 };	// > 0: still highlighted as new
-		bool Unloaded{ false };	// shown once more, then removed
+		bool Unloaded{ false };	// shown for UnloadedTicks more refreshes, then removed
+		int UnloadedTicks{ 0 };
 	};
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);

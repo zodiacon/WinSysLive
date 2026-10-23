@@ -19,6 +19,7 @@
 #include "AffinityDlg.h"
 #include "WaitChainDlg.h"
 #include "VirusTotalDlg.h"
+#include "Highlight.h"
 #include <WinSys/DotNet.h>
 #include <ranges>
 
@@ -108,8 +109,6 @@ namespace {
 	};
 	const int HideButtonImageSize = 16;	// at 96 DPI
 
-	// highlighting of new processes lasts this many updates
-	const int NewProcessTicks = 2;
 	// the CLR starts after the process, so a process is checked for it again on every update until it's this old
 	const int64_t DotNetCheckPeriod = 15 * 10000000LL;	// 100 ns units
 }
@@ -811,7 +810,7 @@ void CProcessesView::InsertItems() {
 		if (item.Match)
 			EnsureInserted(item);
 	}
-	// exited processes, still shown for this refresh
+	// exited processes, still shown for a while
 	for (auto& [key, item] : m_Items)
 		if (item.Terminated) {
 			item.Match = Matches(item);
@@ -827,25 +826,34 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 
 	m_Tree.BeginUpdate();
 
-	// processes marked terminated on the previous update go away now; their NativeInfo points into
-	// the snapshot buffer that this update just overwrote, so they must not be painted again
+	// exited processes are shown for the Highlight::ExitedTicks refreshes after they exit, then they go
 	std::vector<ProcessOrThreadKey> terminated;
 	for (auto& [key, item] : m_Items) {
-		if (item.Terminated)
-			terminated.push_back(key);
+		if (item.Terminated) {
+			if (--item.ExitTicks <= 0)
+				terminated.push_back(key);
+		}
 		else if (item.NewTicks > 0)
 			item.NewTicks--;
+	}
+
+	auto exitTicks = Highlight::ExitedTicks();
+	for (auto& p : pm.GetTerminatedProcesses()) {
+		if (auto it = m_Items.find(p->Key); it != m_Items.end()) {
+			auto& item = it->second;
+			item.Terminated = true;
+			item.NewTicks = 0;
+			item.ExitTicks = exitTicks;
+			if (exitTicks <= 0)
+				terminated.push_back(p->Key);
+			else
+				// its NativeInfo points into the snapshot buffer the update after next reuses: a copy of its own
+				p->Detach();
+		}
 	}
 	for (auto& key : terminated) {
 		if (auto it = m_Items.find(key); it != m_Items.end())
 			RemoveItem(it->second);
-	}
-
-	for (auto& p : pm.GetTerminatedProcesses()) {
-		if (auto it = m_Items.find(p->Key); it != m_Items.end()) {
-			it->second.Terminated = true;
-			it->second.NewTicks = 0;
-		}
 	}
 
 	// add all new processes before inserting, so a new parent and child are linked regardless of order
@@ -853,7 +861,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	for (auto& p : pm.GetNewProcesses()) {
 		auto [it, inserted] = m_Items.insert({ p->Key, ProcessItem{ p } });
 		if (inserted) {
-			it->second.NewTicks = NewProcessTicks;
+			it->second.NewTicks = Highlight::NewTicks();
 			added.push_back(&it->second);
 		}
 	}

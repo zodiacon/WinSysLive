@@ -86,7 +86,8 @@ private:
 		std::wstring Name, Type, Target;
 		int64_t Created{ 0 };	// a symbolic link's
 		int New{ 0 };	// refreshes left with the new highlight
-		bool Removed{ false };	// gone: shown once more, red
+		bool Removed{ false };	// gone: shown for RemovedTicks more refreshes, red
+		int RemovedTicks{ 0 };
 		// read for the rows shown, again on every refresh
 		mutable std::optional<uint32_t> Handles;
 		mutable bool HandlesRead{ false };

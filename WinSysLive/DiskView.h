@@ -91,7 +91,8 @@ private:
 		std::deque<Sample> History;	// the last RateUpdates + 1 counts, oldest first
 		double ReadRate{ 0 }, WriteRate{ 0 };	// bytes a second
 		int NewTicks{ 0 };	// > 0: still highlighted as new
-		bool Gone{ false };	// the tracker forgot it: shown once more
+		bool Gone{ false };	// the tracker forgot it: shown for GoneTicks more refreshes
+		int GoneTicks{ 0 };
 
 		Key GetKey() const {
 			return { File.Pid, File.FileKey };

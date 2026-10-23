@@ -2,6 +2,7 @@
 #include <DpiHelper.h>
 #include "ProcessInfoEx.h"
 #include "ThreadsPage.h"
+#include "Highlight.h"
 #include "FormatHelper.h"
 #include "ViewBase.h"
 #include "ListExport.h"
@@ -66,8 +67,6 @@ namespace {
 		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
 	};
 
-	// highlighting of created threads lasts this many refreshes
-	const int NewThreadTicks = 2;
 
 	std::unique_ptr<Thread> OpenThread(uint32_t tid) {
 		// limited access is all a protected process's threads allow; the I/O and memory priorities need more
@@ -554,7 +553,7 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 					state.Service = state.Handle->GetServiceNameByTag(pid);
 				// on the first refresh of a process, all its threads are new to the page, not created
 				if (m_PrevTime.QuadPart)
-					state.NewTicks = NewThreadTicks;
+					state.NewTicks = Highlight::NewTicks();
 			}
 			if (state.NewTicks > 0) {
 				row.New = true;
@@ -586,15 +585,21 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 			m_Rows.push_back(std::move(row));
 		}
 
-		// the threads that exited since the last refresh: shown once more, as they were; their handles close with
-		// the next refresh
-		m_Exited = std::move(m_Threads);
+		// the threads that exited since the last refresh join those still shown, as they were, for
+		// Highlight::ExitedTicks refreshes; their handles close when they go
+		auto exitedTicks = Highlight::ExitedTicks();
+		for (auto& [key, state] : m_Threads) {
+			state.ExitedTicks = exitedTicks;
+			m_Exited.insert_or_assign(key, std::move(state));
+		}
+		std::erase_if(m_Exited, [](auto const& e) { return e.second.ExitedTicks <= 0; });
 		for (auto& [key, state] : m_Exited) {
 			auto row = state.Last;
 			row.New = false;
 			row.Exited = true;
 			row.Service = &state.Service;
 			m_Rows.push_back(std::move(row));
+			state.ExitedTicks--;
 		}
 		m_Threads = std::move(current);
 	}
