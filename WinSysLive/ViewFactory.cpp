@@ -11,6 +11,7 @@
 #include "ObjectTypesView.h"
 #include "ObjectManagerView.h"
 #include "PoolTagsView.h"
+#include "DiskView.h"
 
 template<typename TView>
 static std::pair<IView*, CMessageMap*> DoCreateView(TView* view, HWND hParent) {
@@ -35,6 +36,7 @@ std::pair<IView*, CMessageMap*> CMainFrame::CreateView(TabType type) {
 		case TabType::ObjectTypes: return DoCreateView(new CObjectTypesView(this), m_Tabs);
 		case TabType::ObjectManager: return DoCreateView(new CObjectManagerView(this), m_Tabs);
 		case TabType::PoolTags: return DoCreateView(new CPoolTagsView(this), m_Tabs);
+		case TabType::Disk: return DoCreateView(new CDiskView(this), m_Tabs);
 	}
 	ATLASSERT(false);
 	return {};

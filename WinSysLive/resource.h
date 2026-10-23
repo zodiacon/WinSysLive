@@ -414,9 +414,14 @@
 #define ID_SYSTEM_LOGONSESSIONS     32923
 #define IDR_POOLTAGS                292
 #define ID_VIEW_POOLTAGS            32922
+#define ID_VIEW_DISK                32924
+#define ID_DISK_GOTOPROCESS         32925
+#define ID_DISK_PROPERTIES          32926
+#define ID_DISK_OPENLOCATION        32927
 #define IDI_POOLTAGS                293
 #define IDI_LOGON_SESSIONS          295
 #define IDI_PIN                     296
+#define IDI_HARDDISK                297
 #define ID_OPTIONS_VIRUSTOTAL       32918
 #define ID_VT_REPORT                32919
 #define ID_VT_CHECK                 32920
@@ -522,9 +527,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	297
+#define _APS_NEXT_RESOURCE_VALUE	298
 #define _APS_NEXT_CONTROL_VALUE		1299
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32924
+#define _APS_NEXT_COMMAND_VALUE		32928
 #endif
 #endif

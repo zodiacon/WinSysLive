@@ -90,6 +90,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_OBJECTTYPES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_OBJECTMANAGER, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_POOLTAGS, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_DISK, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
@@ -205,6 +206,7 @@ private:
 		{ TabType::ObjectTypes, ID_VIEW_OBJECTTYPES, IDI_OBJECT, L"ObjectTypes" },
 		{ TabType::ObjectManager, ID_VIEW_OBJECTMANAGER, IDI_OBJECTS, L"ObjectManager" },
 		{ TabType::PoolTags, ID_VIEW_POOLTAGS, IDI_POOLTAGS, L"PoolTags" },
+		{ TabType::Disk, ID_VIEW_DISK, IDI_HARDDISK, L"Disk" },
 	};
 	static TabInfo const* FindTab(TabType type);
 

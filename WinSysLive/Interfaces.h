@@ -17,6 +17,7 @@ enum class TabType {
 	ObjectTypes,
 	ObjectManager,	// the object namespace
 	PoolTags,
+	Disk,		// file I/O by process and file
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)

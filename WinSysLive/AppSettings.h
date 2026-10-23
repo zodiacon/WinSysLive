@@ -34,6 +34,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(ObjectTypeColumns, L"");	// the Object Types tab
 		SETTING_STRING(ObjectManagerColumns, L"");	// the Object Manager tab
 		SETTING_STRING(PoolTagColumns, L"");	// the Pool Tags tab
+		SETTING_STRING(DiskColumns, L"");	// the Disk tab
 		SETTING_STRING(ObjectManagerPath, L"\\");	// its directory
 		SETTING(ObjectManagerSplitterPos, 25, SettingType::Int32);	// the tree's width, in percent
 		SETTING_STRING(VirusTotalKey, L"");	// the API key, DPAPI-encrypted (VirusTotalChecker::Protect), as hex
@@ -90,6 +91,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(ObjectTypeColumns)
 	DEF_SETTING_STRING(ObjectManagerColumns)
 	DEF_SETTING_STRING(PoolTagColumns)
+	DEF_SETTING_STRING(DiskColumns)
 	DEF_SETTING_STRING(ObjectManagerPath)
 	DEF_SETTING(ObjectManagerSplitterPos, int)
 	DEF_SETTING_STRING(VirusTotalKey)

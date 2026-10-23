@@ -99,6 +99,9 @@
     <ClCompile Include="PoolTagsView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="DiskView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="TrayIcon.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -301,6 +304,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="PoolTagsView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="DiskView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="TrayIcon.h">
