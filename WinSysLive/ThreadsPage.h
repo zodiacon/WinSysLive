@@ -129,6 +129,8 @@ private:
 		std::unique_ptr<WinSys::Thread> Handle;
 		std::wstring Service;	// queried once: a thread's service doesn't change
 		int NewTicks{ 0 };	// refreshes left to highlight it as created
+		// queried from the thread once, when the snapshot has none (it hasn't when not elevated)
+		std::optional<void*> StartAddress;
 		int ExitedTicks{ 0 };	// once it exited: refreshes left to show it
 		ThreadRow Last;		// shown, as it was, for a while after the thread exits
 	};

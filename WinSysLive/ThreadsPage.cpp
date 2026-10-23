@@ -564,6 +564,11 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 			if (state.Handle) {
 				auto& thread = *state.Handle;
 				row.HasHandle = true;
+				if (!row.StartAddress) {
+					if (!state.StartAddress)
+						state.StartAddress = thread.GetStartAddress();
+					row.StartAddress = *state.StartAddress;
+				}
 				row.IdealCpu = thread.GetIdealProcessor();
 				row.IoPriority = thread.GetIoPriority();
 				row.MemoryPriority = thread.GetMemoryPriority();
