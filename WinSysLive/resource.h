@@ -402,6 +402,9 @@
 #define IDC_VT_LINK                 1289
 #define IDD_COLUMNS_TREE            291
 #define IDC_COLUMN_TREE             1290
+#define IDR_POOLTAGS                292
+#define ID_VIEW_POOLTAGS            32922
+#define IDI_POOLTAGS                293
 #define ID_OPTIONS_VIRUSTOTAL       32918
 #define ID_VT_REPORT                32919
 #define ID_VT_CHECK                 32920
@@ -507,9 +510,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	292
+#define _APS_NEXT_RESOURCE_VALUE	294
 #define _APS_NEXT_CONTROL_VALUE		1291
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32922
+#define _APS_NEXT_COMMAND_VALUE		32923
 #endif
 #endif

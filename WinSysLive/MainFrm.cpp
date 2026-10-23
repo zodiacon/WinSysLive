@@ -43,6 +43,8 @@ namespace {
 		IDI_PROCESS_KILL,
 		// the Object Manager tab
 		IDI_SYMLINK, IDI_OBJECTS,
+		// the Pool Tags tab
+		IDI_POOLTAGS,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
@@ -68,6 +70,7 @@ namespace {
 		{ ID_VIEW_ZOMBIES, IDI_PROCESS_KILL, BTNS_CHECK },
 		{ ID_VIEW_OBJECTTYPES, IDI_OBJECT, BTNS_CHECK },
 		{ ID_VIEW_OBJECTMANAGER, IDI_OBJECTS, BTNS_CHECK },
+		{ ID_VIEW_POOLTAGS, IDI_POOLTAGS, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 

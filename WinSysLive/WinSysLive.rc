@@ -77,6 +77,7 @@ BEGIN
         MENUITEM "&Zombie Processes\tCtrl+9",   ID_VIEW_ZOMBIES
         MENUITEM "&Object Types\tCtrl+0",       ID_VIEW_OBJECTTYPES
         MENUITEM "Object &Manager\tCtrl+Shift+O", ID_VIEW_OBJECTMANAGER
+        MENUITEM "Poo&l Tags\tCtrl+Shift+P",    ID_VIEW_POOLTAGS
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -367,6 +368,10 @@ IDI_ETW                 ICON                    "res\\etw.ico"
 IDI_DIRECTORY           ICON                    "res\\folder.ico"
 IDI_SYMLINK             ICON                    "res\\symboliclink.ico"
 IDI_OBJECTS             ICON                    "res\\objects.ico"
+IDI_POOLTAGS            ICON                    "res\\PoolTags.ico"
+
+// pooltag.txt from the Debugging Tools for Windows, for when they aren't installed
+IDR_POOLTAGS            RCDATA                  "res\\pooltag.txt"
 
 IDI_PORT                ICON                    "res\\port.ico"
 
@@ -1114,6 +1119,7 @@ BEGIN
     "9",            ID_VIEW_ZOMBIES,        VIRTKEY, CONTROL
     "0",            ID_VIEW_OBJECTTYPES,    VIRTKEY, CONTROL
     "O",            ID_VIEW_OBJECTMANAGER,  VIRTKEY, SHIFT, CONTROL
+    "P",            ID_VIEW_POOLTAGS,       VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1459,6 +1465,7 @@ BEGIN
     ID_VT_REPORT            "Open the file's VirusTotal report in the browser\nVirusTotal Report"
     ID_VT_CHECK             "Look the file's hash up on VirusTotal again\nCheck on VirusTotal"
     ID_VT_SUBMIT            "Upload the file to VirusTotal for analysis\nSubmit to VirusTotal"
+    ID_VIEW_POOLTAGS        "Show the kernel pools' usage by tag\nPool Tags (Ctrl+Shift+P)"
     ID_VIEW_OBJECTMANAGER   "Browse the object manager's namespace: directories, symbolic links and named objects\nObject Manager (Ctrl+Shift+O)"
     ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
 END

@@ -16,6 +16,7 @@ enum class TabType {
 	Zombies,	// zombie processes
 	ObjectTypes,
 	ObjectManager,	// the object namespace
+	PoolTags,
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)

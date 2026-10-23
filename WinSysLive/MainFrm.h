@@ -89,6 +89,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_ZOMBIES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_OBJECTTYPES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_OBJECTMANAGER, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_POOLTAGS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
@@ -201,6 +202,7 @@ private:
 		{ TabType::Zombies, ID_VIEW_ZOMBIES, IDI_PROCESS_KILL, L"Zombies" },
 		{ TabType::ObjectTypes, ID_VIEW_OBJECTTYPES, IDI_OBJECT, L"ObjectTypes" },
 		{ TabType::ObjectManager, ID_VIEW_OBJECTMANAGER, IDI_OBJECTS, L"ObjectManager" },
+		{ TabType::PoolTags, ID_VIEW_POOLTAGS, IDI_POOLTAGS, L"PoolTags" },
 	};
 	static TabInfo const* FindTab(TabType type);
 
