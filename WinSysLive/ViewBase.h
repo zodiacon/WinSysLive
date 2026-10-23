@@ -33,7 +33,7 @@ inline void SuspendHookWhilePainting(HWND hWnd) {
 // with CHAIN_MSG_MAP_ALT(CViewBase<T>, 1).
 //
 template<typename T, typename TBase = CWindow>
-class CViewBase abstract :
+class CViewBase :
 	public CFrameView<T, IMainFrame, TBase>,
 	public IView,
 	public CAutoUpdateUI<T>,

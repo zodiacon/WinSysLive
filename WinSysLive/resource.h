@@ -402,6 +402,9 @@
 #define IDC_VT_LINK                 1289
 #define IDD_COLUMNS_TREE            291
 #define IDC_COLUMN_TREE             1290
+#define IDC_VERSION                 1291
+#define IDC_COPYRIGHT               1292
+#define IDC_LINK                    1293
 #define IDR_POOLTAGS                292
 #define ID_VIEW_POOLTAGS            32922
 #define IDI_POOLTAGS                293
@@ -511,7 +514,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE	294
-#define _APS_NEXT_CONTROL_VALUE		1291
+#define _APS_NEXT_CONTROL_VALUE		1294
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32923
 #endif
