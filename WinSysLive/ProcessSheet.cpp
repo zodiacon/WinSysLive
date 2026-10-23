@@ -50,6 +50,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Memory);
 	m_Token = std::make_unique<CProcTokenPage>(m_Props);
 	AddPage(*m_Token);
+	m_Windows = std::make_unique<CProcWindowsPage>(m_Props);
+	AddPage(*m_Windows);
 	m_Security = CObjectSecurityInfo::Open([&](DWORD access) { return OpenSheetProcess(m_Props, access).release(); }, L"Process",
 		std::format(L"{} ({})", m_Props.ImageName, m_Props.Id));
 	if (auto page = ::CreateSecurityPage(m_Security)) {

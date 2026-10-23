@@ -369,6 +369,13 @@
 #define IDC_STATS_STATUS            1264
 #define IDC_STATS_COPY              1265
 #define IDC_STATS_COPYALL           1266
+#define IDD_PROC_WINDOWS            285
+#define IDC_WIN_SHOW                1267
+#define IDC_WIN_HIDE                1268
+#define IDC_WIN_FRONT               1269
+#define IDC_WIN_CLOSE               1270
+#define IDC_WIN_REFRESH             1271
+#define IDC_WIN_STATUS              1272
 #define IDC_SVCI_NAME               1245
 #define IDC_SVCI_DISPLAYNAME        1246
 #define IDC_SVCI_DESCRIPTION        1247
@@ -464,8 +471,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	285
-#define _APS_NEXT_CONTROL_VALUE		1267
+#define _APS_NEXT_RESOURCE_VALUE	286
+#define _APS_NEXT_CONTROL_VALUE		1273
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32910
 #endif

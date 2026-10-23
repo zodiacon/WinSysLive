@@ -425,6 +425,7 @@
     <ClCompile Include="SymbolSettingsDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
     <ClCompile Include="StatisticsPage.cpp" />
+    <ClCompile Include="WindowsPage.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
     <ClCompile Include="MainFrm.cpp" />
@@ -494,6 +495,7 @@
     <ClInclude Include="SymbolSettingsDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
     <ClInclude Include="StatisticsPage.h" />
+    <ClInclude Include="WindowsPage.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
     <ClInclude Include="AppSettings.h" />

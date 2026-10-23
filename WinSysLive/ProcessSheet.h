@@ -4,6 +4,7 @@
 #include <IconPropertySheet.h>
 #include "ProcessPages.h"
 #include "StatisticsPage.h"
+#include "WindowsPage.h"
 #include "MemoryPage.h"
 #include "JobPage.h"
 #include "ServicesPage.h"
@@ -47,6 +48,7 @@ private:
 	std::unique_ptr<CProcEnvironmentPage> m_Environment;
 	std::unique_ptr<CProcMemoryPage> m_Memory;
 	std::unique_ptr<CProcTokenPage> m_Token;
+	std::unique_ptr<CProcWindowsPage> m_Windows;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
 	std::unique_ptr<CProcModulesPage> m_Modules;
 	std::unique_ptr<CProcHandlesPage> m_Handles;
