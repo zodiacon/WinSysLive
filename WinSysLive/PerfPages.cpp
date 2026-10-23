@@ -59,10 +59,15 @@ namespace {
 	}
 }
 
-void CCpuGraph::Create(HWND hParent) {
+void CCpuGraph::Create(HWND hParent, bool details) {
+	m_Details = details;
 	CGraphControl::Create(hParent, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE,
 		GCS_GRID | GCS_SCROLLGRID | GCS_FILL | GCS_AXISLABELS | GCS_LEGEND | GCS_TOOLTIP | GCS_STACKED | GCS_VALUEOVERLAY);
-	// stacked bottom up: kernel time, then user time
+	// stacked bottom up: (interrupts, DPCs and the rest of) kernel time, then user time
+	if (details) {
+		AddSeries(L"Interrupts", SeriesStyle{ PerfColors::Interrupt, PerfColors::Interrupt });
+		AddSeries(L"DPCs", SeriesStyle{ PerfColors::Dpc, PerfColors::Dpc });
+	}
 	AddSeries(L"Kernel", SeriesStyle{ PerfColors::Kernel, PerfColors::Kernel });
 	AddSeries(L"User", SeriesStyle{ PerfColors::User, PerfColors::User });
 	SetTitle(L"CPU Usage");
@@ -74,8 +79,46 @@ void CCpuGraph::Create(HWND hParent) {
 void CCpuGraph::Push(PerfSample const& sample) {
 	if (!sample.HasCpu)
 		return;
-	float values[] = { sample.KernelCpu, sample.UserCpu };	// in AddSeries order
-	PushSamples(values, _countof(values));
+	if (m_Details) {
+		float kernel = (std::max)(sample.KernelCpu - sample.InterruptCpu - sample.DpcCpu, 0.0f);
+		float values[] = { sample.InterruptCpu, sample.DpcCpu, kernel, sample.UserCpu };	// in AddSeries order
+		PushSamples(values, _countof(values));
+	}
+	else {
+		float values[] = { sample.KernelCpu, sample.UserCpu };
+		PushSamples(values, _countof(values));
+	}
+	m_Top.push_back({ ::GetTickCount64(), sample.TopProcesses });
+	while (m_Top.size() > GetHistoryLength())
+		m_Top.pop_front();
+}
+
+std::wstring CCpuGraph::TooltipText(int sampleIndex, PCWSTR text) const {
+	std::wstring result(text);
+	if (sampleIndex < 0 || m_Top.empty())
+		return result;
+	// the sample pushed nearest the time the graph puts the hovered one at, within an interval of it
+	auto age = (ULONGLONG)(GetSampleAgeSeconds(sampleIndex) * 1000);
+	auto now = ::GetTickCount64();
+	auto when = now > age ? now - age : 0;
+	Top const* nearest = nullptr;
+	ULONGLONG distance = 0;
+	for (auto& top : m_Top) {
+		auto d = top.Time > when ? top.Time - when : when - top.Time;
+		if (!nearest || d < distance) {
+			nearest = &top;
+			distance = d;
+		}
+	}
+	if (!nearest || distance > (std::max)(GetExpectedInterval(), 500u) || nearest->Processes.empty())
+		return result;
+	result += L"\n";
+	for (auto& p : nearest->Processes) {
+		// short names: the readout holds 255 characters
+		auto name = p.Name.size() > 22 ? p.Name.substr(0, 21) + L"\u2026" : p.Name;
+		result += std::format(L"\n{} ({}): {:.1f}%", name, p.Pid, p.Cpu);
+	}
+	return result;
 }
 
 void CMemoryGraph::Create(HWND hParent, int64_t physicalTotal) {
@@ -129,6 +172,16 @@ void CDiskGraph::Push(double read, double write, bool valid) {
 //
 // Summary
 //
+
+LRESULT CPerfSummaryPage::OnGetTooltip(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_Cpu) {
+		bHandled = FALSE;
+		return 0;
+	}
+	auto tip = reinterpret_cast<GRAPHTOOLTIPNOTIFY*>(hdr);
+	wcsncpy_s(tip->SzText, m_Cpu.TooltipText(tip->SampleIndex, tip->SzText).c_str(), _TRUNCATE);
+	return 0;
+}
 
 void CPerfSummaryPage::CreateGraphs() {
 	m_Cpu.Create(m_hWnd);
@@ -188,8 +241,18 @@ void CPerfSummaryPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 // CPU
 //
 
+LRESULT CPerfCpuPage::OnGetTooltip(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_Cpu) {
+		bHandled = FALSE;
+		return 0;
+	}
+	auto tip = reinterpret_cast<GRAPHTOOLTIPNOTIFY*>(hdr);
+	wcsncpy_s(tip->SzText, m_Cpu.TooltipText(tip->SampleIndex, tip->SzText).c_str(), _TRUNCATE);
+	return 0;
+}
+
 void CPerfCpuPage::CreateGraphs() {
-	m_Cpu.Create(m_hWnd);
+	m_Cpu.Create(m_hWnd, true);
 	// the model, padded with spaces by some processors (ASCII)
 	auto brand = WinSys::SystemInfo::GetProcessorBrandString();
 	std::wstring model(brand.begin(), brand.end());
@@ -204,7 +267,7 @@ void CPerfCpuPage::CreateGraphs() {
 	m_Cores.SetValueFormatter(Format::Percent);
 	m_Cores.SetHistoryLength(PerfHistoryLength);
 	m_Cores.SetSharedCrosshair(true);
-	m_Lines.resize(2);
+	m_Lines.resize(3);
 	m_ShowCores.Create(m_hWnd, rcDefault, L"Show &processors", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, 0, IDC_PERF_SHOWCORES);
 	bool show = AppSettings::Get().PerfShowProcessors() != 0;
 	m_ShowCores.SetCheck(show ? BST_CHECKED : BST_UNCHECKED);
@@ -288,13 +351,32 @@ void CPerfCpuPage::Sample(PerfSample const& sample) {
 	if (!sample.HasCpu)
 		return;
 	m_Cpu.Push(sample);
-	if (sample.Cores.size() == m_Cores.GetGraphCount())
+	if (sample.Cores.size() == m_Cores.GetGraphCount()) {
 		m_Cores.PushSamples(sample.Cores);
+		// each processor's frequency in its tile's title
+		if (sample.CoreMhz.size() == sample.Cores.size())
+			for (size_t i = 0; i < sample.CoreMhz.size(); i++)
+				if (auto graph = m_Cores.GetGraph(i))
+					graph->SetTitle(sample.CoreMhz[i] > 0 ? std::format(L"CPU {}  {:.2f} GHz", i, sample.CoreMhz[i] / 1000) : std::format(L"CPU {}", i));
+	}
 
 	m_Lines[0] = std::format(L"Utilization: {:.1f}%    Kernel: {:.1f}%    User: {:.1f}%    Processes: {}    Threads: {}    Handles: {}",
 		sample.CpuPercent(), sample.KernelCpu, sample.UserCpu, FormatHelper::FormatNumber(sample.Processes),
 		FormatHelper::FormatNumber(sample.Threads), FormatHelper::FormatNumber(sample.Handles));
-	m_Lines[1] = std::format(L"Logical processors: {}    Processor groups: {}    Up time: {}",
+	std::wstring speed;
+	if (!sample.CoreMhz.empty()) {
+		// the average, and the fastest processor
+		double sum = 0;
+		float fastest = 0;
+		for (auto mhz : sample.CoreMhz) {
+			sum += mhz;
+			fastest = (std::max)(fastest, mhz);
+		}
+		speed = std::format(L"Speed: {:.2f} GHz (fastest {:.2f}, base {:.2f})    ", sum / sample.CoreMhz.size() / 1000, fastest / 1000, sample.BaseMhz / 1000);
+	}
+	m_Lines[1] = speed + std::format(L"Interrupts: {:.1f}% ({}/s)    DPCs: {:.1f}% ({}/s)", sample.InterruptCpu,
+		FormatHelper::FormatNumber((int64_t)sample.InterruptsPerSec), sample.DpcCpu, FormatHelper::FormatNumber((int64_t)sample.DpcsPerSec));
+	m_Lines[2] = std::format(L"Logical processors: {}    Processor groups: {}    Up time: {}",
 		sample.Cores.size(), ::GetActiveProcessorGroupCount(), FormatUptime(sample.Uptime));
 }
 

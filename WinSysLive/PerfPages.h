@@ -7,12 +7,15 @@
 #include <WinSys/Network.h>
 #include <WinSys/Disk.h>
 #include <WinSys/Gpu.h>
+#include <deque>
 
 // samples kept by the graphs
 const size_t PerfHistoryLength = 120;
 
 namespace PerfColors {
 	const COLORREF Kernel = RGB(214, 94, 94);
+	const COLORREF Interrupt = RGB(240, 190, 60);
+	const COLORREF Dpc = RGB(226, 140, 70);
 	const COLORREF User = RGB(17, 125, 187);
 	const COLORREF Memory = RGB(139, 92, 196);
 	const COLORREF Receive = RGB(214, 140, 40);
@@ -32,7 +35,19 @@ namespace PerfColors {
 struct PerfSample {
 	bool HasCpu{ false };	// false on the first tick (no deltas yet) or when the processor count changed
 	float KernelCpu{ 0 }, UserCpu{ 0 };	// percent of all processors
+	float InterruptCpu{ 0 }, DpcCpu{ 0 };	// the parts of KernelCpu spent in interrupts and DPCs
+	double InterruptsPerSec{ 0 }, DpcsPerSec{ 0 };
 	std::vector<float> Cores;	// busy percent per logical processor, across all processor groups
+	// MHz per logical processor (WinSys::ProcessorFrequency), as Cores; empty when not known
+	std::vector<float> CoreMhz;
+	float BaseMhz{ 0 };	// the rated frequency
+	// the processes using the most CPU, the busiest first (the Idle process left out)
+	struct TopProcess {
+		std::wstring Name;
+		uint32_t Pid;
+		float Cpu;	// percent of all processors
+	};
+	std::vector<TopProcess> TopProcesses;
 
 	bool HasMemory{ false };
 	bool HasMemoryLists{ false };	// Modified, Standby and Free are valid
@@ -223,10 +238,25 @@ private:
 //
 // The graphs used on more than one page.
 //
+//
+// CPU usage, stacked: kernel and user time, or with details interrupts, DPCs, the rest of kernel time and user time.
+// It keeps each sample's busiest processes (by the time the sample was pushed, as the graph fills missed intervals
+// with gaps) for the hover readout: its page answers GCN_GETTOOLTIP with TooltipText.
+//
 class CCpuGraph : public GraphCtrl::CGraphControl {
 public:
-	void Create(HWND hParent);
+	void Create(HWND hParent, bool details = false);
 	void Push(PerfSample const& sample);
+	// the readout for a hovered sample: the graph's own (text) and the processes that used the most CPU then
+	std::wstring TooltipText(int sampleIndex, PCWSTR text) const;
+
+private:
+	struct Top {
+		ULONGLONG Time;	// GetTickCount64 when pushed
+		std::vector<PerfSample::TopProcess> Processes;
+	};
+	std::deque<Top> m_Top;	// oldest first, as many as the graph's history
+	bool m_Details{ false };
 };
 
 class CMemoryGraph : public GraphCtrl::CGraphControl {
@@ -267,7 +297,15 @@ public:
 	void ApplyTheme();
 	void ApplyTimeSpan(std::wstring const& text, UINT interval);
 
+	BEGIN_MSG_MAP(CPerfSummaryPage)
+		NOTIFY_CODE_HANDLER(GCN_GETTOOLTIP, OnGetTooltip)
+		CHAIN_MSG_MAP(CPerfPage<CPerfSummaryPage>)
+	END_MSG_MAP()
+
 private:
+	// the CPU graph's readout gets the busiest processes
+	LRESULT OnGetTooltip(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+
 	CCpuGraph m_Cpu;
 	CMemoryGraph m_Memory;
 	CNetworkGraph m_Network;
@@ -296,6 +334,7 @@ public:
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_PRINTCLIENT, OnPrintClient)
 		COMMAND_ID_HANDLER(IDC_PERF_SHOWCORES, OnShowCores)
+		NOTIFY_CODE_HANDLER(GCN_GETTOOLTIP, OnGetTooltip)
 		CHAIN_MSG_MAP(CPerfPage<CPerfCpuPage>)
 	END_MSG_MAP()
 
@@ -310,6 +349,8 @@ private:
 	// Show processors: the per-processor graphs shown or not (the PerfShowProcessors setting); hidden, they still
 	// take the samples, so their history is there when they're shown
 	LRESULT OnShowCores(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the CPU graph's readout gets the busiest processes
+	LRESULT OnGetTooltip(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
 	CCpuGraph m_Cpu;
 	GraphCtrl::CGraphGrid m_Cores;

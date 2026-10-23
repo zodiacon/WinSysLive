@@ -3,6 +3,7 @@
 #include "ViewBase.h"
 #include "PerfPages.h"
 #include "PerfNav.h"
+#include <WinSys/ProcessorFrequency.h>
 
 //
 // System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, I/O, a page per drive, per GPU
@@ -38,7 +39,9 @@ private:
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 	struct CpuTimes {
-		int64_t Idle, Kernel, User;	// kernel time includes idle time
+		int64_t Idle, Kernel, User;	// kernel time includes idle, DPC and interrupt time
+		int64_t Dpc, Interrupt;
+		uint64_t Interrupts, Dpcs;	// counts
 	};
 	// per logical processor, across all processor groups
 	static std::vector<CpuTimes> GetCpuTimes();
@@ -70,6 +73,8 @@ private:
 	int m_Page{ -1 };
 
 	std::vector<CpuTimes> m_PrevCpu;
+	int64_t m_PrevCpuTime{ 0 };	// QPC, for the interrupt and DPC rates
+	WinSys::ProcessorFrequency m_Frequency;	// opened with the view; per-processor frequencies
 	int64_t m_PhysicalTotal{ 0 }, m_PageSize{ 0 };
 	// the memory lists (modified, standby, free) may need elevation; without them, the composition is in use/available
 	bool m_HasMemoryLists{ false };

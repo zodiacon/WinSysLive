@@ -9,6 +9,8 @@ using namespace GraphCtrl;
 using WinSys::SystemInfo;
 
 namespace {
+	// the processes a CPU graph's readout names, each sample's busiest
+	const size_t TopProcessCount = 5;
 	std::wstring FormatBytes(int64_t bytes) {
 		wchar_t text[32];
 		Format::Bytes((float)bytes, text, _countof(text));
@@ -88,8 +90,14 @@ std::vector<CPerfView::CpuTimes> CPerfView::GetCpuTimes() {
 	// without a group, the query only covers the calling thread's processor group
 	auto groups = ::GetActiveProcessorGroupCount();
 	for (USHORT group = 0; group < groups; group++) {
+		auto first = times.size();
 		for (auto& info : SystemInfo::GetProcessorPerformanceInformation(group))
-			times.push_back({ info.IdleTime.QuadPart, info.KernelTime.QuadPart, info.UserTime.QuadPart });
+			times.push_back({ info.IdleTime.QuadPart, info.KernelTime.QuadPart, info.UserTime.QuadPart, info.DpcTime.QuadPart,
+				info.InterruptTime.QuadPart, info.InterruptCount });
+		// the DPC counts are another query's, in the same processor order
+		auto interrupts = SystemInfo::GetInterruptInformation(group);
+		for (size_t i = 0; i < interrupts.size() && first + i < times.size(); i++)
+			times[first + i].Dpcs = interrupts[i].DpcCount;
 	}
 	return times;
 }
@@ -123,15 +131,30 @@ void CPerfView::SampleCpu(PerfSample& sample) {
 	}
 	sample.Uptime = ::GetTickCount64() / 1000;
 
+	// the frequencies, read on every tick (a rate), from the second one on
+	if (m_Frequency.IsOpen() || m_Frequency.Open()) {
+		sample.CoreMhz = m_Frequency.Sample();
+		sample.BaseMhz = m_Frequency.GetBaseMhz();
+	}
+
+	LARGE_INTEGER time, frequency;
+	::QueryPerformanceCounter(&time);
+	::QueryPerformanceFrequency(&frequency);
+	auto seconds = m_PrevCpuTime ? double(time.QuadPart - m_PrevCpuTime) / frequency.QuadPart : 0.0;
+	m_PrevCpuTime = time.QuadPart;
+
 	auto now = GetCpuTimes();
 	if (now.size() != m_PrevCpu.size()) {
 		// processors came or went (or the query failed); start over
 		m_PrevCpu = std::move(now);
 		return;
 	}
+	if (sample.CoreMhz.size() != now.size())
+		sample.CoreMhz.clear();
 
 	sample.Cores.resize(now.size());
-	int64_t idle = 0, kernel = 0, user = 0;
+	int64_t idle = 0, kernel = 0, user = 0, dpc = 0, interrupt = 0;
+	uint64_t interrupts = 0, dpcs = 0;
 	for (size_t i = 0; i < now.size(); i++) {
 		auto dIdle = now[i].Idle - m_PrevCpu[i].Idle;
 		auto dKernel = now[i].Kernel - m_PrevCpu[i].Kernel;
@@ -141,12 +164,33 @@ void CPerfView::SampleCpu(PerfSample& sample) {
 		idle += dIdle;
 		kernel += dKernel;
 		user += dUser;
+		dpc += now[i].Dpc - m_PrevCpu[i].Dpc;
+		interrupt += now[i].Interrupt - m_PrevCpu[i].Interrupt;
+		interrupts += now[i].Interrupts - m_PrevCpu[i].Interrupts;
+		dpcs += now[i].Dpcs - m_PrevCpu[i].Dpcs;
 	}
 	m_PrevCpu = std::move(now);
 
 	auto total = kernel + user;
 	sample.KernelCpu = total > 0 ? std::clamp(100.0f * (kernel - idle) / total, 0.0f, 100.0f) : 0.0f;
 	sample.UserCpu = total > 0 ? std::clamp(100.0f * user / total, 0.0f, 100.0f - sample.KernelCpu) : 0.0f;
+	// parts of the kernel time (measured: kernel and user time make up the elapsed time without them)
+	sample.InterruptCpu = total > 0 ? std::clamp(100.0f * interrupt / total, 0.0f, sample.KernelCpu) : 0.0f;
+	sample.DpcCpu = total > 0 ? std::clamp(100.0f * dpc / total, 0.0f, sample.KernelCpu - sample.InterruptCpu) : 0.0f;
+	if (seconds > 0) {
+		sample.InterruptsPerSec = interrupts / seconds;
+		sample.DpcsPerSec = dpcs / seconds;
+	}
+
+	// the busiest processes (ProcessInfo::CPU: 1/10000 of a percent)
+	std::vector<ProcessInfoEx const*> busy;
+	for (auto& p : pm.GetProcesses())
+		if (p->Id != 0 && p->CPU > 0)
+			busy.push_back(p.get());
+	auto count = (std::min)(busy.size(), TopProcessCount);
+	std::ranges::partial_sort(busy, busy.begin() + count, [](auto a, auto b) { return a->CPU > b->CPU; });
+	for (size_t i = 0; i < count; i++)
+		sample.TopProcesses.push_back({ busy[i]->GetImageName(), busy[i]->Id, busy[i]->CPU / 10000.0f });
 	sample.HasCpu = true;
 }
 
