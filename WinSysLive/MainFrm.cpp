@@ -15,6 +15,7 @@
 #include "PageFilesDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
+#include "ServiceInstallDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
 #include "Highlight.h"
@@ -1343,6 +1344,14 @@ LRESULT CMainFrame::OnComputerCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 LRESULT CMainFrame::OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CPipesDlg dlg;
 	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CServiceInstallDlg dlg(false, L"Install Driver or Service");
+	if (dlg.DoModal(m_hWnd) == IDOK)
+		// the Services and Drivers tabs show it with their next refresh
+		SetStatusText(0, std::format(L"{} {} created", dlg.IsDriver() ? L"Driver" : L"Service", dlg.GetName()).c_str());
 	return 0;
 }
 

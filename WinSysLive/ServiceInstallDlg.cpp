@@ -57,7 +57,9 @@ LRESULT CServiceInstallDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARA
 	for (auto name : { L"Ignore", L"Normal", L"Severe", L"Critical" })
 		error.AddString(name);
 	error.SetCurSel((int)ServiceErrorControl::Normal);
-	if (m_Driver)
+	if (m_Title)
+		SetWindowText(m_Title);
+	else if (m_Driver)
 		SetWindowText(L"New Driver");
 	BOOL handled;
 	OnTypeChanged(0, 0, nullptr, handled);
@@ -152,6 +154,7 @@ LRESULT CServiceInstallDlg::OnOK(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 		return 0;
 	}
 	m_Name = params.ServiceName;
+	m_Created = driver ? Created::Driver : Created::Service;
 	// created: what fails from here is reported, and the dialog closes
 	std::wstring problems;
 	if (auto description = GetText(GetDlgItem(IDC_SVCI_DESCRIPTION)); !description.empty() && !service->SetDescription(description))

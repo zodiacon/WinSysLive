@@ -199,6 +199,10 @@ BEGIN
         MENUITEM "Restart to &Boot Options...", ID_COMPUTER_BOOTOPTIONS
         MENUITEM "Restart to &Firmware...",     ID_COMPUTER_FIRMWARE
     END
+    POPUP "&Tools"
+    BEGIN
+        MENUITEM "&Install Driver/Service...",  ID_TOOLS_INSTALLSERVICE
+    END
     POPUP "&Options"
     BEGIN
         MENUITEM "&Dark Mode",                  ID_OPTIONS_DARKMODE
