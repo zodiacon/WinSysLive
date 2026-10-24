@@ -104,6 +104,7 @@ public:
 		COMMAND_ID_HANDLER(ID_SYSTEM_LOGONSESSIONS, OnLogonSessions)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PAGEFILES, OnPageFiles)
 		COMMAND_ID_HANDLER(ID_SYSTEM_SHARES, OnShares)
+		COMMAND_ID_HANDLER(ID_SYSTEM_PIPES, OnPipes)
 		COMMAND_RANGE_HANDLER(ID_MEMORY_EMPTYWORKINGSETS, ID_MEMORY_PURGELOWSTANDBY, OnMemoryListCommand)
 		COMMAND_ID_HANDLER(ID_OPTIONS_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_ID_HANDLER(ID_OPTIONS_HIGHLIGHTING, OnHighlighting)
@@ -157,6 +158,7 @@ public:
 	LRESULT OnPageFiles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// System > Memory Lists: empty working sets, flush the modified list, purge the standby list (all of it or priority 0)
 	LRESULT OnMemoryListCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

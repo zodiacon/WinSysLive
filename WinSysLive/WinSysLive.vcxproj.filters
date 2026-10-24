@@ -234,6 +234,9 @@
     <ClCompile Include="NetworkSharesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="PipesDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Signature.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -459,6 +462,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="NetworkSharesDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="PipesDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Signature.h">

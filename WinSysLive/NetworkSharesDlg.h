@@ -9,7 +9,7 @@
 // list, by name, and the selected one's details below it in sections drawn bold and shaded: the share (path, type,
 // comment, uses), its settings (offline caching, access-based enumeration, encryption) and its share permissions. When
 // only NetShareEnum's level 1 is allowed (the paths, uses and permissions documented as needing elevation), the status
-// line says so. Double-click opens a disk share's folder;
+// line says so. Open (or a double-click) opens a disk share's folder;
 // Refresh reads again, keeping the selection by name; Copy copies the list that last had the focus.
 //
 class CNetworkSharesDlg :
@@ -23,6 +23,7 @@ public:
 		DLGRESIZE_CONTROL(IDC_SH_LIST, DLSZ_SIZE_X | DLSZ_SIZE_Y)
 		DLGRESIZE_CONTROL(IDC_SH_DETAILS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_SH_STATUS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_SH_OPEN, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_SH_REFRESH, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_SH_COPY, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDCANCEL, DLSZ_MOVE_X | DLSZ_MOVE_Y)
@@ -34,6 +35,7 @@ public:
 		NOTIFY_HANDLER(IDC_SH_LIST, NM_DBLCLK, OnDoubleClick)
 		NOTIFY_HANDLER(IDC_SH_DETAILS, NM_CUSTOMDRAW, OnDetailsCustomDraw)
 		NOTIFY_CODE_HANDLER(NM_SETFOCUS, OnListFocus)
+		COMMAND_ID_HANDLER(IDC_SH_OPEN, OnOpen)
 		COMMAND_ID_HANDLER(IDC_SH_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_SH_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
@@ -57,6 +59,8 @@ private:
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnDetailsCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnListFocus(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// a disk share's folder, in Explorer (also on a double-click); enabled for those only
+	LRESULT OnOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnClose(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

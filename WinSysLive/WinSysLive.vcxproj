@@ -431,6 +431,7 @@
     <ClCompile Include="LogonSessionsDlg.cpp" />
     <ClCompile Include="PageFilesDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
+    <ClCompile Include="PipesDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
     <ClCompile Include="VirusTotalDlg.cpp" />
@@ -514,6 +515,7 @@
     <ClInclude Include="LogonSessionsDlg.h" />
     <ClInclude Include="PageFilesDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
+    <ClInclude Include="PipesDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
     <ClInclude Include="VirusTotalDlg.h" />

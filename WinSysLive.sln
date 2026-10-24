@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TreeListView", "wtlhelper\T
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HexControl", "wtlhelper\HexControl\HexControl.vcxproj", "{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Controls", "Controls", "{B0673B39-737A-416D-A1A8-61C3464291DE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -100,6 +102,11 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3C7A1E58-9D42-4F0B-A1D6-2B5E8C934771} = {B0673B39-737A-416D-A1A8-61C3464291DE}
+		{4AE29F49-DD58-4307-BAE5-0BC9E4F81BCA} = {B0673B39-737A-416D-A1A8-61C3464291DE}
+		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A} = {B0673B39-737A-416D-A1A8-61C3464291DE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E3551F44-CFB1-4E7F-AC14-1CEC152B377E}

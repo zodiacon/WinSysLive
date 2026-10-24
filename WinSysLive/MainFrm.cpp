@@ -14,6 +14,7 @@
 #include "LogonSessionsDlg.h"
 #include "PageFilesDlg.h"
 #include "NetworkSharesDlg.h"
+#include "PipesDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
 #include "Highlight.h"
@@ -556,6 +557,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_PROCESS_RESUME, IDI_RUN },
 		{ ID_SYSTEM_LOGONSESSIONS, IDI_LOGON_SESSIONS },
 		{ ID_SYSTEM_SHARES, IDI_SHARE },
+		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_EDIT_COPY, IDI_COPY },
 		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
 	};
@@ -1077,6 +1079,12 @@ LRESULT CMainFrame::OnMemoryListCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hW
 			size(before->Modified), size(after->Modified));
 	}
 	SetStatusText(0, text.c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CPipesDlg dlg;
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

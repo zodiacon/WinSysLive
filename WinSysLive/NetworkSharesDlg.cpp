@@ -119,7 +119,9 @@ WinSys::NetworkShare const* CNetworkSharesDlg::GetSelectedShare() const {
 
 void CNetworkSharesDlg::ShowDetails() {
 	m_Rows.clear();
-	if (auto s = GetSelectedShare()) {
+	auto selected = GetSelectedShare();
+	GetDlgItem(IDC_SH_OPEN).EnableWindow(selected && IsDisk(*selected));
+	if (auto s = selected) {
 		auto section = [&](PCWSTR title) { m_Rows.push_back({ title, L"", true }); };
 		// rows without a value are left out
 		auto row = [&](PCWSTR name, std::wstring value) {
@@ -175,7 +177,11 @@ LRESULT CNetworkSharesDlg::OnShareChanged(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*b
 	return 0;
 }
 
-LRESULT CNetworkSharesDlg::OnDoubleClick(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& /*bHandled*/) {
+LRESULT CNetworkSharesDlg::OnDoubleClick(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& bHandled) {
+	return OnOpen(0, IDC_SH_OPEN, nullptr, bHandled);
+}
+
+LRESULT CNetworkSharesDlg::OnOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	// a disk share's folder, in Explorer
 	if (auto s = GetSelectedShare(); s && IsDisk(*s))
 		::ShellExecute(m_hWnd, L"open", s->Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);

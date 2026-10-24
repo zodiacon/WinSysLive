@@ -169,6 +169,7 @@ BEGIN
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
         MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
         MENUITEM "&Network Shares...",          ID_SYSTEM_SHARES
+        MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
         BEGIN
@@ -392,6 +393,8 @@ IDI_PIN                 ICON                    "res\\pin.ico"
 
 IDI_HARDDISK            ICON                    "res\\Harddisk.ico"
 IDI_SHARE               ICON                    "res\\share.ico"
+IDI_PIPE                ICON                    "res\\pipe.ico"
+IDI_MAILSLOT            ICON                    "res\\mailbox.ico"
 
 IDI_PORT                ICON                    "res\\port.ico"
 
@@ -590,6 +593,19 @@ BEGIN
     PUSHBUTTON      "Close",IDCANCEL,403,279,50,14
 END
 
+IDD_PIPES DIALOGEX 0, 0, 520, 320
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Pipes and Mailslots"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_PM_FILTER,7,7,506,13,ES_AUTOHSCROLL
+    CONTROL         "",IDC_PM_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,25,506,268
+    LTEXT           "",IDC_PM_STATUS,7,302,300,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_PM_REFRESH,353,299,50,14
+    PUSHBUTTON      "&Copy",IDC_PM_COPY,408,299,50,14
+    PUSHBUTTON      "Close",IDCANCEL,463,299,50,14
+END
+
 IDD_SHARES DIALOGEX 0, 0, 520, 320
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Network Shares"
@@ -597,7 +613,8 @@ FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "",IDC_SH_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,7,506,110
     CONTROL         "",IDC_SH_DETAILS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,122,506,171
-    LTEXT           "",IDC_SH_STATUS,7,302,300,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "",IDC_SH_STATUS,7,302,285,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Open",IDC_SH_OPEN,298,299,50,14
     PUSHBUTTON      "&Refresh",IDC_SH_REFRESH,353,299,50,14
     PUSHBUTTON      "&Copy",IDC_SH_COPY,408,299,50,14
     PUSHBUTTON      "Close",IDCANCEL,463,299,50,14
@@ -1565,6 +1582,7 @@ BEGIN
     ID_MEMORY_PURGELOWSTANDBY 
                             "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
+    ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
 END
 
