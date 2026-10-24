@@ -14,6 +14,7 @@
 #include "VirusTotalChecker.h"
 #include <WinSys/Gpu.h>
 #include <CustomSplitterWindow.h>
+#include <GraphControl/include/CellGraphs.h>
 #include <unordered_set>
 
 class CProcessesView :
@@ -111,11 +112,15 @@ private:
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
 		PackageName, WindowTitle, VirusTotal, Description, ImagePath, CommandLine,
+		CpuHistory, MemoryHistory, IoHistory, NetworkHistory,
 		_Count
 	};
 
 	struct ProcessItem {
 		std::shared_ptr<ProcessInfoEx> Process;
+		ProcessItem() = default;
+		// a ctor, as the Series members' default constructor is explicit, which breaks aggregate initialization
+		explicit ProcessItem(std::shared_ptr<ProcessInfoEx> process) : Process(std::move(process)) {}
 		HTLITEM Item{ nullptr };
 		int Image{ -1 };
 		int NewTicks{ 0 };			// > 0: still highlighted as new
@@ -134,6 +139,9 @@ private:
 		int64_t ContextSwitchDelta{ 0 }, PrivateBytesDelta{ 0 };
 		uint64_t PrevContextSwitches{ 0 };
 		int64_t PrevPrivateBytes{ -1 };	// -1: no previous update yet
+		// per-refresh history for the graph columns, pushed only while the column is shown (grows in from the right)
+		GraphCtrl::Series CpuHistory, MemoryHistory, IoHistory, NetworkHistory;
+		int64_t PrevIoBytes{ -1 }, PrevNetBytes{ -1 };	// -1: no previous update (for the I/O and network rates)
 		// a value that's queried (or summed) rather than read from the snapshot, taken once before a sort by its column
 		int64_t SortValue{ 0 };
 	};
@@ -228,6 +236,10 @@ private:
 	// the process total when elevated; otherwise the sum over its current threads (exited threads' are lost)
 	static uint64_t GetContextSwitches(ProcessInfoEx const& process);
 	void UpdateDeltas(ProcessItem& item);
+	// pushes a sample into each shown history column's series (seconds: the update interval, for the rates)
+	void UpdateHistory(ProcessItem& item, double seconds, bool cpu, bool mem, bool io, bool net);
+	// (re)assigns the sparkline graphs to the list columns that are history columns (CellGraphs is by column index)
+	void ConfigureCellGraphs();
 	// the kinds that don't change (secure, protected, immersive, job); Service and DotNet are set separately
 	void SetFixedKinds(ProcessItem& item) const;
 	static bool IsSuspended(ProcessInfoEx const& process);
@@ -318,6 +330,7 @@ private:
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid
 	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)
+	GraphCtrl::CellGraphs m_CellGraphs;	// the history-column sparklines, drawn from OnCustomDraw
 	int m_SortColumn{ -1 };	// a Column, or -1
 	bool m_SortAscending{ true };
 	bool m_SortPending{ false };	// refreshed while hidden: sorted when shown

@@ -88,6 +88,10 @@ namespace {
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true, false, L"General" },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true, false, L"General" },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true, false, L"General" },
+		{ L"CPU History", L"CpuHistory", 90, LVCFMT_LEFT, false, false, L"CPU" },
+		{ L"Private Bytes History", L"PrivateBytesHistory", 130, LVCFMT_LEFT, false, false, L"Memory" },
+		{ L"I/O History", L"IoHistory", 90, LVCFMT_LEFT, false, false, L"I/O" },
+		{ L"Network History", L"NetworkHistory", 110, LVCFMT_LEFT, false, false, L"Network" },
 	};
 
 	// ID_PRIORITY_* order
@@ -111,6 +115,13 @@ namespace {
 
 	// the CLR starts after the process, so a process is checked for it again on every update until it's this old
 	const int64_t DotNetCheckPeriod = 15 * 10000000LL;	// 100 ns units
+
+	float LastValue(GraphCtrl::Series const& s) {
+		if (s.ValidCount() == 0)
+			return 0;
+		float v = s.Last();
+		return v == v ? v : 0;	// not NaN
+	}
 }
 
 CString CProcessesView::GetTitle() const {
@@ -140,6 +151,24 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 
 	LoadSort();
 	SetColumns(LoadColumns());
+	m_CellGraphs.SetDataCallback([this](GraphCtrl::CellRef const& cell, GraphCtrl::CellData& data) {
+		auto item = reinterpret_cast<ProcessItem*>(m_Tree.GetItemData((HTLITEM)cell.Item));
+		if (!item || cell.Column < 0 || cell.Column >= (int)m_Columns.size())
+			return false;
+		GraphCtrl::Series const* s = nullptr;
+		switch (m_Columns[cell.Column]) {
+			case Column::CpuHistory: s = &item->CpuHistory; break;
+			case Column::MemoryHistory: s = &item->MemoryHistory; break;
+			case Column::IoHistory: s = &item->IoHistory; break;
+			case Column::NetworkHistory: s = &item->NetworkHistory; break;
+			default: return false;
+		}
+		if (s->ValidCount() == 0)
+			return false;
+		data.Samples = s;
+		return true;
+	});
+	m_CellGraphs.EnableTooltips(m_Tree.GetListCtrl(), [this](int row) { return (UINT_PTR)m_Tree.GetVisibleItem(row); });
 	// the VirusTotal column's results
 	VirusTotalChecker::Get().AddListener(m_hWnd);
 
@@ -231,6 +260,7 @@ void CProcessesView::SaveLayout() const {
 }
 
 LRESULT CProcessesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	m_CellGraphs.DisableTooltips();
 	VirusTotalChecker::Get().RemoveListener(m_hWnd);
 	// the lower pane's pages save their columns as they're destroyed
 	SaveLayout();
@@ -294,6 +324,7 @@ void CProcessesView::SetColumns(std::vector<ShownColumn> const& columns) {
 		m_Network.reset();
 	UpdateHungProcesses();
 	UpdateWindowTitles();
+	ConfigureCellGraphs();
 	m_Tree.Invalidate();
 }
 
@@ -373,7 +404,8 @@ bool CProcessesView::ShowsNpu() const {
 }
 
 bool CProcessesView::ShowsNetwork() const {
-	return std::ranges::contains(m_Columns, Column::NetworkSend) || std::ranges::contains(m_Columns, Column::NetworkReceive);
+	return std::ranges::contains(m_Columns, Column::NetworkSend) || std::ranges::contains(m_Columns, Column::NetworkReceive)
+		|| std::ranges::contains(m_Columns, Column::NetworkHistory);
 }
 
 uint64_t CProcessesView::GetContextSwitches(ProcessInfoEx const& process) {
@@ -399,6 +431,65 @@ void CProcessesView::UpdateDeltas(ProcessItem& item) {
 	}
 	item.PrevContextSwitches = switches;
 	item.PrevPrivateBytes = privateBytes;
+}
+
+void CProcessesView::UpdateHistory(ProcessItem& item, double seconds, bool cpu, bool mem, bool io, bool net) {
+	auto& p = *item.Process;
+	auto info = p.NativeInfo;
+	if (cpu)
+		item.CpuHistory.Push((float)std::clamp(p.CPU / 10000.0, 0.0, 100.0));
+	else
+		item.CpuHistory.Clear();
+	if (mem)
+		item.MemoryHistory.Push((float)info->PrivatePageCount);
+	else
+		item.MemoryHistory.Clear();
+	if (io) {
+		int64_t total = info->ReadTransferCount.QuadPart + info->WriteTransferCount.QuadPart + info->OtherTransferCount.QuadPart;
+		if (item.PrevIoBytes >= 0)
+			item.IoHistory.Push((float)(std::max<int64_t>(0, total - item.PrevIoBytes) / seconds));
+		item.PrevIoBytes = total;
+	}
+	else {
+		item.IoHistory.Clear();
+		item.PrevIoBytes = -1;
+	}
+	if (net) {
+		auto c = NetworkCounters(p.Id);
+		int64_t total = (int64_t)c.Sent + (int64_t)c.Received;
+		if (item.PrevNetBytes >= 0)
+			item.NetworkHistory.Push((float)(std::max<int64_t>(0, total - item.PrevNetBytes) / seconds));
+		item.PrevNetBytes = total;
+	}
+	else {
+		item.NetworkHistory.Clear();
+		item.PrevNetBytes = -1;
+	}
+}
+
+void CProcessesView::ConfigureCellGraphs() {
+	m_CellGraphs.ClearColumns();
+	for (int i = 1; i < (int)m_Columns.size(); i++) {
+		GraphCtrl::SparklineStyle style;
+		GraphCtrl::ValueFormatFn format;
+		switch (m_Columns[i]) {
+			case Column::CpuHistory:
+				style.LineColor = RGB(0, 170, 80); style.Min = 0; style.Max = 100;
+				format = GraphCtrl::Format::Percent; break;
+			case Column::MemoryHistory:
+				style.LineColor = RGB(0, 120, 215); style.AutoScale = true; style.MinSpan = 1 << 20;
+				format = GraphCtrl::Format::Bytes; break;
+			case Column::IoHistory:
+				style.LineColor = RGB(220, 130, 0); style.AutoScale = true; style.MinSpan = 1 << 10;
+				format = GraphCtrl::Format::BytesPerSec; break;
+			case Column::NetworkHistory:
+				style.LineColor = RGB(160, 80, 200); style.AutoScale = true; style.MinSpan = 1 << 10;
+				format = GraphCtrl::Format::BytesPerSec; break;
+			default: continue;
+		}
+		m_CellGraphs.SetSparkline(i, style);
+		m_CellGraphs.SetFormat(i, format);
+	}
 }
 
 uint32_t CProcessesView::GetJobId(ProcessInfoEx& process) {
@@ -891,9 +982,15 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	UpdateHungProcesses();
 	UpdateWindowTitles();
 	bool gpu = ShowsGpu(), npu = ShowsNpu();
+	bool histCpu = std::ranges::contains(m_Columns, Column::CpuHistory);
+	bool histMem = std::ranges::contains(m_Columns, Column::MemoryHistory);
+	bool histIo = std::ranges::contains(m_Columns, Column::IoHistory);
+	bool histNet = std::ranges::contains(m_Columns, Column::NetworkHistory);
+	double histSeconds = (std::max)(0.001, AppSettings::Get().UpdateInterval() / 1000.0);
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated) {
 			UpdateDeltas(item);
+			UpdateHistory(item, histSeconds, histCpu, histMem, histIo, histNet);
 			UpdateSuspended(item);
 			if (gpu)
 				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
@@ -1126,6 +1223,10 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::IoOther: return FormatHelper::FormatBytes(info->OtherTransferCount.QuadPart);
 		case Column::NetworkSend: return FormatHelper::FormatBytes(NetworkCounters(p.Id).Sent);
 		case Column::NetworkReceive: return FormatHelper::FormatBytes(NetworkCounters(p.Id).Received);
+		case Column::CpuHistory: return GetColumnText(item, Column::CPU);
+		case Column::MemoryHistory: return GetColumnText(item, Column::PrivateBytes);
+		case Column::IoHistory: return item.IoHistory.ValidCount() ? FormatHelper::FormatBytes((uint64_t)LastValue(item.IoHistory)) + L"/s" : L"";
+		case Column::NetworkHistory: return item.NetworkHistory.ValidCount() ? FormatHelper::FormatBytes((uint64_t)LastValue(item.NetworkHistory)) + L"/s" : L"";
 		// blank when not known (the process can't be queried) or idle, as the CPU column
 		case Column::GpuUsage: return item.Gpu.Known && item.Gpu.Usage >= 0.005f ? std::format(L"{:.2f}", item.Gpu.Usage) : L"";
 		case Column::GpuDedicated: return item.Gpu.Known && item.Gpu.Dedicated ? FormatHelper::FormatSize((int64_t)item.Gpu.Dedicated) : L"";
@@ -1276,6 +1377,10 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::IoRead: return compare(i1->ReadTransferCount.QuadPart, i2->ReadTransferCount.QuadPart);
 		case Column::IoWrite: return compare(i1->WriteTransferCount.QuadPart, i2->WriteTransferCount.QuadPart);
 		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);
+		case Column::CpuHistory: return compare(p1.CPU, p2.CPU);
+		case Column::MemoryHistory: return compare(i1->PrivatePageCount, i2->PrivatePageCount);
+		case Column::IoHistory: return compare(LastValue(item1.IoHistory), LastValue(item2.IoHistory));
+		case Column::NetworkHistory: return compare(LastValue(item1.NetworkHistory), LastValue(item2.NetworkHistory));
 		case Column::GpuUsage: return compare(item1.Gpu.Usage, item2.Gpu.Usage);
 		case Column::GpuDedicated: return compare(item1.Gpu.Dedicated, item2.Gpu.Dedicated);
 		case Column::GpuShared: return compare(item1.Gpu.Shared, item2.Gpu.Shared);
@@ -1317,7 +1422,8 @@ LRESULT CProcessesView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled
 			// shown only as the ancestor of a process that matches the filter
 			cd->clrText = dark ? RGB(128, 128, 128) : RGB(140, 140, 140);
 	}
-	return CDRF_DODEFAULT;
+	// the history columns draw their sparklines over the cells (sub-item post-paint)
+	return m_CellGraphs.CustomDraw(&cd->nmcd, cd->iSubItem, (UINT_PTR)cd->hItem, CDRF_DODEFAULT);
 }
 
 LRESULT CProcessesView::OnSelectionChanged(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& /*bHandled*/) {
