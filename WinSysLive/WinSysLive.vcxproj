@@ -581,12 +581,15 @@
     <Image Include="res\Harddisk.ico" />
     <Image Include="res\image.ico" />
     <Image Include="res\data.ico" />
+    <Image Include="res\mailbox.ico" />
     <Image Include="res\objects.ico" />
     <Image Include="res\pin.ico" />
+    <Image Include="res\pipe.ico" />
     <Image Include="res\PoolTags.ico" />
     <Image Include="res\Run.ico" />
     <Image Include="res\atom.ico" />
     <Image Include="res\Driver.ico" />
+    <Image Include="res\share.ico" />
     <Image Include="res\symboliclink.ico" />
     <Image Include="res\System.ico" />
     <Image Include="res\target.ico" />

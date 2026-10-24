@@ -423,9 +423,13 @@ IDI_LOGON_SESSIONS      ICON                    "res\\window_logon.ico"
 IDI_PIN                 ICON                    "res\\pin.ico"
 
 IDI_HARDDISK            ICON                    "res\\Harddisk.ico"
+
 IDI_SHARE               ICON                    "res\\share.ico"
+
 IDI_PIPE                ICON                    "res\\pipe.ico"
+
 IDI_MAILSLOT            ICON                    "res\\mailbox.ico"
+
 IDI_HISTORY             ICON                    "res\\History.ico"
 
 IDI_PORT                ICON                    "res\\port.ico"
@@ -1308,8 +1312,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,3,0,0
- PRODUCTVERSION 1,3,0,0
+ FILEVERSION 1,4,0,0
+ PRODUCTVERSION 1,4,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1326,12 +1330,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WinSysLive - Windows Live System Explorer"
-            VALUE "FileVersion", "1.3.0.0"
+            VALUE "FileVersion", "1.4.0.0"
             VALUE "InternalName", "WinSysLive"
             VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
             VALUE "ProductName", "WinSysLive"
-            VALUE "ProductVersion", "1.3.0.0"
+            VALUE "ProductVersion", "1.4.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -1623,7 +1627,6 @@ BEGIN
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
-    ID_PROCESS_INJECTDLL    "Inject a DLL into the selected process\nInject DLL"
     ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
     ID_IPC_GOTOCLIENT       "Select the client process in the Processes tab\nGo to Client"
     ID_IPC_GOTOSERVER       "Select the server process in the Processes tab\nGo to Server"
@@ -1637,6 +1640,11 @@ END
 
 STRINGTABLE
 BEGIN
+    ID_PROCESS_INJECTDLL    "Inject a DLL into the selected process\nInject DLL"
+END
+
+STRINGTABLE
+BEGIN
     ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
     ID_MEMORY_EMPTYWORKINGSETS 
                             "Trim every process's working set (needs elevation)\nEmpty Working Sets"
@@ -1645,6 +1653,8 @@ BEGIN
     ID_MEMORY_PURGELOWSTANDBY 
                             "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
+    ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
+    ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_COMPUTER_LOCK        "Lock the computer\nLock"
     ID_COMPUTER_LOGOFF      "Sign out of Windows\nLog Off"
     ID_COMPUTER_SLEEP       "Put the computer to sleep\nSleep"
@@ -1653,14 +1663,18 @@ BEGIN
     ID_COMPUTER_SHUTDOWN    "Shut down the computer\nShut Down"
     ID_COMPUTER_BOOTOPTIONS "Restart into the boot options (advanced startup)\nRestart to Boot Options"
     ID_COMPUTER_FIRMWARE    "Restart into the UEFI firmware setup (needs elevation)\nRestart to Firmware"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_HISTORY         "Show a log of processes and services starting and stopping\nHistory (Ctrl+Shift+H)"
     ID_OPTIONS_RUNATSTARTUP "Start WinSysLive minimized when you sign in to Windows\nRun at Windows Startup"
     ID_OPTIONS_CHECKUPDATES "Look for a newer version on GitHub once a day, when WinSysLive starts\nCheck for Updates at Startup"
     ID_OPTIONS_EXPORTSETTINGS "Save the settings to a file\nExport Settings"
-    ID_OPTIONS_IMPORTSETTINGS "Load the settings from a file (applied when WinSysLive starts again)\nImport Settings"
-    ID_OPTIONS_RUNELEVATED  "Start WinSysLive elevated and minimized when you sign in, without a UAC prompt (a scheduled task)\nRun at Windows Startup (Elevated)"
+    ID_OPTIONS_IMPORTSETTINGS 
+                            "Load the settings from a file (applied when WinSysLive starts again)\nImport Settings"
     ID_HELP_CHECKUPDATES    "Look for a newer version of WinSysLive on GitHub\nCheck for Updates"
-    ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
-    ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
+    ID_OPTIONS_RUNELEVATED  "Start WinSysLive elevated and minimized when you sign in, without a UAC prompt (a scheduled task)\nRun at Windows Startup (Elevated)"
 END
 
 STRINGTABLE
@@ -1672,7 +1686,6 @@ BEGIN
     ID_VT_SUBMIT            "Upload the file to VirusTotal for analysis\nSubmit to VirusTotal"
     ID_VIEW_POOLTAGS        "Show the kernel pools' usage by tag\nPool Tags (Ctrl+Shift+P)"
     ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
-    ID_VIEW_HISTORY         "Show a log of processes and services starting and stopping\nHistory (Ctrl+Shift+H)"
     ID_VIEW_DISK            "Show the file I/O of each process (needs elevation)\nDisk (Ctrl+Shift+D)"
 END
 

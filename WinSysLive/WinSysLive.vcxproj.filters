@@ -701,5 +701,35 @@
     <Image Include="res\disabled.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\Harddisk.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\objects.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\pin.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\PoolTags.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\symboliclink.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\window_logon.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\share.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\pipe.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\mailbox.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="res\pooltag.txt" />
   </ItemGroup>
 </Project>
