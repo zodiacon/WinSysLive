@@ -1381,7 +1381,7 @@ void CProcessesView::UpdateUI() {
 	auto item = GetSelectedProcess();
 	bool live = m_Active && CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_KILLTREE, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP,
-		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG })
+		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG, ID_PROCESS_INJECTDLL })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_RESTART, m_Active && CanRestart(item));
 	ui.UIEnable(ID_PROCESS_CRITICAL, m_Active && CanSetCritical(item));
@@ -1459,7 +1459,7 @@ void CProcessesView::ShowRowMenu(CPoint pt) {
 
 	bool live = CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_KILLTREE, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP,
-		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG })
+		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG, ID_PROCESS_INJECTDLL })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_RESTART, MF_BYCOMMAND | (CanRestart(item) ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_CRITICAL, MF_BYCOMMAND | (CanSetCritical(item) ? MF_ENABLED : MF_GRAYED));
@@ -1716,6 +1716,50 @@ LRESULT CProcessesView::OnCritical(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 		ShowError(L"Changing the critical flag");
 	m_Tree.Invalidate();
 	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnInjectDll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (!CanControl(item))
+		return 0;
+	// kept, as refreshes go on while the dialogs are open and may remove the item
+	auto info = item->Process;
+	auto pid = info->Id;
+	auto created = info->Key.Created;
+	auto name = info->GetImageName();
+
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(TRUE, L"dll", nullptr, OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY,
+		L"DLL Files (*.dll)\0*.dll\0All Files (*.*)\0*.*\0", m_hWnd);
+	if (dlg.DoModal() != IDOK)
+		return 0;
+	std::wstring path = dlg.m_szFileName;
+
+	auto result = Process::InjectDll(pid, created, path);
+	auto error = ::GetLastError();
+	using R = WinSys::DllInjectionResult;
+	if (result == R::Success) {
+		AtlMessageBox(m_hWnd, std::format(L"Injected {} into process {} ({}).", path, name, pid).c_str(),
+			IDR_MAINFRAME, MB_ICONINFORMATION);
+		return 0;
+	}
+
+	PCWSTR reason = L"of an unknown error";
+	bool systemError = false;
+	switch (result) {
+		case R::FileNotFound:		reason = L"the DLL file wasn't found"; break;
+		case R::Wow64Target:		reason = L"it's a 32-bit (WOW64) process, which this 64-bit build can't inject into"; break;
+		case R::OpenFailed:			reason = L"the process couldn't be opened"; systemError = true; break;
+		case R::AllocFailed:		reason = L"memory couldn't be allocated in it"; systemError = true; break;
+		case R::WriteFailed:		reason = L"the DLL path couldn't be written to it"; systemError = true; break;
+		case R::ThreadFailed:		reason = L"a thread couldn't be created in it"; systemError = true; break;
+		case R::Timeout:			reason = L"LoadLibrary didn't return in time (the DLL may still load)"; break;
+		case R::LoadLibraryFailed:	reason = L"LoadLibrary failed in it; check the DLL's architecture (it must be 64-bit) and its dependencies"; break;
+	}
+	auto detail = systemError ? L": " + Helpers::GetErrorText(error) : std::wstring();
+	AtlMessageBox(m_hWnd, std::format(L"Injecting {} into process {} ({}) failed: {}{}", path, name, pid, reason, detail).c_str(),
+		IDR_MAINFRAME, MB_ICONERROR);
 	return 0;
 }
 

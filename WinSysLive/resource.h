@@ -232,6 +232,7 @@
 #define ID_VIEW_HIDEMENU            32899
 #define ID_FILE_RUNLIMITED          32900
 #define ID_PROCESS_CRITICAL         32901
+#define ID_PROCESS_INJECTDLL        32960
 #define ID_VIEW_IPC                 32902
 #define ID_IPC_GOTOCLIENT           32903
 #define ID_IPC_GOTOSERVER           32904
@@ -598,6 +599,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	308
 #define _APS_NEXT_CONTROL_VALUE		1334
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32960
+#define _APS_NEXT_COMMAND_VALUE		32961
 #endif
 #endif

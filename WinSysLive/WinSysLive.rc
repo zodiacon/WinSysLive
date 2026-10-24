@@ -145,7 +145,11 @@ BEGIN
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
         MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
-        MENUITEM "Criti&cal Process",           ID_PROCESS_CRITICAL
+        POPUP "Adva&nced"
+        BEGIN
+            MENUITEM "Criti&cal Process",           ID_PROCESS_CRITICAL
+            MENUITEM "&Inject DLL...",              ID_PROCESS_INJECTDLL
+        END
         MENUITEM SEPARATOR
         MENUITEM "De&bug",                      ID_PROCESS_DEBUG
         MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
@@ -267,7 +271,11 @@ BEGIN
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
         MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
-        MENUITEM "Criti&cal Process",           ID_PROCESS_CRITICAL
+        POPUP "Adva&nced"
+        BEGIN
+            MENUITEM "Criti&cal Process",           ID_PROCESS_CRITICAL
+            MENUITEM "&Inject DLL...",              ID_PROCESS_INJECTDLL
+        END
         MENUITEM SEPARATOR
         MENUITEM "De&bug",                      ID_PROCESS_DEBUG
         MENUITEM "Analyze &Wait Chain...",      ID_PROCESS_WAITCHAIN
@@ -1615,6 +1623,7 @@ BEGIN
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
+    ID_PROCESS_INJECTDLL    "Inject a DLL into the selected process\nInject DLL"
     ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
     ID_IPC_GOTOCLIENT       "Select the client process in the Processes tab\nGo to Client"
     ID_IPC_GOTOSERVER       "Select the server process in the Processes tab\nGo to Server"
