@@ -460,6 +460,7 @@
     <ClCompile Include="ObjectManagerView.cpp" />
     <ClCompile Include="PoolTagsView.cpp" />
     <ClCompile Include="DiskView.cpp" />
+    <ClCompile Include="HistoryView.cpp" />
     <ClCompile Include="HighlightDlg.cpp" />
     <ClCompile Include="Highlight.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
@@ -538,6 +539,7 @@
     <ClInclude Include="ObjectManagerView.h" />
     <ClInclude Include="PoolTagsView.h" />
     <ClInclude Include="DiskView.h" />
+    <ClInclude Include="HistoryView.h" />
     <ClInclude Include="HighlightDlg.h" />
     <ClInclude Include="Highlight.h" />
     <ClInclude Include="TrayIcon.h" />
@@ -623,6 +625,9 @@
     <Image Include="res\Refresh.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\wtlhelper\LogView\LogView.vcxproj">
+      <Project>{31e6855c-8b0c-4141-a19b-cbbb24aea5ca}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\wtlhelper\GraphControl\GraphControl.vcxproj">
       <Project>{3c7a1e58-9d42-4f0b-a1d6-2b5e8c934771}</Project>
     </ProjectReference>

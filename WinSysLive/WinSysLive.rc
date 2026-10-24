@@ -79,6 +79,7 @@ BEGIN
         MENUITEM "Object &Manager\tCtrl+Shift+O", ID_VIEW_OBJECTMANAGER
         MENUITEM "Poo&l Tags\tCtrl+Shift+P",    ID_VIEW_POOLTAGS
         MENUITEM "&Disk\tCtrl+Shift+D",         ID_VIEW_DISK
+        MENUITEM "&History\tCtrl+Shift+H",      ID_VIEW_HISTORY
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -409,6 +410,7 @@ IDI_HARDDISK            ICON                    "res\\Harddisk.ico"
 IDI_SHARE               ICON                    "res\\share.ico"
 IDI_PIPE                ICON                    "res\\pipe.ico"
 IDI_MAILSLOT            ICON                    "res\\mailbox.ico"
+IDI_HISTORY             ICON                    "res\\History.ico"
 
 IDI_PORT                ICON                    "res\\port.ico"
 
@@ -1242,6 +1244,7 @@ BEGIN
     "O",            ID_VIEW_OBJECTMANAGER,  VIRTKEY, SHIFT, CONTROL
     "P",            ID_VIEW_POOLTAGS,       VIRTKEY, SHIFT, CONTROL
     "D",            ID_VIEW_DISK,           VIRTKEY, SHIFT, CONTROL
+    "H",            ID_VIEW_HISTORY,        VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1617,6 +1620,7 @@ BEGIN
     ID_VT_SUBMIT            "Upload the file to VirusTotal for analysis\nSubmit to VirusTotal"
     ID_VIEW_POOLTAGS        "Show the kernel pools' usage by tag\nPool Tags (Ctrl+Shift+P)"
     ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
+    ID_VIEW_HISTORY         "Show a log of processes and services starting and stopping\nHistory (Ctrl+Shift+H)"
     ID_VIEW_DISK            "Show the file I/O of each process (needs elevation)\nDisk (Ctrl+Shift+D)"
 END
 

@@ -450,6 +450,13 @@
 #define IDI_SHARE                   301
 #define IDI_PIPE                    302
 #define IDI_MAILSLOT                304
+#define IDI_HISTORY                 305
+#define ID_VIEW_HISTORY             32944
+#define ID_HISTORY_GOTOPROCESS      32945
+#define ID_HISTORY_SELECTALL        32946
+#define ID_HISTORY_CLEAR            32947
+#define ID_HISTORY_EVENT_FIRST      32948
+#define ID_HISTORY_EVENT_LAST       32953
 #define ID_COMPUTER_LOCK            32936
 #define ID_COMPUTER_LOGOFF          32937
 #define ID_COMPUTER_SLEEP           32938
@@ -571,9 +578,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	305
+#define _APS_NEXT_RESOURCE_VALUE	306
 #define _APS_NEXT_CONTROL_VALUE		1320
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32944
+#define _APS_NEXT_COMMAND_VALUE		32954
 #endif
 #endif

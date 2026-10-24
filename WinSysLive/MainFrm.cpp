@@ -55,6 +55,8 @@ namespace {
 		IDI_POOLTAGS,
 		// the Disk tab
 		IDI_HARDDISK,
+		// the History tab
+		IDI_HISTORY,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
@@ -83,6 +85,7 @@ namespace {
 		{ ID_VIEW_OBJECTMANAGER, IDI_OBJECTS, BTNS_CHECK },
 		{ ID_VIEW_POOLTAGS, IDI_POOLTAGS, BTNS_CHECK },
 		{ ID_VIEW_DISK, IDI_HARDDISK, BTNS_CHECK },
+		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 
@@ -177,7 +180,8 @@ BOOL CMainFrame::OnIdle() {
 	if (m_ActiveView)
 		m_ActiveView->OnFrameIdle();
 	bool list = GetExportList() != nullptr;
-	UIEnable(ID_FILE_EXPORT, list);
+	// a view without a list may export its own way (the History tab saves its log)
+	UIEnable(ID_FILE_EXPORT, list || (m_ActiveView && m_ActiveView->CanExport()));
 	UIEnable(ID_EDIT_COPYALL, list);
 	UIEnable(ID_EDIT_COPY, CanCopy());
 	UIUpdateToolBar();

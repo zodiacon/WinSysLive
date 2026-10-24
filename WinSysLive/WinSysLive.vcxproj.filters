@@ -108,6 +108,9 @@
     <ClCompile Include="DiskView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="HistoryView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="HighlightDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -330,6 +333,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="DiskView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="HistoryView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="HighlightDlg.h">

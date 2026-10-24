@@ -18,6 +18,7 @@ enum class TabType {
 	ObjectManager,	// the object namespace
 	PoolTags,
 	Disk,		// file I/O by process and file
+	History,	// a log of processes and services starting and stopping
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)
@@ -67,6 +68,8 @@ struct IView abstract {
 	// whether ID_EDIT_COPY (Ctrl+C, the toolbar's Copy) has something to copy: the selection in the list with the
 	// focus. The frame asks while idle, to enable the command
 	virtual bool CanCopy() const { return false; }
+	// whether the view handles ID_FILE_EXPORT itself (it has no list for the frame's export); the frame asks while idle
+	virtual bool CanExport() const { return false; }
 	// views listing processes select the process (see IMainFrame::GoToProcess)
 	virtual void ShowProcess(uint32_t /*pid*/) {}
 	// the Kernel Modules and Drivers views select the module or driver service of the file (see IMainFrame::GoToKernelModule,
