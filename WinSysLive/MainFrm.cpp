@@ -12,6 +12,7 @@
 #include "SymbolSettingsDlg.h"
 #include "FirmwareDlg.h"
 #include "LogonSessionsDlg.h"
+#include "PageFilesDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
 #include "Highlight.h"
@@ -1047,6 +1048,12 @@ LRESULT CMainFrame::OnMemoryListCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hW
 			size(before->Modified), size(after->Modified));
 	}
 	SetStatusText(0, text.c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnPageFiles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CPageFilesDlg dlg;
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

@@ -22,6 +22,12 @@
     <Filter Include="Dialogs">
       <UniqueIdentifier>{ebda2598-1c9b-482d-9d5d-91ac067cf3b8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Helpers">
+      <UniqueIdentifier>{4339b309-d7f4-46ac-9b82-4cc530f19d81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Pages">
+      <UniqueIdentifier>{cac7a8a6-05e1-487a-8ce9-3aa1caeec1aa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -34,28 +40,28 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ColumnLayout.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="AddressResolver.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="ConnectionRows.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="HandleIcons.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="FilterBox.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="RunDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="Symbols.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="ProcessColors.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="ProcessColorsDlg.cpp">
       <Filter>Dialogs</Filter>
@@ -64,7 +70,7 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="PerfPages.cpp">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="PerfNav.cpp">
       <Filter>Views</Filter>
@@ -88,7 +94,7 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ZombieHandlesDlg.cpp">
-      <Filter>Views</Filter>
+      <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="ObjectTypesView.cpp">
       <Filter>Views</Filter>
@@ -103,40 +109,40 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="HighlightDlg.cpp">
-      <Filter>Views</Filter>
+      <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="Highlight.cpp">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="TrayIcon.cpp">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="KernelModulesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ThreadsPage.cpp">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="ModulesPage.cpp">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="HandlesPage.cpp">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="UsersView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="VersionInfo.cpp">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="ViewFactory.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ProcessInfoEx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FormatHelper.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="AboutDlg.cpp">
       <Filter>Dialogs</Filter>
@@ -151,7 +157,7 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="ListExport.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="HandleSheet.cpp">
       <Filter>Dialogs</Filter>
@@ -160,10 +166,10 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="ServiceSteps.cpp">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="IconSource.cpp">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="ServiceInstallDlg.cpp">
       <Filter>Dialogs</Filter>
@@ -172,13 +178,13 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="ObjectSecurity.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="WaitChainDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="WindowFinder.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="AffinityDlg.cpp">
       <Filter>Dialogs</Filter>
@@ -192,27 +198,29 @@
     <ClCompile Include="ProcessSheet.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="NetworkTracking.cpp" />
+    <ClCompile Include="NetworkTracking.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="ProcessPages.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="MemoryPage.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="JobPage.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="ServicesPage.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="TcpIpPage.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="StatisticsPage.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="WindowsPage.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="FirmwareDlg.cpp">
       <Filter>Dialogs</Filter>
@@ -220,17 +228,20 @@
     <ClCompile Include="LogonSessionsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="Signature.cpp">
+    <ClCompile Include="PageFilesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="Signature.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="SignatureVerifier.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="VirusTotalDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="VirusTotalChecker.cpp">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -244,31 +255,31 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="AddressResolver.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ConnectionRows.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="HandleIcons.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="FilterBox.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="DpiLayout.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="RunDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Symbols.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ProcessColors.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ProcessColorsDlg.h">
       <Filter>Dialogs</Filter>
@@ -277,7 +288,7 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="PerfPages.h">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="PerfNav.h">
       <Filter>Views</Filter>
@@ -301,7 +312,7 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ZombieHandlesDlg.h">
-      <Filter>Views</Filter>
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ObjectTypesView.h">
       <Filter>Views</Filter>
@@ -316,31 +327,31 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="HighlightDlg.h">
-      <Filter>Views</Filter>
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Highlight.h">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="TrayIcon.h">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="KernelModulesView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ThreadsPage.h">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="ModulesPage.h">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="HandlesPage.h">
-      <Filter>Views</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="UsersView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="VersionInfo.h">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ViewBase.h">
       <Filter>Views</Filter>
@@ -352,7 +363,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FormatHelper.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Resource Files</Filter>
@@ -370,7 +381,7 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ListExport.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="HandleSheet.h">
       <Filter>Dialogs</Filter>
@@ -379,10 +390,10 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ServiceSteps.h">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="IconSource.h">
-      <Filter>Views</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ServiceInstallDlg.h">
       <Filter>Dialogs</Filter>
@@ -391,13 +402,13 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ObjectSecurity.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="WaitChainDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="WindowFinder.h">
-      <Filter>Header Files</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="AffinityDlg.h">
       <Filter>Dialogs</Filter>
@@ -411,27 +422,29 @@
     <ClInclude Include="ProcessSheet.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
-    <ClInclude Include="NetworkTracking.h" />
+    <ClInclude Include="NetworkTracking.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="ProcessPages.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="MemoryPage.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="JobPage.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="ServicesPage.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="TcpIpPage.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="StatisticsPage.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="WindowsPage.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="FirmwareDlg.h">
       <Filter>Dialogs</Filter>
@@ -439,17 +452,20 @@
     <ClInclude Include="LogonSessionsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
-    <ClInclude Include="Signature.h">
+    <ClInclude Include="PageFilesDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="Signature.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="SignatureVerifier.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="VirusTotalDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="VirusTotalChecker.h">
-      <Filter>Dialogs</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

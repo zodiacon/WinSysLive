@@ -167,6 +167,7 @@ BEGIN
     BEGIN
         MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
+        MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
         BEGIN
@@ -573,6 +574,19 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_FW_REFRESH,293,279,50,14
     PUSHBUTTON      "&Copy",IDC_FW_COPY,348,279,50,14
     PUSHBUTTON      "Close",IDCANCEL,403,279,50,14
+END
+
+IDD_PAGEFILES DIALOGEX 0, 0, 500, 300
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Page Files"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_PF_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,7,486,66
+    CONTROL         "",IDC_PF_DETAILS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,78,486,195
+    LTEXT           "",IDC_PF_STATUS,7,282,280,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_PF_REFRESH,333,279,50,14
+    PUSHBUTTON      "&Copy",IDC_PF_COPY,388,279,50,14
+    PUSHBUTTON      "Close",IDCANCEL,443,279,50,14
 END
 
 IDD_LOGON_SESSIONS DIALOGEX 0, 0, 520, 330
@@ -1513,6 +1527,7 @@ BEGIN
     ID_MEMORY_FLUSHMODIFIED "Write the modified pages out, making them standby (needs elevation)\nFlush Modified List"
     ID_MEMORY_PURGESTANDBY  "Free the standby pages, the cached data among them (needs elevation)\nPurge Standby List"
     ID_MEMORY_PURGELOWSTANDBY "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
+    ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
     ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
     ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"

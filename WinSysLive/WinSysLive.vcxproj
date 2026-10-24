@@ -429,6 +429,7 @@
     <ClCompile Include="WindowsPage.cpp" />
     <ClCompile Include="FirmwareDlg.cpp" />
     <ClCompile Include="LogonSessionsDlg.cpp" />
+    <ClCompile Include="PageFilesDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
     <ClCompile Include="VirusTotalDlg.cpp" />
@@ -510,6 +511,7 @@
     <ClInclude Include="WindowsPage.h" />
     <ClInclude Include="FirmwareDlg.h" />
     <ClInclude Include="LogonSessionsDlg.h" />
+    <ClInclude Include="PageFilesDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
     <ClInclude Include="VirusTotalDlg.h" />

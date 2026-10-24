@@ -433,6 +433,13 @@
 #define ID_MEMORY_FLUSHMODIFIED     32930
 #define ID_MEMORY_PURGESTANDBY      32931
 #define ID_MEMORY_PURGELOWSTANDBY   32932
+#define IDD_PAGEFILES               299
+#define IDC_PF_LIST                 1304
+#define IDC_PF_DETAILS              1305
+#define IDC_PF_STATUS               1306
+#define IDC_PF_REFRESH              1307
+#define IDC_PF_COPY                 1308
+#define ID_SYSTEM_PAGEFILES         32933
 #define ID_OPTIONS_VIRUSTOTAL       32918
 #define ID_VT_REPORT                32919
 #define ID_VT_CHECK                 32920
@@ -538,9 +545,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	299
-#define _APS_NEXT_CONTROL_VALUE		1304
+#define _APS_NEXT_RESOURCE_VALUE	300
+#define _APS_NEXT_CONTROL_VALUE		1309
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32933
+#define _APS_NEXT_COMMAND_VALUE		32934
 #endif
 #endif
