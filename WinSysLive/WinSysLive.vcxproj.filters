@@ -150,6 +150,9 @@
     <ClCompile Include="AboutDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="UpdateDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="ColumnsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -160,6 +163,15 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="ListExport.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsTransfer.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateChecker.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateInstaller.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="HandleSheet.cpp">
@@ -383,6 +395,9 @@
     <ClInclude Include="AboutDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="UpdateDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
     <ClInclude Include="ColumnsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
@@ -393,6 +408,15 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="ListExport.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingsTransfer.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateChecker.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateInstaller.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="HandleSheet.h">

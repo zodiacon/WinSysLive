@@ -9,11 +9,13 @@
 #include "Symbols.h"
 #include "AddressResolver.h"
 #include <DpiHelper.h>
+#include "SettingsTransfer.h"
+#include "UpdateInstaller.h"
 
 CAppModule _Module;
 AppSettings _Settings;
 
-int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
+int Run(LPTSTR lpstrCmdLine = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	CMessageLoop theLoop;
 	_Module.AddMessageLoop(&theLoop);
 
@@ -44,6 +46,9 @@ int Run(LPTSTR /*lpstrCmdLine*/ = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	else {
 		wndMain.ShowWindow(nCmdShow);
 	}
+	// started with Windows (Options > Run at Windows Startup): minimized, or to the tray with Minimize to Tray
+	if (lpstrCmdLine && std::wstring_view(lpstrCmdLine).find(L"/minimized") != std::wstring_view::npos)
+		wndMain.ShowWindow(SW_SHOWMINNOACTIVE);
 
 	int nRet = theLoop.Run();
 
@@ -80,6 +85,11 @@ static bool ActivateRunningInstance(PCWSTR cmdLine, bool single) {
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow) {
 	HRESULT hRes = ::CoInitialize(nullptr);
 	ATLASSERT(SUCCEEDED(hRes));
+	// the elevated half of installing an update (/applyupdate): no window, no settings
+	if (int code = UpdateInstaller::RunCommandLine(); code >= 0) {
+		::CoUninitialize();
+		return code;
+	}
 
 	AtlInitCommonControls(ICC_BAR_CLASSES | ICC_LINK_CLASS);	// SysLink: the About box
 	::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
@@ -89,6 +99,11 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	ATLASSERT(SUCCEEDED(hRes));
 
 	bool loaded = AppSettings::Get().Load(L"Software\\ScorpioSoftware\\WinSysLive");
+	// Options > Import Settings, applied now that nothing has read the settings yet
+	if (SettingsTransfer::ApplyPendingImport())
+		loaded = true;
+	// what an installed update left behind
+	UpdateInstaller::CleanupAsync();
 	if (ActivateRunningInstance(lpstrCmdLine, loaded && AppSettings::Get().SingleInstance())) {
 		_Module.Term();
 		::CoUninitialize();

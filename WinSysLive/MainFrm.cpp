@@ -31,6 +31,10 @@
 #include <WinSys/Helpers.h>
 #include <WinSys/MemoryLists.h>
 #include <WinSys/Power.h>
+#include "UpdateChecker.h"
+#include "UpdateDlg.h"
+#include <WinSys/LogonTask.h>
+#include "SettingsTransfer.h"
 #include <DpiHelper.h>
 
 namespace {
@@ -259,6 +263,16 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UIEnable(ID_COMPUTER_HIBERNATE, WinSys::Power::CanHibernate());
 	UIEnable(ID_COMPUTER_FIRMWARE, elevated && WinSys::Power::CanRestartToFirmware());
 
+	UpdateStartupUI();
+	UISetCheck(ID_OPTIONS_CHECKUPDATES, settings.CheckForUpdates() != 0);
+	// once a day at most, when asked to
+	if (settings.CheckForUpdates()) {
+		int64_t last = _wcstoi64(settings.LastUpdateCheck().c_str(), nullptr, 10), now;
+		::GetSystemTimeAsFileTime((FILETIME*)&now);
+		if (now - last > 24 * 3600 * 10000000LL)
+			UpdateChecker::CheckAsync(m_hWnd, false);
+	}
+
 	m_Started = true;
 	return 0;
 }
@@ -436,6 +450,215 @@ namespace {
 		::CharLowerBuff(text.data(), (DWORD)text.size());
 		return text;
 	}
+}
+
+namespace {
+	const PCWSTR RunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+	const PCWSTR RunValue = L"WinSysLive";
+
+	// per user, as its logon trigger is: "WinSysLive Startup (user)"
+	std::wstring ElevatedTaskName() {
+		WCHAR user[256];
+		DWORD size = _countof(user);
+		if (!::GetUserName(user, &size))
+			user[0] = 0;
+		return std::format(L"WinSysLive Startup ({})", user);
+	}
+
+	bool SameFile(std::wstring a, std::wstring b) {
+		return _wcsicmp(a.c_str(), b.c_str()) == 0;
+	}
+}
+
+bool CMainFrame::IsRunElevatedAtStartup() {
+	WCHAR exe[MAX_PATH];
+	::GetModuleFileName(nullptr, exe, _countof(exe));
+	auto action = WinSys::LogonTask::GetAction(ElevatedTaskName());
+	return action && SameFile(action->Path, exe);
+}
+
+void CMainFrame::UpdateStartupUI() {
+	bool elevated = WinSys::SecurityHelper::IsRunningElevated();
+	bool task = IsRunElevatedAtStartup();
+	UISetCheck(ID_OPTIONS_RUNATSTARTUP, IsRunAtStartup());
+	UISetCheck(ID_OPTIONS_RUNELEVATED, task);
+	// the task needs elevation to change; while it's on, the plain entry would start a second instance
+	UIEnable(ID_OPTIONS_RUNELEVATED, elevated);
+	UIEnable(ID_OPTIONS_RUNATSTARTUP, elevated || !task);
+}
+
+LRESULT CMainFrame::OnRunElevatedAtStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	bool ok;
+	if (IsRunElevatedAtStartup())
+		ok = WinSys::LogonTask::Delete(ElevatedTaskName());
+	else {
+		WCHAR exe[MAX_PATH];
+		::GetModuleFileName(nullptr, exe, _countof(exe));
+		ok = WinSys::LogonTask::Register(ElevatedTaskName(), exe, L"/minimized", true,
+			L"Starts WinSysLive elevated and minimized when you sign in (Options > Run at Windows Startup (Elevated)).");
+		// one or the other
+		if (ok && IsRunAtStartup())
+			SetRunAtStartup(false);
+	}
+	if (!ok)
+		AtlMessageBox(m_hWnd, std::format(L"Changing the startup task failed: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	UpdateStartupUI();
+	return 0;
+}
+
+bool CMainFrame::IsRunAtStartup() {
+	WCHAR exe[MAX_PATH], value[MAX_PATH * 2];
+	::GetModuleFileName(nullptr, exe, _countof(exe));
+	DWORD size = sizeof(value);
+	if (::RegGetValue(HKEY_CURRENT_USER, RunKey, RunValue, RRF_RT_REG_SZ, nullptr, value, &size) != ERROR_SUCCESS)
+		return false;
+	std::wstring v(value), e(exe);
+	::CharLowerBuff(v.data(), (DWORD)v.size());
+	::CharLowerBuff(e.data(), (DWORD)e.size());
+	return v.find(e) != std::wstring::npos;
+}
+
+bool CMainFrame::SetRunAtStartup(bool run) {
+	CRegKey key;
+	if (key.Open(HKEY_CURRENT_USER, RunKey, KEY_SET_VALUE) != ERROR_SUCCESS)
+		return false;
+	if (!run)
+		return key.DeleteValue(RunValue) == ERROR_SUCCESS;
+	WCHAR exe[MAX_PATH];
+	::GetModuleFileName(nullptr, exe, _countof(exe));
+	return key.SetStringValue(RunValue, std::format(L"\"{}\" /minimized", exe).c_str()) == ERROR_SUCCESS;
+}
+
+void CMainFrame::SaveAllSettings() {
+	for (auto& v : m_Views)
+		v.View->SaveSettings();
+	SaveSettings();
+}
+
+LRESULT CMainFrame::OnRunAtStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	bool run = !IsRunAtStartup();
+	if (!SetRunAtStartup(run))
+		AtlMessageBox(m_hWnd, std::format(L"Changing the startup entry failed: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	// one or the other
+	else if (run && IsRunElevatedAtStartup())
+		WinSys::LogonTask::Delete(ElevatedTaskName());
+	UpdateStartupUI();
+	return 0;
+}
+
+LRESULT CMainFrame::OnCheckUpdatesOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	settings.CheckForUpdates(!settings.CheckForUpdates());
+	settings.Save();
+	UISetCheck(ID_OPTIONS_CHECKUPDATES, settings.CheckForUpdates() != 0);
+	return 0;
+}
+
+LRESULT CMainFrame::OnCheckUpdates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	SetStatusText(0, L"Checking for updates...");
+	UpdateChecker::CheckAsync(m_hWnd, true);
+	return 0;
+}
+
+LRESULT CMainFrame::OnUpdateChecked(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	std::unique_ptr<UpdateChecker::UpdateInfo> info(reinterpret_cast<UpdateChecker::UpdateInfo*>(lParam));
+	if (info->Manual)
+		SetStatusText(0, L"");
+	if (!info->Ok) {
+		// the daily check says nothing of a failure (offline...); it tries again next start
+		if (info->Manual)
+			AtlMessageBox(m_hWnd, std::format(L"Checking for updates failed: {}", info->Error).c_str(), IDR_MAINFRAME, MB_ICONWARNING);
+		return 0;
+	}
+	auto& settings = AppSettings::Get();
+	int64_t now;
+	::GetSystemTimeAsFileTime((FILETIME*)&now);
+	settings.LastUpdateCheck(std::to_wstring(now).c_str());
+	settings.Save();
+	if (!info->Newer) {
+		if (info->Manual)
+			AtlMessageBox(m_hWnd, std::format(L"You have the latest version of WinSysLive ({}).", info->Current).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+		return 0;
+	}
+	// WinGet keeps its own record of the version: it updates what it installed
+	bool winget = UpdateChecker::IsWingetInstall();
+	if (!winget && !info->AssetUrl.empty()) {
+		CUpdateDlg dlg(*info);
+		if (dlg.DoModal(m_hWnd) == IDOK)
+			InstallUpdate(dlg.GetFolder());
+		return 0;
+	}
+	auto text = std::format(L"WinSysLive {} is available (you have {}).\n\n", info->Latest, info->Current);
+	if (winget)
+		text += L"It was installed with WinGet, so update it with:\n    winget upgrade ScorpioSoftware.WinSysLive\n\n";
+	text += L"Open the release page?";
+	if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_YESNO | MB_ICONINFORMATION) == IDYES && !info->Url.empty())
+		::ShellExecute(m_hWnd, L"open", info->Url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+	return 0;
+}
+
+void CMainFrame::InstallUpdate(std::wstring const& folder) {
+	std::wstring error;
+	if (!UpdateInstaller::Install(folder, error)) {
+		// empty: the UAC prompt was declined
+		if (!error.empty())
+			AtlMessageBox(m_hWnd, error.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+		return;
+	}
+	// the new exe, by the same path; /restart: it starts while this one still runs (Single Instance)
+	SaveAllSettings();
+	WCHAR exe[MAX_PATH];
+	::GetModuleFileName(nullptr, exe, _countof(exe));
+	if ((INT_PTR)::ShellExecute(nullptr, L"open", exe, L"/restart", nullptr, SW_SHOWNORMAL) > 32)
+		PostMessage(WM_CLOSE);
+	else
+		AtlMessageBox(m_hWnd, L"The update is installed; it runs when WinSysLive starts again.", IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
+LRESULT CMainFrame::OnExportSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// as they are now: the views' too
+	SaveAllSettings();
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(FALSE, L"ini", L"WinSysLive Settings.ini", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
+		L"Settings Files (*.ini)\0*.ini\0All Files (*.*)\0*.*\0", m_hWnd);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	std::wstring path = dlg.m_szFileName;
+	if (!SettingsTransfer::Export(path)) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to write {}: {}", path, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	SetStatusText(0, std::format(L"Settings exported to {}", path).c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnImportSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(TRUE, L"ini", nullptr, OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER,
+		L"Settings Files (*.ini)\0*.ini\0All Files (*.*)\0*.*\0", m_hWnd);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	std::wstring path = dlg.m_szFileName;
+	if (!SettingsTransfer::StageImport(path)) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to import {}: {}", path, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	// applied at the next start: the running app saves its own settings as it closes
+	if (AtlMessageBox(m_hWnd, L"The settings are applied when WinSysLive starts again. Restart it now?", IDR_MAINFRAME,
+		MB_YESNO | MB_ICONQUESTION) == IDYES) {
+		WCHAR exe[MAX_PATH];
+		::GetModuleFileName(nullptr, exe, _countof(exe));
+		// /restart: it starts while this one still runs, so Single Instance doesn't apply to it
+		if ((INT_PTR)::ShellExecute(nullptr, L"open", exe, L"/restart", nullptr, SW_SHOWNORMAL) > 32)
+			PostMessage(WM_CLOSE);
+	}
+	else
+		SetStatusText(0, L"The imported settings are applied when WinSysLive starts again");
+	return 0;
 }
 
 bool CMainFrame::IsTaskManagerReplaced() {

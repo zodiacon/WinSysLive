@@ -393,6 +393,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp" />
+    <ClCompile Include="UpdateDlg.cpp" />
     <ClCompile Include="ColumnLayout.cpp" />
     <ClCompile Include="ConnectionRows.cpp" />
     <ClCompile Include="HandleIcons.cpp" />
@@ -411,6 +412,9 @@
     <ClCompile Include="Symbols.cpp" />
     <ClCompile Include="StackDlg.cpp" />
     <ClCompile Include="ListExport.cpp" />
+    <ClCompile Include="SettingsTransfer.cpp" />
+    <ClCompile Include="UpdateChecker.cpp" />
+    <ClCompile Include="UpdateInstaller.cpp" />
     <ClCompile Include="WaitChainDlg.cpp" />
     <ClCompile Include="WindowFinder.cpp" />
     <ClCompile Include="HandleSheet.cpp" />
@@ -477,6 +481,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AboutDlg.h" />
+    <ClInclude Include="UpdateDlg.h" />
     <ClInclude Include="ColumnLayout.h" />
     <ClInclude Include="ConnectionRows.h" />
     <ClInclude Include="HandleIcons.h" />
@@ -496,6 +501,9 @@
     <ClInclude Include="Symbols.h" />
     <ClInclude Include="StackDlg.h" />
     <ClInclude Include="ListExport.h" />
+    <ClInclude Include="SettingsTransfer.h" />
+    <ClInclude Include="UpdateChecker.h" />
+    <ClInclude Include="UpdateInstaller.h" />
     <ClInclude Include="WaitChainDlg.h" />
     <ClInclude Include="WindowFinder.h" />
     <ClInclude Include="HandleSheet.h" />

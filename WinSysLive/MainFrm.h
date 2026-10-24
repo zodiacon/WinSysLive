@@ -12,6 +12,7 @@
 #include "FindHandleDlg.h"
 #include "TrayIcon.h"
 #include "WindowFinder.h"
+#include "UpdateChecker.h"
 
 // the tabs have close buttons (the frame decides, TBVN_TABCLOSEBTN), but the fixed page (Processes) none; the image
 // list is the frame's shared one
@@ -65,6 +66,7 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_TRAYICON, OnTrayIcon)
+		MESSAGE_HANDLER(UpdateChecker::WM_UPDATE_CHECKED, OnUpdateChecked)
 		MESSAGE_HANDLER(s_TaskbarCreated, OnTaskbarCreated)
 		MESSAGE_HANDLER(ActivateMessage, OnActivateMessage)
 		NOTIFY_CODE_HANDLER(TBVN_PAGEACTIVATED, OnPageActivated)
@@ -119,6 +121,12 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVEADDRESSES, OnResolveAddresses)
 		COMMAND_ID_HANDLER(ID_OPTIONS_REPLACETASKMANAGER, OnReplaceTaskManager)
+		COMMAND_ID_HANDLER(ID_OPTIONS_RUNATSTARTUP, OnRunAtStartup)
+		COMMAND_ID_HANDLER(ID_OPTIONS_RUNELEVATED, OnRunElevatedAtStartup)
+		COMMAND_ID_HANDLER(ID_OPTIONS_CHECKUPDATES, OnCheckUpdatesOption)
+		COMMAND_ID_HANDLER(ID_OPTIONS_EXPORTSETTINGS, OnExportSettings)
+		COMMAND_ID_HANDLER(ID_OPTIONS_IMPORTSETTINGS, OnImportSettings)
+		COMMAND_ID_HANDLER(ID_HELP_CHECKUPDATES, OnCheckUpdates)
 		COMMAND_ID_HANDLER(ID_TRAY_SHOW, OnTrayShow)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
@@ -181,10 +189,26 @@ public:
 	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResolveAddresses(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnRunAtStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnRunElevatedAtStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCheckUpdatesOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnExportSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnImportSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCheckUpdates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnUpdateChecked(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayShow(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// Options > Replace Task Manager: the Debugger value of taskmgr.exe's Image File Execution Options names this exe
 	static bool IsTaskManagerReplaced();
+	// the HKCU Run key's WinSysLive value names this exe (with /minimized)
+	static bool IsRunAtStartup();
+	static bool SetRunAtStartup(bool run);
+	// a logon task (WinSys LogonTask) at the highest run level names this exe; readable only when elevated, perhaps
+	static bool IsRunElevatedAtStartup();
+	void UpdateStartupUI();
+	void InstallUpdate(std::wstring const& folder);
+	// the views' and the frame's settings saved, as at logoff
+	void SaveAllSettings();
 
 private:
 	// IMainFrame

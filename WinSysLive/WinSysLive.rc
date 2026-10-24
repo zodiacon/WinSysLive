@@ -213,9 +213,17 @@ BEGIN
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
         MENUITEM "Single &Instance",            ID_OPTIONS_SINGLEINSTANCE
         MENUITEM "&Replace Task Manager",       ID_OPTIONS_REPLACETASKMANAGER
+        MENUITEM "Run at Windows Start&up",     ID_OPTIONS_RUNATSTARTUP
+        MENUITEM "Run at Windows Startup (&Elevated)", ID_OPTIONS_RUNELEVATED
+        MENUITEM "Check for Updates at Start&up", ID_OPTIONS_CHECKUPDATES
+        MENUITEM SEPARATOR
+        MENUITEM "E&xport Settings...",         ID_OPTIONS_EXPORTSETTINGS
+        MENUITEM "&Import Settings...",         ID_OPTIONS_IMPORTSETTINGS
     END
     POPUP "&Help"
     BEGIN
+        MENUITEM "Check for &Updates...",       ID_HELP_CHECKUPDATES
+        MENUITEM SEPARATOR
         MENUITEM "&About WinSysLive...",        ID_APP_ABOUT
     END
 END
@@ -1181,6 +1189,20 @@ BEGIN
                     "SysLink",WS_TABSTOP,49,40,157,14
 END
 
+IDD_UPDATE DIALOGEX 0, 0, 288, 100
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Update WinSysLive"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,20,20
+    LTEXT           "",IDC_UPDATE_TEXT,36,9,245,10
+    CONTROL         "",IDC_UPDATE_PROGRESS,"msctls_progress32",WS_BORDER,36,25,245,10
+    LTEXT           "",IDC_UPDATE_STATUS,36,40,245,30
+    DEFPUSHBUTTON   "&Download and Install",IDOK,36,79,96,14
+    PUSHBUTTON      "Release &Page",IDC_UPDATE_PAGE,136,79,70,14
+    PUSHBUTTON      "Close",IDCANCEL,231,79,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -1607,6 +1629,12 @@ BEGIN
     ID_COMPUTER_SHUTDOWN    "Shut down the computer\nShut Down"
     ID_COMPUTER_BOOTOPTIONS "Restart into the boot options (advanced startup)\nRestart to Boot Options"
     ID_COMPUTER_FIRMWARE    "Restart into the UEFI firmware setup (needs elevation)\nRestart to Firmware"
+    ID_OPTIONS_RUNATSTARTUP "Start WinSysLive minimized when you sign in to Windows\nRun at Windows Startup"
+    ID_OPTIONS_CHECKUPDATES "Look for a newer version on GitHub once a day, when WinSysLive starts\nCheck for Updates at Startup"
+    ID_OPTIONS_EXPORTSETTINGS "Save the settings to a file\nExport Settings"
+    ID_OPTIONS_IMPORTSETTINGS "Load the settings from a file (applied when WinSysLive starts again)\nImport Settings"
+    ID_OPTIONS_RUNELEVATED  "Start WinSysLive elevated and minimized when you sign in, without a UAC prompt (a scheduled task)\nRun at Windows Startup (Elevated)"
+    ID_HELP_CHECKUPDATES    "Look for a newer version of WinSysLive on GitHub\nCheck for Updates"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
 END
