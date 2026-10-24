@@ -468,6 +468,12 @@
 #define IDC_UPDATE_PROGRESS         1321
 #define IDC_UPDATE_STATUS           1322
 #define IDC_UPDATE_PAGE             1323
+#define IDD_TRAYICONS               307
+#define IDC_TRAY_SHOW               1324
+#define IDC_TRAY_SHOW2              1325
+#define IDC_TRAY_SHOW3              1326
+#define IDC_TRAY_SHOW4              1327
+#define IDC_TRAY_SHOW5              1328
 #define ID_COMPUTER_LOCK            32936
 #define ID_COMPUTER_LOGOFF          32937
 #define ID_COMPUTER_SLEEP           32938
@@ -589,8 +595,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	307
-#define _APS_NEXT_CONTROL_VALUE		1324
+#define _APS_NEXT_RESOURCE_VALUE	308
+#define _APS_NEXT_CONTROL_VALUE		1334
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32960
 #endif

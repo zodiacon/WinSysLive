@@ -120,6 +120,12 @@
     <ClCompile Include="TrayIcon.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="TrayIcons.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayIconsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="KernelModulesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -358,6 +364,12 @@
     </ClInclude>
     <ClInclude Include="TrayIcon.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayIcons.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayIconsDlg.h">
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="KernelModulesView.h">
       <Filter>Views</Filter>

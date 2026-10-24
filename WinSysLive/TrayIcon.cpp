@@ -2,8 +2,6 @@
 #include "TrayIcon.h"
 
 namespace {
-	const UINT IconId = 1;
-
 	int IconSize() {
 		return ::GetSystemMetrics(SM_CXSMICON);
 	}
@@ -13,14 +11,15 @@ CTrayIcon::~CTrayIcon() {
 	Remove();
 }
 
-bool CTrayIcon::Add(HWND hWnd, UINT callbackMessage) {
+bool CTrayIcon::Add(HWND hWnd, UINT callbackMessage, UINT id) {
 	m_hWnd = hWnd;
 	m_Message = callbackMessage;
+	m_Id = id;
 	if (!m_hIcon)
 		m_hIcon = CreateIcon();
 	NOTIFYICONDATA nid{ sizeof(nid) };
 	nid.hWnd = hWnd;
-	nid.uID = IconId;
+	nid.uID = id;
 	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	nid.uCallbackMessage = callbackMessage;
 	nid.hIcon = m_hIcon;
@@ -33,7 +32,7 @@ void CTrayIcon::Remove() {
 	if (m_Shown) {
 		NOTIFYICONDATA nid{ sizeof(nid) };
 		nid.hWnd = m_hWnd;
-		nid.uID = IconId;
+		nid.uID = m_Id;
 		::Shell_NotifyIcon(NIM_DELETE, &nid);
 		m_Shown = false;
 	}
@@ -47,8 +46,17 @@ bool CTrayIcon::IsShown() const {
 	return m_Shown;
 }
 
-void CTrayIcon::AddSample(float cpu) {
-	m_Samples.push_back(std::clamp(cpu, 0.0f, 100.0f));
+void CTrayIcon::SetColor(COLORREF color) {
+	m_Color = color;
+}
+
+void CTrayIcon::SetScale(double max, double floor) {
+	m_Max = max;
+	m_Floor = floor;
+}
+
+void CTrayIcon::AddSample(double value) {
+	m_Samples.push_back((std::max)(value, 0.0));
 	while ((int)m_Samples.size() > IconSize())
 		m_Samples.pop_front();
 }
@@ -63,7 +71,7 @@ void CTrayIcon::Update() {
 	auto hIcon = CreateIcon();
 	NOTIFYICONDATA nid{ sizeof(nid) };
 	nid.hWnd = m_hWnd;
-	nid.uID = IconId;
+	nid.uID = m_Id;
 	nid.uFlags = NIF_ICON | NIF_TIP;
 	nid.hIcon = hIcon;
 	wcsncpy_s(nid.szTip, m_Tip.c_str(), _TRUNCATE);
@@ -72,6 +80,27 @@ void CTrayIcon::Update() {
 	if (m_hIcon)
 		::DestroyIcon(m_hIcon);
 	m_hIcon = hIcon;
+}
+
+void CTrayIcon::DrawGraph(CDCHandle dc, CRect const& rc) const {
+	double top = m_Max;
+	if (top <= 0) {
+		top = m_Floor;
+		for (auto v : m_Samples)
+			top = (std::max)(top, v);
+		if (top <= 0)
+			return;
+	}
+	// the samples as columns, the newest at the right edge
+	int height = rc.Height();
+	int x = rc.right - 1;
+	for (auto it = m_Samples.rbegin(); it != m_Samples.rend() && x >= rc.left; ++it, --x) {
+		int bar = (int)((std::min)(*it, top) * height / top + 0.5);
+		if (*it > 0 && bar == 0)
+			bar = 1;	// any value shows
+		if (bar > 0)
+			dc.FillSolidRect(x, rc.bottom - bar, 1, bar, m_Color);
+	}
 }
 
 HICON CTrayIcon::CreateIcon() const {
@@ -88,16 +117,7 @@ HICON CTrayIcon::CreateIcon() const {
 	dc.FillSolidRect(&rc, RGB(64, 64, 64));
 	rc.DeflateRect(1, 1);
 	dc.FillSolidRect(&rc, RGB(0, 0, 0));
-	// the samples as columns, the newest at the right edge
-	int height = rc.Height();
-	int x = rc.right - 1;
-	for (auto it = m_Samples.rbegin(); it != m_Samples.rend() && x >= rc.left; ++it, --x) {
-		int bar = (int)(*it * height / 100.0f + 0.5f);
-		if (*it > 0 && bar == 0)
-			bar = 1;	// any usage shows
-		if (bar > 0)
-			dc.FillSolidRect(x, rc.bottom - bar, 1, bar, RGB(0, 224, 0));
-	}
+	DrawGraph(dc.m_hDC, rc);
 	dc.SelectBitmap(old);
 
 	// all opaque: the mask is all zeros (the color bitmap has no alpha, so the mask is used)

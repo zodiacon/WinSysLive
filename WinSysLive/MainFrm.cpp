@@ -33,6 +33,7 @@
 #include <WinSys/Power.h>
 #include "UpdateChecker.h"
 #include "UpdateDlg.h"
+#include "TrayIconsDlg.h"
 #include <WinSys/LogonTask.h>
 #include "SettingsTransfer.h"
 #include <DpiHelper.h>
@@ -245,9 +246,9 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// an elevated instance still gets these from the shell and a second, non-elevated instance (UIPI)
 	::ChangeWindowMessageFilterEx(m_hWnd, s_TaskbarCreated, MSGFLT_ALLOW, nullptr);
 	::ChangeWindowMessageFilterEx(m_hWnd, ActivateMessage, MSGFLT_ALLOW, nullptr);
-	ShowTrayIcon(settings.TrayIcon());
+	m_TrayIcons.Init(m_hWnd, WM_TRAYICON);
+	ApplyTrayIcons(CTrayIcons::Load());
 	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
-	UIEnable(ID_OPTIONS_MINIMIZETOTRAY, settings.TrayIcon());
 	if (settings.AlwaysOnTop())
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
@@ -277,18 +278,13 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	return 0;
 }
 
-void CMainFrame::ShowTrayIcon(bool show) {
-	if (show && !m_Tray.IsShown()) {
-		m_Tray.SetTip(L"WinSysLive");
-		m_Tray.Add(m_hWnd, WM_TRAYICON);
-	}
-	else if (!show) {
-		m_Tray.Remove();
-		// a window hidden in the tray would have no way back
-		if (!IsWindowVisible())
-			RestoreWindow();
-	}
-	UISetCheck(ID_OPTIONS_TRAYICON, show);
+void CMainFrame::ApplyTrayIcons(CTrayIcons::Modes const& modes) {
+	m_TrayIcons.Apply(modes);
+	bool any = m_TrayIcons.AnyShown();
+	// a window hidden in the tray would have no way back
+	if (!any && !IsWindowVisible())
+		RestoreWindow();
+	UIEnable(ID_OPTIONS_MINIMIZETOTRAY, any);
 }
 
 void CMainFrame::RestoreWindow() {
@@ -301,7 +297,7 @@ void CMainFrame::RestoreWindow() {
 
 LRESULT CMainFrame::OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
 	// minimized to the tray: the window goes from the taskbar, the icon brings it back
-	if (wParam == SIZE_MINIMIZED && m_Tray.IsShown() && AppSettings::Get().MinimizeToTray())
+	if (wParam == SIZE_MINIMIZED && m_TrayIcons.AnyShown() && AppSettings::Get().MinimizeToTray())
 		ShowWindow(SW_HIDE);
 	bHandled = FALSE;	// the frame's layout
 	return 0;
@@ -353,6 +349,7 @@ void CMainFrame::ShowTrayMenu() {
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING | (m_Paused ? MF_CHECKED : 0), ID_VIEW_PAUSE, L"&Pause Updates");
 	menu.AppendMenu(MF_STRING | (AppSettings::Get().AlwaysOnTop() ? MF_CHECKED : 0), ID_OPTIONS_ALWAYSONTOP, L"Always on &Top");
+	menu.AppendMenu(MF_STRING, ID_OPTIONS_TRAYICON, L"Tray &Icons...");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_APP_EXIT, L"E&xit");
 	menu.SetMenuDefaultItem(ID_TRAY_SHOW);
@@ -376,10 +373,7 @@ LRESULT CMainFrame::OnTrayShow(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 
 LRESULT CMainFrame::OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	// Explorer restarted, without the icons
-	if (AppSettings::Get().TrayIcon()) {
-		m_Tray.Remove();
-		ShowTrayIcon(true);
-	}
+	m_TrayIcons.AddAgain();
 	return 0;
 }
 
@@ -389,12 +383,11 @@ LRESULT CMainFrame::OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 }
 
 LRESULT CMainFrame::OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto& settings = AppSettings::Get();
-	bool show = !settings.TrayIcon();
-	settings.TrayIcon(show);
-	settings.Save();
-	ShowTrayIcon(show);
-	UIEnable(ID_OPTIONS_MINIMIZETOTRAY, show);
+	CTrayIconsDlg dlg(CTrayIcons::Load());
+	if (dlg.DoModal(m_hWnd) == IDOK) {
+		CTrayIcons::Save(dlg.GetModes());
+		ApplyTrayIcons(dlg.GetModes());
+	}
 	return 0;
 }
 
@@ -941,7 +934,7 @@ void CMainFrame::SaveTabs() {
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	KillTimer(TimerId);
 	SaveSettings();
-	m_Tray.Remove();
+	m_TrayIcons.RemoveAll();
 
 	// the views delete themselves as their windows are destroyed, and the tab view activates pages while
 	// removing them (TBVN_PAGEACTIVATED), so stop talking to the views now
@@ -983,7 +976,13 @@ void CMainFrame::Refresh() {
 	m_ProcessManager.Update();
 	for (auto& v : m_Views)
 		v.View->OnRefresh(v.View == m_ActiveView);
+	// the CPU usage is the Idle process's, relative to the previous update: none on the first (UpdateStatusBar)
+	bool cpuValid = m_CpuValid;
 	UpdateStatusBar();
+	std::optional<double> cpu;
+	if (auto idle = m_ProcessManager.GetProcessById(0); idle && cpuValid)
+		cpu = std::clamp(100.0 - idle->CPU / 10000.0, 0.0, 100.0);
+	m_TrayIcons.Refresh(cpu);
 }
 
 void CMainFrame::UpdateStatusBar() {
@@ -1002,13 +1001,6 @@ void CMainFrame::UpdateStatusBar() {
 	if (auto idle = m_ProcessManager.GetProcessById(0); idle) {
 		auto cpu = std::clamp(100.0 - idle->CPU / 10000.0, 0.0, 100.0);
 		m_StatusBar.SetPaneText(ID_PANE_CPU, std::format(L"CPU: {:.1f}%", cpu).c_str());
-		if (m_Tray.IsShown()) {
-			MEMORYSTATUSEX memory{ sizeof(memory) };
-			::GlobalMemoryStatusEx(&memory);
-			m_Tray.AddSample((float)cpu);
-			m_Tray.SetTip(std::format(L"WinSysLive\nCPU: {:.1f}%\nMemory: {}%", cpu, memory.dwMemoryLoad));
-			m_Tray.Update();
-		}
 	}
 }
 

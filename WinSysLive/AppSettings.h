@@ -61,6 +61,7 @@ struct AppSettings : Settings {
 		// the views' font, its height at 96 DPI; no face name: the default font
 		SETTING(Font, LOGFONT{}, SettingType::Binary);
 		SETTING(TrayIcon, 1, SettingType::Bool);	// the CPU graph in the notification area
+		SETTING_STRING(TrayIcons, L"");	// Key:Mode per icon (CTrayIcons::Load); empty: TrayIcon's CPU graph
 		SETTING(MinimizeToTray, 0, SettingType::Bool);	// minimized, the window leaves the taskbar
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
 		SETTING(SingleInstance, 0, SettingType::Bool);	// starting the app again brings the running instance to the front
@@ -122,6 +123,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(Font, LOGFONT)
 	DEF_SETTING(TrayIcon, int)
 	DEF_SETTING(MinimizeToTray, int)
+	DEF_SETTING_STRING(TrayIcons)
 	DEF_SETTING(AlwaysOnTop, int)
 	DEF_SETTING(SingleInstance, int)
 	DEF_SETTING(ResolveAddresses, int)

@@ -10,7 +10,7 @@
 #include <TabViewHelper.h>
 #include "Interfaces.h"
 #include "FindHandleDlg.h"
-#include "TrayIcon.h"
+#include "TrayIcons.h"
 #include "WindowFinder.h"
 #include "UpdateChecker.h"
 
@@ -309,7 +309,7 @@ private:
 	void SetPaused(bool paused);
 	void SaveSettings();
 	// the tray icon as the TrayIcon setting has it
-	void ShowTrayIcon(bool show);
+	void ApplyTrayIcons(CTrayIcons::Modes const& modes);
 	// View > Toolbar and Status Bar, as their settings have them
 	void ShowToolBar(bool show);
 	void ShowStatusBar(bool show);
@@ -340,7 +340,7 @@ private:
 	std::wstring m_TipText;	// a toolbar tooltip from the active view (OnToolTipText)
 	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
-	CTrayIcon m_Tray;
+	CTrayIcons m_TrayIcons;
 	CWindowFinder m_WindowFinder;	// subclasses the toolbar
 	std::optional<std::wstring> m_FinderSavedStatus;	// the status text before the drag, restored after it
 	static inline UINT const s_TaskbarCreated = ::RegisterWindowMessage(L"TaskbarCreated");

@@ -208,7 +208,7 @@ BEGIN
         MENUITEM "&VirusTotal...",              ID_OPTIONS_VIRUSTOTAL
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
         MENUITEM SEPARATOR
-        MENUITEM "&Tray Icon",                  ID_OPTIONS_TRAYICON
+        MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
         MENUITEM "&Minimize to Tray",           ID_OPTIONS_MINIMIZETOTRAY
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
         MENUITEM "Single &Instance",            ID_OPTIONS_SINGLEINSTANCE
@@ -1189,6 +1189,21 @@ BEGIN
                     "SysLink",WS_TABSTOP,49,40,157,14
 END
 
+IDD_TRAYICONS DIALOGEX 0, 0, 170, 124
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Tray Icons"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "The graphs to show in the notification area (their tooltips have the details):",IDC_STATIC,7,7,156,18
+    CONTROL         "",IDC_TRAY_SHOW,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,30,120,10
+    CONTROL         "",IDC_TRAY_SHOW2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,44,120,10
+    CONTROL         "",IDC_TRAY_SHOW3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,58,120,10
+    CONTROL         "",IDC_TRAY_SHOW4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,72,120,10
+    CONTROL         "",IDC_TRAY_SHOW5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,86,120,10
+    DEFPUSHBUTTON   "OK",IDOK,59,103,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,113,103,50,14
+END
+
 IDD_UPDATE DIALOGEX 0, 0, 288, 100
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Update WinSysLive"
@@ -1692,7 +1707,7 @@ BEGIN
     ID_KMODULE_PROPERTIES   "Show the properties of the selected driver's file\nProperties"
     ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"
-    ID_OPTIONS_TRAYICON     "Show a CPU usage graph in the notification area\nTray Icon"
+    ID_OPTIONS_TRAYICON     "Choose the icons in the notification area: CPU, I/O, commit charge, physical memory, network\nTray Icons"
     ID_OPTIONS_MINIMIZETOTRAY 
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
     ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"

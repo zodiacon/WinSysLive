@@ -468,6 +468,8 @@
     <ClCompile Include="HighlightDlg.cpp" />
     <ClCompile Include="Highlight.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
+    <ClCompile Include="TrayIcons.cpp" />
+    <ClCompile Include="TrayIconsDlg.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
@@ -551,6 +553,8 @@
     <ClInclude Include="HighlightDlg.h" />
     <ClInclude Include="Highlight.h" />
     <ClInclude Include="TrayIcon.h" />
+    <ClInclude Include="TrayIcons.h" />
+    <ClInclude Include="TrayIconsDlg.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />
