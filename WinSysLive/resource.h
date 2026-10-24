@@ -450,6 +450,14 @@
 #define IDI_SHARE                   301
 #define IDI_PIPE                    302
 #define IDI_MAILSLOT                304
+#define ID_COMPUTER_LOCK            32936
+#define ID_COMPUTER_LOGOFF          32937
+#define ID_COMPUTER_SLEEP           32938
+#define ID_COMPUTER_HIBERNATE       32939
+#define ID_COMPUTER_RESTART         32940
+#define ID_COMPUTER_SHUTDOWN        32941
+#define ID_COMPUTER_BOOTOPTIONS     32942
+#define ID_COMPUTER_FIRMWARE        32943
 #define IDD_PIPES                   303
 #define IDC_PM_FILTER               1314
 #define IDC_PM_LIST                 1315
@@ -566,6 +574,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	305
 #define _APS_NEXT_CONTROL_VALUE		1320
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32936
+#define _APS_NEXT_COMMAND_VALUE		32944
 #endif
 #endif

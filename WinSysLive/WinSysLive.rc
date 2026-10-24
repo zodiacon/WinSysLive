@@ -179,6 +179,20 @@ BEGIN
             MENUITEM "Purge &Low-Priority Standby List", ID_MEMORY_PURGELOWSTANDBY
         END
     END
+    POPUP "&Computer"
+    BEGIN
+        MENUITEM "&Lock",                       ID_COMPUTER_LOCK
+        MENUITEM "Log &Off...",                 ID_COMPUTER_LOGOFF
+        MENUITEM SEPARATOR
+        MENUITEM "&Sleep",                      ID_COMPUTER_SLEEP
+        MENUITEM "&Hibernate",                  ID_COMPUTER_HIBERNATE
+        MENUITEM SEPARATOR
+        MENUITEM "&Restart...",                 ID_COMPUTER_RESTART
+        MENUITEM "Shut &Down...",               ID_COMPUTER_SHUTDOWN
+        MENUITEM SEPARATOR
+        MENUITEM "Restart to &Boot Options...", ID_COMPUTER_BOOTOPTIONS
+        MENUITEM "Restart to &Firmware...",     ID_COMPUTER_FIRMWARE
+    END
     POPUP "&Options"
     BEGIN
         MENUITEM "&Dark Mode",                  ID_OPTIONS_DARKMODE
@@ -1582,6 +1596,14 @@ BEGIN
     ID_MEMORY_PURGELOWSTANDBY 
                             "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
+    ID_COMPUTER_LOCK        "Lock the computer\nLock"
+    ID_COMPUTER_LOGOFF      "Sign out of Windows\nLog Off"
+    ID_COMPUTER_SLEEP       "Put the computer to sleep\nSleep"
+    ID_COMPUTER_HIBERNATE   "Hibernate the computer\nHibernate"
+    ID_COMPUTER_RESTART     "Restart the computer\nRestart"
+    ID_COMPUTER_SHUTDOWN    "Shut down the computer\nShut Down"
+    ID_COMPUTER_BOOTOPTIONS "Restart into the boot options (advanced startup)\nRestart to Boot Options"
+    ID_COMPUTER_FIRMWARE    "Restart into the UEFI firmware setup (needs elevation)\nRestart to Firmware"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
 END

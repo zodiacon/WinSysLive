@@ -30,6 +30,7 @@
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/Helpers.h>
 #include <WinSys/MemoryLists.h>
+#include <WinSys/Power.h>
 #include <DpiHelper.h>
 
 namespace {
@@ -249,6 +250,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// SeProfileSingleProcessPrivilege
 	for (UINT id = ID_MEMORY_EMPTYWORKINGSETS; id <= ID_MEMORY_PURGELOWSTANDBY; id++)
 		UIEnable(id, elevated);
+	// what the hardware and the firmware allow (the firmware's setup: known only when elevated)
+	UIEnable(ID_COMPUTER_SLEEP, WinSys::Power::CanSleep());
+	UIEnable(ID_COMPUTER_HIBERNATE, WinSys::Power::CanHibernate());
+	UIEnable(ID_COMPUTER_FIRMWARE, elevated && WinSys::Power::CanRestartToFirmware());
 
 	m_Started = true;
 	return 0;
@@ -1079,6 +1084,40 @@ LRESULT CMainFrame::OnMemoryListCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hW
 			size(before->Modified), size(after->Modified));
 	}
 	SetStatusText(0, text.c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnComputerCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	using namespace WinSys;
+	static const struct {
+		UINT Id;
+		PCWSTR Name;
+		PCWSTR Question;	// nullptr: no confirmation (nothing is closed)
+		bool(*Action)();
+	} commands[] = {
+		{ ID_COMPUTER_LOCK, L"Lock", nullptr, [] { return Power::Lock(); } },
+		{ ID_COMPUTER_LOGOFF, L"Log Off", L"Log off? Programs that are open will be closed.", [] { return Power::LogOff(); } },
+		{ ID_COMPUTER_SLEEP, L"Sleep", nullptr, [] { return Power::Sleep(); } },
+		{ ID_COMPUTER_HIBERNATE, L"Hibernate", nullptr, [] { return Power::Hibernate(); } },
+		{ ID_COMPUTER_RESTART, L"Restart", L"Restart the computer? Programs that are open will be closed.", [] { return Power::Restart(); } },
+		{ ID_COMPUTER_SHUTDOWN, L"Shut Down", L"Shut down the computer? Programs that are open will be closed.", [] { return Power::Shutdown(); } },
+		{ ID_COMPUTER_BOOTOPTIONS, L"Restart to Boot Options",
+			L"Restart the computer into the boot options (advanced startup)? Programs that are open will be closed.",
+			[] { return Power::RestartToBootOptions(); } },
+		{ ID_COMPUTER_FIRMWARE, L"Restart to Firmware",
+			L"Restart the computer into the firmware's setup (UEFI)? Programs that are open will be closed.",
+			[] { return Power::RestartToFirmware(); } },
+	};
+	auto it = std::ranges::find(commands, (UINT)id, &std::remove_extent_t<decltype(commands)>::Id);
+	if (it == std::end(commands))
+		return 0;
+	if (it->Question && AtlMessageBox(m_hWnd, it->Question, it->Name, MB_OKCANCEL | MB_ICONQUESTION | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	// the settings are saved when the session ends (WM_ENDSESSION)
+	if (!it->Action()) {
+		auto error = ::GetLastError();
+		AtlMessageBox(m_hWnd, std::format(L"{} failed: {}", it->Name, WinSys::Helpers::GetErrorText(error)).c_str(), it->Name, MB_ICONERROR);
+	}
 	return 0;
 }
 
