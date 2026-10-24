@@ -27,6 +27,7 @@ struct ProcessProperties {
 	std::wstring ParentName;	// empty if the parent isn't running (or its ID was reused)
 	// settings, which belong to the UI thread
 	std::wstring ThreadColumns, ModuleColumns, HandleColumns;
+	bool ShowUnnamedHandles{ true };
 	int UpdateInterval{ 1000 };
 };
 
@@ -340,8 +341,10 @@ private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		m_Icons.Reset(DpiHelper::SmallIconSize(this->m_hWnd));
 		m_Page.SetIcons(&m_Icons);
-		if constexpr (std::is_same_v<TPage, CHandlesPage>)
+		if constexpr (std::is_same_v<TPage, CHandlesPage>) {
 			m_Page.UseColumns(m_Props.HandleColumns);
+			m_Page.UseShowUnnamed(m_Props.ShowUnnamedHandles);
+		}
 		else
 			m_Page.UseColumns(m_Props.ModuleColumns);
 		// a control parent, so the dialog manager tabs into its list

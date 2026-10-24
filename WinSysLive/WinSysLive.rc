@@ -84,6 +84,7 @@ BEGIN
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
         MENUITEM "&Keep Selection Visible",     ID_VIEW_KEEPSELECTIONVISIBLE
+        MENUITEM "Show &Unnamed Handles",       ID_VIEW_SHOWUNNAMEDHANDLES
         POPUP "&Hide Processes"
         BEGIN
             MENUITEM "Other &Users' Processes",     ID_VIEW_HIDEOTHERUSERS
@@ -1625,6 +1626,7 @@ BEGIN
     ID_VIEW_HIDEWINDOWS     "Hide the processes whose executable is in the Windows directory, and the system's own\nHide Windows Processes"
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
+    ID_VIEW_SHOWUNNAMEDHANDLES "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
     ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"

@@ -236,6 +236,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	Frame()->GetUI().UIEnable(ID_VIEW_PROCESSTREE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_LOWERPANE, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, false);
+	Frame()->GetUI().UIEnable(ID_VIEW_SHOWUNNAMEDHANDLES, false);
 	for (UINT id = ID_VIEW_HIDEOTHERUSERS; id <= ID_VIEW_HIDESIGNED; id++)
 		Frame()->GetUI().UIEnable(id, false);
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, false);
@@ -1522,11 +1523,13 @@ void CProcessesView::UpdateUI() {
 	ui.UISetCheck(ID_PROCESS_EFFICIENCY, live && item->Process->GetEfficiencyMode().value_or(false));
 	ui.UIEnable(ID_VIEW_LOWERPANE, m_Active);
 	ui.UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, m_Active);
+	ui.UIEnable(ID_VIEW_SHOWUNNAMEDHANDLES, m_Active);
 	for (UINT id = ID_VIEW_HIDEOTHERUSERS; id <= ID_VIEW_HIDESIGNED; id++)
 		ui.UIEnable(id, m_Active);
 	ui.UIEnable(ID_KILL, m_Active && CanKill());
 	if (m_Active) {
 		ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, m_KeepSelectionVisible);
+		ui.UISetCheck(ID_VIEW_SHOWUNNAMEDHANDLES, m_Details.GetHandlesPage().ShowsUnnamed());
 		ui.UISetCheck(ID_VIEW_HIDEOTHERUSERS, m_HideOtherUsers);
 		ui.UISetCheck(ID_VIEW_HIDESERVICES, m_HideServices);
 		ui.UISetCheck(ID_VIEW_HIDEWINDOWS, m_HideWindows);
@@ -2058,6 +2061,7 @@ LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	props.ThreadColumns = AppSettings::Get().ThreadColumns();
 	props.ModuleColumns = AppSettings::Get().ModuleColumns();
 	props.HandleColumns = AppSettings::Get().HandleColumns();
+	props.ShowUnnamedHandles = AppSettings::Get().ShowUnnamedHandles();
 	props.UpdateInterval = AppSettings::Get().UpdateInterval();
 	// the parent, if it's still the process that created this one
 	if (auto parent = Frame()->GetProcessManager().GetProcessById(p.ParentId); parent && parent->Key.Created <= p.Key.Created)
@@ -2230,6 +2234,14 @@ LRESULT CProcessesView::OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD 
 	if (m_KeepSelectionVisible)
 		if (auto item = GetSelectedProcess())
 			m_Tree.EnsureVisible(item->Item);
+	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnToggleUnnamedHandles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the lower pane's Handles page saves the setting; open property sheets keep theirs
+	auto& handles = m_Details.GetHandlesPage();
+	handles.SetShowUnnamed(!handles.ShowsUnnamed());
 	UpdateUI();
 	return 0;
 }

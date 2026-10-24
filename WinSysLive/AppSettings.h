@@ -18,6 +18,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(PerfPageKey, L"");	// the Performance view's page: "CPU", "Disk:C", "GPU:0"... (CPerfView::PageKey)
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
 		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
+		SETTING(ShowUnnamedHandles, 1, SettingType::Bool);	// the Handles pages: off, only the handles with a name
 		// View > Hide Processes
 		SETTING(ProcessHideOtherUsers, 0, SettingType::Bool);
 		SETTING(ProcessHideServices, 0, SettingType::Bool);
@@ -82,6 +83,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(PerfShowProcessors, int)
 	DEF_SETTING(ProcessLowerPane, int)
 	DEF_SETTING(ProcessKeepSelectionVisible, int)
+	DEF_SETTING(ShowUnnamedHandles, int)
 	DEF_SETTING(ProcessHideOtherUsers, int)
 	DEF_SETTING(ProcessHideServices, int)
 	DEF_SETTING(ProcessHideWindows, int)

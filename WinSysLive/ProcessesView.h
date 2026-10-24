@@ -97,6 +97,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSTREE, OnToggleTree)
 		COMMAND_ID_HANDLER(ID_VIEW_LOWERPANE, OnToggleLowerPane)
 		COMMAND_ID_HANDLER(ID_VIEW_KEEPSELECTIONVISIBLE, OnToggleKeepSelectionVisible)
+		COMMAND_ID_HANDLER(ID_VIEW_SHOWUNNAMEDHANDLES, OnToggleUnnamedHandles)
 		COMMAND_RANGE_HANDLER(ID_VIEW_HIDEOTHERUSERS, ID_VIEW_HIDESIGNED, OnToggleHide)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
@@ -188,6 +189,7 @@ private:
 	LRESULT OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleLowerPane(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleUnnamedHandles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);

@@ -114,6 +114,19 @@ CHandleSheet::CHandleSheet(HANDLE hProcess, uint32_t pid, std::wstring processIm
 	m_General.SetPageIcon(IDI_HANDLES);
 	m_TypeDetails.SetPageIcon(typeIcon);
 
+	// the object's address, unless the entry came from the system handle table (the Handles page's Address column):
+	// looked up there, if the value still has the same type and access
+	if (!m_Entry.Object) {
+		HandleEnumerator enumerator;
+		if (auto handles = enumerator.EnumProcessHandlesWithAddresses(m_Pid)) {
+			auto it = std::ranges::find_if(*handles, [&](auto const& h) {
+				return h.Value == m_Entry.Value && h.TypeIndex == m_Entry.TypeIndex && h.Access == m_Entry.Access;
+				});
+			if (it != handles->end())
+				m_Entry.Object = it->Object;
+		}
+	}
+
 	Query();
 	m_General.SetRows(GeneralRows());
 	m_TypeDetails.SetRows(DetailRows(m_DetailsTitle));

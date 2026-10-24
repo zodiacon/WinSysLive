@@ -37,6 +37,17 @@ public:
 	void UseColumns(std::wstring layout) {
 		m_Columns = std::move(layout);
 	}
+	// likewise, whether the handles without a name are shown, instead of the ShowUnnamedHandles setting; before Create
+	void UseShowUnnamed(bool show) {
+		m_ShowUnnamed = show;
+		m_OwnShowUnnamed = true;
+	}
+	// View > Show Unnamed Handles, also in the page's context menu: off, only the handles with a name are listed (which
+	// queries every handle's name). Saved in the setting unless UseShowUnnamed gave the page its own
+	bool ShowsUnnamed() const {
+		return m_ShowUnnamed;
+	}
+	void SetShowUnnamed(bool show);
 	// nullptr: no process. Without enumerating, the list is empty until the next Refresh
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process, bool enumerate = true);
 	// by ID and image name (a property sheet's process, which has no ProcessInfoEx); listed on the next Refresh
@@ -89,6 +100,7 @@ public:
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		COMMAND_ID_HANDLER(ID_HANDLE_PROPERTIES, OnHandleCommand)
 		COMMAND_ID_HANDLER(ID_HANDLE_CLOSE, OnHandleCommand)
+		COMMAND_ID_HANDLER(ID_VIEW_SHOWUNNAMEDHANDLES, OnToggleUnnamed)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		CHAIN_MSG_MAP(CVirtualListView<CHandlesPage>)
@@ -140,6 +152,7 @@ private:
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHandleCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleUnnamed(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
@@ -159,6 +172,8 @@ private:
 	IIconSource* m_Icons{ nullptr };
 	std::function<std::wstring(DWORD)> m_ProcessNames;
 	std::optional<std::wstring> m_Columns;	// see UseColumns
+	bool m_ShowUnnamed{ true };
+	bool m_OwnShowUnnamed{ false };	// see UseShowUnnamed
 	uint32_t m_Pid{ 0 };
 	std::wstring m_ImageName;
 	CListViewCtrl m_List;

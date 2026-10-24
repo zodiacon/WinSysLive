@@ -47,6 +47,8 @@ LRESULT CHandlesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Data->Entry.Value : static_cast<uint64_t>(0));
 		});
 	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().HandleColumns(), s_Columns));
+	if (!m_OwnShowUnnamed)
+		m_ShowUnnamed = AppSettings::Get().ShowUnnamedHandles();
 	return 0;
 }
 
@@ -233,6 +235,24 @@ LRESULT CHandlesPage::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled)
 	return 0;
 }
 
+void CHandlesPage::SetShowUnnamed(bool show) {
+	if (show == m_ShowUnnamed)
+		return;
+	m_ShowUnnamed = show;
+	if (!m_OwnShowUnnamed) {
+		auto& settings = AppSettings::Get();
+		settings.ShowUnnamedHandles(show);
+		settings.Save();
+	}
+	int selected = m_List.GetSelectedIndex();
+	ShowRows(selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Data->Entry.Value : static_cast<uint64_t>(0));
+}
+
+LRESULT CHandlesPage::OnToggleUnnamed(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	SetShowUnnamed(!m_ShowUnnamed);
+	return 0;
+}
+
 LRESULT CHandlesPage::OnHandleCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (wID == ID_HANDLE_PROPERTIES)
 		ShowProperties();
@@ -381,26 +401,30 @@ LRESULT CHandlesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	auto column = ColumnLayout::HeaderColumnAt(m_List, GetColumnManager(m_List), pt);
 	if (!column) {
-		// a row's
-		if (!GetSelectedRow()) {
-			bHandled = FALSE;
-			return 0;
-		}
+		// a row's, or the list's without a selected row (only the option then)
+		bool row = GetSelectedRow() != nullptr;
 		if (pt.x == -1 && pt.y == -1) {
 			// from the keyboard: at the selected row
 			CRect rc;
-			m_List.GetItemRect(m_List.GetSelectedIndex(), &rc, LVIR_LABEL);
+			if (row)
+				m_List.GetItemRect(m_List.GetSelectedIndex(), &rc, LVIR_LABEL);
+			else
+				m_List.GetClientRect(&rc);
 			m_List.ClientToScreen(&rc);
-			pt = { rc.left, rc.bottom };
+			pt = row ? CPoint(rc.left, rc.bottom) : rc.TopLeft();
 		}
 		CMenu menu;
 		menu.CreatePopupMenu();
-		menu.AppendMenu(CanShowProperties() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_PROPERTIES, L"&Properties...");
-		menu.SetMenuDefaultItem(ID_HANDLE_PROPERTIES);
-		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(CanCloseSelected() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_CLOSE, L"&Close Handle");
-		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
+		if (row) {
+			menu.AppendMenu(CanShowProperties() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_PROPERTIES, L"&Properties...");
+			menu.SetMenuDefaultItem(ID_HANDLE_PROPERTIES);
+			menu.AppendMenu(MF_SEPARATOR);
+			menu.AppendMenu(CanCloseSelected() ? MF_STRING : MF_STRING | MF_GRAYED, ID_HANDLE_CLOSE, L"&Close Handle");
+			menu.AppendMenu(MF_SEPARATOR);
+			menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
+			menu.AppendMenu(MF_SEPARATOR);
+		}
+		menu.AppendMenu(m_ShowUnnamed ? MF_STRING | MF_CHECKED : MF_STRING, ID_VIEW_SHOWUNNAMEDHANDLES, L"Show &Unnamed Handles");
 		MenuItemData const icons[] = {
 			{ ID_HANDLE_CLOSE, IDI_DELETE },
 			{ ID_PAGE_COPY, IDI_COPY },
@@ -451,6 +475,9 @@ void CHandlesPage::ShowRows(uint64_t selected) {
 }
 
 bool CHandlesPage::Matches(HandleRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const {
+	// the name queried now, if it wasn't yet (a closed handle's can't be anymore)
+	if (!m_ShowUnnamed && GetName(*row.Data, row.Closed).empty())
+		return false;
 	auto& filter = m_Filter.GetText();
 	if (filter.empty())
 		return true;

@@ -11,6 +11,7 @@
 #include <DpiHelper.h>
 #include "SettingsTransfer.h"
 #include "UpdateInstaller.h"
+#include <WinSys/SecurityHelper.h>
 
 CAppModule _Module;
 AppSettings _Settings;
@@ -83,7 +84,7 @@ static bool ActivateRunningInstance(PCWSTR cmdLine, bool single) {
 }
 
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow) {
-	HRESULT hRes = ::CoInitialize(nullptr);
+	HRESULT hRes = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_SPEED_OVER_MEMORY | COINIT_DISABLE_OLE1DDE);
 	ATLASSERT(SUCCEEDED(hRes));
 	// the elevated half of installing an update (/applyupdate): no window, no settings
 	if (int code = UpdateInstaller::RunCommandLine(); code >= 0) {
@@ -94,6 +95,10 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	AtlInitCommonControls(ICC_BAR_CLASSES | ICC_LINK_CLASS);	// SysLink: the About box
 	::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 	::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+	// an elevated token has SeDebugPrivilege, disabled. Enabled, it opens more processes and threads, and since
+	// Windows 11 24H2 the system handle table (SystemExtendedHandleInformation) has the objects' addresses only with it
+	// (null otherwise, elevated or not): the Handles pages' Address column, the handle sheet, zombie processes
+	WinSys::SecurityHelper::EnablePrivilege(SE_DEBUG_NAME, true);
 
 	hRes = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));
