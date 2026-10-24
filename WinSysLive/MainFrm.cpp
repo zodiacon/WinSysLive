@@ -26,6 +26,7 @@
 #include <ToolbarHelper.h>
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/Helpers.h>
+#include <WinSys/MemoryLists.h>
 #include <DpiHelper.h>
 
 namespace {
@@ -216,6 +217,9 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// changing it writes to HKLM
 	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
 	UIEnable(ID_OPTIONS_REPLACETASKMANAGER, elevated);
+	// SeProfileSingleProcessPrivilege
+	for (UINT id = ID_MEMORY_EMPTYWORKINGSETS; id <= ID_MEMORY_PURGELOWSTANDBY; id++)
+		UIEnable(id, elevated);
 
 	m_Started = true;
 	return 0;
@@ -995,6 +999,54 @@ LRESULT CMainFrame::OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 LRESULT CMainFrame::OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CFirmwareDlg dlg;
 	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnMemoryListCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	using WinSys::MemoryListCommand;
+	static const struct {
+		UINT Id;
+		MemoryListCommand Command;
+		PCWSTR Name, Effect;
+	} commands[] = {
+		{ ID_MEMORY_EMPTYWORKINGSETS, MemoryListCommand::EmptyWorkingSets, L"Empty Working Sets",
+			L"Every process's working set is trimmed: its pages move to the standby and modified lists, and the processes fault them back in as they use them, which slows them down for a while." },
+		{ ID_MEMORY_FLUSHMODIFIED, MemoryListCommand::FlushModifiedList, L"Flush Modified List",
+			L"The modified pages are written to their files and page files, and become standby pages." },
+		{ ID_MEMORY_PURGESTANDBY, MemoryListCommand::PurgeStandbyList, L"Purge Standby List",
+			L"The standby pages are freed: the cached file data and the pages trimmed from working sets have to be read from disk again when they're needed." },
+		{ ID_MEMORY_PURGELOWSTANDBY, MemoryListCommand::PurgeLowPriorityStandbyList, L"Purge Low-Priority Standby List",
+			L"The standby pages of priority 0 (mostly prefetched and background data) are freed." },
+	};
+	auto it = std::ranges::find(commands, (UINT)id, &std::remove_extent_t<decltype(commands)>::Id);
+	if (it == std::end(commands))
+		return 0;
+	if (AtlMessageBox(m_hWnd, std::format(L"{}\n\n{}", it->Effect, L"Go ahead?").c_str(), it->Name, MB_OKCANCEL | MB_ICONQUESTION) != IDOK)
+		return 0;
+
+	// what it changed, from the lists before and after
+	auto before = WinSys::MemoryLists::Read();
+	bool done;
+	{
+		CWaitCursor wait;
+		done = WinSys::MemoryLists::Execute(it->Command);
+	}
+	if (!done) {
+		auto error = ::GetLastError();
+		AtlMessageBox(m_hWnd, (error == ERROR_PRIVILEGE_NOT_HELD ? std::wstring(L"This needs administrator rights (File > Run as Administrator).")
+			: std::format(L"Failed: {}", WinSys::Helpers::GetErrorText(error))).c_str(), it->Name, MB_ICONERROR);
+		return 0;
+	}
+	auto after = WinSys::MemoryLists::Read();
+	std::wstring text = std::format(L"{}: done", it->Name);
+	if (before && after) {
+		// FormatBytes leaves zero empty
+		auto size = [](uint64_t bytes) { return bytes ? FormatHelper::FormatBytes(bytes) : std::wstring(L"0 B"); };
+		text += std::format(L"; free {} -> {}, standby {} -> {}, modified {} -> {}",
+			size(before->Free + before->Zeroed), size(after->Free + after->Zeroed), size(before->Standby()), size(after->Standby()),
+			size(before->Modified), size(after->Modified));
+	}
+	SetStatusText(0, text.c_str());
 	return 0;
 }
 

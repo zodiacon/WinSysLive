@@ -3,6 +3,7 @@
 #include "FormatHelper.h"
 #include "AppSettings.h"
 #include <WinSys/SystemInfo.h>
+#include <ListViewhelper.h>
 
 using namespace GraphCtrl;
 
@@ -417,12 +418,47 @@ void CPerfMemoryPage::CreateGraphs() {
 	m_Composition.SetValueFormatter(Format::Bytes);
 	m_Composition.SetTotal((float)m_PhysicalTotal);
 	m_Lines.resize(2);
+
+	if (m_HasMemoryLists) {
+		m_Lists.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | LVS_REPORT | LVS_NOSORTHEADER | LVS_SINGLESEL,
+			WS_EX_CLIENTEDGE);
+		m_Lists.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
+		auto dpi = ::GetDpiForWindow(m_hWnd);
+		m_Lists.InsertColumn(0, L"List", LVCFMT_LEFT, ::MulDiv(130, dpi, 96));
+		m_Lists.InsertColumn(1, L"Size", LVCFMT_RIGHT, ::MulDiv(90, dpi, 96));
+		m_Lists.InsertColumn(2, L"Repurposed", LVCFMT_RIGHT, ::MulDiv(90, dpi, 96));
+		ListViewHelper::EnableColumnDpiScaling(m_Lists);
+		for (int i = 0; i < (int)ListRow::_Count; i++) {
+			std::wstring name;
+			switch ((ListRow)i) {
+				case ListRow::Zeroed: name = L"Zeroed"; break;
+				case ListRow::Free: name = L"Free"; break;
+				case ListRow::Modified: name = L"Modified"; break;
+				case ListRow::ModifiedPageFile: name = L"    Page file"; break;
+				case ListRow::ModifiedNoWrite: name = L"    No write"; break;
+				case ListRow::Standby: name = L"Standby"; break;
+				case ListRow::Bad: name = L"Bad"; break;
+				// the highest priority first, as RAMMap
+				default: name = std::format(L"    Priority {}", 7 - (i - (int)ListRow::Priority7)); break;
+			}
+			m_Lists.InsertItem(i, name.c_str());
+		}
+	}
 }
 
 void CPerfMemoryPage::LayoutGraphs(CRect const& rc, int gap) {
 	int compositionHeight = std::min(Scale(64), rc.Height());
 	int memoryHeight = std::max(0, rc.Height() - compositionHeight - gap);
-	m_Memory.MoveWindow(rc.left, rc.top, rc.Width(), memoryHeight);
+	// the lists' table beside the graph, when the page is wide enough for both
+	int listsWidth = 0;
+	if (m_Lists) {
+		listsWidth = rc.Width() >= Scale(700) ? Scale(330) : 0;
+		m_Lists.SetFont(GetTextFont());
+		m_Lists.ShowWindow(listsWidth ? SW_SHOWNA : SW_HIDE);
+		if (listsWidth)
+			m_Lists.MoveWindow(rc.right - listsWidth, rc.top, listsWidth, memoryHeight);
+	}
+	m_Memory.MoveWindow(rc.left, rc.top, rc.Width() - (listsWidth ? listsWidth + gap : 0), memoryHeight);
 	m_Composition.MoveWindow(rc.left, rc.bottom - compositionHeight, rc.Width(), compositionHeight);
 }
 
@@ -440,6 +476,27 @@ void CPerfMemoryPage::Sample(PerfSample const& sample) {
 		m_Composition.SetValues(values, _countof(values));
 	}
 
+	if (m_Lists && sample.HasMemoryLists) {
+		auto& lists = sample.Lists;
+		auto set = [&](ListRow row, uint64_t size, std::wstring repurposed = {}) {
+			m_Lists.SetItemText((int)row, 1, FormatBytes((int64_t)size).c_str());
+			m_Lists.SetItemText((int)row, 2, repurposed.c_str());
+		};
+		set(ListRow::Zeroed, lists.Zeroed);
+		set(ListRow::Free, lists.Free);
+		set(ListRow::Modified, lists.Modified);
+		set(ListRow::ModifiedPageFile, lists.ModifiedPageFile);
+		set(ListRow::ModifiedNoWrite, lists.ModifiedNoWrite);
+		uint64_t repurposed = 0;
+		for (int priority = 7; priority >= 0; priority--) {
+			repurposed += lists.RepurposedByPriority[priority];
+			set((ListRow)((int)ListRow::Priority7 + 7 - priority), lists.StandbyByPriority[priority],
+				FormatHelper::FormatNumber((int64_t)lists.RepurposedByPriority[priority]));
+		}
+		set(ListRow::Standby, lists.Standby(), FormatHelper::FormatNumber((int64_t)repurposed));
+		set(ListRow::Bad, lists.Bad);
+	}
+
 	m_Lines[0] = std::format(L"In use: {} of {} ({:.0f}%)    Available: {}    Commit: {} of {}    Cached: {}",
 		FormatBytes(sample.InUse), FormatBytes(sample.PhysicalTotal), sample.MemoryPercent(), FormatBytes(sample.Available),
 		FormatBytes(sample.Committed), FormatBytes(sample.CommitLimit), FormatBytes(sample.Cached));
@@ -453,6 +510,12 @@ void CPerfMemoryPage::Sample(PerfSample const& sample) {
 void CPerfMemoryPage::ApplyTheme() {
 	m_Memory.SetTheme(m_Theme);
 	m_Composition.SetTheme(m_Theme);
+	// the list itself follows the app's mode (WTLHelper): only its background takes the graphs' color
+	if (m_Lists) {
+		m_Lists.SetBkColor(m_Theme.Background);
+		m_Lists.SetTextBkColor(m_Theme.Background);
+		m_Lists.SetTextColor(m_Theme.TextColor);
+	}
 }
 
 void CPerfMemoryPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {

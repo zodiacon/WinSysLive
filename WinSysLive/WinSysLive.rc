@@ -167,6 +167,14 @@ BEGIN
     BEGIN
         MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
+        MENUITEM SEPARATOR
+        POPUP "&Memory Lists"
+        BEGIN
+            MENUITEM "&Empty Working Sets",         ID_MEMORY_EMPTYWORKINGSETS
+            MENUITEM "&Flush Modified List",        ID_MEMORY_FLUSHMODIFIED
+            MENUITEM "Purge &Standby List",         ID_MEMORY_PURGESTANDBY
+            MENUITEM "Purge &Low-Priority Standby List", ID_MEMORY_PURGELOWSTANDBY
+        END
     END
     POPUP "&Options"
     BEGIN
@@ -1501,6 +1509,10 @@ BEGIN
     ID_VIEW_ZOMBIES         "Show the processes that exited but are kept alive by open handles, and who holds them\nZombie Processes (Ctrl+9)"
     ID_ZOMBIE_GOTOHOLDER    "Select the process holding the handle in the Processes tab\nGo to Holder"
     ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
+    ID_MEMORY_EMPTYWORKINGSETS "Trim every process's working set (needs elevation)\nEmpty Working Sets"
+    ID_MEMORY_FLUSHMODIFIED "Write the modified pages out, making them standby (needs elevation)\nFlush Modified List"
+    ID_MEMORY_PURGESTANDBY  "Free the standby pages, the cached data among them (needs elevation)\nPurge Standby List"
+    ID_MEMORY_PURGELOWSTANDBY "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
     ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
     ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"

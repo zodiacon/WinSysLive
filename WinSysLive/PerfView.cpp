@@ -29,7 +29,7 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		m_PageSize = basic->PageSize;
 		m_PhysicalTotal = (int64_t)basic->NumberOfPhysicalPages * basic->PageSize;
 	}
-	m_HasMemoryLists = SystemInfo::GetMemoryListInformation().has_value();
+	m_HasMemoryLists = WinSys::MemoryLists::Read().has_value();
 	m_PrevCpu = GetCpuTimes();
 
 	m_Nav.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL);
@@ -230,13 +230,11 @@ void CPerfView::SampleMemory(PerfSample& sample, SYSTEM_PERFORMANCE_INFORMATION 
 	sample.Available = (int64_t)perf->AvailablePages * page;
 	sample.InUse = m_PhysicalTotal - sample.Available;
 	if (m_HasMemoryLists) {
-		if (auto lists = SystemInfo::GetMemoryListInformation(); lists) {
-			int64_t standby = 0;
-			for (auto count : lists->PageCountByPriority)
-				standby += count;
-			sample.Standby = standby * page;
-			sample.Free = (int64_t)(lists->ZeroPageCount + lists->FreePageCount) * page;
-			sample.Modified = (int64_t)lists->ModifiedPageCount * page;
+		if (auto lists = WinSys::MemoryLists::Read(); lists) {
+			sample.Lists = *lists;
+			sample.Standby = (int64_t)lists->Standby();
+			sample.Free = (int64_t)(lists->Zeroed + lists->Free);
+			sample.Modified = (int64_t)lists->Modified;
 			sample.InUse = m_PhysicalTotal - sample.Free - sample.Standby - sample.Modified;
 			sample.HasMemoryLists = true;
 		}

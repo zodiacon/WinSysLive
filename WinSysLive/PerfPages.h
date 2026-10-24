@@ -7,6 +7,7 @@
 #include <WinSys/Network.h>
 #include <WinSys/Disk.h>
 #include <WinSys/Gpu.h>
+#include <WinSys/MemoryLists.h>
 #include <deque>
 
 // samples kept by the graphs
@@ -53,6 +54,7 @@ struct PerfSample {
 	bool HasMemoryLists{ false };	// Modified, Standby and Free are valid
 	int64_t PhysicalTotal{ 0 }, InUse{ 0 }, Available{ 0 }, Modified{ 0 }, Standby{ 0 }, Free{ 0 };
 	int64_t Committed{ 0 }, CommitLimit{ 0 }, Cached{ 0 }, PagedPool{ 0 }, NonPagedPool{ 0 };
+	WinSys::MemoryLists Lists;	// in detail, when HasMemoryLists
 
 	size_t Processes{ 0 };
 	int64_t Threads{ 0 }, Handles{ 0 };
@@ -362,7 +364,8 @@ private:
 };
 
 //
-// Memory: physical memory in use and how physical memory is divided.
+// Memory: physical memory in use and how physical memory is divided; with the memory lists (elevated), each list's
+// size beside the graph, the standby list by priority with the pages repurposed from each since boot.
 //
 class CPerfMemoryPage : public CPerfPage<CPerfMemoryPage> {
 public:
@@ -377,8 +380,12 @@ public:
 	void ApplyTimeSpan(std::wstring const& text, UINT interval);
 
 private:
+	// the rows of m_Lists, in order
+	enum class ListRow { Zeroed, Free, Modified, ModifiedPageFile, ModifiedNoWrite, Standby, Priority7, Bad = Priority7 + 8, _Count };
+
 	CMemoryGraph m_Memory;
 	GraphCtrl::CCompositionBar m_Composition;
+	CListViewCtrl m_Lists;	// with the memory lists only
 	int64_t m_PhysicalTotal;
 	bool m_HasMemoryLists;
 };

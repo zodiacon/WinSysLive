@@ -100,6 +100,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_SYMBOLSETTINGS, OnSymbolSettings)
 		COMMAND_ID_HANDLER(ID_TOOLS_FIRMWARE, OnFirmware)
 		COMMAND_ID_HANDLER(ID_SYSTEM_LOGONSESSIONS, OnLogonSessions)
+		COMMAND_RANGE_HANDLER(ID_MEMORY_EMPTYWORKINGSETS, ID_MEMORY_PURGELOWSTANDBY, OnMemoryListCommand)
 		COMMAND_ID_HANDLER(ID_OPTIONS_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_ID_HANDLER(ID_OPTIONS_HIGHLIGHTING, OnHighlighting)
 		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
@@ -149,6 +150,8 @@ public:
 	LRESULT OnSymbolSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnLogonSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// System > Memory Lists: empty working sets, flush the modified list, purge the standby list (all of it or priority 0)
+	LRESULT OnMemoryListCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHighlighting(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
