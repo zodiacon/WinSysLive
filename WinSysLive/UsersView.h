@@ -19,6 +19,9 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	bool CanCopy() const override {
+		return GetSelectedRow() != nullptr;
+	}
 	HWND GetExportList() override {
 		return m_Tree.GetListCtrl();
 	}

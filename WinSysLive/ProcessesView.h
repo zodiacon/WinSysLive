@@ -22,6 +22,8 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	// the process, or the row of the lower pane's page with the focus
+	bool CanCopy() const override;
 	HWND GetExportList() override {
 		return m_Tree.GetListCtrl();
 	}

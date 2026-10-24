@@ -2019,7 +2019,35 @@ LRESULT CProcessesView::OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM l
 	return 0;
 }
 
+bool CProcessesView::CanCopy() const {
+	auto& details = const_cast<CProcessDetails&>(m_Details);
+	auto focus = ::GetFocus();
+	if (m_LowerPane && focus && (focus == m_Details.m_hWnd || m_Details.IsChild(focus))) {
+		auto in = [&](HWND page) { return focus == page || ::IsChild(page, focus); };
+		if (in(details.GetThreadsPage()))
+			return details.GetThreadsPage().CanCopy();
+		if (in(details.GetModulesPage()))
+			return details.GetModulesPage().CanCopy();
+		if (in(details.GetHandlesPage()))
+			return details.GetHandlesPage().CanCopy();
+		return false;
+	}
+	return GetSelectedProcess() != nullptr;
+}
+
 LRESULT CProcessesView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// a lower pane page with the focus copies its own row
+	auto focus = ::GetFocus();
+	if (m_LowerPane && focus && (focus == m_Details.m_hWnd || m_Details.IsChild(focus))) {
+		auto in = [&](HWND page) { return focus == page || ::IsChild(page, focus); };
+		if (in(m_Details.GetThreadsPage()))
+			m_Details.GetThreadsPage().Copy();
+		else if (in(m_Details.GetModulesPage()))
+			m_Details.GetModulesPage().Copy();
+		else if (in(m_Details.GetHandlesPage()))
+			m_Details.GetHandlesPage().Copy();
+		return 0;
+	}
 	auto item = GetSelectedProcess();
 	if (!item)
 		return 0;

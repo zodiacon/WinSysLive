@@ -13,6 +13,7 @@
 #include "FirmwareDlg.h"
 #include "LogonSessionsDlg.h"
 #include "PageFilesDlg.h"
+#include "NetworkSharesDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
 #include "Highlight.h"
@@ -62,6 +63,7 @@ namespace {
 		{ ID_VIEW_PROCESSTREE, IDI_TREE, BTNS_CHECK },
 		{ ID_VIEW_LOWERPANE, IDI_LOWERPANE, BTNS_CHECK },
 		{ ID_KILL, IDI_DELETE },	// the process, thread or handle selected in the list with the focus
+		{ ID_EDIT_COPY, IDI_COPY },	// the selection in the list (or edit box) with the focus
 		{ 0 },
 		{ ID_FIND_WINDOW, IDI_TARGET },	// dragged onto a window, not clicked (CWindowFinder)
 		{ 0 },
@@ -144,6 +146,30 @@ LRESULT CMainFrame::OnToolTipText(int idCtrl, LPNMHDR hdr, BOOL& bHandled) {
 	return 0;
 }
 
+bool CMainFrame::CanCopy() const {
+	// a filter box's selected text, or what the active view has selected
+	auto focus = ::GetFocus();
+	WCHAR name[16];
+	if (focus && ::GetClassName(focus, name, _countof(name)) && ::_wcsicmp(name, L"Edit") == 0) {
+		DWORD start = 0, end = 0;
+		::SendMessage(focus, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
+		return start != end;
+	}
+	return m_ActiveView && m_ActiveView->CanCopy();
+}
+
+LRESULT CMainFrame::OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& bHandled) {
+	auto focus = ::GetFocus();
+	WCHAR name[16];
+	if (focus && ::GetClassName(focus, name, _countof(name)) && ::_wcsicmp(name, L"Edit") == 0) {
+		::SendMessage(focus, WM_COPY, 0, 0);
+		return 0;
+	}
+	// the view's own Copy
+	bHandled = FALSE;
+	return 0;
+}
+
 BOOL CMainFrame::OnIdle() {
 	// the active view's commands may depend on the focus, which changes without telling the views
 	if (m_ActiveView)
@@ -151,6 +177,7 @@ BOOL CMainFrame::OnIdle() {
 	bool list = GetExportList() != nullptr;
 	UIEnable(ID_FILE_EXPORT, list);
 	UIEnable(ID_EDIT_COPYALL, list);
+	UIEnable(ID_EDIT_COPY, CanCopy());
 	UIUpdateToolBar();
 	return FALSE;
 }
@@ -528,6 +555,8 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_PROCESS_SUSPEND, IDI_PAUSE },
 		{ ID_PROCESS_RESUME, IDI_RUN },
 		{ ID_SYSTEM_LOGONSESSIONS, IDI_LOGON_SESSIONS },
+		{ ID_SYSTEM_SHARES, IDI_SHARE },
+		{ ID_EDIT_COPY, IDI_COPY },
 		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
 	};
 	for (auto& tab : s_Tabs)
@@ -1048,6 +1077,12 @@ LRESULT CMainFrame::OnMemoryListCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hW
 			size(before->Modified), size(after->Modified));
 	}
 	SetStatusText(0, text.c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CNetworkSharesDlg dlg;
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

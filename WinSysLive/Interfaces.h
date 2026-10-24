@@ -64,6 +64,9 @@ struct IView abstract {
 	virtual void OnFrameIdle() {}
 	// the toolbar tooltip of a command whose text depends on the view's state; empty: the command's string resource
 	virtual std::wstring GetCommandTip(UINT /*id*/) const { return {}; }
+	// whether ID_EDIT_COPY (Ctrl+C, the toolbar's Copy) has something to copy: the selection in the list with the
+	// focus. The frame asks while idle, to enable the command
+	virtual bool CanCopy() const { return false; }
 	// views listing processes select the process (see IMainFrame::GoToProcess)
 	virtual void ShowProcess(uint32_t /*pid*/) {}
 	// the Kernel Modules and Drivers views select the module or driver service of the file (see IMainFrame::GoToKernelModule,

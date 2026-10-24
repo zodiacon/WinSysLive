@@ -55,6 +55,8 @@ public:
 	static constexpr UINT WM_TRAYICON = WM_APP + 0x130;
 
 	BEGIN_MSG_MAP(CMainFrame)
+		// an edit box with the focus (a filter) copies its text; anything else goes to the active view
+		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
 		COMMAND_TABVIEW_HANDLER(m_Tabs, 1)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
@@ -101,6 +103,7 @@ public:
 		COMMAND_ID_HANDLER(ID_TOOLS_FIRMWARE, OnFirmware)
 		COMMAND_ID_HANDLER(ID_SYSTEM_LOGONSESSIONS, OnLogonSessions)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PAGEFILES, OnPageFiles)
+		COMMAND_ID_HANDLER(ID_SYSTEM_SHARES, OnShares)
 		COMMAND_RANGE_HANDLER(ID_MEMORY_EMPTYWORKINGSETS, ID_MEMORY_PURGELOWSTANDBY, OnMemoryListCommand)
 		COMMAND_ID_HANDLER(ID_OPTIONS_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_ID_HANDLER(ID_OPTIONS_HIGHLIGHTING, OnHighlighting)
@@ -152,6 +155,8 @@ public:
 	LRESULT OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnLogonSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPageFiles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// System > Memory Lists: empty working sets, flush the modified list, purge the standby list (all of it or priority 0)
 	LRESULT OnMemoryListCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -254,6 +259,8 @@ private:
 	// the image list for a new DPI, the same indices (process icons too)
 	void UpdateImageList();
 	void InitMenu(HMENU hMenu);
+	// ID_EDIT_COPY's state: an edit box's selection, else the active view's CanCopy
+	bool CanCopy() const;
 	void RemoveRunAsAdminMenuItem();
 	void InitStatusBar();
 	void InitToolBar(bool elevated);

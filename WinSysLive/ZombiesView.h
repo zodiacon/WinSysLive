@@ -27,6 +27,9 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	bool CanCopy() const override {
+		return m_List.GetSelectedCount() > 0;
+	}
 	HWND GetExportList() override {
 		return m_List;
 	}

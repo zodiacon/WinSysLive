@@ -440,6 +440,14 @@
 #define IDC_PF_REFRESH              1307
 #define IDC_PF_COPY                 1308
 #define ID_SYSTEM_PAGEFILES         32933
+#define IDD_SHARES                  300
+#define IDC_SH_LIST                 1309
+#define IDC_SH_DETAILS              1310
+#define IDC_SH_STATUS               1311
+#define IDC_SH_REFRESH              1312
+#define IDC_SH_COPY                 1313
+#define ID_SYSTEM_SHARES            32934
+#define IDI_SHARE                   301
 #define ID_OPTIONS_VIRUSTOTAL       32918
 #define ID_VT_REPORT                32919
 #define ID_VT_CHECK                 32920
@@ -545,9 +553,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	300
-#define _APS_NEXT_CONTROL_VALUE		1309
+#define _APS_NEXT_RESOURCE_VALUE	302
+#define _APS_NEXT_CONTROL_VALUE		1314
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32934
+#define _APS_NEXT_COMMAND_VALUE		32935
 #endif
 #endif

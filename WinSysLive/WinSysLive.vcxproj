@@ -430,6 +430,7 @@
     <ClCompile Include="FirmwareDlg.cpp" />
     <ClCompile Include="LogonSessionsDlg.cpp" />
     <ClCompile Include="PageFilesDlg.cpp" />
+    <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
     <ClCompile Include="VirusTotalDlg.cpp" />
@@ -512,6 +513,7 @@
     <ClInclude Include="FirmwareDlg.h" />
     <ClInclude Include="LogonSessionsDlg.h" />
     <ClInclude Include="PageFilesDlg.h" />
+    <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
     <ClInclude Include="VirusTotalDlg.h" />
@@ -560,11 +562,16 @@
     <Image Include="res\cpu.ico" />
     <Image Include="res\delete.ico" />
     <Image Include="res\copy.ico" />
+    <Image Include="res\Harddisk.ico" />
     <Image Include="res\image.ico" />
     <Image Include="res\data.ico" />
+    <Image Include="res\objects.ico" />
+    <Image Include="res\pin.ico" />
+    <Image Include="res\PoolTags.ico" />
     <Image Include="res\Run.ico" />
     <Image Include="res\atom.ico" />
     <Image Include="res\Driver.ico" />
+    <Image Include="res\symboliclink.ico" />
     <Image Include="res\System.ico" />
     <Image Include="res\target.ico" />
     <Image Include="res\process-hide.ico" />
@@ -598,6 +605,7 @@
     <Image Include="res\token.ico" />
     <Image Include="res\Users.ico" />
     <Image Include="res\windowstation.ico" />
+    <Image Include="res\window_logon.ico" />
     <Image Include="res\WinSysLive.ico" />
     <Image Include="res\processes.ico" />
     <Image Include="res\services.ico" />
@@ -628,6 +636,9 @@
     <ProjectReference Include="..\winsys\WinSys\WinSys.vcxproj">
       <Project>{c8ceb891-1e94-4ce1-9497-5d09c6f75ef4}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="res\pooltag.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -56,6 +56,15 @@ public:
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
 
+	// Copy's: the selected row's shown columns (the toolbar's Copy and Ctrl+C reach the page through its view)
+	bool CanCopy() const {
+		return m_List.GetSelectedCount() > 0;
+	}
+	void Copy() {
+		BOOL handled;
+		OnCopy(0, ID_PAGE_COPY, nullptr, handled);
+	}
+
 	BEGIN_MSG_MAP(CModulesPage)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)

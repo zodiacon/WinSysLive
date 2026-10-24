@@ -25,6 +25,9 @@ public:
 	explicit CServicesView(IMainFrame* frame, Kind kind = Kind::Services) : CViewBase(frame), m_Kind(kind) {}
 
 	CString GetTitle() const override;
+	bool CanCopy() const override {
+		return m_List.GetSelectedCount() > 0;
+	}
 	HWND GetExportList() override {
 		return m_List;
 	}

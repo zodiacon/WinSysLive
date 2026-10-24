@@ -28,6 +28,10 @@ public:
 	using CViewBase::CViewBase;
 
 	CString GetTitle() const override;
+	// the tree's directory (its path) or the list's object, as OnCopy
+	bool CanCopy() const override {
+		return ::GetFocus() == m_Tree ? m_Tree.GetSelectedItem() != nullptr : m_List.GetSelectedCount() > 0;
+	}
 	HWND GetExportList() override {
 		return m_List;
 	}

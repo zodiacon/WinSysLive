@@ -168,6 +168,7 @@ BEGIN
         MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
         MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
+        MENUITEM "&Network Shares...",          ID_SYSTEM_SHARES
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
         BEGIN
@@ -188,7 +189,7 @@ BEGIN
         MENUITEM "&Highlighting...",            ID_OPTIONS_HIGHLIGHTING
         MENUITEM "Resolve &Symbols",            ID_OPTIONS_RESOLVESYMBOLS
         MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
-        MENUITEM "&VirusTotal...",               ID_OPTIONS_VIRUSTOTAL
+        MENUITEM "&VirusTotal...",              ID_OPTIONS_VIRUSTOTAL
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icon",                  ID_OPTIONS_TRAYICON
@@ -378,15 +379,19 @@ IDI_DIRECTX             ICON                    "res\\directx.ico"
 IDI_ETW                 ICON                    "res\\etw.ico"
 
 IDI_DIRECTORY           ICON                    "res\\folder.ico"
-IDI_SYMLINK             ICON                    "res\\symboliclink.ico"
-IDI_OBJECTS             ICON                    "res\\objects.ico"
-IDI_POOLTAGS            ICON                    "res\\PoolTags.ico"
-IDI_LOGON_SESSIONS      ICON                    "res\\window_logon.ico"
-IDI_PIN                 ICON                    "res\\pin.ico"
-IDI_HARDDISK            ICON                    "res\\Harddisk.ico"
 
-// pooltag.txt from the Debugging Tools for Windows, for when they aren't installed
-IDR_POOLTAGS            RCDATA                  "res\\pooltag.txt"
+IDI_SYMLINK             ICON                    "res\\symboliclink.ico"
+
+IDI_OBJECTS             ICON                    "res\\objects.ico"
+
+IDI_POOLTAGS            ICON                    "res\\PoolTags.ico"
+
+IDI_LOGON_SESSIONS      ICON                    "res\\window_logon.ico"
+
+IDI_PIN                 ICON                    "res\\pin.ico"
+
+IDI_HARDDISK            ICON                    "res\\Harddisk.ico"
+IDI_SHARE               ICON                    "res\\share.ico"
 
 IDI_PORT                ICON                    "res\\port.ico"
 
@@ -431,6 +436,14 @@ IDI_PROCESS_HIDE        ICON                    "res\\process-hide.ico"
 IDI_ENABLED             ICON                    "res\\enabled.ico"
 
 IDI_DISABLED            ICON                    "res\\disabled.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RCDATA
+//
+
+IDR_POOLTAGS            RCDATA                  "res\\pooltag.txt"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -538,7 +551,8 @@ BEGIN
     LTEXT           "&API key:",IDC_STATIC,7,41,60,9
     EDITTEXT        IDC_VT_KEY,70,39,180,13,ES_PASSWORD | ES_AUTOHSCROLL
     CONTROL         "&Show",IDC_VT_SHOWKEY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,256,40,40,10
-    CONTROL         "<a href=""https://www.virustotal.com/gui/my-apikey"">Get your API key</a> (a free VirusTotal account)",IDC_VT_LINK,"SysLink",WS_TABSTOP,70,56,220,10
+    CONTROL         "<a href=""https://www.virustotal.com/gui/my-apikey"">Get your API key</a> (a free VirusTotal account)",IDC_VT_LINK,
+                    "SysLink",WS_TABSTOP,70,56,220,10
     LTEXT           "&Requests per minute:",IDC_STATIC,7,77,72,9
     EDITTEXT        IDC_VT_RATE,82,75,30,13,ES_NUMBER
     LTEXT           "4 on the free API (500 a day)",IDC_STATIC,118,77,150,9
@@ -569,11 +583,24 @@ BEGIN
     CONTROL         "",IDC_FW_TABS,"SysTabControl32",WS_TABSTOP,7,7,446,262
     CONTROL         "",IDC_FW_SUMMARY,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,13,25,434,238
     CONTROL         "",IDC_FW_VARS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,25,434,158
-    EDITTEXT        IDC_FW_VALUE,13,187,434,76,ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL
+    EDITTEXT        IDC_FW_VALUE,13,187,434,76,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL | WS_HSCROLL
     LTEXT           "",IDC_FW_STATUS,7,282,228,9,SS_NOPREFIX | SS_ENDELLIPSIS
     PUSHBUTTON      "&Refresh",IDC_FW_REFRESH,293,279,50,14
     PUSHBUTTON      "&Copy",IDC_FW_COPY,348,279,50,14
     PUSHBUTTON      "Close",IDCANCEL,403,279,50,14
+END
+
+IDD_SHARES DIALOGEX 0, 0, 520, 320
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Network Shares"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_SH_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,7,506,110
+    CONTROL         "",IDC_SH_DETAILS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,122,506,171
+    LTEXT           "",IDC_SH_STATUS,7,302,300,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_SH_REFRESH,353,299,50,14
+    PUSHBUTTON      "&Copy",IDC_SH_COPY,408,299,50,14
+    PUSHBUTTON      "Close",IDCANCEL,463,299,50,14
 END
 
 IDD_PAGEFILES DIALOGEX 0, 0, 500, 300
@@ -1050,7 +1077,7 @@ BEGIN
     LTEXT           "Choose the columns to show (drag the headers to order them):",IDC_STATIC,7,7,216,9
     EDITTEXT        IDC_FILTER,7,19,160,13,ES_AUTOHSCROLL
     PUSHBUTTON      "De&faults",IDC_DEFAULTS,173,19,50,14
-    CONTROL         "",IDC_COLUMN_TREE,"SysTreeView32",TVS_HASBUTTONS | TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_FULLROWSELECT | WS_BORDER | WS_TABSTOP | WS_HSCROLL,7,37,216,187
+    CONTROL         "",IDC_COLUMN_TREE,"SysTreeView32",TVS_HASBUTTONS | TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_FULLROWSELECT | WS_BORDER | WS_HSCROLL | WS_TABSTOP,7,37,216,187
     DEFPUSHBUTTON   "OK",IDOK,119,229,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,173,229,50,14
 END
@@ -1202,8 +1229,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2,0,0
- PRODUCTVERSION 1,2,0,0
+ FILEVERSION 1,3,0,0
+ PRODUCTVERSION 1,3,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1220,12 +1247,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WinSysLive - Windows Live System Explorer"
-            VALUE "FileVersion", "1.2.0.0"
+            VALUE "FileVersion", "1.3.0.0"
             VALUE "InternalName", "WinSysLive"
             VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
             VALUE "ProductName", "WinSysLive"
-            VALUE "ProductVersion", "1.2.0.0"
+            VALUE "ProductVersion", "1.3.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -1456,7 +1483,7 @@ STRINGTABLE
 BEGIN
     ID_EDIT_CLEAR           "Erase the selection\nErase"
     ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
-    ID_EDIT_COPY            "Copy the selection and put it on the Clipboard\nCopy"
+    ID_EDIT_COPY            "Copy the selection in the list with the focus\nCopy (Ctrl+C)"
     ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
     ID_EDIT_FIND            "Find the specified text\nFind"
     ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
@@ -1523,23 +1550,34 @@ BEGIN
     ID_VIEW_ZOMBIES         "Show the processes that exited but are kept alive by open handles, and who holds them\nZombie Processes (Ctrl+9)"
     ID_ZOMBIE_GOTOHOLDER    "Select the process holding the handle in the Processes tab\nGo to Holder"
     ID_ZOMBIE_CLOSEHANDLE   "Close the selected holder's handles to the zombie process\nClose Handles"
-    ID_MEMORY_EMPTYWORKINGSETS "Trim every process's working set (needs elevation)\nEmpty Working Sets"
+    ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
+    ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
+    ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
+END
+
+STRINGTABLE
+BEGIN
+    ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
+    ID_MEMORY_EMPTYWORKINGSETS 
+                            "Trim every process's working set (needs elevation)\nEmpty Working Sets"
     ID_MEMORY_FLUSHMODIFIED "Write the modified pages out, making them standby (needs elevation)\nFlush Modified List"
     ID_MEMORY_PURGESTANDBY  "Free the standby pages, the cached data among them (needs elevation)\nPurge Standby List"
-    ID_MEMORY_PURGELOWSTANDBY "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
+    ID_MEMORY_PURGELOWSTANDBY 
+                            "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
-    ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
-    ID_TOOLS_FIRMWARE       "Show the firmware's boot entries and UEFI variables, and the TPM (needs elevation)\nFirmware and TPM"
-    ID_VIEW_OBJECTTYPES     "Show the kernel's object types with their object and handle counts\nObject Types (Ctrl+0)"
-    ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
+    ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_OBJECTMANAGER   "Browse the object manager's namespace: directories, symbolic links and named objects\nObject Manager (Ctrl+Shift+O)"
     ID_OPTIONS_VIRUSTOTAL   "Set the VirusTotal API key and request rate\nVirusTotal"
     ID_VT_REPORT            "Open the file's VirusTotal report in the browser\nVirusTotal Report"
     ID_VT_CHECK             "Look the file's hash up on VirusTotal again\nCheck on VirusTotal"
     ID_VT_SUBMIT            "Upload the file to VirusTotal for analysis\nSubmit to VirusTotal"
-    ID_VIEW_DISK            "Show the file I/O of each process (needs elevation)\nDisk (Ctrl+Shift+D)"
     ID_VIEW_POOLTAGS        "Show the kernel pools' usage by tag\nPool Tags (Ctrl+Shift+P)"
-    ID_VIEW_OBJECTMANAGER   "Browse the object manager's namespace: directories, symbolic links and named objects\nObject Manager (Ctrl+Shift+O)"
-    ID_ZOMBIE_CLOSEALL      "Close every handle that keeps the selected zombie process alive\nClose All Handles to the Zombie"
+    ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
+    ID_VIEW_DISK            "Show the file I/O of each process (needs elevation)\nDisk (Ctrl+Shift+D)"
 END
 
 STRINGTABLE
