@@ -13,6 +13,7 @@
 #include "FirmwareDlg.h"
 #include "LogonSessionsDlg.h"
 #include "PageFilesDlg.h"
+#include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
 #include "ServiceInstallDlg.h"
@@ -260,6 +261,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// SeProfileSingleProcessPrivilege
 	for (UINT id = ID_MEMORY_EMPTYWORKINGSETS; id <= ID_MEMORY_PURGELOWSTANDBY; id++)
 		UIEnable(id, elevated);
+	UIEnable(ID_SYSTEM_RAM, elevated);
 	// what the hardware and the firmware allow (the firmware's setup: known only when elevated)
 	UIEnable(ID_COMPUTER_SLEEP, WinSys::Power::CanSleep());
 	UIEnable(ID_COMPUTER_HIBERNATE, WinSys::Power::CanHibernate());
@@ -784,6 +786,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_LOGONSESSIONS, IDI_LOGON_SESSIONS },
 		{ ID_SYSTEM_SHARES, IDI_SHARE },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
+		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_EDIT_COPY, IDI_COPY },
 		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
 	};
@@ -1357,6 +1360,12 @@ LRESULT CMainFrame::OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 
 LRESULT CMainFrame::OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CNetworkSharesDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CRamDlg dlg;
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

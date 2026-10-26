@@ -258,6 +258,9 @@
     <ClCompile Include="PipesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="RamDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Signature.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -507,6 +510,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="PipesDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="RamDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Signature.h">

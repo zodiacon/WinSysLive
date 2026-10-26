@@ -176,6 +176,7 @@ BEGIN
         MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
         MENUITEM "&Network Shares...",          ID_SYSTEM_SHARES
         MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
+        MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
         BEGIN
@@ -645,6 +646,18 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_PM_REFRESH,353,299,50,14
     PUSHBUTTON      "&Copy",IDC_PM_COPY,408,299,50,14
     PUSHBUTTON      "Close",IDCANCEL,463,299,50,14
+END
+
+IDD_RAM DIALOGEX 0, 0, 690, 260
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "RAM"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_RAM_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,676,226
+    LTEXT           "",IDC_RAM_STATUS,7,242,500,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Scan Again",IDC_RAM_SCAN,513,239,55,14
+    PUSHBUTTON      "&Copy",IDC_RAM_COPY,573,239,50,14
+    PUSHBUTTON      "Close",IDCANCEL,633,239,50,14
 END
 
 IDD_SHARES DIALOGEX 0, 0, 520, 320
@@ -1661,6 +1674,7 @@ BEGIN
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
+    ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
     ID_COMPUTER_LOCK        "Lock the computer\nLock"
     ID_COMPUTER_LOGOFF      "Sign out of Windows\nLog Off"
     ID_COMPUTER_SLEEP       "Put the computer to sleep\nSleep"

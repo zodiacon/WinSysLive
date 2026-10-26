@@ -296,6 +296,7 @@
 #define ID_HANDLE_CLOSE             32855
 #define ID_VIEW_SHOWUNNAMEDHANDLES  32961
 #define ID_TOOLS_INSTALLSERVICE     32962
+#define ID_SYSTEM_RAM               32963
 #define ID_PROCESS_WAITCHAIN        32851
 #define ID_FILE_EXPORT              32852
 #define ID_EDIT_COPYALL             32853
@@ -491,6 +492,11 @@
 #define IDC_PM_STATUS               1316
 #define IDC_PM_REFRESH              1317
 #define IDC_PM_COPY                 1318
+#define IDD_RAM                     308
+#define IDC_RAM_LIST                1334
+#define IDC_RAM_STATUS              1335
+#define IDC_RAM_SCAN                1336
+#define IDC_RAM_COPY                1337
 #define ID_SYSTEM_PIPES             32935
 #define IDC_SH_OPEN                 1319
 #define ID_OPTIONS_VIRUSTOTAL       32918
@@ -598,9 +604,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	308
-#define _APS_NEXT_CONTROL_VALUE		1334
+#define _APS_NEXT_RESOURCE_VALUE	309
+#define _APS_NEXT_CONTROL_VALUE		1338
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32963
+#define _APS_NEXT_COMMAND_VALUE		32964
 #endif
 #endif
