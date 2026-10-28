@@ -10,6 +10,8 @@
 #include <WinSys/ProcessMemory.h>
 #include <functional>
 #include <WTLHelper.h>
+#include <DpiHelper.h>
+#include <IconHelper.h>
 #include <map>
 
 namespace {
@@ -164,6 +166,9 @@ namespace {
 		return text;
 	}
 
+	// the hex view's grouping buttons', in IDC_MEM_GROUP1.. order
+	UINT const s_GroupIcons[] = { IDI_NUMBER_1, IDI_NUMBER_2, IDI_NUMBER_4, IDI_NUMBER_8 };
+
 	// the bytes of a region can be read without side effects (a guard page's read would clear its guard)
 	bool IsReadable(MEMORY_BASIC_INFORMATION const& mbi) {
 		return mbi.State == MEM_COMMIT && mbi.Protect != 0 && (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
@@ -188,8 +193,8 @@ int CMemoryHexView::GetWidthFor(int bytesPerLine) {
 		m_CharWidth = tm.tmAveCharWidth;
 		m_CharWidthDpi = dpi;
 	}
-	// the address, the bytes (two digits and a space each), the characters, and a little room
-	int chars = 16 + 1 + bytesPerLine * 3 + 1 + bytesPerLine + 2;
+	// the address, the groups (two digits a byte and a space each), the characters, and a little room
+	int chars = 16 + 1 + bytesPerLine / GetDataSize() * (2 * GetDataSize() + 1) + 1 + bytesPerLine + 2;
 	return chars * m_CharWidth + ::GetSystemMetricsForDpi(SM_CXVSCROLL, dpi) + 2 * ::GetSystemMetricsForDpi(SM_CXEDGE, dpi);
 }
 
@@ -205,14 +210,105 @@ LRESULT CMemoryHexView::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*
 	return 0;
 }
 
-LRESULT CMemoryHexView::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+void CMemoryHexView::SetGrouping(int size) {
+	if (size == GetDataSize() || !SetDataSize(size))
+		return;
+	FitBytesPerLine();
+	// the caret (and what's typed in Edit mode) is on a group's first byte
+	if (GetBufferManager()) {
+		auto caret = (std::max)(GetCaretOffset(), (int64_t)0);
+		GotoOffset(caret - caret % size);
+	}
+}
+
+void CMemoryHexView::FitBytesPerLine() {
 	CRect rc;
 	GetWindowRect(&rc);
 	int bytesPerLine = rc.Width() >= GetWidthFor(16) ? 16 : 8;
 	if (bytesPerLine != GetBytesPerLine())
 		SetBytesPerLine(bytesPerLine);
+}
+
+LRESULT CMemoryHexView::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	FitBytesPerLine();
 	// the control lays itself out too
 	bHandled = FALSE;
+	return 0;
+}
+
+HWND CMemoryHexPane::Create(HWND parent) {
+	if (!CWindowImpl::Create(parent, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT))
+		return nullptr;
+	// mixed buttons: the texts aren't shown (no BTNS_SHOWTEXT) but are the tooltips
+	m_ToolBar.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | TBSTYLE_FLAT | TBSTYLE_LIST
+		| TBSTYLE_TOOLTIPS | CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN, 0);
+	m_ToolBar.SetButtonStructSize();
+	m_ToolBar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.Create(size, size, ILC_COLOR32 | ILC_MASK, _countof(s_GroupIcons), 0);
+	AddImages();
+	m_ToolBar.SetImageList(m_Images);
+	PCWSTR texts[] = { L"1 Byte", L"2 Bytes", L"4 Bytes", L"8 Bytes" };
+	static_assert(_countof(texts) == _countof(s_GroupIcons));
+	for (int i = 0; i < _countof(texts); i++)
+		m_ToolBar.AddButton(IDC_MEM_GROUP1 + i, BTNS_CHECKGROUP, TBSTATE_ENABLED | (i == 0 ? TBSTATE_CHECKED : 0), i,
+			(INT_PTR)texts[i], 0);
+	m_ToolBar.AutoSize();
+
+	m_Hex.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP | WS_BORDER, 0);
+	return m_hWnd;
+}
+
+void CMemoryHexPane::AddImages() {
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	for (auto id : s_GroupIcons)
+		m_Images.AddIcon(IconHelper::LoadCached(id, size));
+}
+
+void CMemoryHexPane::Layout() {
+	if (!m_Hex.IsWindow())
+		return;
+	CRect rc;
+	GetClientRect(&rc);
+	CRect button;
+	m_ToolBar.GetItemRect(m_ToolBar.GetButtonCount() - 1, &button);
+	int height = button.bottom + ::MulDiv(2, ::GetDpiForWindow(m_hWnd), 96);
+	m_ToolBar.SetWindowPos(nullptr, 0, 0, rc.Width(), height, SWP_NOZORDER | SWP_NOACTIVATE);
+	m_Hex.SetWindowPos(nullptr, 0, height, rc.Width(), (std::max)(0, int(rc.Height() - height)), SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+LRESULT CMemoryHexPane::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	Layout();
+	return 0;
+}
+
+LRESULT CMemoryHexPane::OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// the toolbar and the hex view cover it
+	return 1;
+}
+
+LRESULT CMemoryHexPane::OnNotify(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	// the hex view's go to the page (the toolbar's are its own)
+	if (reinterpret_cast<NMHDR*>(lParam)->hwndFrom == m_Hex.m_hWnd)
+		return GetParent().SendMessage(uMsg, wParam, lParam);
+	bHandled = FALSE;
+	return 0;
+}
+
+LRESULT CMemoryHexPane::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the icons in the new size, at the same indices; the toolbar is given the image list again for its buttons' size
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	m_Images.SetIconSize(size, size);
+	AddImages();
+	m_ToolBar.SetImageList(m_Images);
+	m_ToolBar.AutoSize();
+	Layout();
+	bHandled = FALSE;
+	return 0;
+}
+
+LRESULT CMemoryHexPane::OnGrouping(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Hex.SetGrouping(1 << (wID - IDC_MEM_GROUP1));
 	return 0;
 }
 
@@ -237,7 +333,8 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 
 	m_Hex.SetFont(CMemoryHexView::FontName, CMemoryHexView::FontSize);
-	m_Hex.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP | WS_BORDER, 0);
+	// the hex view is inside the pane, below its grouping toolbar
+	m_HexPane.Create(m_Splitter);
 	m_Hex.SetPage(m_hWnd);
 	m_Hex.SetReadOnly(true);
 	m_Hex.SetOptions(HexControlOptions::DisableUndoRedo | HexControlOptions::GrayOutZeros);
@@ -250,7 +347,7 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 		colors.Offset = colors.Ruler = RGB(86, 156, 214);
 	}
 
-	m_Splitter.SetSplitterPanes(m_Tree, m_Hex);
+	m_Splitter.SetSplitterPanes(m_Tree, m_HexPane);
 	// the hex view starts hidden (the Hex View check box)
 	m_Splitter.SetSinglePaneMode(SPLIT_PANE_LEFT);
 

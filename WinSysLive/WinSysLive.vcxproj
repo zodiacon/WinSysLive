@@ -584,6 +584,10 @@
     <Image Include="res\image.ico" />
     <Image Include="res\data.ico" />
     <Image Include="res\mailbox.ico" />
+    <Image Include="res\number-1.ico" />
+    <Image Include="res\number-2.ico" />
+    <Image Include="res\number-4.ico" />
+    <Image Include="res\number-8.ico" />
     <Image Include="res\objects.ico" />
     <Image Include="res\pin.ico" />
     <Image Include="res\pipe.ico" />

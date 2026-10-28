@@ -719,6 +719,18 @@
     <Image Include="res\Harddisk.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\number-1.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\number-2.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\number-4.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\number-8.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
     <Image Include="res\objects.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>

@@ -284,6 +284,10 @@
 #define IDC_MEM_GOTO                1220
 #define IDC_MEM_SAVE                1221
 #define IDC_MEM_EDIT                1222
+#define IDC_MEM_GROUP1              1338
+#define IDC_MEM_GROUP2              1339
+#define IDC_MEM_GROUP4              1340
+#define IDC_MEM_GROUP8              1341
 #define IDC_MFIND_TEXT              1223
 #define IDC_MFIND_ASCII             1224
 #define IDC_MFIND_UNICODE           1225
@@ -455,6 +459,10 @@
 #define IDI_PIPE                    302
 #define IDI_MAILSLOT                304
 #define IDI_HISTORY                 305
+#define IDI_NUMBER_1                309
+#define IDI_NUMBER_2                310
+#define IDI_NUMBER_4                311
+#define IDI_NUMBER_8                312
 #define ID_VIEW_HISTORY             32944
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
@@ -604,8 +612,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	309
-#define _APS_NEXT_CONTROL_VALUE		1338
+#define _APS_NEXT_RESOURCE_VALUE	313
+#define _APS_NEXT_CONTROL_VALUE		1342
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32964
 #endif

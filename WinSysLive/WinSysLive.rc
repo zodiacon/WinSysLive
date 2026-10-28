@@ -434,6 +434,14 @@ IDI_SHARE               ICON                    "res\\share.ico"
 
 IDI_PIPE                ICON                    "res\\pipe.ico"
 
+IDI_NUMBER_1            ICON                    "res\\number-1.ico"
+
+IDI_NUMBER_2            ICON                    "res\\number-2.ico"
+
+IDI_NUMBER_4            ICON                    "res\\number-4.ico"
+
+IDI_NUMBER_8            ICON                    "res\\number-8.ico"
+
 IDI_MAILSLOT            ICON                    "res\\mailbox.ico"
 
 IDI_HISTORY             ICON                    "res\\History.ico"

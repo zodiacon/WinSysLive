@@ -9,7 +9,7 @@
 
 //
 // The Memory page's hex view: 16 bytes a line when they fit its width, 8 otherwise, set again whenever it's resized (by
-// the page or the splitter). Ctrl+F and F3 are the page's Find and Find Next (Ctrl+G, the control's own, is its Go To);
+// the page or the splitter) or its grouping changes. Ctrl+F and F3 are the page's Find and Find Next (Ctrl+G, the control's own, is its Go To);
 // Insert doesn't switch to insert mode: a process's memory can't grow
 //
 class CMemoryHexView : public CHexControl {
@@ -18,8 +18,11 @@ public:
 	static constexpr PCWSTR FontName = L"Consolas";
 	static constexpr int FontSize = 100;	// tenths of a point
 
-	// the width the view takes for the given bytes a line, with 64-bit addresses, its scroll bar and its border
+	// the width the view takes for the given bytes a line, at its grouping, with 64-bit addresses, its scroll bar and
+	// its border
 	int GetWidthFor(int bytesPerLine);
+	// shows the bytes in groups of 1, 2, 4 or 8 (as little-endian values), the caret moved to its group's start
+	void SetGrouping(int size);
 	// where Ctrl+F and F3 go
 	void SetPage(HWND page) {
 		m_Page = page;
@@ -34,6 +37,8 @@ public:
 private:
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnKeyDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the bytes a line for the view's width
+	void FitBytesPerLine();
 
 	int m_CharWidth{ 0 };
 	UINT m_CharWidthDpi{ 0 };	// the DPI m_CharWidth was measured at
@@ -41,9 +46,48 @@ private:
 };
 
 //
+// The hex view's pane in the page's splitter: a toolbar above it whose buttons (icons, their texts as tooltips) group
+// its bytes by 1, 2, 4 or 8 (not saved: the page runs on the sheet's thread, and the settings belong to the UI thread).
+// The hex view's notifications go on to the splitter, which forwards them to the page.
+//
+class CMemoryHexPane : public CWindowImpl<CMemoryHexPane> {
+public:
+	DECLARE_WND_CLASS_EX(L"WinSysLiveMemoryHexPane", 0, -1)
+
+	explicit CMemoryHexPane(CMemoryHexView& hex) : m_Hex(hex) {}
+
+	// creates the pane with its toolbar, and the hex view inside it
+	HWND Create(HWND parent);
+
+	BEGIN_MSG_MAP(CMemoryHexPane)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
+		MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnDpiChanged)
+		COMMAND_RANGE_HANDLER(IDC_MEM_GROUP1, IDC_MEM_GROUP8, OnGrouping)
+	END_MSG_MAP()
+
+private:
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnNotify(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnGrouping(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	// the buttons' icons in the pane's small icon size, at the buttons' indices
+	void AddImages();
+	void Layout();
+
+	CMemoryHexView& m_Hex;
+	CToolBarCtrl m_ToolBar;
+	// of the pane's own, as it runs on the sheet's thread
+	CImageList m_Images;
+};
+
+//
 // The Memory page: the process's address space (VirtualQueryEx) in a tree on the left, each allocation's first region
 // with the allocation's other regions as its children, and the bytes of the selected committed region in a read-only
-// hex view on the right, read from the process as they're shown (ProcessMemoryBuffer). The Details column names a
+// hex view on the right (with a toolbar choosing how its bytes are grouped), read from the process as they're shown (ProcessMemoryBuffer). The Details column names a
 // mapping's file, and the regions holding the PEB and the threads' TEBs and stacks (with the 32-bit ones of a WOW64
 // process). The map is read when the page is first shown and on Refresh. The Hex View check box shows or hides the hex
 // view (hidden when the page opens); while it's hidden, no bytes are read.
@@ -139,6 +183,7 @@ private:
 	CCustomSplitterWindow m_Splitter;
 	CTreeListViewCtrl m_Tree;
 	CMemoryHexView m_Hex;
+	CMemoryHexPane m_HexPane{ m_Hex };
 	std::vector<Region> m_Regions;	// in address order; the tree's item data are indices
 	std::vector<HTLITEM> m_Items;	// the regions' items
 	wil::unique_handle m_hWrite;	// PROCESS_VM_WRITE and PROCESS_VM_OPERATION, once Edit is checked
