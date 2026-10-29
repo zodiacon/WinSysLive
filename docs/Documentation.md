@@ -255,12 +255,16 @@ Which processes talk to which (elevated): ALPC messages between client and serve
 interface (named where known), endpoint and protocol, with their counts and rates. Only traffic seen since the tab
 opened shows. Double-click goes to the server or the client.
 
+![The RPC/ALPC tab, filtered to RPC calls](images/rpc-alpc.png)
+
 ## Zombie Processes
 
 Processes that have exited but are kept in memory because other processes still hold handles to them, with each
 holder process, its handle count and access. **Show All Handles** lists every handle keeping a zombie, with **Close
 Selected** and **Close All**; **Close Handles** and **Close All Handles** in the context menu close them directly.
 Scanned every 5 seconds while the tab is active.
+
+![The Zombie Processes tab](images/zombies.png)
 
 ## Object Types
 
@@ -283,10 +287,14 @@ The kernel pools' use by tag (elevated): paged and non-paged allocations, frees,
 with each tag's driver and description (from the Debugging Tools' `pooltag.txt` if installed, else the copy built
 into WinSysLive). Changed values are colored.
 
+![The Pool Tags tab](images/pool-tags.png)
+
 ## Disk
 
 File I/O per process and file (elevated): reads and writes, bytes and operations, and their rates. Files idle for a
 minute drop off. **Go to Process**, **File Properties** and **Open File Location** in the context menu.
+
+![The Disk tab, filtered to files under C:\Windows](images/disk.png)
 
 ## History
 
@@ -325,7 +333,11 @@ contain the text. Double-click a result to go to its process; **Properties** ope
 
 ![The Firmware and TPM dialog](images/firmware.png)
 
+![The Firmware and TPM dialog's UEFI variables](images/uefi-variables.png)
+
 ![The Page Files dialog](images/page-files.png)
+
+![The RAM dialog: physical memory by use and list](images/ram.png)
 
 ## Computer menu
 
