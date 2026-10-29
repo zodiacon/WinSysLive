@@ -8,6 +8,8 @@ checks, symbols, wait chains and dumps.
 
 Some information (other users' processes, network traffic, RPC/ALPC, pool tags...) needs the app to run elevated.
 
+See the [documentation](docs/Documentation.md) for every tab, dialog and option.
+
 ## Install
 
 ```
