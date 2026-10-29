@@ -12,6 +12,8 @@
 #include "SettingsTransfer.h"
 #include "UpdateInstaller.h"
 #include <WinSys/SecurityHelper.h>
+#include <WinSys/LogonTask.h>
+#include <WinSys/Token.h>
 
 CAppModule _Module;
 AppSettings _Settings;
@@ -83,6 +85,36 @@ static bool ActivateRunningInstance(PCWSTR cmdLine, bool single) {
 	return true;
 }
 
+// started as Task Manager (taskmgr.exe's path) without elevation: elevated, as Task Manager starts, through the on-demand
+// task Replace Task Manager registers (no UAC prompt), else for an administrator through the prompt. True if the
+// elevated instance is on its way; otherwise (a standard user, the prompt declined) this instance runs
+static bool StartElevatedAsTaskManager(PCWSTR cmdLine) {
+	std::wstring args(cmdLine ? cmdLine : L"");
+	::CharLowerBuff(args.data(), (DWORD)args.size());
+	if (args.find(L"taskmgr.exe") == std::wstring::npos || WinSys::SecurityHelper::IsRunningElevated())
+		return false;
+	WCHAR exe[MAX_PATH];
+	::GetModuleFileName(nullptr, exe, _countof(exe));
+	// the user just started this one; the elevated instance comes from the Task Scheduler
+	::AllowSetForegroundWindow(ASFW_ANY);
+	// a task left for another copy of the exe isn't this one's (unreadable: run it anyway)
+	auto task = CMainFrame::TaskManagerTaskName();
+	auto action = WinSys::LogonTask::GetAction(task);
+	if ((!action || _wcsicmp(action->Path.c_str(), exe) == 0) && WinSys::LogonTask::Run(task))
+		return true;
+
+	// an administrator's limited token has an elevated one linked
+	auto token = WinSys::Token::Open(::GetCurrentProcessId());
+	if (!token || token->GetElevationType() != WinSys::ElevationType::Limited)
+		return false;
+	SHELLEXECUTEINFO sei{ sizeof(sei) };
+	sei.lpVerb = L"runas";
+	sei.lpFile = exe;
+	sei.lpParameters = L"/taskmgr";
+	sei.nShow = SW_SHOWNORMAL;
+	return ::ShellExecuteEx(&sei);
+}
+
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow) {
 	HRESULT hRes = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_SPEED_OVER_MEMORY | COINIT_DISABLE_OLE1DDE);
 	ATLASSERT(SUCCEEDED(hRes));
@@ -109,7 +141,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 		loaded = true;
 	// what an installed update left behind
 	UpdateInstaller::CleanupAsync();
-	if (ActivateRunningInstance(lpstrCmdLine, loaded && AppSettings::Get().SingleInstance())) {
+	if (ActivateRunningInstance(lpstrCmdLine, loaded && AppSettings::Get().SingleInstance()) || StartElevatedAsTaskManager(lpstrCmdLine)) {
 		_Module.Term();
 		::CoUninitialize();
 		return 0;

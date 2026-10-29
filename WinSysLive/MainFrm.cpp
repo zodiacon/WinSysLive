@@ -41,6 +41,16 @@
 #include <DpiHelper.h>
 
 namespace {
+	std::wstring ExePath() {
+		WCHAR path[MAX_PATH];
+		::GetModuleFileName(nullptr, path, _countof(path));
+		return path;
+	}
+
+	bool SameFile(std::wstring a, std::wstring b) {
+		return _wcsicmp(a.c_str(), b.c_str()) == 0;
+	}
+
 	// the frame's images, in their image list order (the process icons follow them)
 	const UINT s_Icons[] = {
 		IDI_PROCESSES, IDI_SERVICES, IDI_PERFORMANCE, IDI_USERS, IDI_NETWORK, IDI_RUN, IDI_KILL,
@@ -256,8 +266,15 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
 	UISetCheck(ID_OPTIONS_SINGLEINSTANCE, settings.SingleInstance());
 	// changing it writes to HKLM
-	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
+	bool replaced = IsTaskManagerReplaced();
+	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, replaced);
 	UIEnable(ID_OPTIONS_REPLACETASKMANAGER, elevated);
+	// the elevated start's task: for a replacement made before it existed, another user's, or a moved exe
+	if (elevated && replaced) {
+		auto action = WinSys::LogonTask::GetAction(TaskManagerTaskName());
+		if (!action || !SameFile(action->Path, ExePath()))
+			RegisterTaskManagerTask();
+	}
 	// SeProfileSingleProcessPrivilege
 	for (UINT id = ID_MEMORY_EMPTYWORKINGSETS; id <= ID_MEMORY_PURGELOWSTANDBY; id++)
 		UIEnable(id, elevated);
@@ -436,12 +453,6 @@ LRESULT CMainFrame::OnResolveAddresses(WORD /*wNotifyCode*/, WORD id, HWND /*hWn
 namespace {
 	PCWSTR const TaskManagerOptionsKey = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\taskmgr.exe";
 
-	std::wstring ExePath() {
-		WCHAR path[MAX_PATH];
-		::GetModuleFileName(nullptr, path, _countof(path));
-		return path;
-	}
-
 	std::wstring Lowercase(std::wstring text) {
 		::CharLowerBuff(text.data(), (DWORD)text.size());
 		return text;
@@ -459,10 +470,6 @@ namespace {
 		if (!::GetUserName(user, &size))
 			user[0] = 0;
 		return std::format(L"WinSysLive Startup ({})", user);
-	}
-
-	bool SameFile(std::wstring a, std::wstring b) {
-		return _wcsicmp(a.c_str(), b.c_str()) == 0;
 	}
 }
 
@@ -669,6 +676,20 @@ bool CMainFrame::IsTaskManagerReplaced() {
 	return Lowercase(value).find(Lowercase(ExePath())) != std::wstring::npos;
 }
 
+std::wstring CMainFrame::TaskManagerTaskName() {
+	// per user, as the task runs as its user: "WinSysLive Task Manager (user)"
+	WCHAR user[256];
+	DWORD size = _countof(user);
+	if (!::GetUserName(user, &size))
+		user[0] = 0;
+	return std::format(L"WinSysLive Task Manager ({})", user);
+}
+
+bool CMainFrame::RegisterTaskManagerTask() {
+	return WinSys::LogonTask::RegisterOnDemand(TaskManagerTaskName(), ExePath(), L"/taskmgr", true,
+		L"Starts WinSysLive elevated when it replaces Task Manager (Options > Replace Task Manager), without a UAC prompt.");
+}
+
 LRESULT CMainFrame::OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	// Windows starts the "debugger" instead of taskmgr.exe (Ctrl+Shift+Esc too), with taskmgr's path as an argument
 	bool replace = !IsTaskManagerReplaced();
@@ -679,6 +700,12 @@ LRESULT CMainFrame::OnReplaceTaskManager(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	if (error != ERROR_SUCCESS)
 		AtlMessageBox(m_hWnd, std::format(L"Failed to {} Task Manager: {}", replace ? L"replace" : L"restore",
 			WinSys::Helpers::GetErrorText(error)).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+	else if (!replace)
+		WinSys::LogonTask::Delete(TaskManagerTaskName());
+	else if (!RegisterTaskManagerTask())
+		AtlMessageBox(m_hWnd, std::format(L"Task Manager is replaced, but creating the task that starts WinSysLive elevated failed: {}\n\n"
+			L"WinSysLive started as Task Manager asks for elevation instead.",
+			WinSys::Helpers::GetErrorText(::GetLastError())).c_str(), IDR_MAINFRAME, MB_ICONWARNING);
 	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, IsTaskManagerReplaced());
 	return 0;
 }

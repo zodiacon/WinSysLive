@@ -204,6 +204,10 @@ public:
 
 	// Options > Replace Task Manager: the Debugger value of taskmgr.exe's Image File Execution Options names this exe
 	static bool IsTaskManagerReplaced();
+	// with it, an on-demand task at the highest run level (WinSys LogonTask) starting this exe with /taskmgr: started
+	// as Task Manager without elevation, the app runs it to start elevated as Task Manager does, without a UAC prompt
+	static std::wstring TaskManagerTaskName();
+	static bool RegisterTaskManagerTask();
 	// the HKCU Run key's WinSysLive value names this exe (with /minimized)
 	static bool IsRunAtStartup();
 	static bool SetRunAtStartup(bool run);
