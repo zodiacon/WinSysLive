@@ -31,11 +31,14 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	// Apply stays for the Security page's changes (disabled until there are some; Close applies them too, as OK does)
 	m_psh.dwFlags |= PSH_NOCONTEXTHELP;
 
-	if (m_Props.ImagePath.empty() || ::ExtractIconEx(m_Props.ImagePath.c_str(), 0, &m_Icon.m_hIcon, &m_SmallIcon.m_hIcon, 1) == 0
-		|| !m_Icon) {
-		m_Icon.LoadIcon(IDI_APPLICATION);
-		m_SmallIcon.LoadIcon(IDI_APPLICATION);
-	}
+	if (!m_Props.ImagePath.empty())
+		::ExtractIconEx(m_Props.ImagePath.c_str(), 0, &m_Icon.m_hIcon, &m_SmallIcon.m_hIcon, 1);
+	// no icon of its own: the system's application icon, as the process list shows
+	// (CIcon::LoadIcon would look for IDI_APPLICATION in the app's resources)
+	if (!m_Icon)
+		::LoadIconWithScaleDown(nullptr, IDI_APPLICATION, ::GetSystemMetrics(SM_CXICON), ::GetSystemMetrics(SM_CYICON), &m_Icon.m_hIcon);
+	if (!m_SmallIcon)
+		::LoadIconWithScaleDown(nullptr, IDI_APPLICATION, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON), &m_SmallIcon.m_hIcon);
 
 	// the pages' order is the tabs'
 	m_General = std::make_unique<CProcGeneralPage>(m_Props, m_Icon);
