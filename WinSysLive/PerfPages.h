@@ -353,9 +353,17 @@ private:
 	LRESULT OnShowCores(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the CPU graph's readout gets the busiest processes
 	LRESULT OnGetTooltip(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// the cores (WinSys GetLogicalProcessorCores); on a hybrid processor, each tile's kind in its title and the E-cores'
+	// tiles tinted
+	void InitCoreKinds();
+	std::wstring TileTitle(size_t index, float mhz) const;
 
 	CCpuGraph m_Cpu;
 	GraphCtrl::CGraphGrid m_Cores;
+	// per logical processor, a hybrid processor's core kinds: "P" (the fastest efficiency class), "E", and "LP-E" (the
+	// slowest of three or more classes, as Meteor Lake's low-power cores); empty when all cores are alike
+	std::vector<PCWSTR> m_CoreKinds;
+	std::wstring m_CoresText;	// "Cores: 24 (8 P, 16 E in teal)"
 	CButton m_ShowCores;
 	CBrush m_Background;
 	CRect m_GraphsRect;	// the last layout's, to lay out again when the check box changes

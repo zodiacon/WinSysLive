@@ -273,6 +273,52 @@ void CPerfCpuPage::CreateGraphs() {
 	bool show = AppSettings::Get().PerfShowProcessors() != 0;
 	m_ShowCores.SetCheck(show ? BST_CHECKED : BST_UNCHECKED);
 	m_Cores.ShowWindow(show ? SW_SHOWNA : SW_HIDE);
+	InitCoreKinds();
+}
+
+void CPerfCpuPage::InitCoreKinds() {
+	auto cores = WinSys::SystemInfo::GetLogicalProcessorCores();
+	if (cores.size() != m_Processors)
+		return;
+	uint32_t count = 0;
+	BYTE fastest = 0, slowest = 0xFF;
+	for (auto& c : cores) {
+		count = (std::max)(count, c.Core + 1);
+		fastest = (std::max)(fastest, c.EfficiencyClass);
+		slowest = (std::min)(slowest, c.EfficiencyClass);
+	}
+	m_CoresText = std::format(L"Cores: {}", count);
+	if (fastest == slowest)
+		return;
+
+	// a third class between them: the slowest are the low-power E-cores
+	bool lowPower = std::any_of(cores.begin(), cores.end(), [&](auto& c) { return c.EfficiencyClass != fastest && c.EfficiencyClass != slowest; });
+	PCWSTR const kinds[] = { L"P", L"E", L"LP-E" };
+	int counts[3]{};
+	std::vector<bool> counted(count);
+	m_CoreKinds.resize(cores.size());
+	// the E-cores' tiles in teal beside the P-cores' blue (the grid's default)
+	GraphCtrl::SeriesStyle tint;
+	tint.LineColor = RGB(0, 150, 136);
+	tint.FillColor = RGB(77, 182, 172);
+	for (size_t i = 0; i < cores.size(); i++) {
+		auto kind = cores[i].EfficiencyClass == fastest ? 0 : lowPower && cores[i].EfficiencyClass == slowest ? 2 : 1;
+		m_CoreKinds[i] = kinds[kind];
+		if (!counted[cores[i].Core]) {
+			counted[cores[i].Core] = true;
+			counts[kind]++;
+		}
+		if (kind > 0)
+			m_Cores.SetTileSeriesStyle(i, tint);
+		if (auto graph = m_Cores.GetGraph(i))
+			graph->SetTitle(TileTitle(i, 0));
+	}
+	m_CoresText += std::format(L" ({} P, {} E{} in teal)", counts[0], counts[1], counts[2] ? std::format(L", {} LP-E", counts[2]) : L"");
+}
+
+std::wstring CPerfCpuPage::TileTitle(size_t index, float mhz) const {
+	auto title = index < m_CoreKinds.size() ? std::format(L"CPU {} ({})", index, m_CoreKinds[index]) : std::format(L"CPU {}", index);
+	return mhz > 0 ? std::format(L"{}  {:.2f} GHz", title, mhz / 1000) : title;
 }
 
 LRESULT CPerfCpuPage::OnEraseBkgnd(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
@@ -358,7 +404,7 @@ void CPerfCpuPage::Sample(PerfSample const& sample) {
 		if (sample.CoreMhz.size() == sample.Cores.size())
 			for (size_t i = 0; i < sample.CoreMhz.size(); i++)
 				if (auto graph = m_Cores.GetGraph(i))
-					graph->SetTitle(sample.CoreMhz[i] > 0 ? std::format(L"CPU {}  {:.2f} GHz", i, sample.CoreMhz[i] / 1000) : std::format(L"CPU {}", i));
+					graph->SetTitle(TileTitle(i, sample.CoreMhz[i]));
 	}
 
 	m_Lines[0] = std::format(L"Utilization: {:.1f}%    Kernel: {:.1f}%    User: {:.1f}%    Processes: {}    Threads: {}    Handles: {}",
@@ -377,8 +423,8 @@ void CPerfCpuPage::Sample(PerfSample const& sample) {
 	}
 	m_Lines[1] = speed + std::format(L"Interrupts: {:.1f}% ({}/s)    DPCs: {:.1f}% ({}/s)", sample.InterruptCpu,
 		FormatHelper::FormatNumber((int64_t)sample.InterruptsPerSec), sample.DpcCpu, FormatHelper::FormatNumber((int64_t)sample.DpcsPerSec));
-	m_Lines[2] = std::format(L"Logical processors: {}    Processor groups: {}    Up time: {}",
-		sample.Cores.size(), ::GetActiveProcessorGroupCount(), FormatUptime(sample.Uptime));
+	m_Lines[2] = std::format(L"{}{}Logical processors: {}    Processor groups: {}    Up time: {}",
+		m_CoresText, m_CoresText.empty() ? L"" : L"    ", sample.Cores.size(), ::GetActiveProcessorGroupCount(), FormatUptime(sample.Uptime));
 }
 
 void CPerfCpuPage::ApplyTheme() {

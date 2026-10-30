@@ -208,7 +208,9 @@ their history while hidden.
 - **Summary:** CPU, memory, network and disk at a glance.
 - **CPU:** total use (stacked: interrupts, DPCs, kernel, user), a graph per processor with its current frequency
   (uncheck **Show processors** to hide them), speed, interrupt and DPC rates. Hover over the graph to see the busiest
-  processes at that time.
+  processes at that time. On a hybrid processor (P- and E-cores, such as Intel's 12th generation and later), each
+  processor's title says which kind of core it is, **(P)**, **(E)** or **(LP-E)** (low-power E-core), the E-cores'
+  graphs are teal, and the text below counts the cores of each kind.
 - **Memory:** use, commit, composition, and (on a wide enough page) the memory lists in detail: zeroed, free,
   modified, standby by priority.
 - **Network:** a graph per active adapter.
