@@ -732,7 +732,7 @@ BEGIN
     LTEXT           "Primary group:",IDC_STATIC,14,48,58,9
     EDITTEXT        IDC_TOKEN_PGROUP,74,46,196,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Session:",IDC_STATIC,14,62,50,9
-    EDITTEXT        IDC_TOKEN_SESSION,66,60,74,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_SESSION,75,60,65,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Type:",IDC_STATIC,144,62,50,9
     EDITTEXT        IDC_TOKEN_TYPE,196,60,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "AppContainer:",IDC_STATIC,14,76,58,9
@@ -747,33 +747,33 @@ BEGIN
     LTEXT           "Package:",IDC_STATIC,144,120,50,9
     EDITTEXT        IDC_TOKEN_PACKAGE,196,118,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Logon time:",IDC_STATIC,14,134,58,9
-    EDITTEXT        IDC_TOKEN_LOGONTIME,74,132,196,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_LOGONTIME,66,132,203,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Logon server:",IDC_STATIC,14,148,58,9
-    EDITTEXT        IDC_TOKEN_LOGONSERVER,74,146,196,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_LOGONSERVER,66,146,203,12,ES_AUTOHSCROLL | ES_READONLY
     GROUPBOX        "Token",IDC_STATIC,7,165,270,69,0,WS_EX_TRANSPARENT
     LTEXT           "Token ID:",IDC_STATIC,14,178,50,9
     EDITTEXT        IDC_TOKEN_TOKENID,66,176,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Modified ID:",IDC_STATIC,144,178,50,9
     EDITTEXT        IDC_TOKEN_MODIFIEDID,196,176,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Source:",IDC_STATIC,14,192,58,9
-    EDITTEXT        IDC_TOKEN_SOURCE,74,190,196,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_SOURCE,67,190,203,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Expires:",IDC_STATIC,14,206,58,9
-    EDITTEXT        IDC_TOKEN_EXPIRES,74,204,196,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_EXPIRES,67,204,203,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Charged:",IDC_STATIC,14,220,50,9
-    EDITTEXT        IDC_TOKEN_CHARGED,66,218,74,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_CHARGED,66,218,70,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Available:",IDC_STATIC,144,220,50,9
     EDITTEXT        IDC_TOKEN_AVAILABLE,196,218,74,12,ES_AUTOHSCROLL | ES_READONLY
     GROUPBOX        "Security",IDC_STATIC,7,237,270,111,0,WS_EX_TRANSPARENT
     LTEXT           "Elevated:",IDC_STATIC,14,250,50,9
-    EDITTEXT        IDC_TOKEN_ELEVATED,66,248,74,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_ELEVATED,74,248,65,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "UI access:",IDC_STATIC,144,250,50,9
     EDITTEXT        IDC_TOKEN_UIACCESS,196,248,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Restricted:",IDC_STATIC,14,264,50,9
-    EDITTEXT        IDC_TOKEN_RESTRICTED,66,262,74,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_RESTRICTED,74,262,65,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Filtered:",IDC_STATIC,144,264,50,9
     EDITTEXT        IDC_TOKEN_FILTERED,196,262,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Sandbox inert:",IDC_STATIC,14,278,50,9
-    EDITTEXT        IDC_TOKEN_SANDBOX,66,276,74,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOKEN_SANDBOX,74,276,66,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Virtualization:",IDC_STATIC,144,278,50,9
     EDITTEXT        IDC_TOKEN_VIRTUALIZATION,196,276,74,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Integrity level:",IDC_STATIC,14,292,58,9
@@ -944,8 +944,10 @@ CAPTION "General"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "",IDC_HANDLEPROPS_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,7,316,226
-    PUSHBUTTON      "&Refresh",IDC_HANDLEPROPS_REFRESH,213,239,52,14
-    PUSHBUTTON      "&Copy",IDC_HANDLEPROPS_COPY,271,239,52,14
+    PUSHBUTTON      "&Refresh",IDC_HANDLEPROPS_REFRESH,97,239,52,14
+    PUSHBUTTON      "&Copy",IDC_HANDLEPROPS_COPY,155,239,52,14
+    PUSHBUTTON      "Copy &Value",IDC_HANDLEPROPS_COPYVALUE,213,239,52,14
+    PUSHBUTTON      "Copy &All",IDC_HANDLEPROPS_COPYALL,271,239,52,14
 END
 
 IDD_SERVICE_GENERAL DIALOGEX 0, 0, 260, 220
@@ -1266,6 +1268,10 @@ END
 GUIDELINES DESIGNINFO
 BEGIN
     IDD_PROC_GENERAL, DIALOG
+    BEGIN
+    END
+
+    IDD_PROC_TOKEN, DIALOG
     BEGIN
     END
 
@@ -1651,7 +1657,6 @@ BEGIN
     ID_VIEW_HIDEWINDOWS     "Hide the processes whose executable is in the Windows directory, and the system's own\nHide Windows Processes"
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
-    ID_VIEW_SHOWUNNAMEDHANDLES "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
     ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
@@ -1668,6 +1673,9 @@ END
 STRINGTABLE
 BEGIN
     ID_PROCESS_INJECTDLL    "Inject a DLL into the selected process\nInject DLL"
+    ID_VIEW_SHOWUNNAMEDHANDLES 
+                            "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
+    ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
 END
 
 STRINGTABLE
@@ -1682,7 +1690,6 @@ BEGIN
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
-    ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
     ID_COMPUTER_LOCK        "Lock the computer\nLock"
     ID_COMPUTER_LOGOFF      "Sign out of Windows\nLog Off"
     ID_COMPUTER_SLEEP       "Put the computer to sleep\nSleep"

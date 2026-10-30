@@ -450,6 +450,9 @@ void CHandleListPage::FitValueColumn() {
 
 void CHandleListPage::Show() {
 	int top = m_List.GetTopIndex();
+	// a refresh keeps the selected row, by its place and name
+	int selected = m_List.GetNextItem(-1, LVNI_SELECTED);
+	std::wstring selectedName = selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected].Name : L"";
 	m_List.SetRedraw(FALSE);
 	m_List.DeleteAllItems();
 	for (auto& row : m_Rows) {
@@ -461,10 +464,12 @@ void CHandleListPage::Show() {
 		m_List.EnsureVisible(m_List.GetItemCount() - 1, FALSE);
 		m_List.EnsureVisible(top, FALSE);
 	}
+	if (selected >= 0 && selected < (int)m_Rows.size() && m_Rows[selected].Name == selectedName)
+		m_List.SetItemState(selected, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 	m_List.SetRedraw(TRUE);
 	// the rows may have brought the vertical scroll bar (shown once redrawing is on)
 	FitValueColumn();
-	GetDlgItem(IDC_HANDLEPROPS_COPY).EnableWindow(!m_Rows.empty());
+	UpdateCopyButtons();
 }
 
 LRESULT CHandleListPage::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
@@ -492,15 +497,86 @@ LRESULT CHandleListPage::OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	return 0;
 }
 
-LRESULT CHandleListPage::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// the sections as [titles], the properties tab separated
-	std::wstring text;
-	for (auto& row : m_Rows) {
-		if (row.Header)
-			text += (text.empty() ? L"[" : L"\r\n[") + row.Name + L"]\r\n";
-		else
-			text += row.Name + L"\t" + row.Value + L"\r\n";
-	}
-	ClipboardHelper::CopyText(m_hWnd, text.c_str());
+LRESULT CHandleListPage::OnCopy(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	Copy(wID);
 	return 0;
+}
+
+LRESULT CHandleListPage::OnItemChanged(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	if (reinterpret_cast<NMLISTVIEW*>(hdr)->uChanged & LVIF_STATE)
+		UpdateCopyButtons();
+	return 0;
+}
+
+LRESULT CHandleListPage::OnListKeyDown(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	if (reinterpret_cast<NMLVKEYDOWN*>(hdr)->wVKey == 'C' && ::GetKeyState(VK_CONTROL) < 0)
+		Copy(IDC_HANDLEPROPS_COPY);
+	return 0;
+}
+
+LRESULT CHandleListPage::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	if ((HWND)wParam != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	if (pt.x == -1 && pt.y == -1) {
+		// from the keyboard: below the selected row, else the list's corner
+		CRect rc;
+		int row = m_List.GetNextItem(-1, LVNI_SELECTED);
+		if (row < 0 || !m_List.GetItemRect(row, &rc, LVIR_LABEL))
+			rc.SetRectEmpty();
+		pt = { rc.left, rc.bottom };
+		m_List.ClientToScreen(&pt);
+	}
+	else {
+		// the header's menu comes here too
+		CRect header;
+		m_List.GetHeader().GetWindowRect(&header);
+		if (header.PtInRect(pt))
+			return 0;
+		CPoint client(pt);
+		m_List.ScreenToClient(&client);
+		if (int row = m_List.HitTest(client, nullptr); row >= 0)
+			m_List.SelectItem(row);
+	}
+	CMenu menu;
+	menu.CreatePopupMenu();
+	for (auto [id, text] : { std::pair{ IDC_HANDLEPROPS_COPY, L"&Copy" }, std::pair{ IDC_HANDLEPROPS_COPYVALUE, L"Copy &Value" },
+		std::pair{ IDC_HANDLEPROPS_COPYALL, L"Copy &All" } })
+		menu.AppendMenu(MF_STRING | (CopyText(id).empty() ? MF_GRAYED : 0), id, text);
+	if (auto id = (UINT)menu.TrackPopupMenu(TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd))
+		Copy(id);
+	return 0;
+}
+
+std::wstring CHandleListPage::CopyText(UINT id) const {
+	if (id == IDC_HANDLEPROPS_COPYALL) {
+		// the sections as [titles], the properties tab separated
+		std::wstring text;
+		for (auto& row : m_Rows) {
+			if (row.Header)
+				text += (text.empty() ? L"[" : L"\r\n[") + row.Name + L"]\r\n";
+			else
+				text += row.Name + L"\t" + row.Value + L"\r\n";
+		}
+		return text;
+	}
+	int selected = m_List.GetNextItem(-1, LVNI_SELECTED);
+	if (selected < 0 || selected >= (int)m_Rows.size())
+		return L"";
+	auto& row = m_Rows[selected];
+	if (id == IDC_HANDLEPROPS_COPYVALUE)
+		return row.Header ? L"" : row.Value;
+	return row.Header ? L"[" + row.Name + L"]" : row.Name + L"\t" + row.Value;
+}
+
+void CHandleListPage::Copy(UINT id) {
+	if (auto text = CopyText(id); !text.empty())
+		ClipboardHelper::CopyText(m_hWnd, text.c_str());
+}
+
+void CHandleListPage::UpdateCopyButtons() {
+	for (UINT id : { IDC_HANDLEPROPS_COPY, IDC_HANDLEPROPS_COPYVALUE, IDC_HANDLEPROPS_COPYALL })
+		GetDlgItem(id).EnableWindow(!CopyText(id).empty());
 }

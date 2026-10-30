@@ -39,6 +39,8 @@ public:
 		DLGRESIZE_CONTROL(IDC_HANDLEPROPS_LIST, DLSZ_SIZE_X | DLSZ_SIZE_Y)
 		DLGRESIZE_CONTROL(IDC_HANDLEPROPS_REFRESH, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_HANDLEPROPS_COPY, DLSZ_MOVE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_HANDLEPROPS_COPYVALUE, DLSZ_MOVE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_HANDLEPROPS_COPYALL, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 	END_DLGRESIZE_MAP()
 
 	BEGIN_MSG_MAP(CHandleListPage)
@@ -47,6 +49,11 @@ public:
 		NOTIFY_HANDLER(IDC_HANDLEPROPS_LIST, NM_CUSTOMDRAW, OnCustomDraw)
 		COMMAND_ID_HANDLER(IDC_HANDLEPROPS_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_HANDLEPROPS_COPY, OnCopy)
+		COMMAND_ID_HANDLER(IDC_HANDLEPROPS_COPYVALUE, OnCopy)
+		COMMAND_ID_HANDLER(IDC_HANDLEPROPS_COPYALL, OnCopy)
+		NOTIFY_HANDLER(IDC_HANDLEPROPS_LIST, LVN_ITEMCHANGED, OnItemChanged)
+		NOTIFY_HANDLER(IDC_HANDLEPROPS_LIST, LVN_KEYDOWN, OnListKeyDown)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		CHAIN_MSG_MAP(CDpiDialogResizePage<CHandleListPage>)
 		CHAIN_MSG_MAP(CDialogResize<CHandleListPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CHandleListPage>)
@@ -62,9 +69,20 @@ private:
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Copy: the selected row (a property's name and value, or a section's title); Copy Value: its value; Copy All:
+	// every row, the sections as [titles]
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// Ctrl+C: Copy
+	LRESULT OnListKeyDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	// the list's: Copy, Copy Value and Copy All
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 	void Show();
+	// a copy command's text (IDC_HANDLEPROPS_COPY...); empty when there's nothing to copy
+	std::wstring CopyText(UINT id) const;
+	void Copy(UINT id);
+	void UpdateCopyButtons();
 	// the last column takes the rest of the list's width
 	void FitValueColumn();
 

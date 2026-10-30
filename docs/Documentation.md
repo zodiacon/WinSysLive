@@ -131,7 +131,9 @@ Each page has its own filter box, columns and Copy.
 - **Handles:** the process's handles with their types, names, access (decoded) and, while the Address column is shown,
   the kernel object addresses (elevated). **View > Show Unnamed Handles** shows or hides handles without a name.
   Properties (or a double-click) opens the **handle sheet**: general information, the object's type-specific details
-  (event state, mutex owner, section, file, key, token...) and its security (the system's permissions editor). Close
+  (event state, mutex owner, section, file, key, token...) and its security (the system's permissions editor). On the
+  property pages, Copy copies the selected property (name and value), Copy Value only its value, and Copy All every
+  property; the list's context menu has them too. Close
   Handle closes the handle in its process.
 
 ### Process commands
