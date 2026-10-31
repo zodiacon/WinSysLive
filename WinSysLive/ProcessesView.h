@@ -337,8 +337,6 @@ private:
 	bool m_SortAscending{ true };
 	bool m_SortPending{ false };	// refreshed while hidden: sorted when shown
 	bool m_TreeMode{ true };
-	// scroll to the selected process on every update; otherwise an update keeps the scroll position
-	bool m_KeepSelectionVisible{ false };
 	// View > Hide Processes (the ProcessHide* settings)
 	bool m_HideOtherUsers{ false }, m_HideServices{ false }, m_HideWindows{ false }, m_HideSigned{ false };
 	std::wstring m_WindowsDirectory;	// with a backslash at the end

@@ -17,7 +17,7 @@ struct AppSettings : Settings {
 		SETTING(PerfShowProcessors, 1, SettingType::Bool);	// the CPU page's per-processor graphs
 		SETTING_STRING(PerfPageKey, L"");	// the Performance view's page: "CPU", "Disk:C", "GPU:0"... (CPerfView::PageKey)
 		SETTING(ProcessLowerPane, 0, SettingType::Bool);
-		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selected process on every update
+		SETTING(ProcessKeepSelectionVisible, 0, SettingType::Bool);	// scroll to the selection on every update (Processes, Object Manager)
 		SETTING(ShowUnnamedHandles, 1, SettingType::Bool);	// the Handles pages: off, only the handles with a name
 		// View > Hide Processes
 		SETTING(ProcessHideOtherUsers, 0, SettingType::Bool);

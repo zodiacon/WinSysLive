@@ -112,7 +112,10 @@ void CObjectManagerView::OnDpiChanged(UINT /*dpi*/) {
 
 void CObjectManagerView::OnFrameIdle() {
 	auto row = GetSelected();
-	Frame()->GetUI().UIEnable(ID_VIEW_PROPERTIES, row && !row->Removed && WinSys::ObjectNamespace::CanOpen(row->Type));
+	auto& ui = Frame()->GetUI();
+	ui.UIEnable(ID_VIEW_PROPERTIES, row && !row->Removed && WinSys::ObjectNamespace::CanOpen(row->Type));
+	ui.UIEnable(ID_VIEW_KEEPSELECTIONVISIBLE, true);
+	ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, AppSettings::Get().ProcessKeepSelectionVisible());
 }
 
 void CObjectManagerView::OnRefresh(bool active) {
@@ -280,7 +283,8 @@ void CObjectManagerView::Load(bool newDirectory) {
 			SyncNode(item, *entries);
 	}
 	m_All = std::move(rows);
-	ShowRows(selected);
+	// a refresh keeps the scroll position, unless the selection is to stay visible
+	ShowRows(selected, newDirectory || AppSettings::Get().ProcessKeepSelectionVisible());
 	if (newDirectory && m_List.GetItemCount())
 		m_List.EnsureVisible(0, FALSE);
 	UpdateStatus();
@@ -315,7 +319,7 @@ bool CObjectManagerView::Matches(Row const& row) const {
 	return CFilterBox::Contains(row.Name, filter) || CFilterBox::Contains(row.Type, filter) || CFilterBox::Contains(row.Target, filter);
 }
 
-void CObjectManagerView::ShowRows(std::wstring const& selected) {
+void CObjectManagerView::ShowRows(std::wstring const& selected, bool ensureVisible) {
 	m_Rows.clear();
 	for (auto& row : m_All) {
 		// the handle counts are read again for the rows shown
@@ -325,10 +329,10 @@ void CObjectManagerView::ShowRows(std::wstring const& selected) {
 	}
 	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 	if (auto si = GetSortInfo(m_List))
-		DoSort(si);
+		SortRows(si);
 	else
 		std::ranges::stable_sort(m_Rows, [](auto r1, auto r2) { return CompareNoCase(r1->Name, r2->Name) < 0; });
-	SelectRow(selected);
+	SelectRow(selected, ensureVisible);
 	m_List.Invalidate();
 }
 
@@ -337,7 +341,7 @@ CObjectManagerView::Row const* CObjectManagerView::GetSelected() const {
 	return selected >= 0 && selected < (int)m_Rows.size() ? m_Rows[selected] : nullptr;
 }
 
-void CObjectManagerView::SelectRow(std::wstring const& name) {
+void CObjectManagerView::SelectRow(std::wstring const& name, bool ensureVisible) {
 	// the list view keeps the selection by index, which a new listing and sorting shift
 	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 	if (name.empty())
@@ -346,7 +350,8 @@ void CObjectManagerView::SelectRow(std::wstring const& name) {
 	if (it != m_Rows.end()) {
 		int index = (int)(it - m_Rows.begin());
 		m_List.SetItemState(index, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-		m_List.EnsureVisible(index, FALSE);
+		if (ensureVisible)
+			m_List.EnsureVisible(index, FALSE);
 	}
 }
 
@@ -386,8 +391,14 @@ int CObjectManagerView::GetSaveColumnRange(HWND, int&) const {
 }
 
 void CObjectManagerView::DoSort(SortInfo const* si) {
+	// a header's click: the selection is shown
 	auto selectedRow = GetSelected();
 	auto selected = selectedRow ? selectedRow->Name : std::wstring();
+	SortRows(si);
+	SelectRow(selected);
+}
+
+void CObjectManagerView::SortRows(SortInfo const* si) {
 	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(si->SortColumn);
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
 	std::ranges::stable_sort(m_Rows, [&](Row const* r1, Row const* r2) {
@@ -403,7 +414,6 @@ void CObjectManagerView::DoSort(SortInfo const* si) {
 		}
 		return si->SortAscending ? result < 0 : result > 0;
 		});
-	SelectRow(selected);
 }
 
 LRESULT CObjectManagerView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
@@ -561,6 +571,16 @@ void CObjectManagerView::ShowProperties(std::wstring const& path, std::wstring c
 	// the handle is this process's, opened to show the object
 	sheet.HideHandle();
 	sheet.DoModal(m_hWnd);
+}
+
+LRESULT CObjectManagerView::OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	settings.ProcessKeepSelectionVisible(!settings.ProcessKeepSelectionVisible());
+	settings.Save();
+	if (settings.ProcessKeepSelectionVisible())
+		if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+			m_List.EnsureVisible(selected, FALSE);
+	return 0;
 }
 
 LRESULT CObjectManagerView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

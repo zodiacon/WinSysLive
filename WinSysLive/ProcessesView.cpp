@@ -229,7 +229,6 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	m_Splitter.SetSplitterPanes(m_Tree, m_Details);
 	m_Splitter.SetSplitterPosPct(std::clamp(settings.ProcessSplitterPos(), 10, 90), false);
 	m_LowerPane = settings.ProcessLowerPane();
-	m_KeepSelectionVisible = settings.ProcessKeepSelectionVisible();
 	m_Splitter.SetSinglePaneMode(m_LowerPane ? SPLIT_PANE_NONE : SPLIT_PANE_TOP);
 
 	// enabled while active (see OnActivate)
@@ -527,7 +526,7 @@ void CProcessesView::OnActivate(bool active) {
 		auto selected = GetSelectedProcess();
 		auto selectedKey = selected ? std::optional(selected->Process->Key) : std::nullopt;
 		Sort();
-		RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
+		RestoreSelection(selectedKey ? &*selectedKey : nullptr, AppSettings::Get().ProcessKeepSelectionVisible());
 	}
 	UpdateUI();
 	// the status line's count is this view's
@@ -782,7 +781,7 @@ LRESULT CProcessesView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 			m_SortPending = true;
 	}
 	m_Tree.EndUpdate();
-	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, AppSettings::Get().ProcessKeepSelectionVisible());
 	UpdateFilterStatus();
 	return 0;
 }
@@ -1010,7 +1009,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	}
 	m_Tree.EndUpdate();
 
-	RestoreSelection(selectedKey ? &*selectedKey : nullptr, m_KeepSelectionVisible);
+	RestoreSelection(selectedKey ? &*selectedKey : nullptr, AppSettings::Get().ProcessKeepSelectionVisible());
 	UpdateUI();
 	if (IsFiltering())
 		UpdateFilterStatus();
@@ -1528,7 +1527,7 @@ void CProcessesView::UpdateUI() {
 		ui.UIEnable(id, m_Active);
 	ui.UIEnable(ID_KILL, m_Active && CanKill());
 	if (m_Active) {
-		ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, m_KeepSelectionVisible);
+		ui.UISetCheck(ID_VIEW_KEEPSELECTIONVISIBLE, AppSettings::Get().ProcessKeepSelectionVisible());
 		ui.UISetCheck(ID_VIEW_SHOWUNNAMEDHANDLES, m_Details.GetHandlesPage().ShowsUnnamed());
 		ui.UISetCheck(ID_VIEW_HIDEOTHERUSERS, m_HideOtherUsers);
 		ui.UISetCheck(ID_VIEW_HIDESERVICES, m_HideServices);
@@ -2227,11 +2226,10 @@ LRESULT CProcessesView::OnToggleTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 }
 
 LRESULT CProcessesView::OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	m_KeepSelectionVisible = !m_KeepSelectionVisible;
 	auto& settings = AppSettings::Get();
-	settings.ProcessKeepSelectionVisible(m_KeepSelectionVisible);
+	settings.ProcessKeepSelectionVisible(!settings.ProcessKeepSelectionVisible());
 	settings.Save();
-	if (m_KeepSelectionVisible)
+	if (settings.ProcessKeepSelectionVisible())
 		if (auto item = GetSelectedProcess())
 			m_Tree.EnsureVisible(item->Item);
 	UpdateUI();

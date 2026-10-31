@@ -71,6 +71,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OBJMGR_GOTOTARGET, OnGoToTarget)
 		COMMAND_ID_HANDLER(ID_OBJMGR_DIRPROPERTIES, OnDirectoryProperties)
 		COMMAND_ID_HANDLER(ID_VIEW_PROPERTIES, OnProperties)
+		COMMAND_ID_HANDLER(ID_VIEW_KEEPSELECTIONVISIBLE, OnToggleKeepSelectionVisible)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
@@ -111,6 +112,8 @@ private:
 	LRESULT OnOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToTarget(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// View > Keep Selection Visible: the setting the Processes view has (ProcessKeepSelectionVisible)
+	LRESULT OnToggleKeepSelectionVisible(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDirectoryProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -135,10 +138,12 @@ private:
 	std::wstring GetText(Row const& row, Column column) const;
 	std::wstring FullPath(Row const& row) const;
 	bool Matches(Row const& row) const;
-	// the list's rows: those that match the filter, sorted as the list is (by name until a header is clicked)
-	void ShowRows(std::wstring const& selected);
+	// the list's rows: those that match the filter, sorted as the list is (by name until a header is clicked);
+	// ensureVisible: scroll to the selection (a refresh keeps the scroll position unless Keep Selection Visible is on)
+	void ShowRows(std::wstring const& selected, bool ensureVisible = true);
+	void SortRows(SortInfo const* si);
 	Row const* GetSelected() const;
-	void SelectRow(std::wstring const& name);
+	void SelectRow(std::wstring const& name, bool ensureVisible = true);
 	void GoToTarget(std::wstring const& target);
 	void ShowProperties(std::wstring const& path, std::wstring const& type);
 	void UpdateStatus();
