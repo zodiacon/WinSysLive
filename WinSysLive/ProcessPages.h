@@ -149,7 +149,7 @@ private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	// the token's own security, in the ACL editor (EditSecurity)
 	LRESULT OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	// sorts by the first column (Privilege, Name) only; a click again reverses it
+	// sorts by the first column (Privilege, Name), and the groups by Type too (ties by name); a click again reverses it
 	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	// a menu of the levels below the token's; the chosen one is set after a confirmation (it can't be raised again)
 	LRESULT OnLowerIntegrity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -159,6 +159,8 @@ private:
 	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	// the enabled and disabled icons (PrivilegeImage order), for the page's DPI
 	void AddPrivilegeImages();
+	// the SID kinds' icons (s_GroupIcons order), for the page's DPI
+	void AddGroupImages();
 
 	// the process's token with access (and TOKEN_QUERY); nullptr with the last error if it can't be opened
 	std::unique_ptr<WinSys::Token> OpenToken(WinSys::TokenAccessMask access) const;
@@ -173,8 +175,13 @@ private:
 	// runs on another); owned by the list
 	CImageList m_PrivilegeImages;
 	enum PrivilegeImage { EnabledImage, DisabledImage };
-	// the first column's sort direction; unsorted (the token's order) until its header is clicked
+	// the groups' icons by their SIDs' kinds, the list's own as the privileges' are
+	CImageList m_GroupImages;
+	// the sort direction; unsorted (the token's order) until a sorting column's header is clicked
 	std::optional<bool> m_PrivilegesAscending, m_GroupsAscending;
+	// the groups' sort column: Name or Type
+	enum { GroupTypeColumn = 2 };
+	int m_GroupsSortColumn{ 0 };
 	// the privileges as listed; each row's item data is its index here
 	std::vector<WinSys::TokenPrivilege> m_PrivilegeList;
 	WinSys::IntegrityLevel m_Integrity{ WinSys::IntegrityLevel::Error };

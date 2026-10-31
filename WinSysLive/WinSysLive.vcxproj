@@ -631,6 +631,11 @@
     <Image Include="res\Users.ico" />
     <Image Include="res\windowstation.ico" />
     <Image Include="res\window_logon.ico" />
+    <Image Include="res\User.ico" />
+    <Image Include="res\group.ico" />
+    <Image Include="res\well-known-group.ico" />
+    <Image Include="res\alias.ico" />
+    <Image Include="res\label.ico" />
     <Image Include="res\WinSysLive.ico" />
     <Image Include="res\processes.ico" />
     <Image Include="res\services.ico" />

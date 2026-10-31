@@ -746,6 +746,21 @@
     <Image Include="res\window_logon.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\User.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\group.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\well-known-group.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\alias.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\label.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="res\pooltag.txt" />

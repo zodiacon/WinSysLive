@@ -465,6 +465,11 @@
 #define IDI_NUMBER_2                310
 #define IDI_NUMBER_4                311
 #define IDI_NUMBER_8                312
+#define IDI_USER                    313
+#define IDI_GROUP                   314
+#define IDI_WELLKNOWN_GROUP         315
+#define IDI_ALIAS                   316
+#define IDI_LABEL                   317
 #define ID_VIEW_HISTORY             32944
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
@@ -614,7 +619,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	313
+#define _APS_NEXT_RESOURCE_VALUE	318
 #define _APS_NEXT_CONTROL_VALUE		1344
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32964

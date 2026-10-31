@@ -320,6 +320,29 @@ namespace {
 		return L"";
 	}
 
+	// the groups list's icons, by the SID's kind (its image index is the position here)
+	const struct {
+		SID_NAME_USE Use;
+		UINT Icon;
+	} s_GroupIcons[] = {
+		{ SidTypeUser, IDI_USER },
+		{ SidTypeGroup, IDI_GROUP },
+		{ SidTypeWellKnownGroup, IDI_WELLKNOWN_GROUP },
+		{ SidTypeAlias, IDI_ALIAS },
+		{ SidTypeLabel, IDI_LABEL },
+		{ SidTypeLogonSession, IDI_LOGON_SESSIONS },
+	};
+
+	// a domain's groups are groups too; capabilities and the other kinds have none
+	int GroupImage(SID_NAME_USE use) {
+		if (use == SidTypeDomain)
+			use = SidTypeGroup;
+		for (int i = 0; i < _countof(s_GroupIcons); i++)
+			if (s_GroupIcons[i].Use == use)
+				return i;
+		return I_IMAGENONE;
+	}
+
 	std::wstring GroupAttributesToString(WinSys::SidGroupAttributes attributes) {
 		static const struct {
 			DWORD Flag;
@@ -354,26 +377,35 @@ namespace {
 	}
 
 	// by the first column's text, case-insensitively; the header shows the direction
-	void SortByFirstColumn(CListViewCtrl& list, bool ascending) {
+	// case-insensitively, ties by the first column (ascending); the header's arrow on that column alone
+	void SortByColumn(CListViewCtrl& list, int column, bool ascending) {
 		struct Context {
 			CListViewCtrl List;
+			int Column;
 			bool Ascending;
-		} context{ list, ascending };
+		} context{ list, column, ascending };
 		// LVM_SORTITEMSEX passes the rows' indices
 		list.SortItemsEx([](LPARAM i1, LPARAM i2, LPARAM param) {
 			auto& ctx = *reinterpret_cast<Context*>(param);
 			CString t1, t2;
+			ctx.List.GetItemText((int)i1, ctx.Column, t1);
+			ctx.List.GetItemText((int)i2, ctx.Column, t2);
+			if (auto result = t1.CompareNoCase(t2); result || ctx.Column == 0)
+				return ctx.Ascending ? result : -result;
 			ctx.List.GetItemText((int)i1, 0, t1);
 			ctx.List.GetItemText((int)i2, 0, t2);
-			auto result = t1.CompareNoCase(t2);
-			return ctx.Ascending ? result : -result;
+			return t1.CompareNoCase(t2);
 			}, reinterpret_cast<LPARAM>(&context));
 
-		HDITEM item{ HDI_FORMAT };
 		auto header = list.GetHeader();
-		header.GetItem(0, &item);
-		item.fmt = (item.fmt & ~(HDF_SORTUP | HDF_SORTDOWN)) | (ascending ? HDF_SORTUP : HDF_SORTDOWN);
-		header.SetItem(0, &item);
+		for (int i = 0; i < header.GetItemCount(); i++) {
+			HDITEM item{ HDI_FORMAT };
+			header.GetItem(i, &item);
+			item.fmt &= ~(HDF_SORTUP | HDF_SORTDOWN);
+			if (i == column)
+				item.fmt |= ascending ? HDF_SORTUP : HDF_SORTDOWN;
+			header.SetItem(i, &item);
+		}
 	}
 
 	void AddRow(CListViewCtrl& list, std::initializer_list<std::wstring> texts) {
@@ -400,6 +432,9 @@ LRESULT CProcTokenPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	m_PrivilegeImages.Create(size, size, ILC_COLOR32 | ILC_MASK, 2, 0);
 	AddPrivilegeImages();
 	m_Privileges.SetImageList(m_PrivilegeImages, LVSIL_SMALL);
+	m_GroupImages.Create(size, size, ILC_COLOR32 | ILC_MASK, _countof(s_GroupIcons), 0);
+	AddGroupImages();
+	m_Groups.SetImageList(m_GroupImages, LVSIL_SMALL);
 
 	// its source needs more access to the token
 	auto token = OpenToken(WinSys::TokenAccessMask::QuerySource);
@@ -433,13 +468,19 @@ LRESULT CProcTokenPage::OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 }
 
 LRESULT CProcTokenPage::OnColumnClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
-	auto lv = reinterpret_cast<NMLISTVIEW*>(hdr);
-	if (lv->iSubItem != 0)
-		return 0;
+	auto column = reinterpret_cast<NMLISTVIEW*>(hdr)->iSubItem;
 	CListViewCtrl list(hdr->hwndFrom);
-	auto& ascending = list == m_Privileges ? m_PrivilegesAscending : m_GroupsAscending;
+	bool privileges = list == m_Privileges;
+	if (column != 0 && (privileges || column != GroupTypeColumn))
+		return 0;
+	auto& ascending = privileges ? m_PrivilegesAscending : m_GroupsAscending;
+	// another column starts ascending
+	if (!privileges && column != m_GroupsSortColumn)
+		ascending.reset();
 	ascending = !ascending.value_or(false);
-	SortByFirstColumn(list, *ascending);
+	if (!privileges)
+		m_GroupsSortColumn = column;
+	SortByColumn(list, column, *ascending);
 
 	auto selected = list.GetNextItem(-1, LVNI_SELECTED);
 	if (selected >= 0)
@@ -632,6 +673,12 @@ void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
 	set(IDC_TOKEN_EXPIRES, expires <= 0 || expires >= Year2900 ? L"Never" : FormatHelper::FormatDateTime(expires));
 }
 
+void CProcTokenPage::AddGroupImages() {
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	for (auto& icon : s_GroupIcons)
+		m_GroupImages.AddIcon(IconHelper::LoadCached(icon.Icon, size));
+}
+
 void CProcTokenPage::AddPrivilegeImages() {
 	auto size = DpiHelper::SmallIconSize(m_hWnd);
 	for (auto id : { IDI_ENABLED, IDI_DISABLED })
@@ -644,6 +691,9 @@ LRESULT CProcTokenPage::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	m_PrivilegeImages.SetIconSize(size, size);
 	AddPrivilegeImages();
 	m_Privileges.SetImageList(m_PrivilegeImages, LVSIL_SMALL);
+	m_GroupImages.SetIconSize(size, size);
+	AddGroupImages();
+	m_Groups.SetImageList(m_GroupImages, LVSIL_SMALL);
 	// the layout's too
 	bHandled = FALSE;
 	return 0;
@@ -673,7 +723,7 @@ void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
 	}
 	SetDlgItemText(IDC_TOKEN_PRIVS_LABEL, std::format(L"Privileges ({}):", privileges.size()).c_str());
 	if (m_PrivilegesAscending)
-		SortByFirstColumn(m_Privileges, *m_PrivilegesAscending);
+		SortByColumn(m_Privileges, 0, *m_PrivilegesAscending);
 	if (selected)
 		for (int i = 0; i < m_Privileges.GetItemCount(); i++) {
 			auto& luid = privileges[m_Privileges.GetItemData(i)].Privilege;
@@ -687,16 +737,20 @@ void CProcTokenPage::ShowPrivileges(WinSys::Token const& token) {
 void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
 	m_Groups.DeleteAllItems();
 	auto groups = token.EnumGroups();
-	for (auto& g : groups)
+	for (auto& g : groups) {
 		AddRow(m_Groups, { g.Name, GroupAttributesToString(g.Attributes), SidUseToString(g.Use), g.Sid });
+		m_Groups.SetItem(m_Groups.GetItemCount() - 1, 0, LVIF_IMAGE, nullptr, GroupImage(g.Use), 0, 0, 0);
+	}
 	// an AppContainer's capabilities are SIDs as well
 	auto capabilities = token.IsAppContainer() ? token.EnumGroups(true) : std::vector<WinSys::TokenGroup>();
-	for (auto& c : capabilities)
+	for (auto& c : capabilities) {
 		AddRow(m_Groups, { c.Name, GroupAttributesToString(c.Attributes), L"Capability", c.Sid });
+		m_Groups.SetItem(m_Groups.GetItemCount() - 1, 0, LVIF_IMAGE, nullptr, I_IMAGENONE, 0, 0, 0);
+	}
 	SetDlgItemText(IDC_TOKEN_GROUPS_LABEL, (capabilities.empty() ? std::format(L"Groups ({}):", groups.size())
 		: std::format(L"Groups ({}) and capabilities ({}):", groups.size(), capabilities.size())).c_str());
 	if (m_GroupsAscending)
-		SortByFirstColumn(m_Groups, *m_GroupsAscending);
+		SortByColumn(m_Groups, m_GroupsSortColumn, *m_GroupsAscending);
 }
 
 ProcessSnapshot::ProcessSnapshot(ProcessProperties const& props) : m_Props(props) {
