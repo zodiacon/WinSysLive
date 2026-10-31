@@ -120,8 +120,8 @@ public:
 		m_Title = std::move(title);
 		SetTitle(m_Title.c_str());
 	}
-	// leaves out what belongs to the handle rather than the object (its value, its attributes): for a handle opened
-	// only to show the object
+	// leaves out what belongs to the handle rather than the object (its value, its attributes): for a handle of this
+	// process opened only to show the object, so it's left out of the object's handle count too (queried again)
 	void HideHandle();
 
 	void OnSheetInitialized();
@@ -145,6 +145,7 @@ private:
 	std::optional<WinSys::ObjectDetails> m_Details;
 	DWORD m_Error{ 0 };	// when there are no details
 	bool m_HideHandle{ false };
+	bool m_SecurityHandle{ false };	// the ACL editor's duplicate, left out of the counts as the query's is
 	CHandleListPage m_General, m_TypeDetails;
 	CObjectSecurityInfo* m_Security{ nullptr };
 	int m_SecurityTab{ -1 };	// its tab's index, if it was added

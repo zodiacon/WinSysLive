@@ -140,7 +140,9 @@ CHandleSheet::CHandleSheet(HANDLE hProcess, uint32_t pid, std::wstring processIm
 	AddPage(m_General);
 	// the ACL editor's page, on a duplicate of the handle (with its access); it reports its own errors
 	auto mapping = m_Details ? m_Details->TypeStatistics.GenericMapping : GENERIC_MAPPING{};
-	m_Security = new CObjectSecurityInfo(ObjectInspector::OpenHandle(m_hProcess, m_Entry.Value, m_Type), m_Type,
+	auto hSecurity = ObjectInspector::OpenHandle(m_hProcess, m_Entry.Value, m_Type);
+	m_SecurityHandle = hSecurity != nullptr;
+	m_Security = new CObjectSecurityInfo(hSecurity, m_Type,
 		m_Name.empty() ? std::format(L"{} 0x{:X}", m_Type, m_Entry.Value) : m_Name, m_Entry.Access, mapping);
 	if (auto page = ::CreateSecurityPage(m_Security); page && AddPage(page))
 		m_SecurityTab = 1;
@@ -163,13 +165,15 @@ CHandleSheet::~CHandleSheet() {
 }
 
 void CHandleSheet::Query() {
-	m_Details = ObjectInspector::QueryHandle(m_hProcess, m_Entry.Value, m_Type);
+	// this process's handles to the object aren't the object's users
+	uint32_t ownHandles = (m_HideHandle ? 1 : 0) + (m_SecurityHandle ? 1 : 0);
+	m_Details = ObjectInspector::QueryHandle(m_hProcess, m_Entry.Value, m_Type, 500, ownHandles);
 	m_Error = m_Details ? 0 : ::GetLastError();
 }
 
 void CHandleSheet::HideHandle() {
 	m_HideHandle = true;
-	m_General.SetRows(GeneralRows());
+	Refresh();
 }
 
 void CHandleSheet::Refresh() {
@@ -191,21 +195,28 @@ std::wstring CHandleSheet::Decode(uint32_t access) const {
 
 std::vector<CHandleSheet::Row> CHandleSheet::GeneralRows() const {
 	RowBuilder rows;
-	// without the handle, its section is the object's
-	rows.Section(m_HideHandle ? L"Object" : L"Handle");
-	rows.Add(L"Name", m_Name);
-	rows.Add(L"Type", m_Type);
-	if (!m_HideHandle)
+	auto address = m_Entry.Object ? std::format(L"0x{:X}", (ULONG_PTR)m_Entry.Object) : std::wstring();
+	if (!m_HideHandle) {
+		rows.Section(L"Handle");
+		rows.Add(L"Type", m_Type);
 		rows.Add(L"Handle", std::format(L"0x{:X}", m_Entry.Value));
-	if (m_Entry.Object)
-		rows.Add(L"Object Address", std::format(L"0x{:X}", (ULONG_PTR)m_Entry.Object));
-	rows.Add(L"Granted Access", Decode(m_Entry.Access));
-	if (!m_HideHandle)
+		if (!address.empty())
+			rows.Add(L"Object Address", address);
+		rows.Add(L"Granted Access", Decode(m_Entry.Access));
 		rows.Add(L"Attributes", FormatFlags(m_Entry.Attributes, { { OBJ_INHERIT, L"Inherit" }, { 0x1, L"Protect from close" } }));
+	}
+	// the object's name and address (the handle's section has the address too); without the handle, its type and
+	// access are here as well
+	rows.Section(L"Object");
+	rows.Add(L"Name", m_Name);
+	if (m_HideHandle)
+		rows.Add(L"Type", m_Type);
+	if (!address.empty())
+		rows.Add(L"Object Address", address);
+	if (m_HideHandle)
+		rows.Add(L"Granted Access", Decode(m_Entry.Access));
 
 	if (!m_Details) {
-		if (!m_HideHandle)
-			rows.Section(L"Object");
 		rows.Add(L"Not Available", m_Error == ERROR_INVALID_HANDLE
 			? std::wstring(L"The handle isn't there anymore (or is another object's now)")
 			: L"The object can't be queried: " + Helpers::GetErrorText(m_Error));
@@ -213,8 +224,6 @@ std::vector<CHandleSheet::Row> CHandleSheet::GeneralRows() const {
 	}
 
 	auto& d = *m_Details;
-	if (!m_HideHandle)
-		rows.Section(L"Object");
 	rows.Add(L"Handles", FormatCount(d.Handles));
 	rows.Add(L"References", FormatCount(d.References));
 	rows.Add(L"Paged Pool Charge", FormatSize(d.PagedPoolCharge));
