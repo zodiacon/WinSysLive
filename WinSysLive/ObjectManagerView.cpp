@@ -558,6 +558,8 @@ void CObjectManagerView::ShowProperties(std::wstring const& path, std::wstring c
 		[this](DWORD pid) { return Frame()->GetProcessManager().GetProcessNameById(pid); });
 	// the object's, not the handle opened to show it
 	sheet.SetSheetTitle(std::format(L"{} ({})", path, type));
+	// the handle is this process's, opened to show the object
+	sheet.HideHandle();
 	sheet.DoModal(m_hWnd);
 }
 

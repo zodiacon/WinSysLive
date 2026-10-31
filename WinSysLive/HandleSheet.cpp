@@ -75,7 +75,8 @@ namespace {
 }
 
 namespace {
-	// rows with section titles; for the Details tab, the first section's name is the tab's title instead of a row
+	// rows with section titles; for the Details tab, the first section's name is the tab's title instead of a row (Header
+	// adds a title row there too)
 	struct RowBuilder {
 		explicit RowBuilder(std::wstring* title = nullptr) : Title(title) {}
 
@@ -85,6 +86,9 @@ namespace {
 					*Title = std::move(name);
 				return;
 			}
+			Rows.push_back({ std::move(name), L"", true });
+		}
+		void Header(std::wstring name) {
 			Rows.push_back({ std::move(name), L"", true });
 		}
 		void Add(std::wstring name, std::wstring value) {
@@ -163,6 +167,11 @@ void CHandleSheet::Query() {
 	m_Error = m_Details ? 0 : ::GetLastError();
 }
 
+void CHandleSheet::HideHandle() {
+	m_HideHandle = true;
+	m_General.SetRows(GeneralRows());
+}
+
 void CHandleSheet::Refresh() {
 	Query();
 	m_General.SetRows(GeneralRows());
@@ -182,17 +191,21 @@ std::wstring CHandleSheet::Decode(uint32_t access) const {
 
 std::vector<CHandleSheet::Row> CHandleSheet::GeneralRows() const {
 	RowBuilder rows;
-	rows.Section(L"Handle");
+	// without the handle, its section is the object's
+	rows.Section(m_HideHandle ? L"Object" : L"Handle");
 	rows.Add(L"Name", m_Name);
 	rows.Add(L"Type", m_Type);
-	rows.Add(L"Handle", std::format(L"0x{:X}", m_Entry.Value));
+	if (!m_HideHandle)
+		rows.Add(L"Handle", std::format(L"0x{:X}", m_Entry.Value));
 	if (m_Entry.Object)
 		rows.Add(L"Object Address", std::format(L"0x{:X}", (ULONG_PTR)m_Entry.Object));
 	rows.Add(L"Granted Access", Decode(m_Entry.Access));
-	rows.Add(L"Attributes", FormatFlags(m_Entry.Attributes, { { OBJ_INHERIT, L"Inherit" }, { 0x1, L"Protect from close" } }));
+	if (!m_HideHandle)
+		rows.Add(L"Attributes", FormatFlags(m_Entry.Attributes, { { OBJ_INHERIT, L"Inherit" }, { 0x1, L"Protect from close" } }));
 
 	if (!m_Details) {
-		rows.Section(L"Object");
+		if (!m_HideHandle)
+			rows.Section(L"Object");
 		rows.Add(L"Not Available", m_Error == ERROR_INVALID_HANDLE
 			? std::wstring(L"The handle isn't there anymore (or is another object's now)")
 			: L"The object can't be queried: " + Helpers::GetErrorText(m_Error));
@@ -200,7 +213,8 @@ std::vector<CHandleSheet::Row> CHandleSheet::GeneralRows() const {
 	}
 
 	auto& d = *m_Details;
-	rows.Section(L"Object");
+	if (!m_HideHandle)
+		rows.Section(L"Object");
 	rows.Add(L"Handles", FormatCount(d.Handles));
 	rows.Add(L"References", FormatCount(d.References));
 	rows.Add(L"Paged Pool Charge", FormatSize(d.PagedPoolCharge));
@@ -209,18 +223,6 @@ std::vector<CHandleSheet::Row> CHandleSheet::GeneralRows() const {
 		rows.Add(L"Object Attributes", FormatFlags(flags, { { OBJ_PERMANENT, L"Permanent" }, { OBJ_EXCLUSIVE, L"Exclusive" } }));
 	if (d.CreationTime)
 		rows.Add(L"Created", FormatHelper::FormatDateTime(d.CreationTime));
-
-	auto& t = d.TypeStatistics;
-	rows.Section(L"Type: " + m_Type);
-	rows.Add(L"Objects", std::format(L"{} (peak {})", FormatCount(t.Objects), FormatCount(t.PeakObjects)));
-	rows.Add(L"Handles", std::format(L"{} (peak {})", FormatCount(t.Handles), FormatCount(t.PeakHandles)));
-	rows.Add(L"Valid Access", Decode(t.ValidAccessMask));
-	rows.Add(L"Generic Read", Decode(t.GenericMapping.GenericRead));
-	rows.Add(L"Generic Write", Decode(t.GenericMapping.GenericWrite));
-	rows.Add(L"Generic Execute", Decode(t.GenericMapping.GenericExecute));
-	rows.Add(L"Generic All", Decode(t.GenericMapping.GenericAll));
-	rows.Add(L"Pool", (t.PoolType & 1) ? L"Paged" : L"Non-Paged");
-	rows.Add(L"Security Required", t.SecurityRequired ? L"Yes" : L"No");
 	return rows.Rows;
 }
 
@@ -386,10 +388,22 @@ std::vector<CHandleSheet::Row> CHandleSheet::DetailRows(std::wstring& title) con
 			rows.Add(L"Not Available", L"The handle's access doesn't allow the query");
 		}
 	}
+	// a type without details of its own: the tab is still the type's
 	if (title.empty())
-		title = L"Details";
-	if (rows.Rows.empty())
-		rows.Add(L"No Details", L"Nothing more is known of this type's objects");
+		title = m_Type;
+
+	// what every object of the type shares
+	auto& t = d.TypeStatistics;
+	rows.Header(L"Type: " + m_Type);
+	rows.Add(L"Objects", std::format(L"{} (peak {})", FormatCount(t.Objects), FormatCount(t.PeakObjects)));
+	rows.Add(L"Handles", std::format(L"{} (peak {})", FormatCount(t.Handles), FormatCount(t.PeakHandles)));
+	rows.Add(L"Valid Access", Decode(t.ValidAccessMask));
+	rows.Add(L"Generic Read", Decode(t.GenericMapping.GenericRead));
+	rows.Add(L"Generic Write", Decode(t.GenericMapping.GenericWrite));
+	rows.Add(L"Generic Execute", Decode(t.GenericMapping.GenericExecute));
+	rows.Add(L"Generic All", Decode(t.GenericMapping.GenericAll));
+	rows.Add(L"Pool", (t.PoolType & 1) ? L"Paged" : L"Non-Paged");
+	rows.Add(L"Security Required", t.SecurityRequired ? L"Yes" : L"No");
 	return rows.Rows;
 }
 

@@ -94,10 +94,10 @@ private:
 };
 
 //
-// A handle's properties: a modal, resizable property sheet with tab icons and three tabs: General (the handle, the object's counts,
-// its type's statistics: what every object has), Security (the system's ACL editor, CreateSecurityPage) and the type's
-// own details (an event's state, a mutex's owner, a section's size, a file's mode and position, a pipe's ends...), titled
-// by the type. The sheet and the details tab have the type's icon (GetHandleIcon), General the handles icon, Security
+// A handle's properties: a modal, resizable property sheet with tab icons and three tabs: General (the handle, the object's
+// counts: what every object has), Security (the system's ACL editor, CreateSecurityPage) and the type's own details (an
+// event's state, a mutex's owner, a section's size, a file's mode and position, a pipe's ends...) followed by the type's
+// statistics, titled by the type. The sheet and the details tab have the type's icon (GetHandleIcon), General the handles icon, Security
 // the system's shield (an HPROPSHEETPAGE has no icon the sheet knows, so it's set once the sheet is initialized).
 // The ACL editor's own dialogs get dark title bars from CAclDialogTheming.
 // The object is queried once (WinSys ObjectInspector::QueryHandle) and again on Refresh.
@@ -120,6 +120,9 @@ public:
 		m_Title = std::move(title);
 		SetTitle(m_Title.c_str());
 	}
+	// leaves out what belongs to the handle rather than the object (its value, its attributes): for a handle opened
+	// only to show the object
+	void HideHandle();
 
 	void OnSheetInitialized();
 
@@ -141,6 +144,7 @@ private:
 	std::function<std::wstring(DWORD)> m_ProcessName;
 	std::optional<WinSys::ObjectDetails> m_Details;
 	DWORD m_Error{ 0 };	// when there are no details
+	bool m_HideHandle{ false };
 	CHandleListPage m_General, m_TypeDetails;
 	CObjectSecurityInfo* m_Security{ nullptr };
 	int m_SecurityTab{ -1 };	// its tab's index, if it was added
