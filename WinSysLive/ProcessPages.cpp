@@ -320,6 +320,9 @@ namespace {
 		return L"";
 	}
 
+	// an AppContainer's capabilities aren't a SID kind: a value of our own for their icon
+	constexpr auto CapabilityUse = (SID_NAME_USE)-1;
+
 	// the groups list's icons, by the SID's kind (its image index is the position here)
 	const struct {
 		SID_NAME_USE Use;
@@ -331,9 +334,10 @@ namespace {
 		{ SidTypeAlias, IDI_ALIAS },
 		{ SidTypeLabel, IDI_LABEL },
 		{ SidTypeLogonSession, IDI_LOGON_SESSIONS },
+		{ CapabilityUse, IDI_CAPABILITY },
 	};
 
-	// a domain's groups are groups too; capabilities and the other kinds have none
+	// a domain's groups are groups too; the other kinds have none
 	int GroupImage(SID_NAME_USE use) {
 		if (use == SidTypeDomain)
 			use = SidTypeGroup;
@@ -752,7 +756,7 @@ void CProcTokenPage::ShowGroups(WinSys::Token const& token) {
 	auto capabilities = token.IsAppContainer() ? token.EnumGroups(true) : std::vector<WinSys::TokenGroup>();
 	for (auto& c : capabilities) {
 		AddRow(m_Groups, { c.Name, GroupAttributesToString(c.Attributes), L"Capability", c.Sid });
-		m_Groups.SetItem(m_Groups.GetItemCount() - 1, 0, LVIF_IMAGE, nullptr, I_IMAGENONE, 0, 0, 0);
+		m_Groups.SetItem(m_Groups.GetItemCount() - 1, 0, LVIF_IMAGE, nullptr, GroupImage(CapabilityUse), 0, 0, 0);
 	}
 	SetDlgItemText(IDC_TOKEN_GROUPS_LABEL, (capabilities.empty() ? std::format(L"Groups ({}):", groups.size())
 		: std::format(L"Groups ({}) and capabilities ({}):", groups.size(), capabilities.size())).c_str());

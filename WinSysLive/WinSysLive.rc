@@ -436,6 +436,8 @@ IDI_ALIAS               ICON                    "res\\alias.ico"
 
 IDI_LABEL               ICON                    "res\\label.ico"
 
+IDI_CAPABILITY          ICON                    "res\\Power.ico"
+
 IDI_PIN                 ICON                    "res\\pin.ico"
 
 IDI_HARDDISK            ICON                    "res\\Harddisk.ico"

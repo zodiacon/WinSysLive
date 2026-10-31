@@ -761,6 +761,9 @@
     <Image Include="res\label.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\Power.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="res\pooltag.txt" />

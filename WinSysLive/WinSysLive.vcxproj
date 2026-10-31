@@ -636,6 +636,7 @@
     <Image Include="res\well-known-group.ico" />
     <Image Include="res\alias.ico" />
     <Image Include="res\label.ico" />
+    <Image Include="res\Power.ico" />
     <Image Include="res\WinSysLive.ico" />
     <Image Include="res\processes.ico" />
     <Image Include="res\services.ico" />
