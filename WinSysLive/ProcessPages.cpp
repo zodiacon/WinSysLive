@@ -664,7 +664,14 @@ void CProcTokenPage::ShowProperties(WinSys::Token const& token) {
 	set(IDC_TOKEN_FILTERED, unknown(token.HasRestrictions(), [](bool v) -> std::wstring { return YesNo(v); }));
 	set(IDC_TOKEN_SANDBOX, unknown(token.IsSandboxInert(), [](bool v) -> std::wstring { return YesNo(v); }));
 	auto trust = token.GetTrustLevel();
-	set(IDC_TOKEN_TRUSTLEVEL, trust ? FormatTrustLevel(trust) : L"None");
+	std::wstring trustText = L"None";
+	if (trust)
+		trustText = FormatTrustLevel(trust);
+	// lsass's token has none, though the process is protected (PPL, Lsa): no trust SID names that signer
+	else if (auto hProcess = OpenSheetProcess(m_Props, PROCESS_QUERY_LIMITED_INFORMATION))
+		if (auto protection = FormatHelper::ProtectionToString(WinSys::Process(hProcess.release()).GetProtection()); !protection.empty())
+			trustText = std::format(L"None; the process is {}", protection);
+	set(IDC_TOKEN_TRUSTLEVEL, trustText);
 	set(IDC_TOKEN_CHARGED, FormatHelper::FormatBytes(stats.DynamicCharged));
 	set(IDC_TOKEN_AVAILABLE, FormatHelper::FormatBytes(stats.DynamicAvailable));
 	// tokens that don't expire have the largest time, or (SYSTEM's) the end of 2999
