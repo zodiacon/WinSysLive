@@ -135,6 +135,9 @@
     <ClCompile Include="EventsView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="EventDetailsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="KernelModulesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -433,6 +436,9 @@
     </ClInclude>
     <ClInclude Include="EventsView.h">
       <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="EventDetailsDlg.h">
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="KernelModulesView.h">
       <Filter>Views</Filter>

@@ -731,6 +731,25 @@
 #define ID_EVENTS_LOGS                  33009
 #define ID_EVENTS_SPAN                  33010
 #define ID_EVENT_OPENVIEWER             33011
+#define IDD_EVENTDETAILS                336
+#define IDC_ED_ICON                     1429
+#define IDC_ED_TITLE                    1430
+#define IDC_ED_LOG                      1431
+#define IDC_ED_SOURCE                   1432
+#define IDC_ED_LEVEL                    1433
+#define IDC_ED_EVENTID                  1434
+#define IDC_ED_TIME                     1435
+#define IDC_ED_RECORDID                 1436
+#define IDC_ED_PROCESS                  1437
+#define IDC_ED_THREAD                   1438
+#define IDC_ED_COMPUTER                 1439
+#define IDC_ED_KEYWORDS                 1440
+#define IDC_ED_XML                      1441
+#define IDC_ED_MESSAGE                  1442
+#define IDC_ED_PREVIOUS                 1443
+#define IDC_ED_NEXT                     1444
+#define IDC_ED_GOTOPROCESS              1445
+#define IDC_ED_COPY                     1446
 #define IDC_AR_LOG                      1425
 #define IDC_AR_LOG_LABEL                1426
 #define IDC_AR_EVENTID                  1427
@@ -765,9 +784,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        336
+#define _APS_NEXT_RESOURCE_VALUE        337
 #define _APS_NEXT_COMMAND_VALUE         33012
-#define _APS_NEXT_CONTROL_VALUE         1429
+#define _APS_NEXT_CONTROL_VALUE         1447
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

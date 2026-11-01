@@ -84,12 +84,11 @@ namespace {
 		IDI_HISTORY,
 		// the Autoruns tab, and its entries without an icon of their own
 		IDI_AUTORUNS, IDI_RUN_COMMAND,
-		// the Events tab's information events (its errors and warnings have the system's icons, s_SystemIcons)
-		IDI_SYSINFO,
 	};
 
 	// the system's stock icons in the image list too (GetIconIndex(SystemIconId(IDI_WARNING)))
-	const PCWSTR s_SystemIcons[] = { IDI_WARNING, IDI_ERROR };
+	// (the Events tab's levels: GetIconIndex of one that isn't listed here is -1, no icon)
+	const PCWSTR s_SystemIcons[] = { IDI_WARNING, IDI_ERROR, IDI_INFORMATION };
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
 	const ToolBarButtonInfo s_ToolBarButtons[] = {

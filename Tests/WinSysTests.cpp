@@ -63,13 +63,15 @@ TEST(EventLog_LevelNames) {
 	CHECK_EQ(std::wstring(EventLog::LevelName(0)), std::wstring(L"Information"));
 }
 
-TEST(EventLog_LiveQueryIsNewestFirst) {
+TEST(EventLog_LiveQueryIsInReverseLogOrder) {
+	// in reverse record order, the log's: not always by time, as a clock set back (a new VM syncing after boot, as on the
+	// CI runners) gives later records earlier times; the Events tab sorts the merged logs by time itself
 	auto events = EventLog::Query(L"System", 4, 24, 200);
 	CHECK(events.has_value());
 	if (!events)
 		return;
 	for (size_t i = 1; i < events->size(); i++)
-		CHECK((*events)[i - 1].Time >= (*events)[i].Time);
+		CHECK((*events)[i - 1].RecordId > (*events)[i].RecordId);
 	for (auto& e : *events)
 		CHECK(e.Level <= 4);
 }

@@ -9,6 +9,7 @@
 #include <ToolbarHelper.h>
 #include <WTLHelper.h>
 #include <ranges>
+#include "EventDetailsDlg.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
 
@@ -590,13 +591,25 @@ LRESULT CEventsView::OnDetails(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	auto e = GetSelected();
 	if (!e)
 		return 0;
-	auto process = ProcessName(*e);
-	auto text = std::format(L"{}\n\nLog: {}\nSource: {}\nEvent ID: {}\nLevel: {}\nTime: {}\nProcess: {}{}\nThread: {}\nComputer: {}",
-		e->Message.empty() ? L"(no message: the source's resources have none for this event)" : e->Message,
-		e->Channel, e->Provider, e->EventId, EventLog::LevelText(*e), FormatHelper::FormatDateTime(e->Time),
-		e->ProcessId, process.empty() ? L"" : L" (" + process + L")", e->ThreadId, e->Computer);
-	AtlMessageBox(m_hWnd, text.c_str(), std::format(L"{} {}", e->Provider, e->EventId).c_str(),
-		(e->Level == 1 || e->Level == 2) ? MB_ICONERROR : e->Level == 3 ? MB_ICONWARNING : MB_ICONINFORMATION);
+	CEventDetailsDlg::Callbacks callbacks;
+	// the row delta rows away, selected; a copy (new events may arrive while the dialog is open, moving m_All)
+	callbacks.Move = [this](EventLogEntry const& current, int delta) -> std::optional<EventLogEntry> {
+		auto key = KeyOf(current);
+		auto it = std::ranges::find_if(m_Rows, [&](auto row) { return KeyOf(*row) == key; });
+		if (it == m_Rows.end())
+			return std::nullopt;
+		auto index = (int)(it - m_Rows.begin()) + delta;
+		if (index < 0 || index >= (int)m_Rows.size())
+			return std::nullopt;
+		m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+		m_List.SetItemState(index, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+		m_List.EnsureVisible(index, FALSE);
+		return *m_Rows[index];
+	};
+	callbacks.ProcessName = [this](EventLogEntry const& entry) { return ProcessName(entry); };
+	callbacks.GoToProcess = [this](uint32_t pid) { Frame()->GoToProcess(pid); };
+	CEventDetailsDlg dlg(*e, std::move(callbacks));
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 
