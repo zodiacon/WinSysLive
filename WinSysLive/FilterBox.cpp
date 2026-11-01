@@ -82,6 +82,11 @@ void CFilterBox::Clear() {
 	Apply();
 }
 
+void CFilterBox::SetText(std::wstring const& text) {
+	m_Edit.SetWindowText(text.c_str());
+	Apply();
+}
+
 std::wstring const& CFilterBox::GetText() const {
 	return m_Text;
 }

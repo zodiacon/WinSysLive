@@ -519,6 +519,9 @@
 #define IDC_MSTR_COPY               1371
 #define IDC_MSTR_SAVE               1372
 #define IDC_MEM_STRINGS             1373
+#define ID_HANDLE_BYTYPE            32975
+#define ID_HANDLE_RESETBASELINE     32976
+#define ID_HANDLE_SHOWTYPE          32977
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
 #define ID_HISTORY_CLEAR            32947
@@ -670,6 +673,6 @@
 #define _APS_NEXT_RESOURCE_VALUE	325
 #define _APS_NEXT_CONTROL_VALUE		1374
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32975
+#define _APS_NEXT_COMMAND_VALUE		32978
 #endif
 #endif

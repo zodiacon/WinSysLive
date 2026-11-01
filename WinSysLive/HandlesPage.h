@@ -14,7 +14,11 @@
 // Address column is shown. Names are queried when a row is shown or sorted by name (through a duplicate of the
 // handle, with a timeout: see ObjectNameQuery) and kept for the handle's lifetime. New handles are highlighted for
 // a while, closed ones are shown for one refresh. The columns are chosen from the header's context menu and kept in
-// the HandleColumns setting. A process property sheet's Handles page is one too, on the sheet's thread: with icons of
+// the HandleColumns setting. By Type (the context menu) shows a summary instead: each object type's handle count, its
+// change since the previous refresh and since a baseline (when the process was selected, or Reset Baseline), and its
+// peak, the changes colored as on the Object Types tab, so a type that keeps growing (a leak) stands out; double-clicking
+// a type lists its handles (the filter set to it, matching the type exactly). A toolbar right of the filter box has By
+// Type and Unnamed Handles too, checked as the options are. A process property sheet's Handles page is one too, on the sheet's thread: with icons of
 // its own, a copy of the column layout (UseColumns) and the process by ID and name (SetProcess(pid, name)).
 //
 class CHandlesPage :
@@ -80,7 +84,7 @@ public:
 
 	// Copy's: the selected row's shown columns (the toolbar's Copy and Ctrl+C reach the page through its view)
 	bool CanCopy() const {
-		return m_List.GetSelectedCount() > 0;
+		return m_ByType ? m_Types.GetSelectedCount() > 0 : m_List.GetSelectedCount() > 0;
 	}
 	void Copy() {
 		BOOL handled;
@@ -88,9 +92,12 @@ public:
 	}
 
 	BEGIN_MSG_MAP(CHandlesPage)
+		// By Type's list first: CVirtualListView would take its notifications for one of its own lists
+		NOTIFY_ID_HANDLER(TypesId, OnTypesNotify)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnDpiChangedAfterParent)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
@@ -101,6 +108,9 @@ public:
 		COMMAND_ID_HANDLER(ID_HANDLE_PROPERTIES, OnHandleCommand)
 		COMMAND_ID_HANDLER(ID_HANDLE_CLOSE, OnHandleCommand)
 		COMMAND_ID_HANDLER(ID_VIEW_SHOWUNNAMEDHANDLES, OnToggleUnnamed)
+		COMMAND_ID_HANDLER(ID_HANDLE_BYTYPE, OnToggleByType)
+		COMMAND_ID_HANDLER(ID_HANDLE_RESETBASELINE, OnResetBaseline)
+		COMMAND_ID_HANDLER(ID_HANDLE_SHOWTYPE, OnShowType)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		CHAIN_MSG_MAP(CVirtualListView<CHandlesPage>)
@@ -115,8 +125,11 @@ public:
 	void SaveColumns() const;
 	// the frame's image list again, after it took a new DPI's size, so the rows take its height
 	void ResetImageList() {
-		if (m_Icons)
+		if (m_Icons) {
 			m_List.SetImageList(m_Icons->GetImageList(), LVSIL_SMALL);
+			if (m_Types)
+				m_Types.SetImageList(m_Icons->GetImageList(), LVSIL_SMALL);
+		}
 	}
 
 private:
@@ -140,6 +153,11 @@ private:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDpiChangedAfterParent(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the options' toolbar: the font for its DPI, its size, and its buttons' check states
+	void SetBarFont();
+	void UpdateBar();
+	void Layout();
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -153,6 +171,19 @@ private:
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHandleCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleUnnamed(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleByType(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetBaseline(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowType(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// By Type: counts the open handles by type, against the previous refresh and the baseline
+	void CountTypes();
+	// By Type: the summary's rows (the types the filter matches), sorted, keeping the selection
+	void ShowTypes();
+	void ShowTypesContextMenu(CPoint pt);
+	// By Type's custom draw (the change cells)
+	LRESULT OnTypesCustomDraw(NMLVCUSTOMDRAW* cd);
+	LRESULT OnTypesNotify(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	enum { TypesId = 0x7531 };	// By Type's list
+	std::wstring GetTypeText(int row, int column) const;
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
@@ -177,7 +208,10 @@ private:
 	uint32_t m_Pid{ 0 };
 	std::wstring m_ImageName;
 	CListViewCtrl m_List;
-	CFilterBox m_Filter;	// above the list
+	CFilterBox m_Filter;	// above the list, at the left
+	CToolBarCtrl m_Bar;	// right of the filter: By Type and Unnamed Handles, as the context menu's
+	CFont m_BarFont;
+	int m_RowHeight{ 0 };	// of the filter box and the bar, above the list
 	std::vector<HandleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
 	std::shared_ptr<ProcessInfoEx> m_Process;
 	wil::unique_handle m_hProcess;	// with PROCESS_DUP_HANDLE, for the names; null if it can't be opened so
@@ -189,4 +223,19 @@ private:
 	WinSys::DosNames m_DosNames;	// for the files' names
 	bool m_FirstEnum{ true };	// everything is new on the first enumeration: nothing to highlight
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
+	// By Type
+	struct TypeRow {
+		std::wstring Type;
+		int Count{ 0 }, Change{ 0 }, SinceBaseline{ 0 }, Peak{ 0 };
+	};
+	enum class TypeColumn { Type, Handles, Change, SinceBaseline, Peak, _Count };
+	CListViewCtrl m_Types;	// in m_List's place while m_ByType
+	bool m_ByType{ false };
+	std::vector<TypeRow> m_TypeRows;	// every type of the last count; the list's item data index it
+	std::unordered_map<std::wstring, int> m_TypeBaseline, m_TypePrevious, m_TypePeak;
+	bool m_HasBaseline{ false };	// else the next count is the baseline
+	int m_TypeSortColumn{ (int)TypeColumn::Handles };
+	bool m_TypeSortAscending{ false };
+	COLORREF m_TypeRowText{ 0 }, m_TypeRowBack{ 0 };	// the row's colors at the item stage, for the other cells
+	std::wstring m_OnlyType;	// the handle list matches this type exactly while the filter is its name (from By Type)
 };

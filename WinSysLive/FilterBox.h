@@ -28,6 +28,8 @@ public:
 	void Focus();
 	// empties the box and applies that now
 	void Clear();
+	// puts the text in the box and applies it now
+	void SetText(std::wstring const& text);
 	// the text applied, lowercase; empty: no filter
 	std::wstring const& GetText() const;
 
