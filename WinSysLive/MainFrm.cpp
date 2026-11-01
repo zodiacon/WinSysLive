@@ -1091,13 +1091,19 @@ LRESULT CMainFrame::OnPageActivated(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandle
 }
 
 LRESULT CMainFrame::OnRun(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	CRunDlg dlg;
+	CRunDlg dlg(RunType::Default);
 	dlg.DoModal(m_hWnd);
 	return 0;
 }
 
 LRESULT CMainFrame::OnRunLimited(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	CRunDlg dlg(true);
+	CRunDlg dlg(RunType::Limited);
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnRunAsSystem(WORD, WORD, HWND, BOOL&) {
+	CRunDlg dlg(RunType::System);
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

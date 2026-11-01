@@ -56,13 +56,14 @@ BEGIN
         MENUITEM "&Run...\tCtrl+R",             ID_FILE_RUN
         MENUITEM "Run &As...",                  ID_FILE_RUNAS
         MENUITEM "Run as &Limited User...",     ID_FILE_RUNLIMITED
+        MENUITEM "Run as System...",            ID_FILE_RUNASSYSTEM
         MENUITEM SEPARATOR
         MENUITEM "Run as &Administrator",       ID_FILE_RUNASADMIN
         MENUITEM SEPARATOR
         MENUITEM "&Export List...\tCtrl+S",     ID_FILE_EXPORT
         MENUITEM "&Copy All Rows\tCtrl+Shift+C", ID_EDIT_COPYALL
         MENUITEM SEPARATOR
-        MENUITEM "S&napshots...\tCtrl+Shift+N",  ID_FILE_SNAPSHOTS
+        MENUITEM "S&napshots...\tCtrl+Shift+N", ID_FILE_SNAPSHOTS
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
@@ -174,7 +175,7 @@ BEGIN
     END
     POPUP "&System"
     BEGIN
-        MENUITEM "System &Information...",     ID_SYSTEM_INFORMATION
+        MENUITEM "System &Information...",      ID_SYSTEM_INFORMATION
         MENUITEM SEPARATOR
         MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
@@ -731,7 +732,7 @@ BEGIN
     CONTROL         "&Whole address space",IDC_MSTR_WHOLE,"Button",BS_AUTORADIOBUTTON,278,9,90,10
     PUSHBUTTON      "&Scan",IDC_MSTR_SCAN,463,7,50,14,WS_GROUP
     EDITTEXT        IDC_MSTR_FILTER,7,26,506,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_MSTR_LIST,"SysListView32",LVS_REPORT | LVS_OWNERDATA | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,45,506,256
+    CONTROL         "",IDC_MSTR_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,45,506,256
     LTEXT           "",IDC_MSTR_STATUS,7,312,280,9,SS_NOPREFIX | SS_ENDELLIPSIS
     PUSHBUTTON      "&Go To",IDC_MSTR_GOTO,298,309,50,14
     PUSHBUTTON      "&Copy",IDC_MSTR_COPY,353,309,50,14
@@ -766,7 +767,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICK
 CAPTION "System Information"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_SI_TABS,"SysTabControl32",WS_TABSTOP | WS_CLIPSIBLINGS,7,7,426,326
+    CONTROL         "",IDC_SI_TABS,"SysTabControl32",WS_CLIPSIBLINGS | WS_TABSTOP,7,7,426,326
     CONTROL         "",IDC_SI_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,13,25,414,302
     LTEXT           "",IDC_SI_STATUS,7,342,220,9,SS_NOPREFIX | SS_ENDELLIPSIS
     PUSHBUTTON      "&Refresh",IDC_SI_REFRESH,273,339,50,14
@@ -1758,6 +1759,8 @@ BEGIN
     ID_VIEW_SHOWUNNAMEDHANDLES 
                             "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
+    ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
+    ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
 END
 
 STRINGTABLE
@@ -1785,8 +1788,6 @@ END
 STRINGTABLE
 BEGIN
     ID_VIEW_HISTORY         "Show a log of processes and services starting and stopping\nHistory (Ctrl+Shift+H)"
-    ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
-    ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
     ID_OPTIONS_RUNATSTARTUP "Start WinSysLive minimized when you sign in to Windows\nRun at Windows Startup"
     ID_OPTIONS_CHECKUPDATES "Look for a newer version on GitHub once a day, when WinSysLive starts\nCheck for Updates at Startup"
     ID_OPTIONS_EXPORTSETTINGS "Save the settings to a file\nExport Settings"

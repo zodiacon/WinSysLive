@@ -585,6 +585,7 @@
     <Manifest Include="WinSysLive.manifest" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\autoruns.ico" />
     <Image Include="res\chart.ico" />
     <Image Include="res\color_wheel.ico" />
     <Image Include="res\cpu.ico" />
@@ -606,7 +607,9 @@
     <Image Include="res\atom.ico" />
     <Image Include="res\Driver.ico" />
     <Image Include="res\share.ico" />
+    <Image Include="res\Snapshot.ico" />
     <Image Include="res\symboliclink.ico" />
+    <Image Include="res\sysinfo.ico" />
     <Image Include="res\System.ico" />
     <Image Include="res\target.ico" />
     <Image Include="res\process-hide.ico" />

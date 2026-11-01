@@ -794,6 +794,15 @@
     <Image Include="res\Power.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\sysinfo.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\autoruns.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\Snapshot.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="res\pooltag.txt" />

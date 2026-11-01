@@ -11,12 +11,19 @@
 // network access only; the user name is kept (RunAsUser), the password never is. A failure is reported and keeps the
 // dialog open.
 //
+
+enum class RunType {
+	Default,
+	Limited, 
+	System
+};
+
 class CRunDlg : public CDialogImpl<CRunDlg> {
 public:
 	enum { IDD = IDD_RUN };
 
 	// limited: Run as Limited User
-	explicit CRunDlg(bool limited = false) : m_Limited(limited) {}
+	explicit CRunDlg(RunType type) : m_Type(type) {}
 
 	BEGIN_MSG_MAP(CRunDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -36,7 +43,7 @@ private:
 	LRESULT OnOK(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
-	bool m_Limited;
+	RunType m_Type;
 };
 
 class CRunAsDlg : public CDialogImpl<CRunAsDlg> {
