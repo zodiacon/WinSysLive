@@ -47,6 +47,10 @@ struct AppSettings : Settings {
 		SETTING(VirusTotalRate, 4, SettingType::Int32);	// requests a minute
 		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
 		SETTING_STRING(AutorunsColumns, L"");	// the Autoruns tab
+		SETTING_STRING(DeviceColumns, L"");	// the Devices tab
+		SETTING(DevicesByConnection, 0, SettingType::Bool);
+		SETTING(DevicesShowHidden, 0, SettingType::Bool);
+		SETTING(DevicesShowDisconnected, 0, SettingType::Bool);
 		SETTING_STRING(AlertRules, L"");	// CAlerts: one rule a line, Kind|Enabled|Threshold|Seconds|Pattern
 		SETTING_STRING(CommandPaletteRecent, L"");	// the command palette's last commands, newest first, as IDs separated by commas
 		SETTING(AutorunsHideMicrosoft, 1, SettingType::Bool);	// the Autoruns tab leaves out entries signed by Microsoft
@@ -115,6 +119,10 @@ struct AppSettings : Settings {
 	DEF_SETTING(VirusTotalRate, int)
 	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(AutorunsColumns)
+	DEF_SETTING_STRING(DeviceColumns)
+	DEF_SETTING(DevicesByConnection, int)
+	DEF_SETTING(DevicesShowHidden, int)
+	DEF_SETTING(DevicesShowDisconnected, int)
 	DEF_SETTING_STRING(CommandPaletteRecent)
 	DEF_SETTING_STRING(AlertRules)
 	DEF_SETTING(AutorunsHideMicrosoft, int)

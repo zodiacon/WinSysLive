@@ -443,6 +443,7 @@
     <ClCompile Include="CommandPaletteDlg.cpp" />
     <ClCompile Include="EtwSessionsDlg.cpp" />
     <ClCompile Include="AlertsDlg.cpp" />
+    <ClCompile Include="PowerRequestsDlg.cpp" />
     <ClCompile Include="Alerts.cpp" />
     <ClCompile Include="WindowStationsDlg.cpp" />
     <ClCompile Include="MemoryStringsDlg.cpp" />
@@ -484,6 +485,7 @@
     <ClCompile Include="TrayIcons.cpp" />
     <ClCompile Include="TrayIconsDlg.cpp" />
     <ClCompile Include="AutorunsView.cpp" />
+    <ClCompile Include="DevicesView.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
@@ -548,6 +550,7 @@
     <ClInclude Include="CommandPaletteDlg.h" />
     <ClInclude Include="EtwSessionsDlg.h" />
     <ClInclude Include="AlertsDlg.h" />
+    <ClInclude Include="PowerRequestsDlg.h" />
     <ClInclude Include="Alerts.h" />
     <ClInclude Include="WindowStationsDlg.h" />
     <ClInclude Include="MemoryStringsDlg.h" />
@@ -583,6 +586,7 @@
     <ClInclude Include="TrayIcons.h" />
     <ClInclude Include="TrayIconsDlg.h" />
     <ClInclude Include="AutorunsView.h" />
+    <ClInclude Include="DevicesView.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />

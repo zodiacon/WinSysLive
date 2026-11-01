@@ -182,7 +182,6 @@ LRESULT CAlertRuleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	SetDlgItemText(IDC_AR_THRESHOLD, (m_Rule.Threshold == (int64_t)m_Rule.Threshold ? std::to_wstring((int64_t)m_Rule.Threshold)
 		: std::format(L"{:.1f}", m_Rule.Threshold)).c_str());
 	SetDlgItemInt(IDC_AR_SECONDS, m_Rule.Seconds, FALSE);
-	::SendDlgItemMessage(m_hWnd, IDC_AR_PATTERN, EM_SETCUEBANNER, TRUE, (LPARAM)L"Any process (e.g. notepad.exe;msedge*.exe)");
 	UpdateFields();
 	CenterWindow(GetParent());
 	return TRUE;
@@ -196,6 +195,11 @@ void CAlertRuleDlg::UpdateFields() {
 	for (int id : { IDC_AR_THRESHOLD, IDC_AR_THRESHOLD_LABEL, IDC_AR_UNIT, IDC_AR_SECONDS, IDC_AR_SECONDS_LABEL })
 		GetDlgItem(id).EnableWindow(threshold);
 	SetDlgItemText(IDC_AR_UNIT, AlertRule::Unit(kind));
+	// image names for the process rules, service names (or display names) for the service rules
+	bool service = AlertRule::IsServiceKind(kind);
+	SetDlgItemText(IDC_AR_PATTERN_LABEL, service ? L"&Services:" : L"&Image names:");
+	::SendDlgItemMessage(m_hWnd, IDC_AR_PATTERN, EM_SETCUEBANNER, TRUE, (LPARAM)(service
+		? L"Any service (name or display name, e.g. Spooler;Windows Update)" : L"Any process (e.g. notepad.exe;msedge*.exe)"));
 }
 
 LRESULT CAlertRuleDlg::OnKindChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

@@ -129,6 +129,9 @@
     <ClCompile Include="AutorunsView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="DevicesView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="KernelModulesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -279,6 +282,9 @@
     <ClCompile Include="AlertsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="PowerRequestsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Alerts.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -414,6 +420,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="AutorunsView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="DevicesView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="KernelModulesView.h">
@@ -570,6 +579,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="AlertsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="PowerRequestsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Alerts.h">

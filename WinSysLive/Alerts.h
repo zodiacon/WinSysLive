@@ -2,6 +2,7 @@
 
 #include <WinSys/ProcessManager.h>
 #include <WinSys/Keys.h>
+#include <WinSys/ServiceInfo.h>
 #include "ProcessInfoEx.h"
 #include <deque>
 
@@ -14,7 +15,8 @@
 // the AlertRules setting, one per line: Kind|Enabled|Threshold|Seconds|Pattern (the kind's key, which must not change).
 //
 enum class AlertKind {
-	ProcessStarted, ProcessExited, SystemCpu, CommitCharge, PhysicalMemory, ProcessCpu, ProcessPrivateBytes, _Count
+	ProcessStarted, ProcessExited, SystemCpu, CommitCharge, PhysicalMemory, ProcessCpu, ProcessPrivateBytes,
+	ServiceStarted, ServiceStopped, ServiceFailed, _Count
 };
 
 struct AlertRule {
@@ -29,6 +31,7 @@ struct AlertRule {
 
 	static PCWSTR KindName(AlertKind kind);	// for the rule dialog's combo box
 	static bool HasPattern(AlertKind kind);
+	static bool IsServiceKind(AlertKind kind);	// the pattern matches service names (or display names)
 	static bool HasThreshold(AlertKind kind);
 	static PCWSTR Unit(AlertKind kind);	// the threshold's: "%" or "MB"
 };
@@ -71,8 +74,24 @@ private:
 		std::unordered_map<WinSys::ProcessOrThreadKey, Condition> Processes;
 	};
 
+	// a service as last seen: its state (not a pending one) and process
+	struct KnownService {
+		WinSys::ServiceState State;
+		uint32_t Pid;
+	};
+	// the services' state changes since the last call (pending states waited out); none the first time (the baseline)
+	struct ServiceChange {
+		std::wstring Name, DisplayName;
+		WinSys::ServiceState State;	// Running or Stopped
+		uint32_t Pid;	// the process it ran or runs in
+		DWORD ExitCode;	// a stopped service's Win32 exit code (ERROR_SERVICE_SPECIFIC_ERROR: ServiceExitCode is the code)
+		DWORD ServiceExitCode;
+	};
+	std::vector<ServiceChange> UpdateServices();
+
 	std::vector<AlertRule> m_Rules;
 	std::vector<RuleState> m_States;	// by m_Rules' index
+	std::unordered_map<std::wstring, KnownService> m_Services;	// while a service rule is on (empty: the next read is a baseline)
 	std::deque<AlertEvent> m_Recent;	// the newest last
 	bool m_Baseline{ false };	// the first update was seen
 	int64_t m_PageSize{ 0 }, m_PhysicalTotal{ 0 };

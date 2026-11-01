@@ -701,6 +701,25 @@
 #define IDD_PROC_DOTNET                 330
 #define IDI_DOTNET                      331
 #define IDI_ALERT                       334
+#define IDD_POWERREQUESTS               335
+#define IDC_PR_RESOLUTION               1418
+#define IDC_PR_INACTIVE                 1419
+#define IDC_PR_REQUESTS                 1420
+#define IDC_PR_TIMERS_LABEL             1421
+#define IDC_PR_TIMERS                   1422
+#define IDC_PR_STATUS                   1423
+#define IDC_PR_COPY                     1424
+#define ID_POWER_GOTOPROCESS            32990
+#define ID_SYSTEM_POWERREQUESTS         32991
+#define ID_DEVICES_BYCONNECTION         32992
+#define ID_DEVICES_PROBLEMS             32993
+#define ID_DEVICES_HIDDEN               32994
+#define ID_DEVICES_DISCONNECTED         32995
+#define ID_DEVICES_RESCAN               32996
+#define ID_DEVICE_PROPERTIES            32997
+#define ID_DEVICE_GOTODRIVER            32998
+#define ID_DEVICE_COPYID                32999
+#define ID_VIEW_DEVICES                 33000
 #define IDC_DN_RUNTIME                  1396
 #define IDC_DN_FILTER                   1397
 #define IDC_DN_REFRESH                  1398
@@ -731,9 +750,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        335
-#define _APS_NEXT_COMMAND_VALUE         32990
-#define _APS_NEXT_CONTROL_VALUE         1418
+#define _APS_NEXT_RESOURCE_VALUE        336
+#define _APS_NEXT_COMMAND_VALUE         33001
+#define _APS_NEXT_CONTROL_VALUE         1425
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

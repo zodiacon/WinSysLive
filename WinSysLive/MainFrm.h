@@ -99,6 +99,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_DISK, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_HISTORY, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_AUTORUNS, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_DEVICES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
@@ -115,6 +116,7 @@ public:
 		COMMAND_ID_HANDLER(ID_SYSTEM_NETWORKINFO, OnNetworkInfo)
 		COMMAND_ID_HANDLER(ID_SYSTEM_ETWSESSIONS, OnEtwSessions)
 		COMMAND_ID_HANDLER(ID_SYSTEM_WINSTATIONS, OnWindowStations)
+		COMMAND_ID_HANDLER(ID_SYSTEM_POWERREQUESTS, OnPowerRequests)
 		COMMAND_ID_HANDLER(ID_VIEW_COMMANDPALETTE, OnCommandPalette)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PIPES, OnPipes)
 		COMMAND_ID_HANDLER(ID_SYSTEM_RAM, OnRam)
@@ -186,6 +188,7 @@ public:
 	LRESULT OnNetworkInfo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEtwSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnWindowStations(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnPowerRequests(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -277,6 +280,7 @@ private:
 		{ TabType::Disk, ID_VIEW_DISK, IDI_HARDDISK, L"Disk" },
 		{ TabType::History, ID_VIEW_HISTORY, IDI_HISTORY, L"History" },
 		{ TabType::Autoruns, ID_VIEW_AUTORUNS, IDI_AUTORUNS, L"Autoruns" },
+		{ TabType::Devices, ID_VIEW_DEVICES, IDI_DEVICE, L"Devices" },
 	};
 	static TabInfo const* FindTab(TabType type);
 

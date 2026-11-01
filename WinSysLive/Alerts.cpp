@@ -4,6 +4,8 @@
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include <WinSys/SystemInfo.h>
+#include <WinSys/ServiceManager.h>
+#include <WinSys/Helpers.h>
 #include <Shlwapi.h>
 #include <ranges>
 
@@ -27,6 +29,9 @@ namespace {
 		{ L"Memory", L"Physical memory in use is above", false, true, L"%" },
 		{ L"ProcessCpu", L"A process's CPU usage is above", true, true, L"%" },
 		{ L"ProcessPrivate", L"A process's private bytes are above", true, true, L"MB" },
+		{ L"ServiceStarted", L"A service starts", true, false, L"" },
+		{ L"ServiceStopped", L"A service stops", true, false, L"" },
+		{ L"ServiceFailed", L"A service fails (stops with an error)", true, false, L"" },
 	};
 	static_assert(_countof(s_Kinds) == (int)AlertKind::_Count);
 
@@ -69,8 +74,12 @@ PCWSTR AlertRule::Unit(AlertKind kind) {
 	return Info(kind).Unit;
 }
 
+bool AlertRule::IsServiceKind(AlertKind kind) {
+	return kind == AlertKind::ServiceStarted || kind == AlertKind::ServiceStopped || kind == AlertKind::ServiceFailed;
+}
+
 std::wstring AlertRule::Describe() const {
-	auto who = Pattern.empty() ? std::wstring(L"Any process") : Pattern;
+	auto who = !Pattern.empty() ? Pattern : IsServiceKind(Kind) ? std::wstring(L"Any service") : std::wstring(L"Any process");
 	auto limit = Number(Threshold) + (Kind == AlertKind::ProcessPrivateBytes ? L" MB" : L"%");
 	switch (Kind) {
 		case AlertKind::ProcessStarted: return who + L" starts";
@@ -80,8 +89,40 @@ std::wstring AlertRule::Describe() const {
 		case AlertKind::PhysicalMemory: return L"Physical memory above " + limit + ForSeconds(Seconds);
 		case AlertKind::ProcessCpu: return who + L": CPU above " + limit + ForSeconds(Seconds);
 		case AlertKind::ProcessPrivateBytes: return who + L": private bytes above " + limit + ForSeconds(Seconds);
+		case AlertKind::ServiceStarted: return who + L" starts (service)";
+		case AlertKind::ServiceStopped: return who + L" stops (service)";
+		case AlertKind::ServiceFailed: return who + L" fails (service)";
 	}
 	return L"";
+}
+
+std::vector<CAlerts::ServiceChange> CAlerts::UpdateServices() {
+	std::vector<ServiceChange> changes;
+	auto services = ServiceManager::EnumServices(ServiceEnumType::AllServices);
+	if (services.empty())
+		return changes;	// the enumeration failed: what's known stays
+	bool baseline = m_Services.empty();
+	std::unordered_map<std::wstring, KnownService> current;
+	current.reserve(services.size());
+	for (auto& svc : services) {
+		auto& status = svc.GetStatusProcess();
+		auto state = status.CurrentState;
+		auto it = m_Services.find(svc.GetName());
+		KnownService known = it != m_Services.end() ? it->second : KnownService{ state, status.ProcessId };
+		// pending states are waited out: a change when a service gets to running or stopped
+		if (!baseline && it != m_Services.end() && state != known.State
+			&& (state == WinSys::ServiceState::Running || state == WinSys::ServiceState::Stopped)) {
+			changes.push_back({ svc.GetName(), svc.GetDisplayName(), state, state == WinSys::ServiceState::Running ? status.ProcessId : known.Pid,
+				status.Win32ExitCode, status.ServiceSpecificExitCode });
+		}
+		if (state == WinSys::ServiceState::Running || state == WinSys::ServiceState::Stopped || state == WinSys::ServiceState::Paused)
+			known.State = state;
+		if (status.ProcessId)
+			known.Pid = status.ProcessId;
+		current[svc.GetName()] = known;
+	}
+	m_Services = std::move(current);
+	return changes;
 }
 
 std::vector<AlertRule> CAlerts::Load() {
@@ -190,6 +231,13 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		}
 	}
 
+	// the services' changes, enumerated only while a service rule is on (off: the next read is a baseline again)
+	std::vector<ServiceChange> serviceChanges;
+	if (std::ranges::any_of(m_Rules, [](auto& r) { return r.Enabled && AlertRule::IsServiceKind(r.Kind); }))
+		serviceChanges = UpdateServices();
+	else
+		m_Services.clear();
+
 	auto processes = pm.GetProcesses();
 	for (size_t i = 0; i < m_Rules.size(); i++) {
 		auto& rule = m_Rules[i];
@@ -249,6 +297,25 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 				state.Processes = std::move(current);
 				break;
 			}
+
+			case AlertKind::ServiceStarted:
+			case AlertKind::ServiceStopped:
+			case AlertKind::ServiceFailed:
+				for (auto& c : serviceChanges) {
+					if (!Matches(rule.Pattern, c.Name) && !Matches(rule.Pattern, c.DisplayName))
+						continue;
+					bool failed = c.State == WinSys::ServiceState::Stopped && c.ExitCode != 0 && c.ExitCode != ERROR_SERVICE_NEVER_STARTED;
+					auto label = std::format(L"{} ({})", c.DisplayName, c.Name);
+					if (rule.Kind == AlertKind::ServiceStarted && c.State == WinSys::ServiceState::Running)
+						add(std::format(L"Service {} started (PID {})", label, c.Pid), c.Pid, true);
+					else if (rule.Kind == AlertKind::ServiceStopped && c.State == WinSys::ServiceState::Stopped)
+						add(std::format(L"Service {} stopped{}", label, failed ? L" with an error" : L""), c.Pid, false);
+					else if (rule.Kind == AlertKind::ServiceFailed && failed)
+						add(std::format(L"Service {} failed: {}", label, c.ExitCode == ERROR_SERVICE_SPECIFIC_ERROR
+							? std::format(L"service error {} (0x{:X})", c.ServiceExitCode, c.ServiceExitCode)
+							: Helpers::GetErrorText(c.ExitCode)), c.Pid, false);
+				}
+				break;
 		}
 	}
 

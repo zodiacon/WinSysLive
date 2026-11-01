@@ -14,6 +14,7 @@
 #include "DiskView.h"
 #include "HistoryView.h"
 #include "AutorunsView.h"
+#include "DevicesView.h"
 
 template<typename TView>
 static std::pair<IView*, CMessageMap*> DoCreateView(TView* view, HWND hParent) {
@@ -41,6 +42,7 @@ std::pair<IView*, CMessageMap*> CMainFrame::CreateView(TabType type) {
 		case TabType::Disk: return DoCreateView(new CDiskView(this), m_Tabs);
 		case TabType::History: return DoCreateView(new CHistoryView(this), m_Tabs);
 		case TabType::Autoruns: return DoCreateView(new CAutorunsView(this), m_Tabs);
+		case TabType::Devices: return DoCreateView(new CDevicesView(this), m_Tabs);
 	}
 	ATLASSERT(false);
 	return {};

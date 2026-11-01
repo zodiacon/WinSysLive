@@ -20,6 +20,7 @@
 #include "AlertsDlg.h"
 #include "EtwSessionsDlg.h"
 #include "WindowStationsDlg.h"
+#include "PowerRequestsDlg.h"
 #include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
@@ -113,6 +114,7 @@ namespace {
 		{ ID_VIEW_DISK, IDI_HARDDISK, BTNS_CHECK },
 		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
 		{ ID_VIEW_AUTORUNS, IDI_AUTORUNS, BTNS_CHECK },
+		{ ID_VIEW_DEVICES, IDI_DEVICE, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 
@@ -865,6 +867,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_ETWSESSIONS, IDI_ETW },
 		{ ID_SYSTEM_WINSTATIONS, IDI_WINSTA },
 		{ ID_OPTIONS_ALERTS, IDI_ALERT },
+		{ ID_SYSTEM_POWERREQUESTS, IDI_CAPABILITY },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
@@ -1512,6 +1515,12 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	settings.Save();
 	// as if from the menu: the frame routes a view's commands to the active view
 	PostMessage(WM_COMMAND, MAKEWPARAM(id, 0));
+	return 0;
+}
+
+LRESULT CMainFrame::OnPowerRequests(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CPowerRequestsDlg dlg([this](uint32_t pid) { GoToProcess(pid); });
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 
