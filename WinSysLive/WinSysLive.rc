@@ -62,6 +62,8 @@ BEGIN
         MENUITEM "&Export List...\tCtrl+S",     ID_FILE_EXPORT
         MENUITEM "&Copy All Rows\tCtrl+Shift+C", ID_EDIT_COPYALL
         MENUITEM SEPARATOR
+        MENUITEM "S&napshots...\tCtrl+Shift+N",  ID_FILE_SNAPSHOTS
+        MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
     POPUP "&View"
@@ -509,6 +511,8 @@ IDI_SYSINFO             ICON                    "res\\sysinfo.ico"
 
 IDI_AUTORUNS            ICON                    "res\\autoruns.ico"
 
+IDI_SNAPSHOT            ICON                    "res\\Snapshot.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -712,6 +716,28 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_PF_REFRESH,333,279,50,14
     PUSHBUTTON      "&Copy",IDC_PF_COPY,388,279,50,14
     PUSHBUTTON      "Close",IDCANCEL,443,279,50,14
+END
+
+IDD_SNAPSHOTS DIALOGEX 0, 0, 560, 360
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Snapshots"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Before:",IDC_STATIC,7,10,34,8
+    EDITTEXT        IDC_SN_BEFORE,43,7,380,14,ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "&Open...",IDC_SN_BEFORE_OPEN,428,7,60,14
+    PUSHBUTTON      "&None",IDC_SN_BEFORE_CLEAR,493,7,60,14
+    LTEXT           "&After:",IDC_STATIC,7,28,34,8
+    EDITTEXT        IDC_SN_AFTER,43,25,380,14,ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "O&pen...",IDC_SN_AFTER_OPEN,428,25,60,14
+    PUSHBUTTON      "&The System",IDC_SN_AFTER_NOW,493,25,60,14
+    EDITTEXT        IDC_SN_FILTER,7,45,416,14,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "Co&mpare",IDC_SN_COMPARE,428,45,60,14
+    PUSHBUTTON      "&Save Snapshot...",IDC_SN_SAVE,493,45,60,14
+    CONTROL         "",IDC_SN_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,64,546,268
+    LTEXT           "",IDC_SN_STATUS,7,342,420,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Copy",IDC_SN_COPY,438,339,55,14
+    PUSHBUTTON      "Close",IDCANCEL,498,339,55,14
 END
 
 IDD_SYSINFO DIALOGEX 0, 0, 440, 360
@@ -1359,6 +1385,7 @@ BEGIN
     "D",            ID_VIEW_DISK,           VIRTKEY, SHIFT, CONTROL
     "H",            ID_VIEW_HISTORY,        VIRTKEY, SHIFT, CONTROL
     "A",            ID_VIEW_AUTORUNS,       VIRTKEY, SHIFT, CONTROL
+    "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1736,6 +1763,7 @@ END
 STRINGTABLE
 BEGIN
     ID_VIEW_HISTORY         "Show a log of processes and services starting and stopping\nHistory (Ctrl+Shift+H)"
+    ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
     ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
     ID_OPTIONS_RUNATSTARTUP "Start WinSysLive minimized when you sign in to Windows\nRun at Windows Startup"
     ID_OPTIONS_CHECKUPDATES "Look for a newer version on GitHub once a day, when WinSysLive starts\nCheck for Updates at Startup"

@@ -14,6 +14,7 @@
 #include "LogonSessionsDlg.h"
 #include "PageFilesDlg.h"
 #include "SystemInfoDlg.h"
+#include "SnapshotDlg.h"
 #include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
@@ -819,6 +820,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
+		{ ID_FILE_SNAPSHOTS, IDI_SNAPSHOT },
 		{ ID_EDIT_COPY, IDI_COPY },
 		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
 	};
@@ -1410,6 +1412,12 @@ LRESULT CMainFrame::OnPageFiles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndC
 
 LRESULT CMainFrame::OnSystemInformation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CSystemInfoDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnSnapshots(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CSnapshotDlg dlg;
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

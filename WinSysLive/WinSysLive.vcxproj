@@ -435,6 +435,8 @@
     <ClCompile Include="LogonSessionsDlg.cpp" />
     <ClCompile Include="PageFilesDlg.cpp" />
     <ClCompile Include="SystemInfoDlg.cpp" />
+    <ClCompile Include="Snapshot.cpp" />
+    <ClCompile Include="SnapshotDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="PipesDlg.cpp" />
     <ClCompile Include="RamDlg.cpp" />
@@ -529,6 +531,8 @@
     <ClInclude Include="LogonSessionsDlg.h" />
     <ClInclude Include="PageFilesDlg.h" />
     <ClInclude Include="SystemInfoDlg.h" />
+    <ClInclude Include="Snapshot.h" />
+    <ClInclude Include="SnapshotDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="PipesDlg.h" />
     <ClInclude Include="RamDlg.h" />

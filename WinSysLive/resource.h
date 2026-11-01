@@ -480,6 +480,7 @@
 #define IDI_CAPABILITY              318
 #define IDI_SYSINFO                 320
 #define IDI_AUTORUNS                321
+#define IDI_SNAPSHOT                323
 #define ID_VIEW_HISTORY             32944
 #define ID_VIEW_AUTORUNS            32965
 #define ID_AUTORUNS_ENABLE          32966
@@ -489,6 +490,21 @@
 #define ID_AUTORUNS_OPENLOCATION    32970
 #define ID_AUTORUNS_HIDEMICROSOFT   32971
 #define ID_AUTORUNS_RESCAN          32972
+#define IDD_SNAPSHOTS               322
+#define IDC_SN_BEFORE               1349
+#define IDC_SN_BEFORE_OPEN          1350
+#define IDC_SN_BEFORE_CLEAR         1351
+#define IDC_SN_AFTER                1352
+#define IDC_SN_AFTER_OPEN           1353
+#define IDC_SN_AFTER_NOW            1354
+#define IDC_SN_FILTER               1355
+#define IDC_SN_COMPARE              1356
+#define IDC_SN_SAVE                 1357
+#define IDC_SN_LIST                 1358
+#define IDC_SN_STATUS               1359
+#define IDC_SN_COPY                 1360
+#define ID_SNAPSHOT_OPENLOCATION    32973
+#define ID_FILE_SNAPSHOTS           32974
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
 #define ID_HISTORY_CLEAR            32947
@@ -637,9 +653,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	322
-#define _APS_NEXT_CONTROL_VALUE		1349
+#define _APS_NEXT_RESOURCE_VALUE	324
+#define _APS_NEXT_CONTROL_VALUE		1361
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32973
+#define _APS_NEXT_COMMAND_VALUE		32975
 #endif
 #endif
