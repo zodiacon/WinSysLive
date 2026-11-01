@@ -437,6 +437,7 @@
     <ClCompile Include="SystemInfoDlg.cpp" />
     <ClCompile Include="Snapshot.cpp" />
     <ClCompile Include="SnapshotDlg.cpp" />
+    <ClCompile Include="MemoryStringsDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="PipesDlg.cpp" />
     <ClCompile Include="RamDlg.cpp" />
@@ -533,6 +534,7 @@
     <ClInclude Include="SystemInfoDlg.h" />
     <ClInclude Include="Snapshot.h" />
     <ClInclude Include="SnapshotDlg.h" />
+    <ClInclude Include="MemoryStringsDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="PipesDlg.h" />
     <ClInclude Include="RamDlg.h" />

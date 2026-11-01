@@ -261,6 +261,9 @@
     <ClCompile Include="SnapshotDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryStringsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Snapshot.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -525,6 +528,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="SnapshotDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryStringsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Snapshot.h">

@@ -6,6 +6,7 @@
 #include <wil/resource.h>
 #include "ProcessPages.h"
 #include "MemoryDialogs.h"
+#include "MemoryStringsDlg.h"
 
 //
 // The Memory page's hex view: 16 bytes a line when they fit its width, 8 otherwise, set again whenever it's resized (by
@@ -93,7 +94,8 @@ private:
 // view (hidden when the page opens); while it's hidden, no bytes are read.
 // Find (text, ASCII or Unicode, or hex bytes, in the selected region or the whole address space; WinSys ProcessMemory::Find)
 // selects the region of the first match after the caret and the bytes in the hex view; Find Next goes on after it. Go To
-// shows the region of an address with the caret on it. Save writes the selected region's bytes to a file (what can't be
+// shows the region of an address with the caret on it. Strings (CMemoryStringsDlg) lists the text in the region or the
+// address space; its Go To shows a string here. Save writes the selected region's bytes to a file (what can't be
 // read as zeros). Edit (confirmed once, as it opens the process for writing) makes the hex view writable: each change is
 // written to the process at once (WinSys ProcessMemory::Write); a failed write is in the status line, and the bytes are
 // read again.
@@ -116,6 +118,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_MEM_FINDNEXT, OnFind)
 		COMMAND_ID_HANDLER(IDC_MEM_GOTO, OnGoTo)
 		COMMAND_ID_HANDLER(IDC_MEM_SAVE, OnSave)
+		COMMAND_ID_HANDLER(IDC_MEM_STRINGS, OnStrings)
 		COMMAND_ID_HANDLER(IDC_MEM_EDIT, OnToggleEdit)
 		NOTIFY_CODE_HANDLER(NMHX_GOTO_REQUESTED, OnGoToRequested)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
@@ -148,6 +151,9 @@ private:
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoTo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnStrings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the region holding an address, for the strings: its type and what it holds (its allocation's file)
+	std::wstring DescribeAddress(uint64_t address);
 	LRESULT OnToggleEdit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToRequested(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
@@ -191,6 +197,7 @@ private:
 	MemorySearch m_Search;
 	bool m_Searched{ false };
 	uint64_t m_Found{ 0 };	// the last match; Find Next goes on after it
+	MemoryStrings m_Strings;	// the Strings dialog's options and last scan
 	std::unique_ptr<IBufferManager> m_Bytes;	// the hex view's
 	std::wstring m_Summary;	// of the map, in the status line
 	CSize m_ButtonSize, m_CheckSize, m_EditSize;	// the template's

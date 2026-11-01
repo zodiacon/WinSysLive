@@ -505,6 +505,20 @@
 #define IDC_SN_COPY                 1360
 #define ID_SNAPSHOT_OPENLOCATION    32973
 #define ID_FILE_SNAPSHOTS           32974
+#define IDD_MEMORY_STRINGS          324
+#define IDC_MSTR_MINLEN             1361
+#define IDC_MSTR_ASCII              1362
+#define IDC_MSTR_UNICODE            1363
+#define IDC_MSTR_REGION             1364
+#define IDC_MSTR_WHOLE              1365
+#define IDC_MSTR_SCAN               1366
+#define IDC_MSTR_FILTER             1367
+#define IDC_MSTR_LIST               1368
+#define IDC_MSTR_STATUS             1369
+#define IDC_MSTR_GOTO               1370
+#define IDC_MSTR_COPY               1371
+#define IDC_MSTR_SAVE               1372
+#define IDC_MEM_STRINGS             1373
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
 #define ID_HISTORY_CLEAR            32947
@@ -653,8 +667,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	324
-#define _APS_NEXT_CONTROL_VALUE		1361
+#define _APS_NEXT_RESOURCE_VALUE	325
+#define _APS_NEXT_CONTROL_VALUE		1374
 #define _APS_NEXT_SYMED_VALUE		101
 #define _APS_NEXT_COMMAND_VALUE		32975
 #endif

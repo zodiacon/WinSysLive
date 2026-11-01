@@ -390,10 +390,10 @@ void CProcMemoryPage::Layout(int cx, int cy) {
 	status.GetWindowRect(&rc);
 	status.SetWindowPos(nullptr, margin, bottom - (m_ButtonSize.cy + rc.Height()) / 2,
 		(std::max)(0, int(editLeft - margin - gap)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
-	// Find, Find Next, Go To and Save in a row above
+	// Find, Find Next, Go To, Save and Strings in a row above
 	int row = bottom - m_ButtonSize.cy - gap - m_ButtonSize.cy;
 	int x = margin;
-	for (UINT id : { IDC_MEM_FIND, IDC_MEM_FINDNEXT, IDC_MEM_GOTO, IDC_MEM_SAVE }) {
+	for (UINT id : { IDC_MEM_FIND, IDC_MEM_FINDNEXT, IDC_MEM_GOTO, IDC_MEM_SAVE, IDC_MEM_STRINGS }) {
 		GetDlgItem(id).SetWindowPos(nullptr, x, row, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 		x += m_ButtonSize.cx + gap;
 	}
@@ -771,6 +771,40 @@ LRESULT CProcMemoryPage::OnFind(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/
 	}
 	else
 		Search(true);
+	return 0;
+}
+
+std::wstring CProcMemoryPage::DescribeAddress(uint64_t address) {
+	auto region = FindRegion((ULONG_PTR)address);
+	if (!region)
+		return L"";
+	auto details = region->Details;
+	// a mapping's file is on its allocation's first region
+	if (details.empty())
+		for (auto r = region; r >= m_Regions.data() && r->Info.AllocationBase == region->Info.AllocationBase; r--)
+			if (!r->Details.empty()) {
+				details = r->Details;
+				break;
+			}
+	auto type = GetText(*region, Column::Type);
+	return details.empty() ? type : type + L": " + details;
+}
+
+LRESULT CProcMemoryPage::OnStrings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (!m_CanRead) {
+		SetNote(L"The process's memory can't be read");
+		return 0;
+	}
+	std::optional<std::pair<uint64_t, uint64_t>> range;
+	if (auto region = GetSelectedRegion())
+		range = std::make_pair((uint64_t)region->Info.BaseAddress, (uint64_t)region->Info.BaseAddress + region->Info.RegionSize);
+	CMemoryStringsDlg dlg(m_Strings, m_hProcess.get(), range, [this](uint64_t address) { return DescribeAddress(address); });
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	if (Reveal(dlg.GetAddress(), dlg.GetByteLength()))
+		SetNote(std::format(L"The string at 0x{:X}", dlg.GetAddress()));
+	else
+		SetNote(std::format(L"0x{:X} isn't in the map anymore (Refresh reads it again)", dlg.GetAddress()));
 	return 0;
 }
 
