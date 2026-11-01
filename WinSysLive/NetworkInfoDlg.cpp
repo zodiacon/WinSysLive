@@ -207,6 +207,47 @@ LRESULT CNetworkInfoDlg::OnColumnClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHan
 }
 
 LRESULT CNetworkInfoDlg::OnDoubleClick(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& /*bHandled*/) {
+	BOOL handled;
+	return OnGoToProcess(0, 0, nullptr, handled);
+}
+
+LRESULT CNetworkInfoDlg::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	if ((HWND)wParam != m_List) {
+		bHandled = FALSE;
+		return 0;
+	}
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	int selected = m_List.GetNextItem(-1, LVNI_SELECTED);
+	if (pt.x == -1 && pt.y == -1) {
+		// from the keyboard: at the selected row, or the list's corner
+		CRect rc;
+		if (selected >= 0)
+			m_List.GetItemRect(selected, &rc, LVIR_LABEL);
+		else
+			m_List.GetClientRect(&rc);
+		pt = selected >= 0 ? rc.CenterPoint() : rc.TopLeft();
+		m_List.ClientToScreen(&pt);
+	}
+	auto tab = (Tab)m_Tabs.GetCurSel();
+	CMenu menu;
+	menu.CreatePopupMenu();
+	if (tab == Tab::Listening) {
+		bool process = selected >= 0 && m_Tables[(int)Tab::Listening].Rows[m_List.GetItemData(selected)].Pid > 4;
+		menu.AppendMenu(MF_STRING | (process ? 0 : MF_GRAYED), ID_NETINFO_GOTOPROCESS, L"&Go to Process");
+		menu.SetMenuDefaultItem(ID_NETINFO_GOTOPROCESS);
+		menu.AppendMenu(MF_SEPARATOR);
+	}
+	else if (tab == Tab::Dns) {
+		menu.AppendMenu(MF_STRING, IDC_NI_FLUSH, L"&Flush DNS Cache...");
+		menu.AppendMenu(MF_SEPARATOR);
+	}
+	menu.AppendMenu(MF_STRING | (m_List.GetItemCount() ? 0 : MF_GRAYED), IDC_NI_COPY,
+		m_List.GetSelectedCount() ? L"&Copy" : L"&Copy All");
+	menu.TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd);
+	return 0;
+}
+
+LRESULT CNetworkInfoDlg::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (m_Tabs.GetCurSel() != (int)Tab::Listening || !m_GoToProcess)
 		return 0;
 	int selected = m_List.GetNextItem(-1, LVNI_SELECTED);

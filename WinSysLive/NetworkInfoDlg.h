@@ -12,7 +12,8 @@
 // shows the selected tab's rows (its columns set again on a tab change), sorts by any column (numbers as numbers),
 // and is filtered by any column; Copy copies the selected rows, or all shown, with the column names. Flush DNS Cache
 // (on the DNS tab, after a confirmation) empties the cache, as ipconfig /flushdns, and reads it again. Double-clicking a
-// listening port goes to its process.
+// listening port goes to its process. The list's context menu has Go to Process (listening ports), Flush DNS Cache
+// (the DNS cache) and Copy.
 //
 class CNetworkInfoDlg :
 	public CDialogImpl<CNetworkInfoDlg>,
@@ -38,6 +39,7 @@ public:
 
 	BEGIN_MSG_MAP(CNetworkInfoDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		NOTIFY_HANDLER(IDC_NI_TABS, TCN_SELCHANGE, OnTabChanged)
 		NOTIFY_HANDLER(IDC_NI_LIST, LVN_COLUMNCLICK, OnColumnClick)
 		NOTIFY_HANDLER(IDC_NI_LIST, NM_DBLCLK, OnDoubleClick)
@@ -45,6 +47,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_NI_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_NI_FLUSH, OnFlush)
 		COMMAND_ID_HANDLER(IDC_NI_COPY, OnCopy)
+		COMMAND_ID_HANDLER(ID_NETINFO_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		CHAIN_MSG_MAP(CDpiDialogResize<CNetworkInfoDlg>)
 		CHAIN_MSG_MAP(CDialogResize<CNetworkInfoDlg>)
@@ -76,6 +79,8 @@ private:
 	};
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnTabChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);

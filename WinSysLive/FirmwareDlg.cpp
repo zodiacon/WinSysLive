@@ -55,6 +55,10 @@ LRESULT CFirmwareDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lP
 	m_HexFont.CreateFont(-::MulDiv(9, dpi, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
 		CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
 	m_Value.SetFont(m_HexFont);
+	// above the tab control, which would otherwise paint over them when the selection changes (its WS_CLIPSIBLINGS
+	// clips only the siblings above it)
+	for (HWND hWnd : { m_Summary.m_hWnd, m_Variables.m_hWnd, m_Value.m_hWnd })
+		::SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
 	DlgResize_Init(true, true);
 	InitDpi();
