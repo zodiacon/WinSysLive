@@ -45,6 +45,10 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_General);
 	m_Performance = std::make_unique<CProcPerformancePage>(m_Props);
 	AddPage(*m_Performance);
+	if (!WinSys::GpuInfo::GetAdapters().empty()) {
+		m_Gpu = std::make_unique<CProcGpuPage>(m_Props);
+		AddPage(*m_Gpu);
+	}
 	m_Statistics = std::make_unique<CProcStatsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Statistics);
 	m_Environment = std::make_unique<CProcEnvironmentPage>(m_Props);
@@ -122,6 +126,9 @@ LRESULT CProcessSheet::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL
 void CProcessSheet::Sample() {
 	m_Snapshot.Take();
 	m_Performance->OnSample(m_Snapshot);
+	// every sample, as the Performance page: its graphs have history when it's shown
+	if (m_Gpu)
+		m_Gpu->OnSample(m_Snapshot);
 	if (m_Statistics->IsWindow() && GetActivePage() == m_Statistics->m_hWnd)
 		m_Statistics->OnSample(m_Snapshot);
 	if (m_Threads->IsWindow() && GetActivePage() == m_Threads->m_hWnd)

@@ -69,6 +69,8 @@ BEGIN
     END
     POPUP "&View"
     BEGIN
+        MENUITEM "Command &Palette...\tCtrl+Q",  ID_VIEW_COMMANDPALETTE
+        MENUITEM SEPARATOR
         MENUITEM "&Processes\tCtrl+1",          ID_VIEW_PROCESSES
         MENUITEM "&Services\tCtrl+2",           ID_VIEW_SERVICES
         MENUITEM "P&erformance\tCtrl+3",        ID_VIEW_PERFORMANCE
@@ -181,6 +183,7 @@ BEGIN
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
         MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
         MENUITEM "&Network Shares...",          ID_SYSTEM_SHARES
+        MENUITEM "Net&work Information...",     ID_SYSTEM_NETWORKINFO
         MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
@@ -762,6 +765,29 @@ BEGIN
     PUSHBUTTON      "Close",IDCANCEL,498,339,55,14
 END
 
+IDD_NETINFO DIALOGEX 0, 0, 540, 340
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Network Information"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_NI_TABS,"SysTabControl32",WS_TABSTOP | WS_CLIPSIBLINGS,7,7,526,306
+    EDITTEXT        IDC_NI_FILTER,13,25,514,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_NI_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,43,514,264
+    LTEXT           "",IDC_NI_STATUS,7,322,250,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Flush DNS Cache",IDC_NI_FLUSH,263,319,70,14
+    PUSHBUTTON      "&Refresh",IDC_NI_REFRESH,338,319,60,14
+    PUSHBUTTON      "&Copy",IDC_NI_COPY,403,319,60,14
+    PUSHBUTTON      "Close",IDCANCEL,473,319,60,14
+END
+
+IDD_COMMANDPALETTE DIALOGEX 0, 0, 420, 220
+STYLE DS_SETFONT | WS_POPUP | WS_BORDER
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_CP_FILTER,4,4,412,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_CP_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | LVS_SHAREIMAGELISTS | WS_TABSTOP,4,22,412,194
+END
+
 IDD_SYSINFO DIALOGEX 0, 0, 440, 360
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "System Information"
@@ -914,6 +940,13 @@ BEGIN
     LTEXT           "",IDC_PERF_MEMORY,7,201,316,11,SS_NOPREFIX | SS_ENDELLIPSIS
     LTEXT           "",IDC_PERF_IO,7,212,316,11,SS_NOPREFIX | SS_ENDELLIPSIS
     CONTROL         "One &column",IDC_PERF_VERTICAL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,268,212,55,10
+END
+
+IDD_PROC_GPU DIALOGEX 0, 0, 330, 230
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPCHILDREN | WS_CAPTION
+CAPTION "GPU"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
 END
 
 IDD_PROC_THREADS DIALOGEX 0, 0, 330, 230
@@ -1408,6 +1441,7 @@ BEGIN
     "D",            ID_VIEW_DISK,           VIRTKEY, SHIFT, CONTROL
     "H",            ID_VIEW_HISTORY,        VIRTKEY, SHIFT, CONTROL
     "A",            ID_VIEW_AUTORUNS,       VIRTKEY, SHIFT, CONTROL
+    "Q",            ID_VIEW_COMMANDPALETTE, VIRTKEY, CONTROL
     "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
@@ -1774,6 +1808,8 @@ BEGIN
                             "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
+    ID_VIEW_COMMANDPALETTE  "Find a command or a tab by typing part of its name\nCommand Palette (Ctrl+Q)"
+    ID_SYSTEM_NETWORKINFO   "Show the listening ports, the DNS cache, the ARP cache and the routes\nNetwork Information"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_COMPUTER_LOCK        "Lock the computer\nLock"
     ID_COMPUTER_LOGOFF      "Sign out of Windows\nLog Off"

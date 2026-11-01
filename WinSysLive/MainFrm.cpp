@@ -15,6 +15,8 @@
 #include "PageFilesDlg.h"
 #include "SystemInfoDlg.h"
 #include "SnapshotDlg.h"
+#include "NetworkInfoDlg.h"
+#include "CommandPaletteDlg.h"
 #include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
@@ -817,6 +819,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_PROCESS_RESUME, IDI_RUN },
 		{ ID_SYSTEM_LOGONSESSIONS, IDI_LOGON_SESSIONS },
 		{ ID_SYSTEM_SHARES, IDI_SHARE },
+		{ ID_SYSTEM_NETWORKINFO, IDI_NETWORK },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
@@ -1395,6 +1398,56 @@ LRESULT CMainFrame::OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	if (dlg.DoModal(m_hWnd) == IDOK)
 		// the Services and Drivers tabs show it with their next refresh
 		SetStatusText(0, std::format(L"{} {} created", dlg.IsDriver() ? L"Driver" : L"Service", dlg.GetName()).c_str());
+	return 0;
+}
+
+LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the main menu's commands, in menu order, with the menus they're in; the disabled ones left out
+	std::vector<CCommandPaletteDlg::Command> commands;
+	auto collect = [&](auto& self, HMENU hMenu, std::wstring const& path) -> void {
+		for (int i = 0, count = ::GetMenuItemCount(hMenu); i < count; i++) {
+			WCHAR text[256]{};
+			MENUITEMINFO info{ sizeof(info), MIIM_FTYPE | MIIM_ID | MIIM_STATE | MIIM_SUBMENU | MIIM_STRING };
+			info.dwTypeData = text;
+			info.cch = _countof(text);
+			if (!::GetMenuItemInfo(hMenu, i, TRUE, &info) || (info.fType & MFT_SEPARATOR))
+				continue;
+			// "&Name\tShortcut"
+			std::wstring item(text), shortcut;
+			if (auto tab = item.find(L'\t'); tab != std::wstring::npos) {
+				shortcut = item.substr(tab + 1);
+				item.resize(tab);
+			}
+			std::erase(item, L'&');
+			if (info.hSubMenu) {
+				self(self, info.hSubMenu, path.empty() ? item : path + L" > " + item);
+				continue;
+			}
+			if (info.wID == 0 || info.wID == ID_VIEW_COMMANDPALETTE)
+				continue;
+			auto state = UIGetState(info.wID);
+			if ((state & UPDUI_DISABLED) || (info.fState & MFS_DISABLED))
+				continue;
+			int image = -1;
+			for (auto& t : s_Tabs)
+				if (t.CommandId == info.wID)
+					image = GetIconIndex(t.Icon);
+			commands.push_back({ info.wID, item, path, shortcut, image, (state & UPDUI_CHECKED) || (info.fState & MFS_CHECKED) });
+		}
+	};
+	collect(collect, GetMenu(), L"");
+
+	CCommandPaletteDlg dlg(std::move(commands), m_Images);
+	if (dlg.DoModal(m_hWnd) == IDOK)
+		// as if from the menu: the frame routes a view's commands to the active view
+		PostMessage(WM_COMMAND, MAKEWPARAM(dlg.GetCommand(), 0));
+	return 0;
+}
+
+LRESULT CMainFrame::OnNetworkInfo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CNetworkInfoDlg dlg([this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); },
+		[this](uint32_t pid) { GoToProcess(pid); });
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

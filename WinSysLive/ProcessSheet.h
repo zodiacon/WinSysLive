@@ -9,6 +9,7 @@
 #include "JobPage.h"
 #include "ServicesPage.h"
 #include "TcpIpPage.h"
+#include "GpuPage.h"
 #include "ObjectSecurity.h"
 
 //
@@ -44,6 +45,7 @@ private:
 	CIcon m_Icon, m_SmallIcon;	// the process's, or the system's application icon
 	std::unique_ptr<CProcGeneralPage> m_General;
 	std::unique_ptr<CProcPerformancePage> m_Performance;
+	std::unique_ptr<CProcGpuPage> m_Gpu;	// when the system has GPUs
 	std::unique_ptr<CProcStatsPage> m_Statistics;
 	std::unique_ptr<CProcEnvironmentPage> m_Environment;
 	std::unique_ptr<CProcMemoryPage> m_Memory;

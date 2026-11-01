@@ -261,6 +261,15 @@
     <ClCompile Include="SnapshotDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="GpuPage.cpp">
+      <Filter>Pages</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkInfoDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandPaletteDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="MemoryStringsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -530,6 +539,15 @@
     <ClInclude Include="SnapshotDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="GpuPage.h">
+      <Filter>Pages</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkInfoDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandPaletteDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
     <ClInclude Include="MemoryStringsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
@@ -794,14 +812,14 @@
     <Image Include="res\Power.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
+    <Image Include="res\Snapshot.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
     <Image Include="res\sysinfo.ico">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\autoruns.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\Snapshot.ico">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>

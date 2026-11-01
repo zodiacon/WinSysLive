@@ -313,7 +313,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <ExceptionHandling />
+      <ExceptionHandling>Sync</ExceptionHandling>
       <DebugInformationFormat />
       <PreprocessorDefinitions>_WINDOWS;STRICT;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp23</LanguageStandard>
@@ -437,6 +437,9 @@
     <ClCompile Include="SystemInfoDlg.cpp" />
     <ClCompile Include="Snapshot.cpp" />
     <ClCompile Include="SnapshotDlg.cpp" />
+    <ClCompile Include="GpuPage.cpp" />
+    <ClCompile Include="NetworkInfoDlg.cpp" />
+    <ClCompile Include="CommandPaletteDlg.cpp" />
     <ClCompile Include="MemoryStringsDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="PipesDlg.cpp" />
@@ -534,6 +537,9 @@
     <ClInclude Include="SystemInfoDlg.h" />
     <ClInclude Include="Snapshot.h" />
     <ClInclude Include="SnapshotDlg.h" />
+    <ClInclude Include="GpuPage.h" />
+    <ClInclude Include="NetworkInfoDlg.h" />
+    <ClInclude Include="CommandPaletteDlg.h" />
     <ClInclude Include="MemoryStringsDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="PipesDlg.h" />

@@ -54,6 +54,7 @@
 #define IDD_PROC_JOB                    249
 #define IDI_JOB                         250
 #define IDD_PROC_SERVICES               251
+#define IDD_PROC_GPU                    325
 #define IDD_PROCESS_COLORS              252
 #define IDI_NETWORK                     253
 #define IDD_PROC_TCPIP                  254
@@ -661,14 +662,27 @@
 #define ID_HANDLE_RESETBASELINE         32976
 #define ID_HANDLE_SHOWTYPE              32977
 #define ID_FILE_RUNASSYSTEM             32978
+#define IDD_NETINFO                     326
+#define IDC_NI_TABS                     1374
+#define IDC_NI_FILTER                   1375
+#define IDC_NI_LIST                     1376
+#define IDC_NI_STATUS                   1377
+#define IDC_NI_FLUSH                    1378
+#define IDC_NI_REFRESH                  1379
+#define IDC_NI_COPY                     1380
+#define ID_SYSTEM_NETWORKINFO           32979
+#define IDD_COMMANDPALETTE              327
+#define IDC_CP_FILTER                   1381
+#define IDC_CP_LIST                     1382
+#define ID_VIEW_COMMANDPALETTE          32980
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        325
-#define _APS_NEXT_COMMAND_VALUE         32979
-#define _APS_NEXT_CONTROL_VALUE         1374
+#define _APS_NEXT_RESOURCE_VALUE        328
+#define _APS_NEXT_COMMAND_VALUE         32981
+#define _APS_NEXT_CONTROL_VALUE         1383
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
