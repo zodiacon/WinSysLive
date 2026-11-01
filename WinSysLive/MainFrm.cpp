@@ -18,6 +18,7 @@
 #include "NetworkInfoDlg.h"
 #include "CommandPaletteDlg.h"
 #include "EtwSessionsDlg.h"
+#include "WindowStationsDlg.h"
 #include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
@@ -822,6 +823,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_SHARES, IDI_SHARE },
 		{ ID_SYSTEM_NETWORKINFO, IDI_NETWORK },
 		{ ID_SYSTEM_ETWSESSIONS, IDI_ETW },
+		{ ID_SYSTEM_WINSTATIONS, IDI_WINSTA },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
@@ -1439,10 +1441,41 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	};
 	collect(collect, GetMenu(), L"");
 
-	CCommandPaletteDlg dlg(std::move(commands), m_Images);
-	if (dlg.DoModal(m_hWnd) == IDOK)
-		// as if from the menu: the frame routes a view's commands to the active view
-		PostMessage(WM_COMMAND, MAKEWPARAM(dlg.GetCommand(), 0));
+	// the commands run last from it, newest first
+	auto& settings = AppSettings::Get();
+	std::vector<UINT> recent;
+	std::wstring list = settings.CommandPaletteRecent();
+	for (size_t start = 0; start < list.size(); ) {
+		auto comma = list.find(L',', start);
+		if (auto id = (UINT)std::wcstoul(list.substr(start, comma - start).c_str(), nullptr, 10))
+			recent.push_back(id);
+		if (comma == std::wstring::npos)
+			break;
+		start = comma + 1;
+	}
+
+	CCommandPaletteDlg dlg(std::move(commands), m_Images, recent);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	auto id = dlg.GetCommand();
+	std::erase(recent, id);
+	recent.insert(recent.begin(), id);
+	if (recent.size() > 8)
+		recent.resize(8);
+	list.clear();
+	for (auto r : recent)
+		list += (list.empty() ? L"" : L",") + std::to_wstring(r);
+	settings.CommandPaletteRecent(list);
+	settings.Save();
+	// as if from the menu: the frame routes a view's commands to the active view
+	PostMessage(WM_COMMAND, MAKEWPARAM(id, 0));
+	return 0;
+}
+
+LRESULT CMainFrame::OnWindowStations(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CWindowStationsDlg dlg(m_Images, [this](UINT id) { return GetIconIndex(id); },
+		[this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); }, [this](uint32_t pid) { GoToProcess(pid); });
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

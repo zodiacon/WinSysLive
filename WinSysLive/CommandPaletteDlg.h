@@ -7,7 +7,7 @@
 // in a borderless popup near the top of the frame. Every word typed must be in the command's name or its menu path;
 // names that start with the text come first. Up, Down, Page Up and Page Down move in the list while typing; Enter (or
 // a double-click) runs the selected command (posted to the frame, which routes a view's commands to the active view);
-// Escape, or clicking elsewhere, closes it. The frame builds the list (CMainFrame::OnCommandPalette), leaving out the
+// Escape, or clicking elsewhere, closes it. While nothing is typed, the commands run last from it come first. The frame builds the list (CMainFrame::OnCommandPalette), leaving out the
 // commands its update UI has disabled.
 //
 class CCommandPaletteDlg : public CDialogImpl<CCommandPaletteDlg> {
@@ -23,8 +23,10 @@ public:
 		bool Checked{ false };
 	};
 
-	// images: the frame's (shared, not owned); owner: positions the popup
-	CCommandPaletteDlg(std::vector<Command> commands, HIMAGELIST images) : m_Commands(std::move(commands)), m_Images(images) {}
+	// images: the frame's (shared, not owned); recent: the commands run last, newest first, listed first while nothing
+	// is typed
+	CCommandPaletteDlg(std::vector<Command> commands, HIMAGELIST images, std::vector<UINT> recent = {})
+		: m_Commands(std::move(commands)), m_Images(images), m_Recent(std::move(recent)) {}
 
 	// after IDOK
 	UINT GetCommand() const {
@@ -65,6 +67,7 @@ private:
 
 	std::vector<Command> m_Commands;
 	HIMAGELIST m_Images;
+	std::vector<UINT> m_Recent;
 	CContainedWindowT<CEdit> m_Filter{ this, 1 };
 	CListViewCtrl m_List;
 	UINT m_Chosen{ 0 };

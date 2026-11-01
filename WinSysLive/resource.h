@@ -684,14 +684,25 @@
 #define IDC_ET_REFRESH                  1387
 #define IDC_ET_COPY                     1388
 #define ID_SYSTEM_ETWSESSIONS           32982
+#define IDD_WINSTATIONS                 329
+#define IDC_WS_TREE                     1389
+#define IDC_WS_FILTER                   1390
+#define IDC_WS_VISIBLE                  1391
+#define IDC_WS_LIST                     1392
+#define IDC_WS_STATUS                   1393
+#define IDC_WS_REFRESH                  1394
+#define IDC_WS_COPY                     1395
+#define ID_WINDOW_GOTOPROCESS           32983
+#define ID_WINDOW_BRINGTOFRONT          32984
+#define ID_SYSTEM_WINSTATIONS           32985
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        329
-#define _APS_NEXT_COMMAND_VALUE         32983
-#define _APS_NEXT_CONTROL_VALUE         1389
+#define _APS_NEXT_RESOURCE_VALUE        330
+#define _APS_NEXT_COMMAND_VALUE         32986
+#define _APS_NEXT_CONTROL_VALUE         1396
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

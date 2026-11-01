@@ -273,6 +273,9 @@
     <ClCompile Include="EtwSessionsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="WindowStationsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="MemoryStringsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -552,6 +555,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="EtwSessionsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowStationsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="MemoryStringsDlg.h">

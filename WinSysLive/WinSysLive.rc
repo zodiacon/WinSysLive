@@ -185,6 +185,7 @@ BEGIN
         MENUITEM "&Network Shares...",          ID_SYSTEM_SHARES
         MENUITEM "Net&work Information...",     ID_SYSTEM_NETWORKINFO
         MENUITEM "&ETW Sessions...",            ID_SYSTEM_ETWSESSIONS
+        MENUITEM "Window S&tations and Desktops...", ID_SYSTEM_WINSTATIONS
         MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
@@ -802,6 +803,21 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_ET_REFRESH,383,339,55,14
     PUSHBUTTON      "&Copy",IDC_ET_COPY,443,339,55,14
     PUSHBUTTON      "Close",IDCANCEL,503,339,50,14
+END
+
+IDD_WINSTATIONS DIALOGEX 0, 0, 640, 380
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Window Stations and Desktops"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_WS_TREE,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,170,346
+    EDITTEXT        IDC_WS_FILTER,183,7,380,14,ES_AUTOHSCROLL
+    CONTROL         "&Visible only",IDC_WS_VISIBLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,570,9,63,10
+    CONTROL         "",IDC_WS_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,183,26,450,327
+    LTEXT           "",IDC_WS_STATUS,7,362,400,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_WS_REFRESH,463,359,55,14
+    PUSHBUTTON      "&Copy",IDC_WS_COPY,523,359,55,14
+    PUSHBUTTON      "Close",IDCANCEL,583,359,50,14
 END
 
 IDD_SYSINFO DIALOGEX 0, 0, 440, 360
@@ -1825,6 +1841,7 @@ BEGIN
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
     ID_VIEW_COMMANDPALETTE  "Find a command or a tab by typing part of its name\nCommand Palette (Ctrl+Q)"
+    ID_SYSTEM_WINSTATIONS   "Show the window stations, their desktops and each desktop's windows\nWindow Stations and Desktops"
     ID_SYSTEM_ETWSESSIONS   "Show the running ETW sessions and the providers enabled in them\nETW Sessions"
     ID_SYSTEM_NETWORKINFO   "Show the listening ports, the DNS cache, the ARP cache and the routes\nNetwork Information"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"

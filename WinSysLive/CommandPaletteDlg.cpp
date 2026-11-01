@@ -60,13 +60,22 @@ void CCommandPaletteDlg::ShowCommands() {
 		start = end + 1;
 	}
 	std::vector<int> first, rest;	// names starting with the text, then the others, each in menu order
+	// with nothing typed, the recent commands first, newest first
+	if (filter.empty())
+		for (auto id : m_Recent)
+			for (int i = 0; i < (int)m_Commands.size(); i++)
+				if (m_Commands[i].Id == id && std::ranges::find(first, i) == first.end()) {
+					first.push_back(i);
+					break;
+				}
 	for (int i = 0; i < (int)m_Commands.size(); i++) {
 		auto& c = m_Commands[i];
 		auto name = Lowercase(c.Name);
 		auto haystack = name + L" " + Lowercase(c.Path);
 		if (!std::ranges::all_of(words, [&](auto& w) { return haystack.find(w) != std::wstring::npos; }))
 			continue;
-		(!filter.empty() && name.starts_with(filter) ? first : rest).push_back(i);
+		if (filter.empty() ? std::ranges::find(first, i) == first.end() : true)
+			(!filter.empty() && name.starts_with(filter) ? first : rest).push_back(i);
 	}
 	first.insert(first.end(), rest.begin(), rest.end());
 
