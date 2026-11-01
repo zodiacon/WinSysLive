@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{3B2E6C14-7A9D-4F10-9E55-1C8A0D2F4B61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Framework">
+      <UniqueIdentifier>{6D4F8A21-2C3B-4E7D-A1B9-5F0E3C7D2A84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App Sources">
+      <UniqueIdentifier>{A7C35E92-4D1F-4B8A-9C60-2E5B7F1D8C03}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="AlertTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="PowerRequestTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="DotNetTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSysTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinSysLive\AlertRules.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="TestFramework.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WinSysLive\AlertRules.h">
+      <Filter>App Sources</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

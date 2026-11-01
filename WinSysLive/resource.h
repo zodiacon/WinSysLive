@@ -720,6 +720,15 @@
 #define ID_DEVICE_GOTODRIVER            32998
 #define ID_DEVICE_COPYID                32999
 #define ID_VIEW_DEVICES                 33000
+#define ID_DEVICE_ENABLE                33001
+#define ID_DEVICE_SCANHARDWARE          33002
+#define ID_EVENTS_WARNINGS              33003
+#define ID_EVENTS_INFORMATION           33004
+#define ID_EVENTS_REFRESH               33005
+#define ID_EVENT_DETAILS                33006
+#define ID_EVENT_GOTOPROCESS            33007
+#define ID_VIEW_EVENTS                  33008
+#define ID_EVENTS_SECURITY              33009
 #define IDC_DN_RUNTIME                  1396
 #define IDC_DN_FILTER                   1397
 #define IDC_DN_REFRESH                  1398
@@ -751,7 +760,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        336
-#define _APS_NEXT_COMMAND_VALUE         33001
+#define _APS_NEXT_COMMAND_VALUE         33010
 #define _APS_NEXT_CONTROL_VALUE         1425
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

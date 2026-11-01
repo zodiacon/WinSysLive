@@ -19,6 +19,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LogView", "wtlhelper\LogVie
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Controls", "Controls", "{B0673B39-737A-416D-A1A8-61C3464291DE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tests", "Tests\Tests.vcxproj", "{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -113,6 +115,14 @@ Global
 		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.ReleaseSigned|ARM64.Build.0 = ReleaseSigned|x64
 		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.ReleaseSigned|x64.ActiveCfg = Release|x64
 		{EF5C2F6B-5FCD-446C-BE8D-1485407CD65A}.ReleaseSigned|x64.Build.0 = Release|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.Debug|ARM64.ActiveCfg = Debug|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.Debug|x64.ActiveCfg = Debug|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.Debug|x64.Build.0 = Debug|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.Release|ARM64.ActiveCfg = Release|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.Release|x64.ActiveCfg = Release|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.Release|x64.Build.0 = Release|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.ReleaseSigned|ARM64.ActiveCfg = Release|x64
+		{9F1C2A6E-5B7D-4E3A-8C21-7D4B0E6A1F35}.ReleaseSigned|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

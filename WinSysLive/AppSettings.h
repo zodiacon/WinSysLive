@@ -48,6 +48,10 @@ struct AppSettings : Settings {
 		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
 		SETTING_STRING(AutorunsColumns, L"");	// the Autoruns tab
 		SETTING_STRING(DeviceColumns, L"");	// the Devices tab
+		SETTING_STRING(EventColumns, L"");	// the Events tab
+		SETTING(EventsWarnings, 1, SettingType::Bool);
+		SETTING(EventsInformation, 0, SettingType::Bool);
+		SETTING(EventsSecurity, 1, SettingType::Bool);
 		SETTING(DevicesByConnection, 0, SettingType::Bool);
 		SETTING(DevicesShowHidden, 0, SettingType::Bool);
 		SETTING(DevicesShowDisconnected, 0, SettingType::Bool);
@@ -120,6 +124,10 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(AutorunsColumns)
 	DEF_SETTING_STRING(DeviceColumns)
+	DEF_SETTING_STRING(EventColumns)
+	DEF_SETTING(EventsWarnings, int)
+	DEF_SETTING(EventsInformation, int)
+	DEF_SETTING(EventsSecurity, int)
 	DEF_SETTING(DevicesByConnection, int)
 	DEF_SETTING(DevicesShowHidden, int)
 	DEF_SETTING(DevicesShowDisconnected, int)

@@ -6,94 +6,16 @@
 #include <WinSys/SystemInfo.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Helpers.h>
-#include <Shlwapi.h>
 #include <ranges>
-
-#pragma comment(lib, "shlwapi")
 
 using namespace WinSys;
 
 namespace {
-	struct KindInfo {
-		PCWSTR Key;		// in the setting: must not change
-		PCWSTR Name;	// in the rule dialog
-		bool Pattern, Threshold;
-		PCWSTR Unit;
-	};
-
-	const KindInfo s_Kinds[] = {
-		{ L"ProcessStarted", L"A process starts", true, false, L"" },
-		{ L"ProcessExited", L"A process exits", true, false, L"" },
-		{ L"SystemCpu", L"CPU usage is above", false, true, L"%" },
-		{ L"Commit", L"Commit charge is above", false, true, L"%" },
-		{ L"Memory", L"Physical memory in use is above", false, true, L"%" },
-		{ L"ProcessCpu", L"A process's CPU usage is above", true, true, L"%" },
-		{ L"ProcessPrivate", L"A process's private bytes are above", true, true, L"MB" },
-		{ L"ServiceStarted", L"A service starts", true, false, L"" },
-		{ L"ServiceStopped", L"A service stops", true, false, L"" },
-		{ L"ServiceFailed", L"A service fails (stops with an error)", true, false, L"" },
-	};
-	static_assert(_countof(s_Kinds) == (int)AlertKind::_Count);
-
-	KindInfo const& Info(AlertKind kind) {
-		return s_Kinds[(int)kind];
-	}
-
-	std::wstring Number(double value) {
-		return value == (int64_t)value ? std::to_wstring((int64_t)value) : std::format(L"{:.1f}", value);
-	}
-
-	std::wstring ForSeconds(int seconds) {
-		return seconds <= 0 ? L"" : seconds == 1 ? L" for a second" : std::format(L" for {} seconds", seconds);
-	}
-
-	bool Matches(std::wstring const& pattern, std::wstring const& name) {
-		return pattern.empty() || ::PathMatchSpecW(name.c_str(), pattern.c_str());
-	}
-
 	int64_t Now() {
 		FILETIME ft;
 		::GetSystemTimeAsFileTime(&ft);
 		return (int64_t)ULARGE_INTEGER{ ft.dwLowDateTime, ft.dwHighDateTime }.QuadPart;
 	}
-}
-
-PCWSTR AlertRule::KindName(AlertKind kind) {
-	return Info(kind).Name;
-}
-
-bool AlertRule::HasPattern(AlertKind kind) {
-	return Info(kind).Pattern;
-}
-
-bool AlertRule::HasThreshold(AlertKind kind) {
-	return Info(kind).Threshold;
-}
-
-PCWSTR AlertRule::Unit(AlertKind kind) {
-	return Info(kind).Unit;
-}
-
-bool AlertRule::IsServiceKind(AlertKind kind) {
-	return kind == AlertKind::ServiceStarted || kind == AlertKind::ServiceStopped || kind == AlertKind::ServiceFailed;
-}
-
-std::wstring AlertRule::Describe() const {
-	auto who = !Pattern.empty() ? Pattern : IsServiceKind(Kind) ? std::wstring(L"Any service") : std::wstring(L"Any process");
-	auto limit = Number(Threshold) + (Kind == AlertKind::ProcessPrivateBytes ? L" MB" : L"%");
-	switch (Kind) {
-		case AlertKind::ProcessStarted: return who + L" starts";
-		case AlertKind::ProcessExited: return who + L" exits";
-		case AlertKind::SystemCpu: return L"CPU above " + limit + ForSeconds(Seconds);
-		case AlertKind::CommitCharge: return L"Commit charge above " + limit + ForSeconds(Seconds);
-		case AlertKind::PhysicalMemory: return L"Physical memory above " + limit + ForSeconds(Seconds);
-		case AlertKind::ProcessCpu: return who + L": CPU above " + limit + ForSeconds(Seconds);
-		case AlertKind::ProcessPrivateBytes: return who + L": private bytes above " + limit + ForSeconds(Seconds);
-		case AlertKind::ServiceStarted: return who + L" starts (service)";
-		case AlertKind::ServiceStopped: return who + L" stops (service)";
-		case AlertKind::ServiceFailed: return who + L" fails (service)";
-	}
-	return L"";
 }
 
 std::vector<CAlerts::ServiceChange> CAlerts::UpdateServices() {
@@ -126,40 +48,12 @@ std::vector<CAlerts::ServiceChange> CAlerts::UpdateServices() {
 }
 
 std::vector<AlertRule> CAlerts::Load() {
-	std::vector<AlertRule> rules;
-	std::wstring text = AppSettings::Get().AlertRules();
-	for (auto line : std::views::split(std::wstring_view(text), L'\n')) {
-		std::vector<std::wstring> fields;
-		for (auto field : std::views::split(std::wstring_view(line.begin(), line.end()), L'|'))
-			fields.emplace_back(field.begin(), field.end());
-		if (fields.size() != 5)
-			continue;
-		auto it = std::ranges::find_if(s_Kinds, [&](auto& k) { return fields[0] == k.Key; });
-		if (it == std::end(s_Kinds))
-			continue;
-		AlertRule rule;
-		rule.Kind = (AlertKind)(it - std::begin(s_Kinds));
-		rule.Enabled = fields[1] == L"1";
-		rule.Threshold = ::_wtof(fields[2].c_str());
-		rule.Seconds = ::_wtoi(fields[3].c_str());
-		rule.Pattern = fields[4];
-		rules.push_back(std::move(rule));
-	}
-	return rules;
+	return AlertRule::ParseRules(std::wstring(AppSettings::Get().AlertRules()));
 }
 
 void CAlerts::Save(std::vector<AlertRule> const& rules) {
-	std::wstring text;
-	for (auto& r : rules) {
-		if (!text.empty())
-			text += L'\n';
-		// a pattern can't hold the separators (a file name can't have '|'; line breaks dropped)
-		auto pattern = r.Pattern;
-		std::erase_if(pattern, [](wchar_t c) { return c == L'|' || c == L'\n' || c == L'\r'; });
-		text += std::format(L"{}|{}|{}|{}|{}", Info(r.Kind).Key, r.Enabled ? 1 : 0, Number(r.Threshold), r.Seconds, pattern);
-	}
 	auto& settings = AppSettings::Get();
-	settings.AlertRules(text);
+	settings.AlertRules(AlertRule::FormatRules(rules));
 	settings.Save();
 }
 
@@ -183,20 +77,6 @@ std::deque<AlertEvent> const& CAlerts::GetRecent() const {
 
 void CAlerts::ClearRecent() {
 	m_Recent.clear();
-}
-
-bool CAlerts::Condition::Update(bool holds, uint64_t now, int seconds) {
-	if (!holds) {
-		Since = 0;
-		Fired = false;
-		return false;
-	}
-	if (Since == 0)
-		Since = now;
-	if (Fired || now - Since < (uint64_t)(std::max)(seconds, 0) * 1000)
-		return false;
-	Fired = true;
-	return true;
 }
 
 std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu) {
@@ -244,19 +124,19 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		auto& state = m_States[i];
 		if (!rule.Enabled)
 			continue;
-		auto limit = Number(rule.Threshold) + (rule.Kind == AlertKind::ProcessPrivateBytes ? L" MB" : L"%");
+		auto limit = AlertRule::FormatNumber(rule.Threshold) + (rule.Kind == AlertKind::ProcessPrivateBytes ? L" MB" : L"%");
 		switch (rule.Kind) {
 			case AlertKind::ProcessStarted:
 				if (!baseline)
 					for (auto& p : pm.GetNewProcesses())
-						if (Matches(rule.Pattern, p->GetImageName()))
+						if (AlertRule::Matches(rule.Pattern, p->GetImageName()))
 							add(std::format(L"{} ({}) started", p->GetImageName(), p->Id), p->Id, true);
 				break;
 
 			case AlertKind::ProcessExited:
 				if (!baseline)
 					for (auto& p : pm.GetTerminatedProcesses())
-						if (Matches(rule.Pattern, p->GetImageName()))
+						if (AlertRule::Matches(rule.Pattern, p->GetImageName()))
 							add(std::format(L"{} ({}) exited", p->GetImageName(), p->Id), p->Id, false);
 				break;
 
@@ -269,7 +149,7 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 					break;
 				if (state.System.Update(*value > rule.Threshold, tick, rule.Seconds) && !baseline) {
 					PCWSTR what = rule.Kind == AlertKind::SystemCpu ? L"CPU" : rule.Kind == AlertKind::CommitCharge ? L"Commit charge" : L"Physical memory";
-					add(std::format(L"{} above {}{} (now {:.0f}%)", what, limit, ForSeconds(rule.Seconds), *value));
+					add(std::format(L"{} above {}{} (now {:.0f}%)", what, limit, AlertRule::ForSeconds(rule.Seconds), *value));
 				}
 				break;
 			}
@@ -277,18 +157,18 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 			case AlertKind::ProcessCpu:
 			case AlertKind::ProcessPrivateBytes:
 			{
-				std::unordered_map<ProcessOrThreadKey, Condition> current;
+				std::unordered_map<ProcessOrThreadKey, AlertCondition> current;
 				for (auto& p : processes) {
 					// Idle's CPU is the idle time
-					if (p->Id == 0 || !Matches(rule.Pattern, p->GetImageName()))
+					if (p->Id == 0 || !AlertRule::Matches(rule.Pattern, p->GetImageName()))
 						continue;
 					double value = rule.Kind == AlertKind::ProcessCpu ? p->CPU / 10000.0 : p->NativeInfo->PrivatePageCount / 1048576.0;
-					auto condition = state.Processes.contains(p->Key) ? state.Processes[p->Key] : Condition{};
+					auto condition = state.Processes.contains(p->Key) ? state.Processes[p->Key] : AlertCondition{};
 					if (condition.Update(value > rule.Threshold, tick, rule.Seconds) && !baseline) {
 						auto now = rule.Kind == AlertKind::ProcessCpu ? std::format(L"{:.0f}%", value)
 							: FormatHelper::FormatBytes((int64_t)p->NativeInfo->PrivatePageCount);
 						add(std::format(L"{} ({}): {} above {}{} (now {})", p->GetImageName(), p->Id,
-							rule.Kind == AlertKind::ProcessCpu ? L"CPU" : L"private bytes", limit, ForSeconds(rule.Seconds), now), p->Id, true);
+							rule.Kind == AlertKind::ProcessCpu ? L"CPU" : L"private bytes", limit, AlertRule::ForSeconds(rule.Seconds), now), p->Id, true);
 					}
 					// only the processes still running are kept
 					if (condition.Since)
@@ -302,7 +182,7 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 			case AlertKind::ServiceStopped:
 			case AlertKind::ServiceFailed:
 				for (auto& c : serviceChanges) {
-					if (!Matches(rule.Pattern, c.Name) && !Matches(rule.Pattern, c.DisplayName))
+					if (!AlertRule::Matches(rule.Pattern, c.Name) && !AlertRule::Matches(rule.Pattern, c.DisplayName))
 						continue;
 					bool failed = c.State == WinSys::ServiceState::Stopped && c.ExitCode != 0 && c.ExitCode != ERROR_SERVICE_NEVER_STARTED;
 					auto label = std::format(L"{} ({})", c.DisplayName, c.Name);

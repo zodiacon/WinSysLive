@@ -87,6 +87,7 @@ BEGIN
         MENUITEM "&History\tCtrl+Shift+H",      ID_VIEW_HISTORY
         MENUITEM "&Autoruns\tCtrl+Shift+A",     ID_VIEW_AUTORUNS
         MENUITEM "D&evices\tCtrl+Shift+E",      ID_VIEW_DEVICES
+        MENUITEM "Event &Log\tCtrl+Shift+L",    ID_VIEW_EVENTS
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -1543,6 +1544,7 @@ BEGIN
     "H",            ID_VIEW_HISTORY,        VIRTKEY, SHIFT, CONTROL
     "A",            ID_VIEW_AUTORUNS,       VIRTKEY, SHIFT, CONTROL
     "E",            ID_VIEW_DEVICES,        VIRTKEY, SHIFT, CONTROL
+    "L",            ID_VIEW_EVENTS,         VIRTKEY, SHIFT, CONTROL
     "Q",            ID_VIEW_COMMANDPALETTE, VIRTKEY, CONTROL
     "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
@@ -1895,6 +1897,11 @@ BEGIN
     ID_VIEW_SHOWUNNAMEDHANDLES 
                             "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
+    ID_VIEW_EVENTS          "Show the recent errors and warnings of the System and Application logs, and new ones as they're written\nEvent Log (Ctrl+Shift+L)"
+    ID_EVENTS_WARNINGS      "Show the warnings too\nWarnings"
+    ID_EVENTS_INFORMATION   "Show the information events too\nInformation"
+    ID_EVENTS_SECURITY      "Include the Security log: audit failures with the warnings, audit successes with the information (needs administrator rights)\nSecurity"
+    ID_EVENTS_REFRESH       "Read the logs again\nRefresh"
     ID_VIEW_DEVICES         "Show the devices by type or by connection, their drivers and problems\nDevices (Ctrl+Shift+E)"
     ID_DEVICES_BYCONNECTION "Show the devices as connected, from the computer down, instead of by type\nBy Connection"
     ID_DEVICES_PROBLEMS     "Show only the devices with a problem, and the disabled ones\nProblem Devices"

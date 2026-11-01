@@ -13,12 +13,15 @@ If the submodule directories are empty, run `git submodule update --init`.
 
 ## Build
 
-MSBuild only. There is no CMake, lint, or test setup for the app itself. Toolset v145 (VS 18).
+MSBuild only. There is no CMake or lint. Toolset v145 (VS 18).
 
 ```powershell
 msbuild WinSysLive.sln /p:Configuration=Debug /p:Platform=x64 /m
 msbuild WinSysLive\WinSysLive.vcxproj /p:Configuration=Debug /p:Platform=x64   # app + WTLHelper (project reference)
+x64\Debug\Tests.exe          # the tests; Tests.exe Alerts runs those whose names contain "Alerts"; the exit code is the failures
 ```
+
+Tests: `Tests\Tests.vcxproj` (built with the solution in Debug and Release x64, not in ReleaseSigned or ARM64) is a console program with a runner of its own (`TestFramework.h`: `TEST`, `CHECK`, `CHECK_EQ`; no framework). Its precompiled header is the app's `pch.h`, so app sources it takes compile as in the app (`AlertRules.cpp`, the Alerts rules without the app around them); it links WinSys. The tests cover the parsers of undocumented formats on buffers in their verified layouts (power requests and wake timers, the .NET rundown events), the Alerts rule text and conditions, and some live queries. Code that's worth testing is kept apart from the UI and the queries (`PowerRequests::ParseRequestList`, `DotNetInfo::ApplyRundownEvent`, `AlertRule`) so a test can call it; add a test with a change to such code, and see it fail once before trusting it.
 
 ReleaseSigned (x64) is Release with the exe signed after the build, as TotalPE does (`signtool sign /a /n Scorpio /t http://timestamp.digicert.com /fd sha256`, after the DbgHelp copy, so a failed signing fails the build). Build it through the solution (`msbuild WinSysLive.sln /p:Configuration=ReleaseSigned /p:Platform=x64`), which builds the libraries in Release; building the project alone would ask them for a ReleaseSigned they don't have. The output is `x64\ReleaseSigned\`.
 
@@ -68,7 +71,7 @@ The include order in `pch.h` matters, and the reasons are commented there:
 The parts of the app are described in detail in `docs/`. Read the file for the area you're changing first, and keep it up to date as you change the code (new features get an entry there, not here):
 
 - [docs/processes-view.md](docs/processes-view.md): the Processes tab, its lower pane (Handles, Modules, Threads) and the process property sheet.
-- [docs/views.md](docs/views.md): the other tabs (Services and Drivers, Users, Network, Kernel Modules, RPC/ALPC, Zombie Processes, Object Types, Object Manager, Pool Tags, Disk, History, Autoruns, Devices, Performance).
+- [docs/views.md](docs/views.md): the other tabs (Services and Drivers, Users, Network, Kernel Modules, RPC/ALPC, Zombie Processes, Object Types, Object Manager, Pool Tags, Disk, History, Autoruns, Devices, Events, Performance).
 - [docs/dialogs.md](docs/dialogs.md): the dialogs and menus that aren't a tab's (Run, Find Handle or DLL, Snapshots, System Information, Firmware and TPM, the Computer, Tools and Memory Lists menus, Pipes and Mailslots, Network Information, ETW Sessions, Alerts, the command palette, Window Stations and Desktops, Power Requests, Network Shares, Page Files, RAM, Logon Sessions, the window finder, VirusTotal, wait chains, About).
 - [docs/app-services.md](docs/app-services.md): Copy and Export, the ACL editor, highlighting, the tray icons and window options, startup, updates and settings files, symbols and DPI.
 

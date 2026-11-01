@@ -27,8 +27,10 @@
 // (WM_DEVICES_SCANNED; about half a second with the disconnected devices) when the tab opens, on Scan Again, and a second
 // after the devices change (CM_Register_Notification for every device instance, WM_DEVICES_CHANGED); the selection and
 // the expanded rows are kept by instance ID (a class row by name). Context menu: Properties (Device Manager's property
-// sheet, devmgr.dll's DeviceProperties_RunDLL), Go to Driver (the Drivers tab, by the service's image), Copy Instance ID,
-// Copy.
+// sheet, devmgr.dll's DeviceProperties_RunDLL), Enable Device / Disable Device... (WinSys Devices::SetEnabled, after a
+// confirmation for disabling, a stronger one for the classes the machine depends on; elevation needed; a restart said
+// when one is needed), Go to Driver (the Drivers tab, by the service's image), Copy Instance ID, Copy, and Scan for
+// Hardware Changes (Devices::ScanForChanges: the arrivals come as device notifications).
 //
 class CDevicesView : public CViewBase<CDevicesView> {
 public:
@@ -90,6 +92,8 @@ public:
 		COMMAND_ID_HANDLER(ID_DEVICE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_DEVICE_GOTODRIVER, OnGoToDriver)
 		COMMAND_ID_HANDLER(ID_DEVICE_COPYID, OnCopyId)
+		COMMAND_ID_HANDLER(ID_DEVICE_ENABLE, OnEnable)
+		COMMAND_ID_HANDLER(ID_DEVICE_SCANHARDWARE, OnScanHardware)
 		COMMAND_RANGE_HANDLER(ID_DEVICES_BYCONNECTION, ID_DEVICES_RESCAN, OnBarCommand)
 		CHAIN_MSG_MAP_ALT(CViewBase<CDevicesView>, 1)
 	END_MSG_MAP()
@@ -140,6 +144,8 @@ private:
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopyId(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEnable(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnScanHardware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	void StartScan();
 	// the tree again from m_Devices, keeping the selection and the expanded rows

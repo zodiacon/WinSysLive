@@ -4,6 +4,7 @@
 #include <WinSys/Keys.h>
 #include <WinSys/ServiceInfo.h>
 #include "ProcessInfoEx.h"
+#include "AlertRules.h"
 #include <deque>
 
 //
@@ -11,31 +12,9 @@
 // raise a notification balloon (CAlertIcon) and go to a list of recent alerts. A process rule matches image names with
 // PathMatchSpec (wildcards, several patterns separated by ';'; empty: any process). Threshold rules fire once the value
 // has been above the threshold for the given seconds (0: at once), then not again until it's back under it; for process
-// rules that's per process. Nothing fires on the first update: what's running then is the baseline. Rules are kept in
-// the AlertRules setting, one per line: Kind|Enabled|Threshold|Seconds|Pattern (the kind's key, which must not change).
+// rules that's per process. Nothing fires on the first update: what's running then is the baseline. The rules, their
+// setting's text and the conditions are in AlertRules.h.
 //
-enum class AlertKind {
-	ProcessStarted, ProcessExited, SystemCpu, CommitCharge, PhysicalMemory, ProcessCpu, ProcessPrivateBytes,
-	ServiceStarted, ServiceStopped, ServiceFailed, _Count
-};
-
-struct AlertRule {
-	AlertKind Kind{ AlertKind::ProcessStarted };
-	bool Enabled{ true };
-	std::wstring Pattern;	// image names, for the process kinds
-	double Threshold{ 0 };	// percent; MB for private bytes
-	int Seconds{ 0 };		// how long the value must stay above the threshold
-
-	// "notepad.exe starts", "CPU above 90% for 10 seconds"
-	std::wstring Describe() const;
-
-	static PCWSTR KindName(AlertKind kind);	// for the rule dialog's combo box
-	static bool HasPattern(AlertKind kind);
-	static bool IsServiceKind(AlertKind kind);	// the pattern matches service names (or display names)
-	static bool HasThreshold(AlertKind kind);
-	static PCWSTR Unit(AlertKind kind);	// the threshold's: "%" or "MB"
-};
-
 struct AlertEvent {
 	int64_t Time{ 0 };	// FILETIME, UTC
 	std::wstring Text;
@@ -62,16 +41,9 @@ public:
 	static constexpr size_t RecentLimit = 500;
 
 private:
-	// a condition's state: since when it's held (GetTickCount64; 0: it doesn't) and whether it fired
-	struct Condition {
-		uint64_t Since{ 0 };
-		bool Fired{ false };
-		// true when it fires now
-		bool Update(bool holds, uint64_t now, int seconds);
-	};
 	struct RuleState {
-		Condition System;
-		std::unordered_map<WinSys::ProcessOrThreadKey, Condition> Processes;
+		AlertCondition System;
+		std::unordered_map<WinSys::ProcessOrThreadKey, AlertCondition> Processes;
 	};
 
 	// a service as last seen: its state (not a pending one) and process

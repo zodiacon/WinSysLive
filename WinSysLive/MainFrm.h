@@ -100,6 +100,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_HISTORY, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_AUTORUNS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_DEVICES, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_EVENTS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
 		COMMAND_ID_HANDLER(ID_OPTIONS_FONT, OnFont)
@@ -281,6 +282,7 @@ private:
 		{ TabType::History, ID_VIEW_HISTORY, IDI_HISTORY, L"History" },
 		{ TabType::Autoruns, ID_VIEW_AUTORUNS, IDI_AUTORUNS, L"Autoruns" },
 		{ TabType::Devices, ID_VIEW_DEVICES, IDI_DEVICE, L"Devices" },
+		{ TabType::Events, ID_VIEW_EVENTS, IDI_EVENT, L"Events" },
 	};
 	static TabInfo const* FindTab(TabType type);
 

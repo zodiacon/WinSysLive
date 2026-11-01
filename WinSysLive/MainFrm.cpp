@@ -84,6 +84,8 @@ namespace {
 		IDI_HISTORY,
 		// the Autoruns tab, and its entries without an icon of their own
 		IDI_AUTORUNS, IDI_RUN_COMMAND,
+		// the Events tab's levels: errors, warnings, information
+		IDI_DELETE, IDI_ALERT, IDI_SYSINFO,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
@@ -115,6 +117,7 @@ namespace {
 		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
 		{ ID_VIEW_AUTORUNS, IDI_AUTORUNS, BTNS_CHECK },
 		{ ID_VIEW_DEVICES, IDI_DEVICE, BTNS_CHECK },
+		{ ID_VIEW_EVENTS, IDI_EVENT, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 

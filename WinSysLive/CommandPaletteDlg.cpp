@@ -77,7 +77,9 @@ void CCommandPaletteDlg::ShowCommands() {
 		if (filter.empty() ? std::ranges::find(first, i) == first.end() : true)
 			(!filter.empty() && name.starts_with(filter) ? first : rest).push_back(i);
 	}
-	first.insert(first.end(), rest.begin(), rest.end());
+	// a loop, not a range insert: that warns C4530 in Release, which has no exceptions
+	for (auto i : rest)
+		first.push_back(i);
 
 	// no SetRedraw: the first fill happens before the dialog is shown, and a list whose redraw was turned off and on
 	// then stayed unpainted until its contents changed (a hundred or so rows fill quickly anyway)

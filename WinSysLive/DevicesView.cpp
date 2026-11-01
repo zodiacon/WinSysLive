@@ -11,6 +11,8 @@
 #include <WinSys/KernelModules.h>
 #include <WinSys/ServiceManager.h>
 #include <map>
+#include <WinSys/Helpers.h>
+#include <WinSys/SecurityHelper.h>
 
 #pragma comment(lib, "setupapi")
 
@@ -661,10 +663,16 @@ void CDevicesView::ShowContextMenu(POINT pt) {
 	CMenu menu;
 	menu.CreatePopupMenu();
 	menu.AppendMenu(MF_STRING | (d && d->Depth > 0 ? 0 : MF_GRAYED), ID_DEVICE_PROPERTIES, L"&Properties...");
+	// a present device's state can change; the computer's can't
+	bool changeable = d && d->Present && d->Depth > 0;
+	menu.AppendMenu(MF_STRING | (changeable ? 0 : MF_GRAYED), ID_DEVICE_ENABLE,
+		d && d->IsDisabled() ? L"&Enable Device" : L"Disa&ble Device...");
 	menu.AppendMenu(MF_STRING | (d && !d->Service.empty() ? 0 : MF_GRAYED), ID_DEVICE_GOTODRIVER, L"Go to &Driver");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING | (d ? 0 : MF_GRAYED), ID_DEVICE_COPYID, L"Copy &Instance ID");
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy");
+	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING, ID_DEVICE_SCANHARDWARE, L"&Scan for Hardware Changes");
 	menu.SetMenuDefaultItem(ID_DEVICE_PROPERTIES);
 	Frame()->ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
 }
@@ -703,6 +711,54 @@ LRESULT CDevicesView::OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 LRESULT CDevicesView::OnCopyId(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto d = GetSelectedDevice())
 		ClipboardHelper::CopyText(m_hWnd, d->InstanceId.c_str());
+	return 0;
+}
+
+LRESULT CDevicesView::OnEnable(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto d = GetSelectedDevice();
+	if (!d || !d->Present || d->Depth == 0)
+		return 0;
+	auto device = *d;	// a scan may replace m_Devices meanwhile
+	bool enable = device.IsDisabled();
+	if (!enable) {
+		// the classes without which the machine may not run, or can't be used to enable the device again
+		static const PCWSTR critical[] = {
+			L"System", L"Computer", L"Processor", L"DiskDrive", L"HDC", L"SCSIAdapter", L"Volume", L"Display", L"Keyboard",
+			L"Mouse", L"HIDClass", L"USB", L"Net", L"Firmware", L"SecurityDevices",
+		};
+		bool risky = std::ranges::any_of(critical, [&](auto c) { return ::_wcsicmp(c, device.Class.c_str()) == 0; });
+		auto text = std::format(L"Disable {}?\n\nIt stops working until it's enabled again, also after a restart.", device.Name);
+		if (risky)
+			text += std::format(L"\n\nIt's one of the {}, which Windows or your input may depend on: disabling it can leave the computer "
+				L"unusable, or unable to start, until it's enabled again.", device.ClassName);
+		if (AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_OKCANCEL | (risky ? MB_ICONWARNING : MB_ICONQUESTION) | MB_DEFBUTTON2) != IDOK)
+			return 0;
+	}
+	CWaitCursor wait;
+	auto result = Devices::SetEnabled(device.InstanceId, enable);
+	if (result == DeviceChangeResult::Failed) {
+		auto error = ::GetLastError();
+		auto text = std::format(L"{} {} failed: {}", enable ? L"Enabling" : L"Disabling", device.Name, Helpers::GetErrorText(error));
+		if (error == ERROR_ACCESS_DENIED && !SecurityHelper::IsRunningElevated())
+			text += L"\n\nChanging a device needs administrator rights.";
+		AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+	}
+	else if (result == DeviceChangeResult::RestartNeeded)
+		AtlMessageBox(m_hWnd, std::format(L"{} is {} after a restart: it can't be changed while it's in use.", device.Name,
+			enable ? L"enabled" : L"disabled").c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+	StartScan();
+	return 0;
+}
+
+LRESULT CDevicesView::OnScanHardware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (!Devices::ScanForChanges()) {
+		auto error = ::GetLastError();
+		auto text = L"Scanning for hardware changes failed: " + Helpers::GetErrorText(error);
+		if (!SecurityHelper::IsRunningElevated())
+			text += L"\n\nIt needs administrator rights.";
+		AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+	}
+	// what it finds comes as device notifications, which scan the tree again
 	return 0;
 }
 
