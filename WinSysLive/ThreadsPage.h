@@ -75,6 +75,7 @@ public:
 		COMMAND_HANDLER(IDC_PAGE_FILTER, EN_CHANGE, OnFilterChanged)
 		COMMAND_ID_HANDLER(ID_PAGE_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
@@ -155,6 +156,7 @@ private:
 	// columns: the shown ones, taken once for all the rows (from the header)
 	bool Matches(ThreadRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const;
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);

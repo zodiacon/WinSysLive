@@ -83,6 +83,7 @@ public:
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnDoubleClick)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		CHAIN_MSG_MAP(CVirtualListView<CModulesPage>)
 	END_MSG_MAP()
@@ -127,6 +128,7 @@ private:
 	bool Matches(ModuleRow const& row, std::vector<ColumnLayout::ShownColumn> const& columns) const;
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// the process's (0: none, or Idle or System, which have no user-mode address space)

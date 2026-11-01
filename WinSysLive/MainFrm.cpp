@@ -17,6 +17,7 @@
 #include "SnapshotDlg.h"
 #include "NetworkInfoDlg.h"
 #include "CommandPaletteDlg.h"
+#include "EtwSessionsDlg.h"
 #include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
@@ -820,6 +821,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_LOGONSESSIONS, IDI_LOGON_SESSIONS },
 		{ ID_SYSTEM_SHARES, IDI_SHARE },
 		{ ID_SYSTEM_NETWORKINFO, IDI_NETWORK },
+		{ ID_SYSTEM_ETWSESSIONS, IDI_ETW },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
@@ -1441,6 +1443,12 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	if (dlg.DoModal(m_hWnd) == IDOK)
 		// as if from the menu: the frame routes a view's commands to the active view
 		PostMessage(WM_COMMAND, MAKEWPARAM(dlg.GetCommand(), 0));
+	return 0;
+}
+
+LRESULT CMainFrame::OnEtwSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CEtwSessionsDlg dlg([this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); });
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

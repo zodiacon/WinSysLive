@@ -81,6 +81,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		CHAIN_MSG_MAP_ALT(CViewBase<CServicesView>, 1)
 	END_MSG_MAP()
 
@@ -137,6 +138,7 @@ private:
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// the shown columns in display order (the header's order, which the user can change by dragging)
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;

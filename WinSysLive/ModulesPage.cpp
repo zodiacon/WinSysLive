@@ -365,6 +365,15 @@ LRESULT CModulesPage::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	return 0;
 }
 
+LRESULT CModulesPage::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	auto columns = ColumnLayout::Parse(L"", s_Columns);
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	return 0;
+}
+
 LRESULT CModulesPage::OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto columns = ColumnLayout::Select(m_hWnd, GetShownColumns(), s_Columns)) {
 		SetColumns(*columns);

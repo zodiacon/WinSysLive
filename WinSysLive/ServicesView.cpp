@@ -235,6 +235,15 @@ LRESULT CServicesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 	return 0;
 }
 
+LRESULT CServicesView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	auto columns = ColumnLayout::Parse(L"", Columns());
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	return 0;
+}
+
 void CServicesView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
 	m_Filter.SetFont(font);

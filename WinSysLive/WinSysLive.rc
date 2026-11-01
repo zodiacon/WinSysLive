@@ -184,6 +184,7 @@ BEGIN
         MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
         MENUITEM "&Network Shares...",          ID_SYSTEM_SHARES
         MENUITEM "Net&work Information...",     ID_SYSTEM_NETWORKINFO
+        MENUITEM "&ETW Sessions...",            ID_SYSTEM_ETWSESSIONS
         MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
@@ -341,6 +342,7 @@ BEGIN
         MENUITEM "&Hide Column",                ID_COLUMN_HIDE
         MENUITEM SEPARATOR
         MENUITEM "Select &Columns...",          ID_VIEW_SELECTCOLUMNS
+        MENUITEM "&Reset to Defaults",          ID_COLUMN_RESET
     END
     POPUP "User"
     BEGIN
@@ -786,6 +788,20 @@ FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     EDITTEXT        IDC_CP_FILTER,4,4,412,14,ES_AUTOHSCROLL
     CONTROL         "",IDC_CP_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | LVS_SHAREIMAGELISTS | WS_TABSTOP,4,22,412,194
+END
+
+IDD_ETWSESSIONS DIALOGEX 0, 0, 560, 360
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "ETW Sessions"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_ET_FILTER,7,7,546,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_ET_SESSIONS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,26,546,170
+    CONTROL         "",IDC_ET_PROVIDERS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,201,546,130
+    LTEXT           "",IDC_ET_STATUS,7,342,370,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_ET_REFRESH,383,339,55,14
+    PUSHBUTTON      "&Copy",IDC_ET_COPY,443,339,55,14
+    PUSHBUTTON      "Close",IDCANCEL,503,339,50,14
 END
 
 IDD_SYSINFO DIALOGEX 0, 0, 440, 360
@@ -1809,6 +1825,7 @@ BEGIN
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
     ID_VIEW_COMMANDPALETTE  "Find a command or a tab by typing part of its name\nCommand Palette (Ctrl+Q)"
+    ID_SYSTEM_ETWSESSIONS   "Show the running ETW sessions and the providers enabled in them\nETW Sessions"
     ID_SYSTEM_NETWORKINFO   "Show the listening ports, the DNS cache, the ARP cache and the routes\nNetwork Information"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_COMPUTER_LOCK        "Lock the computer\nLock"
@@ -1869,6 +1886,7 @@ END
 STRINGTABLE
 BEGIN
     ID_VIEW_SELECTCOLUMNS   "Choose the columns of the list and their order\nSelect Columns"
+    ID_COLUMN_RESET         "Show the list's default columns, in their order and widths\nReset Columns"
     ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
     ID_PANE_THREADS         "Threads: 000,000"

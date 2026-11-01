@@ -378,3 +378,14 @@ LRESULT CPoolTagsView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 	ShowRows(selected);
 	return 0;
 }
+
+LRESULT CPoolTagsView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	auto columns = ColumnLayout::Parse(L"", s_Columns);
+	m_MenuColumn = -1;
+	auto selected = GetSelectedTag();
+	SetColumns(columns);
+	SaveColumns();
+	ShowRows(selected);
+	return 0;
+}

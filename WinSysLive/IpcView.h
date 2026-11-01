@@ -60,6 +60,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_IPC_GOTOCLIENT, OnGoToClient)
 		COMMAND_ID_HANDLER(ID_IPC_GOTOSERVER, OnGoToServer)
@@ -87,6 +88,7 @@ private:
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

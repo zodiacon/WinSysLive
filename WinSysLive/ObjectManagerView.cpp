@@ -711,3 +711,15 @@ LRESULT CObjectManagerView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	ShowRows(selected);
 	return 0;
 }
+
+LRESULT CObjectManagerView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	auto columns = ColumnLayout::Parse(L"", s_Columns);
+	m_MenuColumn = -1;
+	auto row = GetSelected();
+	auto selected = row ? row->Name : std::wstring();
+	SetColumns(columns);
+	SaveColumns();
+	ShowRows(selected);
+	return 0;
+}

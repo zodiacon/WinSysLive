@@ -63,6 +63,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_NETWORK_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_NETWORK_CLOSE, OnCloseConnection)
@@ -86,6 +87,7 @@ private:
 	LRESULT OnAddressResolved(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones

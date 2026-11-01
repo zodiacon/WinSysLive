@@ -440,6 +440,7 @@
     <ClCompile Include="GpuPage.cpp" />
     <ClCompile Include="NetworkInfoDlg.cpp" />
     <ClCompile Include="CommandPaletteDlg.cpp" />
+    <ClCompile Include="EtwSessionsDlg.cpp" />
     <ClCompile Include="MemoryStringsDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="PipesDlg.cpp" />
@@ -540,6 +541,7 @@
     <ClInclude Include="GpuPage.h" />
     <ClInclude Include="NetworkInfoDlg.h" />
     <ClInclude Include="CommandPaletteDlg.h" />
+    <ClInclude Include="EtwSessionsDlg.h" />
     <ClInclude Include="MemoryStringsDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="PipesDlg.h" />

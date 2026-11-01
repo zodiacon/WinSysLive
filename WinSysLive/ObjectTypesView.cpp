@@ -383,3 +383,13 @@ LRESULT CObjectTypesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 	ShowRows(GetSelectedIndex());
 	return 0;
 }
+
+LRESULT CObjectTypesView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	auto columns = ColumnLayout::Parse(L"", s_Columns);
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	ShowRows(GetSelectedIndex());
+	return 0;
+}

@@ -112,6 +112,7 @@ public:
 		COMMAND_ID_HANDLER(ID_HANDLE_RESETBASELINE, OnResetBaseline)
 		COMMAND_ID_HANDLER(ID_HANDLE_SHOWTYPE, OnShowType)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		CHAIN_MSG_MAP(CVirtualListView<CHandlesPage>)
 	END_MSG_MAP()
@@ -185,6 +186,7 @@ private:
 	enum { TypesId = 0x7531 };	// By Type's list
 	std::wstring GetTypeText(int row, int column) const;
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	std::wstring GetText(HandleRow const& row, Column column) const;

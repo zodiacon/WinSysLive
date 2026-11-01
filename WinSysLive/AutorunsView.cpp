@@ -9,6 +9,8 @@
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
 #include <ShlObj.h>
+#include <ToolbarHelper.h>
+#include <DpiHelper.h>
 
 using namespace WinSys;
 
@@ -36,6 +38,13 @@ namespace {
 		{ L"Run As", L"RunAs", 160, LVCFMT_LEFT, false },
 		{ L"Author", L"Author", 160, LVCFMT_LEFT, false },
 	};
+
+	// the toolbar right of the filter box
+	const ToolBarButtonInfo s_BarButtons[] = {
+		{ ID_AUTORUNS_HIDEMICROSOFT, IDI_PROCESS_HIDE, BTNS_CHECK | BTNS_AUTOSIZE, L"Hide Microsoft Entries" },
+		{ ID_AUTORUNS_RESCAN, IDI_REFRESH, BTNS_BUTTON | BTNS_AUTOSIZE, L"Scan Again" },
+	};
+	const int BarImageSize = 16;	// at 96 DPI
 
 	int64_t Now() {
 		FILETIME ft;
@@ -93,7 +102,66 @@ LRESULT CAutorunsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 			UpdateStatus();
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
+	m_Bar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
+	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
+	m_Bar.SetFont(m_BarFont);
+	m_Bar.AutoSize();
+	AddSimpleReBarBand(m_Bar, nullptr, FALSE);
+	// two bands would get grippers; the filter keeps its width, the bar's band takes the rest of the row
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_STYLE | RBBIM_CHILD };
+		rebar.GetBandInfo(i, &band);
+		band.fStyle |= RBBS_NOGRIPPER;
+		band.fMask = RBBIM_STYLE;
+		if (band.hwndChild == m_Filter.GetHwnd()) {
+			band.fMask |= RBBIM_CHILDSIZE;
+			band.cxMinChild = m_Filter.GetWidth();
+		}
+		rebar.SetBandInfo(i, &band);
+	}
+	UpdateBar();
 	return 0;
+}
+
+void CAutorunsView::UpdateLayout(BOOL resizeBars) {
+	CViewBase::UpdateLayout(resizeBars);
+	if (m_Bar) {
+		CReBarCtrl rebar(m_hWndToolBar);
+		rebar.MaximizeBand(rebar.GetBandCount() - 1, FALSE);
+	}
+}
+
+void CAutorunsView::LayoutBar() {
+	if (!m_Bar)
+		return;
+	ToolbarHelper::UpdateToolBarImages(m_Bar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
+	m_BarFont.DeleteObject();
+	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
+	m_Bar.SetFont(m_BarFont);
+	m_Bar.AutoSize();
+	// its band, as AddSimpleReBarBand set it, for the buttons' new size
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_Bar) {
+			SIZE size{};
+			m_Bar.GetMaxSize(&size);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = size.cx;
+			band.cyMinChild = size.cy;
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+	UpdateLayout();
+}
+
+void CAutorunsView::UpdateBar() {
+	if (!m_Bar)
+		return;
+	m_Bar.CheckButton(ID_AUTORUNS_HIDEMICROSOFT, m_HideMicrosoft);
+	m_Bar.EnableButton(ID_AUTORUNS_RESCAN, !m_Scanning);
 }
 
 LRESULT CAutorunsView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
@@ -128,6 +196,7 @@ void CAutorunsView::StartScan() {
 	if (m_Scanning)
 		return;
 	m_Scanning = true;
+	UpdateBar();
 	m_LastScan = ::GetTickCount64();
 	// the previous scan is done (m_Scanning was off): joining it doesn't wait
 	m_Worker = std::jthread([this, hWnd = m_hWnd] {
@@ -150,6 +219,7 @@ std::wstring CAutorunsView::KeyOf(AutorunEntry const& e) {
 
 LRESULT CAutorunsView::OnScanned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	m_Scanning = false;
+	UpdateBar();
 	std::optional<std::vector<AutorunEntry>> result;
 	{
 		std::lock_guard lock(m_ResultLock);
@@ -523,6 +593,7 @@ LRESULT CAutorunsView::OnOpenLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 
 LRESULT CAutorunsView::OnHideMicrosoft(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_HideMicrosoft = !m_HideMicrosoft;
+	UpdateBar();
 	auto& settings = AppSettings::Get();
 	settings.AutorunsHideMicrosoft(m_HideMicrosoft);
 	settings.Save();
@@ -615,6 +686,16 @@ LRESULT CAutorunsView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*h
 		return 0;
 	auto columns = GetShownColumns();
 	std::erase_if(columns, [&](auto& c) { return c.Id == m_MenuColumn; });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	ShowRows(GetSelectedKey());
+	return 0;
+}
+
+LRESULT CAutorunsView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	auto columns = ColumnLayout::Parse(L"", s_Columns);
 	m_MenuColumn = -1;
 	SetColumns(columns);
 	SaveColumns();

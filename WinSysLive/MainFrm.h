@@ -112,6 +112,7 @@ public:
 		COMMAND_ID_HANDLER(ID_FILE_SNAPSHOTS, OnSnapshots)
 		COMMAND_ID_HANDLER(ID_SYSTEM_SHARES, OnShares)
 		COMMAND_ID_HANDLER(ID_SYSTEM_NETWORKINFO, OnNetworkInfo)
+		COMMAND_ID_HANDLER(ID_SYSTEM_ETWSESSIONS, OnEtwSessions)
 		COMMAND_ID_HANDLER(ID_VIEW_COMMANDPALETTE, OnCommandPalette)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PIPES, OnPipes)
 		COMMAND_ID_HANDLER(ID_SYSTEM_RAM, OnRam)
@@ -180,6 +181,7 @@ public:
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnNetworkInfo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEtwSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

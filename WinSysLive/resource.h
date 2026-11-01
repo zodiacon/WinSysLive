@@ -675,14 +675,23 @@
 #define IDC_CP_FILTER                   1381
 #define IDC_CP_LIST                     1382
 #define ID_VIEW_COMMANDPALETTE          32980
+#define ID_COLUMN_RESET                 32981
+#define IDD_ETWSESSIONS                 328
+#define IDC_ET_FILTER                   1383
+#define IDC_ET_SESSIONS                 1384
+#define IDC_ET_PROVIDERS                1385
+#define IDC_ET_STATUS                   1386
+#define IDC_ET_REFRESH                  1387
+#define IDC_ET_COPY                     1388
+#define ID_SYSTEM_ETWSESSIONS           32982
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        328
-#define _APS_NEXT_COMMAND_VALUE         32981
-#define _APS_NEXT_CONTROL_VALUE         1383
+#define _APS_NEXT_RESOURCE_VALUE        329
+#define _APS_NEXT_COMMAND_VALUE         32983
+#define _APS_NEXT_CONTROL_VALUE         1389
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

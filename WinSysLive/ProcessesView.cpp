@@ -2343,3 +2343,14 @@ LRESULT CProcessesView::OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	SaveColumns();
 	return 0;
 }
+
+LRESULT CProcessesView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the table's defaults (Parse of no layout), in their order and widths
+	std::vector<ShownColumn> columns;
+	for (auto& c : ColumnLayout::Parse(L"", s_Columns))
+		columns.push_back({ (Column)c.Id, c.Width });
+	m_MenuColumn = -1;
+	SetColumns(columns);
+	SaveColumns();
+	return 0;
+}

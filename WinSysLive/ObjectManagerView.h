@@ -74,6 +74,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_KEEPSELECTIONVISIBLE, OnToggleKeepSelectionVisible)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		CHAIN_MSG_MAP_ALT(CViewBase<CObjectManagerView>, 1)
 	END_MSG_MAP()
@@ -117,6 +118,7 @@ private:
 	LRESULT OnDirectoryProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// the shown columns in display order (the header's, which the user can change by dragging), widths at 96 DPI

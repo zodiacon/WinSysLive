@@ -101,6 +101,7 @@ public:
 		COMMAND_RANGE_HANDLER(ID_VIEW_HIDEOTHERUSERS, ID_VIEW_HIDESIGNED, OnToggleHide)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		CHAIN_MSG_MAP_ALT(CViewBase<CProcessesView>, 1)
 	END_MSG_MAP()
 
@@ -203,6 +204,7 @@ private:
 	void UpdateHideButton();
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	struct ShownColumn {
 		Column Id;

@@ -19,6 +19,7 @@
 // items are enabled and disabled as Task Manager does (StartupApproved), tasks through the Task Scheduler; Run values,
 // startup files, tasks and hijack values can be deleted (after a confirmation). Jump to Entry opens the registry key in
 // Regedit, the file in Explorer, or the Task Scheduler. An image that isn't there is highlighted, disabled entries grayed.
+// A toolbar right of the filter box has Hide Microsoft Entries (checked while it's on) and Scan Again, as the menus do.
 //
 class CAutorunsView :
 	public CViewBase<CAutorunsView>,
@@ -40,7 +41,10 @@ public:
 	}
 	void OnDpiChanged(UINT /*dpi*/) override {
 		m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+		LayoutBar();
 	}
+	// the toolbar's band takes the rest of the row (the rebar gives a row's extra width to its first band, the filter's)
+	void UpdateLayout(BOOL resizeBars = TRUE);
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;
@@ -61,6 +65,9 @@ public:
 		MESSAGE_HANDLER(WM_AUTORUNS_SIGNED, OnSigned)
 		MESSAGE_HANDLER(VirusTotalChecker::WM_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
+		// the toolbar's, which come to the view itself (through the rebar), not routed by the frame
+		COMMAND_ID_HANDLER(ID_AUTORUNS_HIDEMICROSOFT, OnHideMicrosoft)
+		COMMAND_ID_HANDLER(ID_AUTORUNS_RESCAN, OnRescan)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CAutorunsView>)
 		CHAIN_MSG_MAP(CViewBase<CAutorunsView>)
@@ -68,6 +75,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_SELECTCOLUMNS, OnSelectColumns)
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
+		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnFind)
 		COMMAND_ID_HANDLER(ID_AUTORUNS_ENABLE, OnEnable)
 		COMMAND_ID_HANDLER(ID_AUTORUNS_DELETE, OnDelete)
@@ -113,6 +121,7 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSelectColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEnable(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDelete(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -123,6 +132,9 @@ private:
 	LRESULT OnRescan(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	void StartScan();
+	// the toolbar: its icons and font for its DPI, its band's size; its buttons' states
+	void LayoutBar();
+	void UpdateBar();
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
 	void SaveColumns() const;
@@ -145,6 +157,8 @@ private:
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;
+	CToolBarCtrl m_Bar;	// right of the filter: Hide Microsoft Entries and Scan Again, as the context menu's
+	CFont m_BarFont;
 	int m_MenuColumn{ -1 };
 	std::vector<Row> m_All;	// the last scan's
 	std::vector<Row const*> m_Rows;	// into m_All: the list's rows, in display order
