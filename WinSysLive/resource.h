@@ -450,6 +450,13 @@
 #define IDC_PF_REFRESH              1307
 #define IDC_PF_COPY                 1308
 #define ID_SYSTEM_PAGEFILES         32933
+#define IDD_SYSINFO                 319
+#define IDC_SI_LIST                 1344
+#define IDC_SI_STATUS               1345
+#define IDC_SI_REFRESH              1346
+#define IDC_SI_COPY                 1347
+#define IDC_SI_TABS                 1348
+#define ID_SYSTEM_INFORMATION       32964
 #define IDD_SHARES                  300
 #define IDC_SH_LIST                 1309
 #define IDC_SH_DETAILS              1310
@@ -471,6 +478,7 @@
 #define IDI_ALIAS                   316
 #define IDI_LABEL                   317
 #define IDI_CAPABILITY              318
+#define IDI_SYSINFO                 320
 #define ID_VIEW_HISTORY             32944
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
@@ -620,9 +628,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	319
-#define _APS_NEXT_CONTROL_VALUE		1344
+#define _APS_NEXT_RESOURCE_VALUE	321
+#define _APS_NEXT_CONTROL_VALUE		1349
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32964
+#define _APS_NEXT_COMMAND_VALUE		32965
 #endif
 #endif

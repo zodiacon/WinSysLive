@@ -252,6 +252,9 @@
     <ClCompile Include="PageFilesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="SystemInfoDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="NetworkSharesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -504,6 +507,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="PageFilesDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemInfoDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="NetworkSharesDlg.h">

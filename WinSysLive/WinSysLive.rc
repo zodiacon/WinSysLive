@@ -171,6 +171,8 @@ BEGIN
     END
     POPUP "&System"
     BEGIN
+        MENUITEM "System &Information...",     ID_SYSTEM_INFORMATION
+        MENUITEM SEPARATOR
         MENUITEM "&Firmware and TPM...",        ID_TOOLS_FIRMWARE
         MENUITEM "&Logon Sessions...",          ID_SYSTEM_LOGONSESSIONS
         MENUITEM "&Page Files...",              ID_SYSTEM_PAGEFILES
@@ -502,6 +504,8 @@ IDI_ENABLED             ICON                    "res\\enabled.ico"
 
 IDI_DISABLED            ICON                    "res\\disabled.ico"
 
+IDI_SYSINFO             ICON                    "res\\sysinfo.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -705,6 +709,19 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_PF_REFRESH,333,279,50,14
     PUSHBUTTON      "&Copy",IDC_PF_COPY,388,279,50,14
     PUSHBUTTON      "Close",IDCANCEL,443,279,50,14
+END
+
+IDD_SYSINFO DIALOGEX 0, 0, 440, 360
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "System Information"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_SI_TABS,"SysTabControl32",WS_TABSTOP | WS_CLIPSIBLINGS,7,7,426,326
+    CONTROL         "",IDC_SI_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,13,25,414,302
+    LTEXT           "",IDC_SI_STATUS,7,342,220,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_SI_REFRESH,273,339,50,14
+    PUSHBUTTON      "&Copy",IDC_SI_COPY,328,339,50,14
+    PUSHBUTTON      "Close",IDCANCEL,383,339,50,14
 END
 
 IDD_LOGON_SESSIONS DIALOGEX 0, 0, 520, 330

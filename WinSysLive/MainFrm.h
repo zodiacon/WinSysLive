@@ -106,6 +106,7 @@ public:
 		COMMAND_ID_HANDLER(ID_TOOLS_FIRMWARE, OnFirmware)
 		COMMAND_ID_HANDLER(ID_SYSTEM_LOGONSESSIONS, OnLogonSessions)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PAGEFILES, OnPageFiles)
+		COMMAND_ID_HANDLER(ID_SYSTEM_INFORMATION, OnSystemInformation)
 		COMMAND_ID_HANDLER(ID_SYSTEM_SHARES, OnShares)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PIPES, OnPipes)
 		COMMAND_ID_HANDLER(ID_SYSTEM_RAM, OnRam)
@@ -168,6 +169,7 @@ public:
 	LRESULT OnFirmware(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnLogonSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPageFiles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSystemInformation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
