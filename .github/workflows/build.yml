@@ -25,18 +25,18 @@ jobs:
           # not recursive: WinSys lists a WTLHelper submodule of its own that nothing builds
           submodules: true
 
-      - name: Install phnt and WIL (vcpkg, user-wide integration, as the projects expect)
+      # vcpkg with user-wide integration, as the projects expect: phnt (WinSys and the app), WIL, Detours (WTLHelper's
+      # dark mode) and WTL; both triplets, as WTLHelper and HexControl use the static one (VcpkgUseStatic), the rest the
+      # default one
+      - name: Install the vcpkg packages (phnt, WIL, Detours, WTL)
         shell: pwsh
         run: |
           $vcpkg = Join-Path $env:VCPKG_INSTALLATION_ROOT 'vcpkg.exe'
-          & $vcpkg install phnt:x64-windows wil:x64-windows
+          $packages = 'phnt', 'wil', 'detours', 'wtl'
+          & $vcpkg install ($packages | ForEach-Object { "${_}:x64-windows"; "${_}:x64-windows-static" })
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           & $vcpkg integrate install
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-
-      - name: Restore WTLHelper's NuGet packages (Detours, WIL, wtl)
-        shell: pwsh
-        run: nuget restore wtlhelper\WTLHelper.sln
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
