@@ -84,9 +84,12 @@ namespace {
 		IDI_HISTORY,
 		// the Autoruns tab, and its entries without an icon of their own
 		IDI_AUTORUNS, IDI_RUN_COMMAND,
-		// the Events tab's levels: errors, warnings, information
-		IDI_DELETE, IDI_ALERT, IDI_SYSINFO,
+		// the Events tab's information events (its errors and warnings have the system's icons, s_SystemIcons)
+		IDI_SYSINFO,
 	};
+
+	// the system's stock icons in the image list too (GetIconIndex(SystemIconId(IDI_WARNING)))
+	const PCWSTR s_SystemIcons[] = { IDI_WARNING, IDI_ERROR };
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
 	const ToolBarButtonInfo s_ToolBarButtons[] = {
@@ -777,6 +780,12 @@ void CMainFrame::AddImages() {
 	// processes without an icon of their own get the system's default application icon
 	CIcon hDefault(LoadDefaultProcessIcon(size));
 	m_IconIndices[IDI_PROCESS] = m_Images.AddIcon(hDefault);
+	// the system's stock icons (winuser.h's IDI_WARNING, IDI_ERROR...), by their IDs (above the app's), at this size; the
+	// same number each time, as UpdateImageList expects the process icons at the same indices
+	for (auto id : s_SystemIcons) {
+		CIcon hIcon(IconHelper::Load(id, size));
+		m_IconIndices[SystemIconId(id)] = hIcon ? m_Images.AddIcon(hIcon) : -1;
+	}
 }
 
 void CMainFrame::UpdateImageList() {

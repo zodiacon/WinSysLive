@@ -27,7 +27,7 @@ namespace {
 	};
 
 	const ToolBarButtonInfo s_BarButtons[] = {
-		{ ID_EVENTS_WARNINGS, IDI_ALERT, BTNS_CHECK | BTNS_AUTOSIZE, L"Warnings" },
+		{ ID_EVENTS_WARNINGS, IDI_WARNING, BTNS_CHECK | BTNS_AUTOSIZE, L"Warnings" },	// the system's (IconId)
 		{ ID_EVENTS_INFORMATION, IDI_SYSINFO, BTNS_CHECK | BTNS_AUTOSIZE, L"Information" },
 		{ ID_EVENTS_SECURITY, IDI_KEY, BTNS_CHECK | BTNS_AUTOSIZE, L"Security" },
 		{ ID_EVENTS_REFRESH, IDI_REFRESH, BTNS_BUTTON | BTNS_AUTOSIZE, L"Refresh" },
@@ -387,10 +387,11 @@ int CEventsView::GetRowImage(HWND, int row, int col) const {
 	auto& e = *m_Rows[row];
 	if (e.IsAuditFailure() || e.IsAuditSuccess())
 		return Frame()->GetIconIndex(IDI_KEY);
+	// the system's stock icons, as Event Viewer's
 	if (e.Level == 1 || e.Level == 2)
-		return Frame()->GetIconIndex(IDI_DELETE);
+		return Frame()->GetIconIndex(SystemIconId(IDI_ERROR));
 	if (e.Level == 3)
-		return Frame()->GetIconIndex(IDI_ALERT);
+		return Frame()->GetIconIndex(SystemIconId(IDI_WARNING));
 	return Frame()->GetIconIndex(IDI_SYSINFO);
 }
 

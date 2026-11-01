@@ -13,6 +13,12 @@ struct IIconSource abstract {
 	virtual int GetIconIndex(UINT iconId) const = 0;
 };
 
+// a system stock icon's ID (winuser.h's IDI_WARNING, IDI_ERROR: MAKEINTRESOURCE values from 32512, above the app's
+// icons) for GetIconIndex; the frame's image list has those in CMainFrame's s_SystemIcons
+inline UINT SystemIconId(PCWSTR id) {
+	return (UINT)(ULONG_PTR)id;
+}
+
 //
 // An image list of its own: each of the app's icons is loaded the first time its index is asked for. Reset (at
 // first, and after a DPI change) takes the icons' size and starts over, so the lists showing it need it set again.
