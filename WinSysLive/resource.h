@@ -728,7 +728,13 @@
 #define ID_EVENT_DETAILS                33006
 #define ID_EVENT_GOTOPROCESS            33007
 #define ID_VIEW_EVENTS                  33008
-#define ID_EVENTS_SECURITY              33009
+#define ID_EVENTS_LOGS                  33009
+#define ID_EVENTS_SPAN                  33010
+#define ID_EVENT_OPENVIEWER             33011
+#define IDC_AR_LOG                      1425
+#define IDC_AR_LOG_LABEL                1426
+#define IDC_AR_EVENTID                  1427
+#define IDC_AR_EVENTID_LABEL            1428
 #define IDC_DN_RUNTIME                  1396
 #define IDC_DN_FILTER                   1397
 #define IDC_DN_REFRESH                  1398
@@ -760,8 +766,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        336
-#define _APS_NEXT_COMMAND_VALUE         33010
-#define _APS_NEXT_CONTROL_VALUE         1425
+#define _APS_NEXT_COMMAND_VALUE         33012
+#define _APS_NEXT_CONTROL_VALUE         1429
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

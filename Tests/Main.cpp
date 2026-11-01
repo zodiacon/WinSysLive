@@ -20,12 +20,18 @@ void Tests::Fail(const char* file, int line, std::string const& message) {
 	s_Failures++;
 }
 
-// Tests.exe [text]: the tests whose names contain the text (all without one); the exit code is the number that failed
+// Tests.exe [text | -text]: the tests whose names contain the text, or (with '-') all but those (all without an argument:
+// "-Live" leaves out those reading the live system, whose results depend on the machine, as CI does); the exit code is
+// the number that failed
 int main(int argc, char** argv) {
 	auto filter = argc > 1 ? std::string(argv[1]) : std::string();
+	bool exclude = !filter.empty() && filter[0] == '-';
+	if (exclude)
+		filter.erase(0, 1);
 	int run = 0, failed = 0;
 	for (auto& test : Tests::Registry()) {
-		if (!filter.empty() && std::string(test.Name).find(filter) == std::string::npos)
+		bool contains = std::string(test.Name).find(filter) != std::string::npos;
+		if (!filter.empty() && contains == exclude)
 			continue;
 		s_Failures = 0;
 		test.Function();

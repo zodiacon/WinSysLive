@@ -8,6 +8,7 @@
 #include <ClipboardHelper.h>
 #include <ToolbarHelper.h>
 #include <WTLHelper.h>
+#include <ranges>
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
 
@@ -28,8 +29,9 @@ namespace {
 
 	const ToolBarButtonInfo s_BarButtons[] = {
 		{ ID_EVENTS_WARNINGS, IDI_WARNING, BTNS_CHECK | BTNS_AUTOSIZE, L"Warnings" },	// the system's (IconId)
-		{ ID_EVENTS_INFORMATION, IDI_SYSINFO, BTNS_CHECK | BTNS_AUTOSIZE, L"Information" },
-		{ ID_EVENTS_SECURITY, IDI_KEY, BTNS_CHECK | BTNS_AUTOSIZE, L"Security" },
+		{ ID_EVENTS_INFORMATION, IDI_INFORMATION, BTNS_CHECK | BTNS_AUTOSIZE, L"Information" },
+		{ ID_EVENTS_LOGS, IDI_EVENT, BTNS_WHOLEDROPDOWN | BTNS_AUTOSIZE, L"Logs" },
+		{ ID_EVENTS_SPAN, IDI_TIMER, BTNS_WHOLEDROPDOWN | BTNS_AUTOSIZE, L"Last 24 Hours" },
 		{ ID_EVENTS_REFRESH, IDI_REFRESH, BTNS_BUTTON | BTNS_AUTOSIZE, L"Refresh" },
 	};
 	const int BarImageSize = 16;	// at 96 DPI
@@ -42,6 +44,14 @@ namespace {
 			return 45;
 		return (e.Level == 0 ? 4 : e.Level) * 10;
 	}
+
+	// the Logs drop-down's choices (those that exist on the system are listed)
+	const PCWSTR s_KnownLogs[] = {
+		L"System", L"Application", L"Security", L"Setup", L"Windows PowerShell", L"Microsoft-Windows-PowerShell/Operational",
+		L"Microsoft-Windows-Windows Defender/Operational", L"Microsoft-Windows-TaskScheduler/Operational",
+		L"Microsoft-Windows-Sysmon/Operational",
+	};
+	const int s_Spans[] = { 1, 24, 24 * 7, 24 * 30 };	// hours
 
 	bool IsError(EventLogEntry const& e) {
 		return !e.IsAuditFailure() && !e.IsAuditSuccess() && (e.Level == 1 || e.Level == 2);
@@ -74,7 +84,17 @@ LRESULT CEventsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	SetColumns(ColumnLayout::Parse(settings.EventColumns(), s_Columns));
 	m_Warnings = settings.EventsWarnings() != 0;
 	m_Information = settings.EventsInformation() != 0;
-	m_Security = settings.EventsSecurity() != 0;
+	// the logs: the setting, else System and Application, and Security unless the older setting turned it off
+	std::wstring logs = settings.EventsLogs();
+	for (auto part : std::views::split(std::wstring_view(logs), L'|'))
+		if (!part.empty())
+			m_Logs.emplace_back(part.begin(), part.end());
+	if (m_Logs.empty()) {
+		m_Logs = { L"System", L"Application" };
+		if (settings.EventsSecurity())
+			m_Logs.push_back(L"Security");
+	}
+	m_Hours = std::ranges::find(s_Spans, settings.EventsHours()) != std::end(s_Spans) ? settings.EventsHours() : 24;
 
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 320, L"Filter: source, message, ID, log or process (Ctrl+F)", m_List, [this](auto&) {
 		ShowRows();
@@ -82,6 +102,12 @@ LRESULT CEventsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 	m_Bar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
+	// the drop-downs' arrows; their menus come with TBN_DROPDOWN (through the rebar)
+	m_Bar.SetExtendedStyle(m_Bar.GetExtendedStyle() | TBSTYLE_EX_DRAWDDARROWS);
+	TBBUTTONINFO span{ sizeof(span), TBIF_TEXT };
+	auto spanText = SpanText();
+	span.pszText = spanText.data();
+	m_Bar.SetButtonInfo(ID_EVENTS_SPAN, &span);
 	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
 	m_Bar.SetFont(m_BarFont);
 	m_Bar.AutoSize();
@@ -152,7 +178,6 @@ void CEventsView::UpdateBar() {
 		return;
 	m_Bar.CheckButton(ID_EVENTS_WARNINGS, m_Warnings);
 	m_Bar.CheckButton(ID_EVENTS_INFORMATION, m_Information);
-	m_Bar.CheckButton(ID_EVENTS_SECURITY, m_Security);
 	m_Bar.EnableButton(ID_EVENTS_REFRESH, !m_Reading);
 }
 
@@ -177,10 +202,92 @@ uint8_t CEventsView::MaxLevel() const {
 }
 
 std::vector<std::wstring> CEventsView::Channels() const {
-	std::vector<std::wstring> channels{ L"System", L"Application" };
-	if (m_Security)
-		channels.push_back(L"Security");
-	return channels;
+	return m_Logs;
+}
+
+std::wstring CEventsView::SpanText() const {
+	switch (m_Hours) {
+		case 1: return L"Last Hour";
+		case 24 * 7: return L"Last 7 Days";
+		case 24 * 30: return L"Last 30 Days";
+	}
+	return std::format(L"Last {} Hours", m_Hours);
+}
+
+void CEventsView::LogsChanged() {
+	auto& settings = AppSettings::Get();
+	std::wstring logs;
+	for (auto& log : m_Logs)
+		logs += (logs.empty() ? L"" : L"|") + log;
+	settings.EventsLogs(logs);
+	settings.EventsHours(m_Hours);
+	settings.Save();
+	TBBUTTONINFO span{ sizeof(span), TBIF_TEXT };
+	auto spanText = SpanText();
+	span.pszText = spanText.data();
+	m_Bar.SetButtonInfo(ID_EVENTS_SPAN, &span);
+	LayoutBar();
+	m_Watcher.Stop();
+	StartWatching();
+	StartRead();
+}
+
+LRESULT CEventsView::OnBarDropDown(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	auto tb = reinterpret_cast<NMTOOLBAR*>(hdr);
+	if (hdr->hwndFrom != m_Bar || (tb->iItem != ID_EVENTS_LOGS && tb->iItem != ID_EVENTS_SPAN)) {
+		bHandled = FALSE;
+		return 0;
+	}
+	// the choices are the menu's own IDs, returned (TPM_RETURNCMD), not commands
+	CMenu menu;
+	menu.CreatePopupMenu();
+	std::vector<std::wstring> logs;
+	if (tb->iItem == ID_EVENTS_LOGS) {
+		for (auto log : s_KnownLogs)
+			if (std::ranges::find(m_Logs, log) != m_Logs.end() || EventLog::Exists(log))
+				logs.push_back(log);
+		// a chosen log that's not a known one stays listed
+		for (auto& log : m_Logs)
+			if (std::ranges::find(logs, log) == logs.end())
+				logs.push_back(log);
+		for (int i = 0; i < (int)logs.size(); i++)
+			menu.AppendMenu(MF_STRING | (std::ranges::find(m_Logs, logs[i]) != m_Logs.end() ? MF_CHECKED : 0), i + 1, logs[i].c_str());
+	}
+	else {
+		for (int i = 0; i < _countof(s_Spans); i++) {
+			auto saved = m_Hours;
+			m_Hours = s_Spans[i];
+			menu.AppendMenu(MF_STRING | (saved == s_Spans[i] ? MF_CHECKED : 0), i + 1, SpanText().c_str());
+			m_Hours = saved;
+		}
+	}
+	m_Bar.PressButton(tb->iItem, TRUE);
+	int choice = Frame()->ShowContextMenu(menu, ToolbarHelper::GetDropdownMenuPoint(m_Bar, tb->iItem), TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD);
+	m_Bar.PressButton(tb->iItem, FALSE);
+	if (choice <= 0)
+		return TBDDRET_DEFAULT;
+	if (tb->iItem == ID_EVENTS_LOGS) {
+		auto& log = logs[choice - 1];
+		if (auto it = std::ranges::find(m_Logs, log); it != m_Logs.end()) {
+			// at least one log
+			if (m_Logs.size() == 1)
+				return TBDDRET_DEFAULT;
+			m_Logs.erase(it);
+		}
+		else
+			m_Logs.push_back(log);
+	}
+	else
+		m_Hours = s_Spans[choice - 1];
+	LogsChanged();
+	return TBDDRET_DEFAULT;
+}
+
+LRESULT CEventsView::OnOpenViewer(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// Event Viewer at the event's log
+	if (auto e = GetSelected())
+		::ShellExecute(m_hWnd, nullptr, L"eventvwr.exe", std::format(L"/c:\"{}\"", e->Channel).c_str(), nullptr, SW_SHOWNORMAL);
+	return 0;
 }
 
 bool CEventsView::Included(EventLogEntry const& e) const {
@@ -202,12 +309,12 @@ void CEventsView::StartRead() {
 	m_Reading = true;
 	UpdateBar();
 	UpdateStatus();
-	m_Worker = std::jthread([this, hWnd = m_hWnd, maxLevel = MaxLevel(), channels = Channels()] {
+	m_Worker = std::jthread([this, hWnd = m_hWnd, maxLevel = MaxLevel(), channels = Channels(), hours = (uint32_t)m_Hours] {
 		std::vector<EventLogEntry> all;
 		std::vector<std::pair<std::wstring, DWORD>> failed;
 		for (auto& channel : channels) {
 			// a loop, not a range insert: that warns C4530 in Release, which has no exceptions (winsys/docs)
-			if (auto events = EventLog::Query(channel, maxLevel, Hours, MaxEvents)) {
+			if (auto events = EventLog::Query(channel, maxLevel, hours, MaxEvents)) {
 				for (auto& e : *events)
 					all.push_back(std::move(e));
 			}
@@ -332,8 +439,10 @@ void CEventsView::UpdateStatus() {
 		auto errors = std::ranges::count_if(m_All, IsError);
 		auto warnings = std::ranges::count_if(m_All, [](auto& e) { return e.Level == 3 && !e.IsAuditFailure(); });
 		auto failures = std::ranges::count_if(m_All, [](auto& e) { return e.IsAuditFailure(); });
-		text = std::format(L"{} events in the last {} hours: {} errors, {} warnings", m_All.size(), (int)Hours, errors, warnings);
-		if (m_Security)
+		auto span = SpanText();
+		::CharLowerBuff(span.data(), (DWORD)span.size());	// "last 7 days"
+		text = std::format(L"{} events from {} logs in the {}: {} errors, {} warnings", m_All.size(), m_Logs.size(), span, errors, warnings);
+		if (std::ranges::find(m_Logs, L"Security") != m_Logs.end())
 			text += std::format(L", {} audit failures", failures);
 		if (!m_Filter.GetText().empty())
 			text += std::format(L"; {} match the filter", m_Rows.size());
@@ -392,7 +501,7 @@ int CEventsView::GetRowImage(HWND, int row, int col) const {
 		return Frame()->GetIconIndex(SystemIconId(IDI_ERROR));
 	if (e.Level == 3)
 		return Frame()->GetIconIndex(SystemIconId(IDI_WARNING));
-	return Frame()->GetIconIndex(IDI_SYSINFO);
+	return Frame()->GetIconIndex(SystemIconId(IDI_INFORMATION));
 }
 
 int CEventsView::GetSaveColumnRange(HWND, int&) const {
@@ -461,6 +570,7 @@ bool CEventsView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	menu.CreatePopupMenu();
 	menu.AppendMenu(MF_STRING, ID_EVENT_DETAILS, L"&Details...");
 	menu.AppendMenu(MF_STRING | (IsRunning(*m_Rows[row]) ? 0 : MF_GRAYED), ID_EVENT_GOTOPROCESS, L"&Go to Process");
+	menu.AppendMenu(MF_STRING, ID_EVENT_OPENVIEWER, L"Open in &Event Viewer");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy");
 	menu.SetMenuDefaultItem(ID_EVENT_DETAILS);
@@ -506,10 +616,6 @@ LRESULT CEventsView::OnBarCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*
 		case ID_EVENTS_INFORMATION:
 			m_Information = !m_Information;
 			settings.EventsInformation(m_Information);
-			break;
-		case ID_EVENTS_SECURITY:
-			m_Security = !m_Security;
-			settings.EventsSecurity(m_Security);
 			break;
 	}
 	settings.Save();

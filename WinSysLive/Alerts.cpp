@@ -57,8 +57,34 @@ void CAlerts::Save(std::vector<AlertRule> const& rules) {
 	settings.Save();
 }
 
+CAlerts::~CAlerts() {
+	m_EventWatcher.Stop();
+}
+
+void CAlerts::OnEvent(EventLogEntry&& entry) {
+	std::lock_guard lock(m_EventLock);
+	if (m_Events.size() < MaxQueued)
+		m_Events.push_back(std::move(entry));
+}
+
+void CAlerts::UpdateEventWatcher() {
+	m_EventWatcher.Stop();
+	{
+		std::lock_guard lock(m_EventLock);
+		m_Events.clear();
+	}
+	std::vector<std::pair<std::wstring, std::wstring>> queries;
+	for (auto& log : AlertRule::EventLogs())
+		if (auto query = AlertRule::EventQuery(m_Rules, log); !query.empty())
+			queries.push_back({ log, query });
+	// a log that can't be watched (Security without elevation) leaves the others
+	if (!queries.empty())
+		m_EventWatcher.Start(queries, *this);
+}
+
 void CAlerts::SetRules(std::vector<AlertRule> rules) {
 	m_Rules = std::move(rules);
+	UpdateEventWatcher();
 	// the conditions start over (a rule edited is a new rule)
 	m_States.assign(m_Rules.size(), {});
 }
@@ -117,6 +143,25 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		serviceChanges = UpdateServices();
 	else
 		m_Services.clear();
+
+	// the events the watcher queued since the last update; an event fires its first matching rule only
+	std::vector<EventLogEntry> logged;
+	{
+		std::lock_guard lock(m_EventLock);
+		logged.swap(m_Events);
+	}
+	for (auto& e : logged) {
+		auto rule = std::ranges::find_if(m_Rules, [&](auto& r) {
+			return r.Enabled && r.MatchesEvent(e.Channel, e.Provider, e.EventId, e.IsAuditFailure());
+			});
+		if (rule == m_Rules.end())
+			continue;
+		auto line = e.Message.substr(0, e.Message.find_first_of(L"\r\n"));
+		auto p = e.ProcessId ? pm.GetProcessById(e.ProcessId) : nullptr;
+		bool running = p && p->Key.Created <= e.Time;
+		add(rule->Kind == AlertKind::AuditFailure ? std::format(L"Security audit failure {} ({}): {}", e.EventId, e.Provider, line)
+			: std::format(L"{} event {} from {}: {}", e.Channel, e.EventId, e.Provider, line), e.ProcessId, running);
+	}
 
 	auto processes = pm.GetProcesses();
 	for (size_t i = 0; i < m_Rules.size(); i++) {

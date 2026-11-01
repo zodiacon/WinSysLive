@@ -829,7 +829,7 @@ BEGIN
     PUSHBUTTON      "Close",IDCANCEL,383,279,50,14
 END
 
-IDD_ALERT_RULE DIALOGEX 0, 0, 280, 112
+IDD_ALERT_RULE DIALOGEX 0, 0, 280, 150
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Alert"
 FONT 9, "Segoe UI", 400, 0, 0x1
@@ -838,13 +838,17 @@ BEGIN
     COMBOBOX        IDC_AR_KIND,72,7,201,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     LTEXT           "&Image names:",IDC_AR_PATTERN_LABEL,7,28,60,9
     EDITTEXT        IDC_AR_PATTERN,72,26,201,14,ES_AUTOHSCROLL
-    LTEXT           "&Threshold:",IDC_AR_THRESHOLD_LABEL,7,47,60,9
-    EDITTEXT        IDC_AR_THRESHOLD,72,45,50,14,ES_AUTOHSCROLL
-    LTEXT           "",IDC_AR_UNIT,126,47,30,9
-    LTEXT           "&For (seconds):",IDC_AR_SECONDS_LABEL,7,66,60,9
-    EDITTEXT        IDC_AR_SECONDS,72,64,50,14,ES_AUTOHSCROLL | ES_NUMBER
-    DEFPUSHBUTTON   "OK",IDOK,169,91,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,223,91,50,14
+    LTEXT           "&Log:",IDC_AR_LOG_LABEL,7,47,60,9
+    COMBOBOX        IDC_AR_LOG,72,45,100,80,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Event ID:",IDC_AR_EVENTID_LABEL,7,66,60,9
+    EDITTEXT        IDC_AR_EVENTID,72,64,50,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "&Threshold:",IDC_AR_THRESHOLD_LABEL,7,85,60,9
+    EDITTEXT        IDC_AR_THRESHOLD,72,83,50,14,ES_AUTOHSCROLL
+    LTEXT           "",IDC_AR_UNIT,126,85,30,9
+    LTEXT           "&For (seconds):",IDC_AR_SECONDS_LABEL,7,104,60,9
+    EDITTEXT        IDC_AR_SECONDS,72,102,50,14,ES_AUTOHSCROLL | ES_NUMBER
+    DEFPUSHBUTTON   "OK",IDOK,169,129,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,223,129,50,14
 END
 
 IDD_ETWSESSIONS DIALOGEX 0, 0, 560, 360
@@ -1900,7 +1904,8 @@ BEGIN
     ID_VIEW_EVENTS          "Show the recent errors and warnings of the System and Application logs, and new ones as they're written\nEvent Log (Ctrl+Shift+L)"
     ID_EVENTS_WARNINGS      "Show the warnings too\nWarnings"
     ID_EVENTS_INFORMATION   "Show the information events too\nInformation"
-    ID_EVENTS_SECURITY      "Include the Security log: audit failures with the warnings, audit successes with the information (needs administrator rights)\nSecurity"
+    ID_EVENTS_LOGS          "Choose the logs: System, Application, Security (audit failures with the warnings, successes with the information; needs administrator rights) and others\nLogs"
+    ID_EVENTS_SPAN          "Choose how far back to read: the last hour, 24 hours, 7 days or 30 days\nTime Span"
     ID_EVENTS_REFRESH       "Read the logs again\nRefresh"
     ID_VIEW_DEVICES         "Show the devices by type or by connection, their drivers and problems\nDevices (Ctrl+Shift+E)"
     ID_DEVICES_BYCONNECTION "Show the devices as connected, from the computer down, instead of by type\nBy Connection"

@@ -51,7 +51,9 @@ struct AppSettings : Settings {
 		SETTING_STRING(EventColumns, L"");	// the Events tab
 		SETTING(EventsWarnings, 1, SettingType::Bool);
 		SETTING(EventsInformation, 0, SettingType::Bool);
-		SETTING(EventsSecurity, 1, SettingType::Bool);
+		SETTING(EventsSecurity, 1, SettingType::Bool);	// before EventsLogs: whether Security was read (EventsLogs' default)
+		SETTING_STRING(EventsLogs, L"");	// the Events tab's logs, separated by '|'; empty: System, Application and Security
+		SETTING(EventsHours, 24, SettingType::Int32);
 		SETTING(DevicesByConnection, 0, SettingType::Bool);
 		SETTING(DevicesShowHidden, 0, SettingType::Bool);
 		SETTING(DevicesShowDisconnected, 0, SettingType::Bool);
@@ -128,6 +130,8 @@ struct AppSettings : Settings {
 	DEF_SETTING(EventsWarnings, int)
 	DEF_SETTING(EventsInformation, int)
 	DEF_SETTING(EventsSecurity, int)
+	DEF_SETTING_STRING(EventsLogs)
+	DEF_SETTING(EventsHours, int)
 	DEF_SETTING(DevicesByConnection, int)
 	DEF_SETTING(DevicesShowHidden, int)
 	DEF_SETTING(DevicesShowDisconnected, int)

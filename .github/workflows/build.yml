@@ -1,0 +1,72 @@
+# Builds the solution (Debug and Release x64) and runs the tests (Tests\Tests.vcxproj).
+# The image has Visual Studio 2026, whose only C++ toolset is v145, the projects' (actions/runner-images #14016, #14101).
+# ReleaseSigned isn't built: it signs with a certificate the runner doesn't have.
+name: Build and test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2025-vs2026
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [ Debug, Release ]
+
+    steps:
+      - name: Check out (with the WinSys and WTLHelper submodules)
+        uses: actions/checkout@v4
+        with:
+          # not recursive: WinSys lists a WTLHelper submodule of its own that nothing builds
+          submodules: true
+
+      - name: Install phnt and WIL (vcpkg, user-wide integration, as the projects expect)
+        shell: pwsh
+        run: |
+          $vcpkg = Join-Path $env:VCPKG_INSTALLATION_ROOT 'vcpkg.exe'
+          & $vcpkg install phnt:x64-windows wil:x64-windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & $vcpkg integrate install
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Restore WTLHelper's NuGet packages (Detours, WIL, wtl)
+        shell: pwsh
+        run: nuget restore wtlhelper\WTLHelper.sln
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build
+        shell: pwsh
+        run: msbuild WinSysLive.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=x64 /m /v:m /nologo
+
+      # the gate: everything but the tests reading the live system
+      - name: Tests
+        shell: pwsh
+        run: |
+          & ".\x64\${{ matrix.configuration }}\Tests.exe" -Live
+          exit $LASTEXITCODE
+
+      # the live system's (power requests, devices, event logs): the runner's machine, so informational
+      - name: Live tests (informational)
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          & ".\x64\${{ matrix.configuration }}\Tests.exe" Live
+          exit $LASTEXITCODE
+
+      - name: Upload the build
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinSysLive-x64-Release
+          path: |
+            x64/Release/WinSysLive.exe
+            x64/Release/Tests.exe
+          if-no-files-found: warn

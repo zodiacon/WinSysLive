@@ -182,6 +182,15 @@ LRESULT CAlertRuleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	SetDlgItemText(IDC_AR_THRESHOLD, (m_Rule.Threshold == (int64_t)m_Rule.Threshold ? std::to_wstring((int64_t)m_Rule.Threshold)
 		: std::format(L"{:.1f}", m_Rule.Threshold)).c_str());
 	SetDlgItemInt(IDC_AR_SECONDS, m_Rule.Seconds, FALSE);
+	// the event kinds' log (the first item: any of them) and ID (empty: any)
+	CComboBox log(GetDlgItem(IDC_AR_LOG));
+	log.AddString(L"Any log");
+	for (auto& name : AlertRule::EventLogs())
+		log.AddString(name.c_str());
+	auto it = std::ranges::find_if(AlertRule::EventLogs(), [&](auto& name) { return ::_wcsicmp(name.c_str(), m_Rule.Log.c_str()) == 0; });
+	log.SetCurSel(it == AlertRule::EventLogs().end() ? 0 : (int)(it - AlertRule::EventLogs().begin()) + 1);
+	if (m_Rule.EventId)
+		SetDlgItemInt(IDC_AR_EVENTID, m_Rule.EventId, FALSE);
 	UpdateFields();
 	CenterWindow(GetParent());
 	return TRUE;
@@ -195,11 +204,20 @@ void CAlertRuleDlg::UpdateFields() {
 	for (int id : { IDC_AR_THRESHOLD, IDC_AR_THRESHOLD_LABEL, IDC_AR_UNIT, IDC_AR_SECONDS, IDC_AR_SECONDS_LABEL })
 		GetDlgItem(id).EnableWindow(threshold);
 	SetDlgItemText(IDC_AR_UNIT, AlertRule::Unit(kind));
-	// image names for the process rules, service names (or display names) for the service rules
-	bool service = AlertRule::IsServiceKind(kind);
-	SetDlgItemText(IDC_AR_PATTERN_LABEL, service ? L"&Services:" : L"&Image names:");
-	::SendDlgItemMessage(m_hWnd, IDC_AR_PATTERN, EM_SETCUEBANNER, TRUE, (LPARAM)(service
-		? L"Any service (name or display name, e.g. Spooler;Windows Update)" : L"Any process (e.g. notepad.exe;msedge*.exe)"));
+	// image names for the process rules, service names (or display names) for the service rules, sources for the event rules
+	bool service = AlertRule::IsServiceKind(kind), event = AlertRule::IsEventKind(kind);
+	SetDlgItemText(IDC_AR_PATTERN_LABEL, event ? L"&Source:" : service ? L"&Services:" : L"&Image names:");
+	::SendDlgItemMessage(m_hWnd, IDC_AR_PATTERN, EM_SETCUEBANNER, TRUE, (LPARAM)(event
+		? L"Any source (e.g. Service Control Manager)"
+		: service ? L"Any service (name or display name, e.g. Spooler;Windows Update)" : L"Any process (e.g. notepad.exe;msedge*.exe)"));
+	// the log is chosen for an event rule; an audit failure is Security's
+	CComboBox log(GetDlgItem(IDC_AR_LOG));
+	if (kind == AlertKind::AuditFailure)
+		log.SetCurSel((int)(std::ranges::find(AlertRule::EventLogs(), std::wstring(L"Security")) - AlertRule::EventLogs().begin()) + 1);
+	for (int id : { IDC_AR_LOG, IDC_AR_LOG_LABEL })
+		GetDlgItem(id).EnableWindow(kind == AlertKind::EventLogged);
+	for (int id : { IDC_AR_EVENTID, IDC_AR_EVENTID_LABEL })
+		GetDlgItem(id).EnableWindow(event);
 }
 
 LRESULT CAlertRuleDlg::OnKindChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -212,6 +230,25 @@ LRESULT CAlertRuleDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BO
 	CString text;
 	GetDlgItemText(IDC_AR_PATTERN, text);
 	m_Rule.Pattern = (PCWSTR)text.Trim();
+	if (AlertRule::IsEventKind(m_Rule.Kind)) {
+		BOOL ok = FALSE;
+		auto id = GetDlgItemInt(IDC_AR_EVENTID, &ok, FALSE);
+		m_Rule.EventId = ok ? id : 0;
+		int log = CComboBox(GetDlgItem(IDC_AR_LOG)).GetCurSel();
+		m_Rule.Log = m_Rule.Kind == AlertKind::AuditFailure ? L"Security"
+			: log > 0 && log <= (int)AlertRule::EventLogs().size() ? AlertRule::EventLogs()[log - 1] : L"";
+		// with neither, every event of the log would be an alert
+		if (m_Rule.Kind == AlertKind::EventLogged && m_Rule.Pattern.empty() && m_Rule.EventId == 0) {
+			AtlMessageBox(m_hWnd, L"Name a source or an event ID (or both): without either, every event of the log would be an alert.",
+				L"Alert", MB_ICONWARNING);
+			GotoDlgCtrl(GetDlgItem(IDC_AR_PATTERN));
+			return 0;
+		}
+	}
+	else {
+		m_Rule.Log.clear();
+		m_Rule.EventId = 0;
+	}
 	if (AlertRule::HasThreshold(m_Rule.Kind)) {
 		GetDlgItemText(IDC_AR_THRESHOLD, text);
 		WCHAR* end = nullptr;

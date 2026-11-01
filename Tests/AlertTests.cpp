@@ -133,3 +133,106 @@ TEST(Alerts_Numbers) {
 	CHECK_EQ(AlertRule::ForSeconds(0), std::wstring(L""));
 	CHECK_EQ(AlertRule::ForSeconds(2), std::wstring(L" for 2 seconds"));
 }
+
+TEST(Alerts_EventRulesRoundTrip) {
+	AlertRule e;
+	e.Kind = AlertKind::EventLogged;
+	e.Pattern = L"Service Control Manager";
+	e.Log = L"System";
+	e.EventId = 7031;
+	AlertRule a;
+	a.Kind = AlertKind::AuditFailure;
+	a.Log = L"Security";
+	AlertRule cpu;
+	cpu.Kind = AlertKind::SystemCpu;
+	auto text = AlertRule::FormatRules({ e, a, cpu });
+	// the event kinds have seven fields, the others still five (older builds read those)
+	CHECK_EQ(text, std::wstring(L"EventLogged|1|0|0|Service Control Manager|System|7031\nAuditFailure|1|0|0||Security|0\nSystemCpu|1|0|0|"));
+	auto parsed = AlertRule::ParseRules(text);
+	CHECK_EQ(parsed.size(), 3u);
+	if (parsed.size() == 3) {
+		CHECK_EQ(parsed[0].Log, std::wstring(L"System"));
+		CHECK_EQ(parsed[0].EventId, 7031u);
+		CHECK_EQ(parsed[1].Kind, AlertKind::AuditFailure);
+		CHECK(parsed[2].Log.empty());
+	}
+}
+
+TEST(Alerts_EventMatching) {
+	AlertRule e;
+	e.Kind = AlertKind::EventLogged;
+	e.Pattern = L"Service Control*";
+	e.Log = L"System";
+	e.EventId = 7031;
+	CHECK(e.MatchesEvent(L"System", L"Service Control Manager", 7031, false));
+	CHECK(e.MatchesEvent(L"system", L"service control manager", 7031, false));
+	CHECK(!e.MatchesEvent(L"Application", L"Service Control Manager", 7031, false));
+	CHECK(!e.MatchesEvent(L"System", L"Service Control Manager", 7036, false));
+	CHECK(!e.MatchesEvent(L"System", L"Tcpip", 7031, false));
+	e.Log.clear();
+	e.EventId = 0;
+	CHECK(e.MatchesEvent(L"Application", L"Service Control Manager", 1, false));
+	AlertRule a;
+	a.Kind = AlertKind::AuditFailure;
+	CHECK(a.MatchesEvent(L"Security", L"Microsoft-Windows-Security-Auditing", 4625, true));
+	CHECK(!a.MatchesEvent(L"Security", L"Microsoft-Windows-Security-Auditing", 4624, false));
+	CHECK(!a.MatchesEvent(L"System", L"x", 1, true));
+	a.EventId = 4625;
+	CHECK(!a.MatchesEvent(L"Security", L"Microsoft-Windows-Security-Auditing", 4656, true));
+	AlertRule cpu;
+	cpu.Kind = AlertKind::SystemCpu;
+	CHECK(!cpu.MatchesEvent(L"System", L"x", 1, false));
+}
+
+TEST(Alerts_EventQueries) {
+	AlertRule scm;
+	scm.Kind = AlertKind::EventLogged;
+	scm.Pattern = L"Service Control Manager";
+	scm.Log = L"System";
+	scm.EventId = 7031;
+	AlertRule audit;
+	audit.Kind = AlertKind::AuditFailure;
+	audit.EventId = 4625;
+	std::vector<AlertRule> rules{ scm, audit };
+	CHECK_EQ(AlertRule::EventQuery(rules, L"System"), std::wstring(L"*[System[(Provider[@Name='Service Control Manager'] and EventID=7031)]]"));
+	CHECK_EQ(AlertRule::EventQuery(rules, L"Security"), std::wstring(L"*[System[(EventID=4625 and band(Keywords,4503599627370496))]]"));
+	CHECK(AlertRule::EventQuery(rules, L"Application").empty());
+	// a wildcard source is matched after arrival: only the ID narrows it; nothing narrows it: every event
+	AlertRule wild;
+	wild.Kind = AlertKind::EventLogged;
+	wild.Pattern = L"Microsoft-Windows-*";
+	wild.EventId = 1000;
+	CHECK_EQ(AlertRule::EventQuery({ wild }, L"Application"), std::wstring(L"*[System[(EventID=1000)]]"));
+	wild.EventId = 0;
+	CHECK_EQ(AlertRule::EventQuery({ wild }, L"Application"), std::wstring(L"*"));
+	// several rules on a log are ORed; a disabled one counts for nothing
+	AlertRule tcp = scm;
+	tcp.Pattern = L"Tcpip";
+	tcp.EventId = 4266;
+	AlertRule off = scm;
+	off.Enabled = false;
+	off.EventId = 1;
+	CHECK_EQ(AlertRule::EventQuery({ scm, tcp, off }, L"System"),
+		std::wstring(L"*[System[(Provider[@Name='Service Control Manager'] and EventID=7031) or (Provider[@Name='Tcpip'] and EventID=4266)]]"));
+	// a source with an apostrophe is quoted with double quotes
+	AlertRule quoted = scm;
+	quoted.Pattern = L"O'Brien's Service";
+	CHECK_EQ(AlertRule::EventQuery({ quoted }, L"System"), std::wstring(L"*[System[(Provider[@Name=\"O'Brien's Service\"] and EventID=7031)]]"));
+}
+
+TEST(Alerts_EventDescriptions) {
+	AlertRule e;
+	e.Kind = AlertKind::EventLogged;
+	e.Pattern = L"Service Control Manager";
+	e.Log = L"System";
+	e.EventId = 7031;
+	CHECK_EQ(e.Describe(), std::wstring(L"Event 7031 from Service Control Manager in System"));
+	e.EventId = 0;
+	e.Log.clear();
+	CHECK_EQ(e.Describe(), std::wstring(L"An event from Service Control Manager in any log"));
+	AlertRule a;
+	a.Kind = AlertKind::AuditFailure;
+	CHECK_EQ(a.Describe(), std::wstring(L"Security audit failure"));
+	a.EventId = 4625;
+	CHECK_EQ(a.Describe(), std::wstring(L"Security audit failure 4625"));
+}

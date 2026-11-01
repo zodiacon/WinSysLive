@@ -13,10 +13,12 @@
 //
 // The Events tab: the System, Application and Security logs' recent events (WinSys EventLog: the last 24 hours, at most
 // 5,000 a log), newest first, and the new ones as they're written (EventLogWatcher, whose callbacks queue them for
-// WM_EVENTS_NEW). Errors and critical events always; Warnings (on at first: with them the Security log's audit failures),
-// Information (off: with it the audit successes) and Security (on: the Security log, which needs elevation; the status
-// line says so without it) on the toolbar, saved (EventsWarnings, EventsInformation, EventsSecurity); changing them reads
-// the logs again and restarts the watcher. Columns: time, level, log, source,
+// WM_EVENTS_NEW). Errors and critical events always; Warnings (on at first: with them the Security log's audit failures)
+// and Information (off: with it the audit successes) on the toolbar, and two drop-downs: Logs (System, Application and
+// Security at first; also Setup, Windows PowerShell, PowerShell, Defender, Task Scheduler and Sysmon logs, those that
+// exist) and the time span (the last hour, 24 hours, 7 days or 30 days); all saved (EventsWarnings, EventsInformation,
+// EventsLogs, EventsHours); a change reads the logs again and restarts the watcher. Security needs elevation (the status
+// line says so without it). Columns: time, level, log, source,
 // event ID, process (the logging process's name while it runs and started before the event, from the frame's snapshot),
 // PID, message (its first line; Details has all of it). Errors are highlighted, warnings tinted. The filter matches
 // source, message, event ID, log and process. Double-click or Details shows the whole event; Go to Process; Copy (the
@@ -69,7 +71,7 @@ public:
 		MESSAGE_HANDLER(WM_EVENTS_NEW, OnNewEvents)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		COMMAND_RANGE_HANDLER(ID_EVENTS_WARNINGS, ID_EVENTS_REFRESH, OnBarCommand)
-		COMMAND_ID_HANDLER(ID_EVENTS_SECURITY, OnBarCommand)
+		NOTIFY_CODE_HANDLER(TBN_DROPDOWN, OnBarDropDown)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CEventsView>)
 		CHAIN_MSG_MAP(CViewBase<CEventsView>)
@@ -82,7 +84,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EVENT_DETAILS, OnDetails)
 		COMMAND_ID_HANDLER(ID_EVENT_GOTOPROCESS, OnGoToProcess)
 		COMMAND_RANGE_HANDLER(ID_EVENTS_WARNINGS, ID_EVENTS_REFRESH, OnBarCommand)
-		COMMAND_ID_HANDLER(ID_EVENTS_SECURITY, OnBarCommand)
+		COMMAND_ID_HANDLER(ID_EVENT_OPENVIEWER, OnOpenViewer)
 		CHAIN_MSG_MAP_ALT(CViewBase<CEventsView>, 1)
 	END_MSG_MAP()
 
@@ -93,7 +95,7 @@ public:
 
 private:
 	enum class Column { Time, Level, Log, Source, EventId, Process, ProcessId, Message, _Count };
-	enum { Hours = 24, MaxEvents = 5000, MaxTotal = 15000 };	// MaxEvents a log, so Security's audits don't push out the others
+	enum { MaxEvents = 5000, MaxTotal = 15000 };	// MaxEvents a log, so Security's audits don't push out the others
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -102,6 +104,8 @@ private:
 	LRESULT OnNewEvents(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBarCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnBarDropDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnOpenViewer(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -114,6 +118,9 @@ private:
 	// the highest level shown: 2 (errors), 3 (warnings) or 4 (information)
 	uint8_t MaxLevel() const;
 	std::vector<std::wstring> Channels() const;
+	// the logs or the time span changed: saved, the span's button text, the watcher and the read
+	void LogsChanged();
+	std::wstring SpanText() const;
 	// a new event the toolbar's options keep (the watcher's query keeps them already; level 0 is told by its keywords)
 	bool Included(WinSys::EventLogEntry const& e) const;
 	void StartRead();
@@ -142,7 +149,9 @@ private:
 	std::vector<WinSys::EventLogEntry> m_All;	// newest first
 	std::unordered_set<std::wstring> m_Keys;	// m_All's, so a live event already read isn't added again
 	std::vector<WinSys::EventLogEntry const*> m_Rows;	// into m_All
-	bool m_Warnings{ true }, m_Information{ false }, m_Security{ true };
+	bool m_Warnings{ true }, m_Information{ false };
+	std::vector<std::wstring> m_Logs;	// the logs read and watched, in the order chosen
+	int m_Hours{ 24 };
 	bool m_Active{ false };
 	std::vector<std::pair<std::wstring, DWORD>> m_Failed;	// the logs that couldn't be read, and why
 	// the read

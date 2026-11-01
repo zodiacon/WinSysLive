@@ -6,6 +6,8 @@
 #include "ProcessInfoEx.h"
 #include "AlertRules.h"
 #include <deque>
+#include <mutex>
+#include <WinSys/EventLog.h>
 
 //
 // Alerts (Options > Alerts..., CAlertsDlg): rules evaluated after every snapshot update (CMainFrame::Refresh), which
@@ -22,8 +24,15 @@ struct AlertEvent {
 	bool Running{ false };	// the process is still running (Go to Process makes sense)
 };
 
-class CAlerts {
+// The event rules are fed by an event log watcher of its own (the rules' queries, AlertRule::EventQuery, on System,
+// Application and Security; started while an event rule is on, again when the rules change); its callbacks queue the
+// events (at most MaxQueued, as updates may be paused), which Evaluate matches on the UI thread.
+class CAlerts : public WinSys::EventLogSink {
 public:
+	~CAlerts();
+	// EventLogSink, on wevtapi's threads
+	void OnEvent(WinSys::EventLogEntry&& entry) override;
+
 	static std::vector<AlertRule> Load();
 	static void Save(std::vector<AlertRule> const& rules);
 
@@ -67,6 +76,13 @@ private:
 	std::deque<AlertEvent> m_Recent;	// the newest last
 	bool m_Baseline{ false };	// the first update was seen
 	int64_t m_PageSize{ 0 }, m_PhysicalTotal{ 0 };
+
+	// the event rules' watcher: started, restarted or stopped for the rules
+	void UpdateEventWatcher();
+	static constexpr size_t MaxQueued = 1000;
+	std::mutex m_EventLock;
+	std::vector<WinSys::EventLogEntry> m_Events;	// queued by OnEvent
+	WinSys::EventLogWatcher m_EventWatcher;	// last: destroyed (stopped) before the queue it fills
 };
 
 //

@@ -24,14 +24,14 @@ namespace {
 
 TEST(Autoruns_ResolveImage) {
 	auto system = SystemDirectory();
-	// quoted, with arguments
-	CHECK(SameText(Autoruns::ResolveImage(L"\"" + system + L"\\notepad.exe\" /A file.txt"), system + L"\\notepad.exe"));
+	// quoted, with arguments (files every Windows has, Server images too)
+	CHECK(SameText(Autoruns::ResolveImage(L"\"" + system + L"\\where.exe\" /R c:\\ x"), system + L"\\where.exe"));
 	// environment variables
 	CHECK(SameText(Autoruns::ResolveImage(L"%SystemRoot%\\System32\\cmd.exe /c exit"), system + L"\\cmd.exe"));
 	// rundll32's DLL, not rundll32 itself
 	CHECK(SameText(Autoruns::ResolveImage(L"rundll32.exe shell32.dll,Control_RunDLL"), system + L"\\shell32.dll"));
 	// on the search path
-	CHECK(SameText(Autoruns::ResolveImage(L"notepad.exe"), system + L"\\notepad.exe"));
+	CHECK(SameText(Autoruns::ResolveImage(L"where.exe"), system + L"\\where.exe"));
 }
 
 TEST(Devices_ProblemText) {
@@ -88,7 +88,7 @@ TEST(EventLog_AuditLevelText) {
 	CHECK_EQ(std::wstring(EventLog::LevelText(e)), std::wstring(L"Error"));
 }
 
-TEST(EventLog_SecurityQueryKeepsAuditFailuresWithWarnings) {
+TEST(EventLog_LiveSecurityQuery) {
 	// the Security log needs elevation; with warnings, only failures (and real warnings and errors) come back
 	auto events = EventLog::Query(L"Security", 3, 24, 500);
 	if (!SecurityHelper::IsRunningElevated()) {
