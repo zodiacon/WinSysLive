@@ -16,6 +16,8 @@
 #include <CustomSplitterWindow.h>
 #include <GraphControl/include/CellGraphs.h>
 #include <unordered_set>
+#include <thread>
+#include <mutex>
 
 class CProcessesView :
 	public CViewBase<CProcessesView> {
@@ -49,6 +51,8 @@ public:
 
 	// posted by the signature worker (View > Hide Processes > Signed Processes) when a file's signature is verified
 	static constexpr UINT WM_PROCESS_SIGNED = WM_APP + 0x160;
+	// posted by the .NET module scan (UpdateDotNet with all) when it's done
+	static constexpr UINT WM_DOTNET_SCANNED = WM_APP + 0x161;
 
 	BEGIN_MSG_MAP(CProcessesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -57,6 +61,7 @@ public:
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_DUMP_WRITTEN, OnDumpWritten)
 		MESSAGE_HANDLER(WM_PROCESS_SIGNED, OnSigned)
+		MESSAGE_HANDLER(WM_DOTNET_SCANNED, OnDotNetScanned)
 		MESSAGE_HANDLER(VirusTotalChecker::WM_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
@@ -184,6 +189,7 @@ private:
 	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDumpWritten(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDotNetScanned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -250,8 +256,9 @@ private:
 	void UpdateSuspended(ProcessItem& item);
 	// the PIDs hosting running services; false if they're unchanged
 	bool UpdateServicePids();
-	// sets DotNet on the processes the CLR has started in (see UpdateDotNet in the .cpp)
+	// sets DotNet on the processes the CLR has started in (see UpdateDotNet in the .cpp); nothing while its color is off
 	void UpdateDotNet(bool all);
+	bool IsDotNetColored() const;
 
 	void BuildItems();
 	// the tree again from the items, which keep their state (deltas, highlights, kinds): after a filter change or
@@ -333,6 +340,11 @@ private:
 	int m_ServiceRechecks{ 0 };
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessItem> m_Items;	// node-based: ProcessItem* stays valid
+	// the scan of every process's modules for a .NET runtime DLL (about 2 s for 500 processes, so not on this thread)
+	std::jthread m_DotNetWorker;
+	std::mutex m_DotNetLock;
+	std::vector<WinSys::ProcessOrThreadKey> m_DotNetFound;	// the scan's result
+	bool m_DotNetScanning{ false };
 	std::vector<Column> m_Columns;	// m_Columns[i] is shown in list column i; Name is always column 0 (the tree column)
 	GraphCtrl::CellGraphs m_CellGraphs;	// the history-column sparklines, drawn from OnCustomDraw
 	int m_SortColumn{ -1 };	// a Column, or -1

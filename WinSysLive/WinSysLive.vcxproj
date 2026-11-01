@@ -438,6 +438,7 @@
     <ClCompile Include="Snapshot.cpp" />
     <ClCompile Include="SnapshotDlg.cpp" />
     <ClCompile Include="GpuPage.cpp" />
+    <ClCompile Include="DotNetPage.cpp" />
     <ClCompile Include="NetworkInfoDlg.cpp" />
     <ClCompile Include="CommandPaletteDlg.cpp" />
     <ClCompile Include="EtwSessionsDlg.cpp" />
@@ -540,6 +541,7 @@
     <ClInclude Include="Snapshot.h" />
     <ClInclude Include="SnapshotDlg.h" />
     <ClInclude Include="GpuPage.h" />
+    <ClInclude Include="DotNetPage.h" />
     <ClInclude Include="NetworkInfoDlg.h" />
     <ClInclude Include="CommandPaletteDlg.h" />
     <ClInclude Include="EtwSessionsDlg.h" />
@@ -653,6 +655,7 @@
     <Image Include="res\token.ico" />
     <Image Include="res\Users.ico" />
     <Image Include="res\windowstation.ico" />
+    <Image Include="res\dotnet.ico" />
     <Image Include="res\window_logon.ico" />
     <Image Include="res\User.ico" />
     <Image Include="res\group.ico" />

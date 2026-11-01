@@ -2,6 +2,7 @@
 #include "ProcessSheet.h"
 #include <WTLHelper.h>
 #include <WinSys/ServiceManager.h>
+#include <WinSys/DotNet.h>
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -16,6 +17,12 @@ namespace {
 		auto hProcess = OpenSheetProcess(props, PROCESS_QUERY_LIMITED_INFORMATION);
 		BOOL inJob = FALSE;
 		return hProcess && ::IsProcessInJob(hProcess.get(), nullptr, &inJob) && inJob;
+	}
+
+	// whether the CLR runs in the process (as the process list's .NET color tells)
+	bool IsDotNet(ProcessProperties const& props) {
+		return DotNetInfo::HasFrameworkRuntime(props.Id, props.SessionId) || DotNetInfo::GetCoreRuntimeProcesses().contains(props.Id)
+			|| DotNetInfo::HasRuntimeModule(props.Id);
 	}
 
 	// the running services the process hosts
@@ -69,6 +76,10 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Threads);
 	m_Modules = std::make_unique<CProcModulesPage>(m_Props, L"Modules", IDI_MODULES);
 	AddPage(*m_Modules);
+	if (IsDotNet(m_Props)) {
+		m_DotNet = std::make_unique<CProcDotNetPage>(m_Props);
+		AddPage(*m_DotNet);
+	}
 	m_Handles = std::make_unique<CProcHandlesPage>(m_Props, L"Handles", IDI_HANDLES);
 	AddPage(*m_Handles);
 	m_TcpIp = std::make_unique<CProcTcpIpPage>(m_Props, m_Snapshot);

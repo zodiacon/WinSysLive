@@ -10,6 +10,7 @@
 #include "ServicesPage.h"
 #include "TcpIpPage.h"
 #include "GpuPage.h"
+#include "DotNetPage.h"
 #include "ObjectSecurity.h"
 
 //
@@ -56,6 +57,7 @@ private:
 	std::unique_ptr<CProcHandlesPage> m_Handles;
 	std::unique_ptr<CProcTcpIpPage> m_TcpIp;
 	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job
+	std::unique_ptr<CProcDotNetPage> m_DotNet;	// only for a process running .NET
 	std::unique_ptr<CProcServicesPage> m_Services;	// only for a process hosting services
 	// the Security page: the ACL editor's (CreateSecurityPage), on the process opened with the most of READ_CONTROL,
 	// WRITE_DAC and WRITE_OWNER it allows

@@ -616,7 +616,10 @@ LRESULT CProcessesView::OnHideDropDown(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandl
 }
 
 void CProcessesView::OnProcessColorsChanged() {
+	bool wasColored = IsDotNetColored();
 	m_Colors = ProcessColors::Load();
+	if (!wasColored && IsDotNetColored())
+		UpdateDotNet(true);
 	m_Tree.Invalidate();
 }
 
@@ -694,7 +697,15 @@ bool CProcessesView::UpdateServicePids() {
 	return true;
 }
 
+bool CProcessesView::IsDotNetColored() const {
+	auto it = std::ranges::find_if(m_Colors, [](auto& e) { return e.Kind == ProcessKind::DotNet; });
+	return it != m_Colors.end() && it->Enabled;
+}
+
 void CProcessesView::UpdateDotNet(bool all) {
+	// the kind is only a color: not worked out while that's off (OnProcessColorsChanged checks them all when it's turned on)
+	if (!IsDotNetColored())
+		return;
 	FILETIME ft;
 	::GetSystemTimeAsFileTime(&ft);
 	auto now = (int64_t)ULARGE_INTEGER{ ft.dwLowDateTime, ft.dwHighDateTime }.QuadPart;
@@ -707,11 +718,57 @@ void CProcessesView::UpdateDotNet(bool all) {
 		return;
 
 	auto corePids = DotNetInfo::GetCoreRuntimeProcesses();
+	// the .NET Framework 4 CLR's section is in a private namespace on current Windows, which HasFrameworkRuntime doesn't
+	// see: its clr.dll among the modules tells it. That takes a few milliseconds a process: new ones are checked here,
+	// on every refresh for their first 15 seconds (DotNetCheckPeriod, as the runtime loads after the process starts),
+	// all of them on a thread
+	std::vector<WinSys::ProcessOrThreadKey> rest;
 	for (auto item : candidates) {
 		auto& p = *item->Process;
 		if (corePids.contains(p.Id) || DotNetInfo::HasFrameworkRuntime(p.Id, p.NativeInfo->SessionId))
 			item->Kinds |= ProcessKind::DotNet;
+		else if (!all) {
+			if (DotNetInfo::HasRuntimeModule(p.Id))
+				item->Kinds |= ProcessKind::DotNet;
+		}
+		else
+			rest.push_back(p.Key);
 	}
+	if (rest.empty() || m_DotNetScanning)
+		return;
+	m_DotNetScanning = true;
+	// the previous scan is done (m_DotNetScanning was off): joining it doesn't wait
+	m_DotNetWorker = std::jthread([this, hWnd = m_hWnd, keys = std::move(rest)](std::stop_token stop) {
+		std::vector<WinSys::ProcessOrThreadKey> found;
+		for (auto& key : keys) {
+			if (stop.stop_requested())
+				return;
+			if (DotNetInfo::HasRuntimeModule(key.Id))
+				found.push_back(key);
+		}
+		{
+			std::lock_guard lock(m_DotNetLock);
+			m_DotNetFound = std::move(found);
+		}
+		::PostMessage(hWnd, WM_DOTNET_SCANNED, 0, 0);
+		});
+}
+
+LRESULT CProcessesView::OnDotNetScanned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	m_DotNetScanning = false;
+	std::vector<WinSys::ProcessOrThreadKey> found;
+	{
+		std::lock_guard lock(m_DotNetLock);
+		found.swap(m_DotNetFound);
+	}
+	if (!IsDotNetColored())
+		return 0;
+	// by ID and creation time: a process gone meanwhile (or its ID reused) isn't marked
+	for (auto& key : found)
+		if (auto it = m_Items.find(key); it != m_Items.end())
+			it->second.Kinds |= ProcessKind::DotNet;
+	m_Tree.Invalidate();
+	return 0;
 }
 
 bool CProcessesView::IsHiding() const {

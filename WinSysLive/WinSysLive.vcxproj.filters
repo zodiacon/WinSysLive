@@ -264,6 +264,9 @@
     <ClCompile Include="GpuPage.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
+    <ClCompile Include="DotNetPage.cpp">
+      <Filter>Pages</Filter>
+    </ClCompile>
     <ClCompile Include="NetworkInfoDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -548,6 +551,9 @@
     <ClInclude Include="GpuPage.h">
       <Filter>Pages</Filter>
     </ClInclude>
+    <ClInclude Include="DotNetPage.h">
+      <Filter>Pages</Filter>
+    </ClInclude>
     <ClInclude Include="NetworkInfoDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
@@ -699,6 +705,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\windowstation.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\dotnet.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\section.ico">

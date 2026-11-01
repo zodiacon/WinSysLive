@@ -12,7 +12,8 @@ namespace ProcessColors {
 			{ ProcessKind::Secure, L"Secure", true, RGB(200, 180, 255), RGB(62, 50, 112) },
 			{ ProcessKind::Protected, L"Protected", true, RGB(255, 128, 255), RGB(106, 42, 106) },
 			{ ProcessKind::Immersive, L"Immersive", true, RGB(128, 255, 255), RGB(30, 90, 90) },
-			{ ProcessKind::DotNet, L"DotNet", true, RGB(255, 255, 128), RGB(90, 90, 30) },
+			// off at first: telling a .NET Framework process means listing its modules (see CProcessesView::UpdateDotNet)
+			{ ProcessKind::DotNet, L"DotNet", false, RGB(255, 255, 128), RGB(90, 90, 30) },
 			{ ProcessKind::Service, L"Service", true, RGB(255, 208, 208), RGB(90, 46, 46) },
 			// many processes are in jobs (browsers, packaged apps...), which would drown the other colors
 			{ ProcessKind::Job, L"Job", false, RGB(208, 168, 144), RGB(90, 66, 50) },

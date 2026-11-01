@@ -479,6 +479,7 @@ IDI_SESSION             ICON                    "res\\session.ico"
 IDI_TOKEN               ICON                    "res\\token.ico"
 
 IDI_WINSTA              ICON                    "res\\windowstation.ico"
+IDI_DOTNET              ICON                    "res\\dotnet.ico"
 
 IDI_MEMORY              ICON                    "res\\Memory.ico"
 
@@ -972,6 +973,18 @@ BEGIN
     LTEXT           "",IDC_PERF_MEMORY,7,201,316,11,SS_NOPREFIX | SS_ENDELLIPSIS
     LTEXT           "",IDC_PERF_IO,7,212,316,11,SS_NOPREFIX | SS_ENDELLIPSIS
     CONTROL         "One &column",IDC_PERF_VERTICAL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,268,212,55,10
+END
+
+IDD_PROC_DOTNET DIALOGEX 0, 0, 330, 230
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPCHILDREN | WS_CAPTION
+CAPTION ".NET"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "",IDC_DN_RUNTIME,7,7,316,20,SS_NOPREFIX | SS_PATHELLIPSIS
+    EDITTEXT        IDC_DN_FILTER,7,30,259,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Refresh",IDC_DN_REFRESH,273,30,50,14
+    CONTROL         "",IDC_DN_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,48,316,160
+    LTEXT           "",IDC_DN_STATUS,7,213,316,10,SS_NOPREFIX | SS_ENDELLIPSIS
 END
 
 IDD_PROC_GPU DIALOGEX 0, 0, 330, 230
