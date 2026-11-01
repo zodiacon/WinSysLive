@@ -6,7 +6,7 @@
 #include <functional>
 
 //
-// System > ETW Sessions: a modal, resizable dialog, read-only. The running ETW sessions (WinSys EtwSessions::Enum:
+// System > ETW Sessions: a modal, resizable dialog. The running ETW sessions (WinSys EtwSessions::Enum:
 // name, mode, providers, buffers, events and buffers lost, log file) above the providers enabled in the selected one
 // (name, or its GUID when TDH doesn't know it; level, keywords and the processes whose instances it enabled, named
 // from the frame's snapshot). The filter keeps the sessions whose name, or one of whose providers' names or GUIDs,
@@ -14,6 +14,11 @@
 // any column (numbers as numbers); Refresh reads again, keeping the selected session by name; Copy copies the list that
 // last had the focus (its selected rows, or all shown). The kernel's loggers take events by flags and list no
 // providers; most sessions need administrator rights to be seen (the status line says so when none could be).
+// Stop Session (the button, or the session list's context menu) stops the selected session after a confirmation, which
+// warns more for a session that isn't WinSysLive's (Windows and other programs rely on theirs). A "WinSysLive ..." session
+// whose process (the number at its name's end) is gone, or is no longer WinSysLive, is orphaned (said in its name
+// column): left by a WinSysLive that crashed or was killed, it holds one of the system's few sessions. Stop Orphaned
+// stops them all (after a confirmation); it's enabled only when there are some.
 //
 class CEtwSessionsDlg :
 	public CDialogImpl<CEtwSessionsDlg>,
@@ -31,6 +36,8 @@ public:
 		DLGRESIZE_CONTROL(IDC_ET_SESSIONS, DLSZ_SIZE_X | DLSZ_SIZE_Y)
 		DLGRESIZE_CONTROL(IDC_ET_PROVIDERS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_ET_STATUS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_ET_STOP, DLSZ_MOVE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_ET_STOPORPHANED, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_ET_REFRESH, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_ET_COPY, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDCANCEL, DLSZ_MOVE_X | DLSZ_MOVE_Y)
@@ -38,12 +45,15 @@ public:
 
 	BEGIN_MSG_MAP(CEtwSessionsDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		NOTIFY_HANDLER(IDC_ET_SESSIONS, LVN_ITEMCHANGED, OnSessionChanged)
 		NOTIFY_CODE_HANDLER(LVN_COLUMNCLICK, OnColumnClick)
 		NOTIFY_CODE_HANDLER(NM_SETFOCUS, OnListFocus)
 		COMMAND_HANDLER(IDC_ET_FILTER, EN_CHANGE, OnFilterChanged)
 		COMMAND_ID_HANDLER(IDC_ET_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_ET_COPY, OnCopy)
+		COMMAND_ID_HANDLER(IDC_ET_STOP, OnStop)
+		COMMAND_ID_HANDLER(IDC_ET_STOPORPHANED, OnStopOrphaned)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		CHAIN_MSG_MAP(CDpiDialogResize<CEtwSessionsDlg>)
 		CHAIN_MSG_MAP(CDialogResize<CEtwSessionsDlg>)
@@ -70,6 +80,9 @@ private:
 	};
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnStopOrphaned(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSessionChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnListFocus(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
@@ -95,6 +108,8 @@ private:
 	CListViewCtrl m_Sessions, m_Providers;
 	Table m_SessionTable, m_ProviderTable;
 	std::vector<WinSys::EtwSession> m_All;	// the session table's rows are its indices, in order
+	std::vector<bool> m_Orphaned;	// by m_All's index
+	std::wstring m_Result;	// the last stop's outcome, for the status line
 	DWORD m_Error{ 0 };	// why nothing could be read
 	std::wstring m_Filter;	// lowercase
 	HWND m_CopyList{ nullptr };

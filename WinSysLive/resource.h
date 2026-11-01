@@ -700,19 +700,40 @@
 #define ID_DOTNET_OPENLOCATION          32988
 #define IDD_PROC_DOTNET                 330
 #define IDI_DOTNET                      331
+#define IDI_ALERT                       334
 #define IDC_DN_RUNTIME                  1396
 #define IDC_DN_FILTER                   1397
 #define IDC_DN_REFRESH                  1398
 #define IDC_DN_LIST                     1399
 #define IDC_DN_STATUS                   1400
+#define IDC_ET_STOP                     1401
+#define IDC_ET_STOPORPHANED             1402
+#define IDD_ALERTS                      332
+#define IDD_ALERT_RULE                  333
+#define IDC_AL_RULES                    1403
+#define IDC_AL_ADD                      1404
+#define IDC_AL_EDIT                     1405
+#define IDC_AL_REMOVE                   1406
+#define IDC_AL_RECENT                   1407
+#define IDC_AL_CLEAR                    1408
+#define IDC_AL_STATUS                   1409
+#define IDC_AR_KIND                     1410
+#define IDC_AR_PATTERN                  1411
+#define IDC_AR_PATTERN_LABEL            1412
+#define IDC_AR_THRESHOLD                1413
+#define IDC_AR_THRESHOLD_LABEL          1414
+#define IDC_AR_UNIT                     1415
+#define IDC_AR_SECONDS                  1416
+#define IDC_AR_SECONDS_LABEL            1417
+#define ID_OPTIONS_ALERTS               32989
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        332
-#define _APS_NEXT_COMMAND_VALUE         32989
-#define _APS_NEXT_CONTROL_VALUE         1401
+#define _APS_NEXT_RESOURCE_VALUE        335
+#define _APS_NEXT_COMMAND_VALUE         32990
+#define _APS_NEXT_CONTROL_VALUE         1418
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

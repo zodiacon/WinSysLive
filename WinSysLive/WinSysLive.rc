@@ -230,6 +230,7 @@ BEGIN
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
+        MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
         MENUITEM "&Minimize to Tray",           ID_OPTIONS_MINIMIZETOTRAY
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
         MENUITEM "Single &Instance",            ID_OPTIONS_SINGLEINSTANCE
@@ -480,6 +481,7 @@ IDI_TOKEN               ICON                    "res\\token.ico"
 
 IDI_WINSTA              ICON                    "res\\windowstation.ico"
 IDI_DOTNET              ICON                    "res\\dotnet.ico"
+IDI_ALERT               ICON                    "res\\Alert.ico"
 
 IDI_MEMORY              ICON                    "res\\Memory.ico"
 
@@ -792,6 +794,41 @@ BEGIN
     CONTROL         "",IDC_CP_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | LVS_SHAREIMAGELISTS | WS_TABSTOP,4,22,412,194
 END
 
+IDD_ALERTS DIALOGEX 0, 0, 440, 300
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Alerts"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Rules (checked ones are on):",IDC_STATIC,7,7,200,9
+    CONTROL         "",IDC_AL_RULES,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,7,18,370,100
+    PUSHBUTTON      "&Add...",IDC_AL_ADD,383,18,50,14
+    PUSHBUTTON      "&Edit...",IDC_AL_EDIT,383,36,50,14
+    PUSHBUTTON      "Re&move",IDC_AL_REMOVE,383,54,50,14
+    LTEXT           "Recent alerts (double-click a running process's to go to it):",IDC_STATIC,7,125,300,9
+    CONTROL         "",IDC_AL_RECENT,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,136,370,138
+    PUSHBUTTON      "C&lear",IDC_AL_CLEAR,383,136,50,14
+    LTEXT           "",IDC_AL_STATUS,7,283,300,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "Close",IDCANCEL,383,279,50,14
+END
+
+IDD_ALERT_RULE DIALOGEX 0, 0, 280, 112
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Alert"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Alert when:",IDC_STATIC,7,9,60,9
+    COMBOBOX        IDC_AR_KIND,72,7,201,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Image names:",IDC_AR_PATTERN_LABEL,7,28,60,9
+    EDITTEXT        IDC_AR_PATTERN,72,26,201,14,ES_AUTOHSCROLL
+    LTEXT           "&Threshold:",IDC_AR_THRESHOLD_LABEL,7,47,60,9
+    EDITTEXT        IDC_AR_THRESHOLD,72,45,50,14,ES_AUTOHSCROLL
+    LTEXT           "",IDC_AR_UNIT,126,47,30,9
+    LTEXT           "&For (seconds):",IDC_AR_SECONDS_LABEL,7,66,60,9
+    EDITTEXT        IDC_AR_SECONDS,72,64,50,14,ES_AUTOHSCROLL | ES_NUMBER
+    DEFPUSHBUTTON   "OK",IDOK,169,91,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,223,91,50,14
+END
+
 IDD_ETWSESSIONS DIALOGEX 0, 0, 560, 360
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "ETW Sessions"
@@ -800,7 +837,9 @@ BEGIN
     EDITTEXT        IDC_ET_FILTER,7,7,546,14,ES_AUTOHSCROLL
     CONTROL         "",IDC_ET_SESSIONS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,26,546,170
     CONTROL         "",IDC_ET_PROVIDERS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,201,546,130
-    LTEXT           "",IDC_ET_STATUS,7,342,370,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "",IDC_ET_STATUS,7,342,236,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Stop Session...",IDC_ET_STOP,249,339,62,14
+    PUSHBUTTON      "Stop &Orphaned",IDC_ET_STOPORPHANED,315,339,64,14
     PUSHBUTTON      "&Refresh",IDC_ET_REFRESH,383,339,55,14
     PUSHBUTTON      "&Copy",IDC_ET_COPY,443,339,55,14
     PUSHBUTTON      "Close",IDCANCEL,503,339,50,14
@@ -1933,6 +1972,7 @@ BEGIN
     ID_KMODULE_PROPERTIES   "Show the properties of the selected driver's file\nProperties"
     ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"
+    ID_OPTIONS_ALERTS       "Notifications when processes start or exit, or CPU, memory or a process's use stays above a threshold\nAlerts"
     ID_OPTIONS_TRAYICON     "Choose the icons in the notification area: CPU, I/O, commit charge, physical memory, network\nTray Icons"
     ID_OPTIONS_MINIMIZETOTRAY 
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"

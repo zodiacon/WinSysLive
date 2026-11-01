@@ -16,6 +16,34 @@ namespace {
 		WCHAR text[64];
 		return ::StringFromGUID2(guid, text, _countof(text)) ? text : L"";
 	}
+
+	const std::wstring_view OwnPrefix = L"WinSysLive ";
+
+	// a WinSysLive session's process: the number after the name's last space, before a '.' ("WinSysLive DotNet 1234.2")
+	uint32_t OwnerPid(std::wstring const& name) {
+		auto space = name.rfind(L' ');
+		return space == std::wstring::npos ? 0 : (uint32_t)::wcstoul(name.c_str() + space + 1, nullptr, 10);
+	}
+
+	// a WinSysLive session whose process is gone, or has another image (its ID reused)
+	bool IsOrphaned(std::wstring const& name) {
+		if (!name.starts_with(OwnPrefix))
+			return false;
+		auto pid = OwnerPid(name);
+		if (pid == 0)
+			return false;
+		wil::unique_handle hProcess(::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, pid));
+		if (!hProcess)
+			return ::GetLastError() == ERROR_INVALID_PARAMETER;	// no such process (access denied: another user's, running)
+		if (::WaitForSingleObject(hProcess.get(), 0) == WAIT_OBJECT_0)
+			return true;
+		WCHAR path[MAX_PATH];
+		DWORD size = _countof(path);
+		if (!::QueryFullProcessImageName(hProcess.get(), 0, path, &size))
+			return false;
+		auto file = ::wcsrchr(path, L'\\');
+		return ::_wcsnicmp(file ? file + 1 : path, L"WinSysLive", 10) != 0;
+	}
 }
 
 LRESULT CEtwSessionsDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -60,9 +88,12 @@ void CEtwSessionsDlg::Load() {
 	else
 		m_Error = ::GetLastError();
 	m_SessionTable.Rows.clear();
+	m_Orphaned.clear();
 	for (auto& s : m_All) {
 		auto buffers = std::format(L"{} KB x {}", s.BufferSizeKB, s.Buffers);
-		m_SessionTable.Rows.push_back({ s.Name, std::to_wstring(s.LoggerId), s.Mode, std::to_wstring(s.Providers.size()), buffers,
+		bool orphaned = IsOrphaned(s.Name);
+		m_Orphaned.push_back(orphaned);
+		m_SessionTable.Rows.push_back({ orphaned ? s.Name + L" (orphaned)" : s.Name, std::to_wstring(s.LoggerId), s.Mode, std::to_wstring(s.Providers.size()), buffers,
 			std::to_wstring(s.EventsLost), std::to_wstring(s.BuffersWritten), s.LogFile });
 	}
 	ShowSessions();
@@ -191,6 +222,10 @@ WinSys::EtwSession const* CEtwSessionsDlg::GetSelectedSession() const {
 }
 
 void CEtwSessionsDlg::UpdateStatus() {
+	auto orphans = std::ranges::count(m_Orphaned, true);
+	SetDlgItemText(IDC_ET_STOPORPHANED, orphans ? std::format(L"Stop &Orphaned ({})", orphans).c_str() : L"Stop &Orphaned");
+	GetDlgItem(IDC_ET_STOPORPHANED).EnableWindow(orphans > 0);
+	GetDlgItem(IDC_ET_STOP).EnableWindow(GetSelectedSession() != nullptr);
 	std::wstring text;
 	if (m_Error)
 		text = L"The sessions can't be read: " + WinSys::Helpers::GetErrorText(m_Error);
@@ -204,7 +239,85 @@ void CEtwSessionsDlg::UpdateStatus() {
 	}
 	if (!WinSys::SecurityHelper::IsRunningElevated())
 		text += L" (most sessions need administrator rights)";
+	// the last stop's outcome first, until Refresh
+	if (!m_Result.empty())
+		text = m_Result + L"; " + text;
 	SetDlgItemText(IDC_ET_STATUS, text.c_str());
+}
+
+LRESULT CEtwSessionsDlg::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	if ((HWND)wParam != m_Sessions || !GetSelectedSession()) {
+		bHandled = FALSE;
+		return 0;
+	}
+	CPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+	if (pt.x == -1 && pt.y == -1) {
+		CRect rc;
+		m_Sessions.GetItemRect(m_Sessions.GetNextItem(-1, LVNI_SELECTED), &rc, LVIR_LABEL);
+		pt = rc.CenterPoint();
+		m_Sessions.ClientToScreen(&pt);
+	}
+	m_CopyList = m_Sessions;
+	CMenu menu;
+	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING, IDC_ET_STOP, L"&Stop Session...");
+	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING, IDC_ET_COPY, L"&Copy");
+	menu.TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd);
+	return 0;
+}
+
+LRESULT CEtwSessionsDlg::OnStop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto s = GetSelectedSession();
+	if (!s)
+		return 0;
+	auto name = s->Name;
+	bool orphaned = m_Orphaned[s - m_All.data()];
+	std::wstring question;
+	if (orphaned)
+		question = std::format(L"Stop the session \"{}\"?\n\nIt was started by a WinSysLive that isn't running anymore.", name);
+	else if (name.starts_with(OwnPrefix))
+		question = std::format(L"Stop the session \"{}\"?\n\nA running WinSysLive (process {}) uses it: what it shows from the session "
+			L"stops updating.", name, OwnerPid(name));
+	else
+		question = std::format(L"Stop the session \"{}\"?\n\nWindows or another program started it, and may rely on it: event logs, "
+			L"diagnostics or that program's tracing stop until it starts the session again (some start it only at boot).", name);
+	if (AtlMessageBox(m_hWnd, question.c_str(), L"ETW Sessions", MB_OKCANCEL | (orphaned ? MB_ICONQUESTION : MB_ICONWARNING) | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	m_Result = WinSys::EtwSessions::Stop(name) ? std::format(L"Stopped {}", name)
+		: std::format(L"{} couldn't be stopped: {}", name, WinSys::Helpers::GetErrorText(::GetLastError()));
+	Load();
+	return 0;
+}
+
+LRESULT CEtwSessionsDlg::OnStopOrphaned(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	std::vector<std::wstring> names;
+	for (size_t i = 0; i < m_All.size(); i++)
+		if (m_Orphaned[i])
+			names.push_back(m_All[i].Name);
+	if (names.empty())
+		return 0;
+	std::wstring list;
+	for (auto& n : names)
+		list += L"\n" + n;
+	auto question = names.size() == 1
+		? std::format(L"Stop the session left by a WinSysLive that isn't running anymore?\n{}", list)
+		: std::format(L"Stop {} sessions left by WinSysLive instances that aren't running anymore?\n{}", names.size(), list);
+	if (AtlMessageBox(m_hWnd, question.c_str(), L"ETW Sessions", MB_OKCANCEL | MB_ICONQUESTION) != IDOK)
+		return 0;
+	int stopped = 0;
+	DWORD error = 0;
+	for (auto& n : names) {
+		if (WinSys::EtwSessions::Stop(n))
+			stopped++;
+		else
+			error = ::GetLastError();
+	}
+	m_Result = std::format(L"Stopped {} of {} orphaned sessions", stopped, names.size());
+	if (error)
+		m_Result += L" (" + WinSys::Helpers::GetErrorText(error) + L")";
+	Load();
+	return 0;
 }
 
 LRESULT CEtwSessionsDlg::OnSessionChanged(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
@@ -248,6 +361,7 @@ LRESULT CEtwSessionsDlg::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 }
 
 LRESULT CEtwSessionsDlg::OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_Result.clear();
 	Load();
 	return 0;
 }

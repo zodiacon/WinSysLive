@@ -276,6 +276,12 @@
     <ClCompile Include="EtwSessionsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="AlertsDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="Alerts.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="WindowStationsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -563,6 +569,12 @@
     <ClInclude Include="EtwSessionsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="AlertsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="Alerts.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="WindowStationsDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
@@ -708,6 +720,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\dotnet.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Alert.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\section.ico">

@@ -442,6 +442,8 @@
     <ClCompile Include="NetworkInfoDlg.cpp" />
     <ClCompile Include="CommandPaletteDlg.cpp" />
     <ClCompile Include="EtwSessionsDlg.cpp" />
+    <ClCompile Include="AlertsDlg.cpp" />
+    <ClCompile Include="Alerts.cpp" />
     <ClCompile Include="WindowStationsDlg.cpp" />
     <ClCompile Include="MemoryStringsDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
@@ -545,6 +547,8 @@
     <ClInclude Include="NetworkInfoDlg.h" />
     <ClInclude Include="CommandPaletteDlg.h" />
     <ClInclude Include="EtwSessionsDlg.h" />
+    <ClInclude Include="AlertsDlg.h" />
+    <ClInclude Include="Alerts.h" />
     <ClInclude Include="WindowStationsDlg.h" />
     <ClInclude Include="MemoryStringsDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
@@ -656,6 +660,7 @@
     <Image Include="res\Users.ico" />
     <Image Include="res\windowstation.ico" />
     <Image Include="res\dotnet.ico" />
+    <Image Include="res\Alert.ico" />
     <Image Include="res\window_logon.ico" />
     <Image Include="res\User.ico" />
     <Image Include="res\group.ico" />

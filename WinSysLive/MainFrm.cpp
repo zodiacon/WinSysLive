@@ -17,6 +17,7 @@
 #include "SnapshotDlg.h"
 #include "NetworkInfoDlg.h"
 #include "CommandPaletteDlg.h"
+#include "AlertsDlg.h"
 #include "EtwSessionsDlg.h"
 #include "WindowStationsDlg.h"
 #include "RamDlg.h"
@@ -269,6 +270,9 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	::ChangeWindowMessageFilterEx(m_hWnd, ActivateMessage, MSGFLT_ALLOW, nullptr);
 	m_TrayIcons.Init(m_hWnd, WM_TRAYICON);
 	ApplyTrayIcons(CTrayIcons::Load());
+	m_Alerts.SetRules(CAlerts::Load());
+	m_AlertIcon.Init(m_hWnd, WM_TRAYICON);
+	m_AlertIcon.Show(m_Alerts.AnyEnabled());
 	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
 	if (settings.AlwaysOnTop())
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -366,6 +370,13 @@ LRESULT CMainFrame::OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, 
 		case WM_RBUTTONUP:
 			ShowTrayMenu();
 			break;
+
+		case NIN_BALLOONUSERCLICK:
+			// an alert's balloon: the window, and the process the last alert was about if it still runs
+			RestoreWindow();
+			if (m_LastAlert.Running && m_LastAlert.Pid)
+				GoToProcess(m_LastAlert.Pid);
+			break;
 	}
 	return 0;
 }
@@ -379,6 +390,7 @@ void CMainFrame::ShowTrayMenu() {
 	menu.AppendMenu(MF_STRING | (m_Paused ? MF_CHECKED : 0), ID_VIEW_PAUSE, L"&Pause Updates");
 	menu.AppendMenu(MF_STRING | (AppSettings::Get().AlwaysOnTop() ? MF_CHECKED : 0), ID_OPTIONS_ALWAYSONTOP, L"Always on &Top");
 	menu.AppendMenu(MF_STRING, ID_OPTIONS_TRAYICON, L"Tray &Icons...");
+	menu.AppendMenu(MF_STRING, ID_OPTIONS_ALERTS, L"&Alerts...");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_APP_EXIT, L"E&xit");
 	menu.SetMenuDefaultItem(ID_TRAY_SHOW);
@@ -403,12 +415,40 @@ LRESULT CMainFrame::OnTrayShow(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 LRESULT CMainFrame::OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	// Explorer restarted, without the icons
 	m_TrayIcons.AddAgain();
+	m_AlertIcon.AddAgain();
 	return 0;
 }
 
 LRESULT CMainFrame::OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	RestoreWindow();
 	return 0;
+}
+
+LRESULT CMainFrame::OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CAlertsDlg dlg(m_Alerts, [this] { m_AlertIcon.Show(m_Alerts.AnyEnabled()); }, [this](uint32_t pid) {
+		RestoreWindow();
+		GoToProcess(pid);
+		});
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+void CMainFrame::ShowAlerts(std::vector<AlertEvent> const& events) {
+	if (events.empty())
+		return;
+	m_LastAlert = events.back();
+	// a balloon holds 255 characters: the first alerts, and how many more
+	std::wstring text;
+	size_t shown = 0;
+	for (auto& e : events) {
+		if (text.size() + e.Text.size() > 200)
+			break;
+		text += (text.empty() ? L"" : L"\n") + e.Text;
+		shown++;
+	}
+	if (shown < events.size())
+		text += std::format(L"\n...and {} more (Options > Alerts...)", events.size() - shown);
+	m_AlertIcon.Notify(events.size() == 1 ? L"WinSysLive alert" : std::format(L"{} WinSysLive alerts", events.size()), text);
 }
 
 LRESULT CMainFrame::OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -824,6 +864,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_NETWORKINFO, IDI_NETWORK },
 		{ ID_SYSTEM_ETWSESSIONS, IDI_ETW },
 		{ ID_SYSTEM_WINSTATIONS, IDI_WINSTA },
+		{ ID_OPTIONS_ALERTS, IDI_ALERT },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
@@ -980,6 +1021,7 @@ LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	KillTimer(TimerId);
 	SaveSettings();
 	m_TrayIcons.RemoveAll();
+	m_AlertIcon.Show(false);
 
 	// the views delete themselves as their windows are destroyed, and the tab view activates pages while
 	// removing them (TBVN_PAGEACTIVATED), so stop talking to the views now
@@ -1028,6 +1070,7 @@ void CMainFrame::Refresh() {
 	if (auto idle = m_ProcessManager.GetProcessById(0); idle && cpuValid)
 		cpu = std::clamp(100.0 - idle->CPU / 10000.0, 0.0, 100.0);
 	m_TrayIcons.Refresh(cpu);
+	ShowAlerts(m_Alerts.Evaluate(m_ProcessManager, cpu));
 }
 
 void CMainFrame::UpdateStatusBar() {

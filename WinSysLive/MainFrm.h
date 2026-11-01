@@ -11,6 +11,7 @@
 #include "Interfaces.h"
 #include "FindHandleDlg.h"
 #include "TrayIcons.h"
+#include "Alerts.h"
 #include "WindowFinder.h"
 #include "UpdateChecker.h"
 
@@ -126,6 +127,7 @@ public:
 		COMMAND_ID_HANDLER(ID_FILE_EXPORT, OnExportList)
 		COMMAND_ID_HANDLER(ID_EDIT_COPYALL, OnCopyAllRows)
 		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
+		COMMAND_ID_HANDLER(ID_OPTIONS_ALERTS, OnAlerts)
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
@@ -203,6 +205,7 @@ public:
 	LRESULT OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -365,6 +368,11 @@ private:
 	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
 	CTrayIcons m_TrayIcons;
+	CAlerts m_Alerts;	// evaluated in Refresh
+	CAlertIcon m_AlertIcon;	// while a rule is enabled
+	AlertEvent m_LastAlert;	// the last balloon's, for its click
+	// a balloon for the new alerts (one, however many)
+	void ShowAlerts(std::vector<AlertEvent> const& events);
 	CWindowFinder m_WindowFinder;	// subclasses the toolbar
 	std::optional<std::wstring> m_FinderSavedStatus;	// the status text before the drag, restored after it
 	static inline UINT const s_TaskbarCreated = ::RegisterWindowMessage(L"TaskbarCreated");
