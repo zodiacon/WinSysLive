@@ -19,6 +19,7 @@ enum class TabType {
 	PoolTags,
 	Disk,		// file I/O by process and file
 	History,	// a log of processes and services starting and stopping
+	Autoruns,	// what starts by itself
 };
 
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)

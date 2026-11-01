@@ -75,6 +75,8 @@ namespace {
 		IDI_HARDDISK,
 		// the History tab
 		IDI_HISTORY,
+		// the Autoruns tab, and its entries without an icon of their own
+		IDI_AUTORUNS, IDI_RUN_COMMAND,
 	};
 
 	// commands that belong to a view (process tree, kill) are routed to the active view; views enable them
@@ -104,6 +106,7 @@ namespace {
 		{ ID_VIEW_POOLTAGS, IDI_POOLTAGS, BTNS_CHECK },
 		{ ID_VIEW_DISK, IDI_HARDDISK, BTNS_CHECK },
 		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
+		{ ID_VIEW_AUTORUNS, IDI_AUTORUNS, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI
 

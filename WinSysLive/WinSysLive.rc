@@ -80,6 +80,7 @@ BEGIN
         MENUITEM "Poo&l Tags\tCtrl+Shift+P",    ID_VIEW_POOLTAGS
         MENUITEM "&Disk\tCtrl+Shift+D",         ID_VIEW_DISK
         MENUITEM "&History\tCtrl+Shift+H",      ID_VIEW_HISTORY
+        MENUITEM "&Autoruns\tCtrl+Shift+A",     ID_VIEW_AUTORUNS
         MENUITEM SEPARATOR
         MENUITEM "Process &Tree\tCtrl+T",       ID_VIEW_PROCESSTREE
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
@@ -505,6 +506,8 @@ IDI_ENABLED             ICON                    "res\\enabled.ico"
 IDI_DISABLED            ICON                    "res\\disabled.ico"
 
 IDI_SYSINFO             ICON                    "res\\sysinfo.ico"
+
+IDI_AUTORUNS            ICON                    "res\\autoruns.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1355,6 +1358,7 @@ BEGIN
     "P",            ID_VIEW_POOLTAGS,       VIRTKEY, SHIFT, CONTROL
     "D",            ID_VIEW_DISK,           VIRTKEY, SHIFT, CONTROL
     "H",            ID_VIEW_HISTORY,        VIRTKEY, SHIFT, CONTROL
+    "A",            ID_VIEW_AUTORUNS,       VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
     "T",            ID_VIEW_PROCESSTREE,    VIRTKEY, CONTROL
@@ -1732,6 +1736,7 @@ END
 STRINGTABLE
 BEGIN
     ID_VIEW_HISTORY         "Show a log of processes and services starting and stopping\nHistory (Ctrl+Shift+H)"
+    ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
     ID_OPTIONS_RUNATSTARTUP "Start WinSysLive minimized when you sign in to Windows\nRun at Windows Startup"
     ID_OPTIONS_CHECKUPDATES "Look for a newer version on GitHub once a day, when WinSysLive starts\nCheck for Updates at Startup"
     ID_OPTIONS_EXPORTSETTINGS "Save the settings to a file\nExport Settings"

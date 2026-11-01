@@ -126,6 +126,9 @@
     <ClCompile Include="TrayIconsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="AutorunsView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="KernelModulesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -376,6 +379,9 @@
     </ClInclude>
     <ClInclude Include="TrayIconsDlg.h">
       <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="AutorunsView.h">
+      <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="KernelModulesView.h">
       <Filter>Views</Filter>

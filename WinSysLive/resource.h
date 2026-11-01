@@ -479,7 +479,16 @@
 #define IDI_LABEL                   317
 #define IDI_CAPABILITY              318
 #define IDI_SYSINFO                 320
+#define IDI_AUTORUNS                321
 #define ID_VIEW_HISTORY             32944
+#define ID_VIEW_AUTORUNS            32965
+#define ID_AUTORUNS_ENABLE          32966
+#define ID_AUTORUNS_DELETE          32967
+#define ID_AUTORUNS_JUMP            32968
+#define ID_AUTORUNS_PROPERTIES      32969
+#define ID_AUTORUNS_OPENLOCATION    32970
+#define ID_AUTORUNS_HIDEMICROSOFT   32971
+#define ID_AUTORUNS_RESCAN          32972
 #define ID_HISTORY_GOTOPROCESS      32945
 #define ID_HISTORY_SELECTALL        32946
 #define ID_HISTORY_CLEAR            32947
@@ -628,9 +637,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE	321
+#define _APS_NEXT_RESOURCE_VALUE	322
 #define _APS_NEXT_CONTROL_VALUE		1349
 #define _APS_NEXT_SYMED_VALUE		101
-#define _APS_NEXT_COMMAND_VALUE		32965
+#define _APS_NEXT_COMMAND_VALUE		32973
 #endif
 #endif
