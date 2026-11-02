@@ -3,15 +3,11 @@
 #include "resource.h"
 #include "ProcessPages.h"
 #include "DpiLayout.h"
-#include <WinSys/PEFile.h>
+#include "PEView.h"
 
 //
-// The process sheet's Image page: the process's executable as a PE file (WinSys PEFile, read from disk when the page is
-// first shown), one list for the view chosen above it: Headers (the file and optional headers' fields in words, then the
-// data directories in use), Sections (name, virtual address and size, raw offset and size, protection and contents),
-// Imports (library, function, hint or ordinal, delay-loaded), Exports (ordinal, name, RVA, forwarder). A header sorts
-// by its column (the numbers by value). The summary beside the view: machine, format, subsystem and the counts. Open in
-// TotalPE opens the file in TotalPE (TotalPE.h); Copy copies the selected rows (or all) with the header.
+// The process sheet's Image page: the process's executable as a PE file (CPEView, read when the page is first shown:
+// Headers, Sections, Imports, Exports, Debug, Open in TotalPE, Copy).
 //
 class CProcImagePage :
 	public CPropertyPageImpl<CProcImagePage>,
@@ -19,7 +15,7 @@ class CProcImagePage :
 public:
 	enum { IDD = IDD_PROC_IMAGE };
 
-	explicit CProcImagePage(ProcessProperties const& props);
+	explicit CProcImagePage(ProcessProperties const& props) : m_Props(props) {}
 
 	BEGIN_MSG_MAP(CProcImagePage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -37,30 +33,28 @@ public:
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
 private:
-	enum class View { Headers, Sections, Imports, Exports };
-
-	// a view's table: its columns, which of them sort as numbers, and its rows
-	struct Table {
-		std::vector<std::pair<PCWSTR, int>> Columns;	// name, width at 96 DPI
-		std::vector<bool> Numeric;
-		std::vector<std::vector<std::wstring>> Rows;
-		std::vector<std::vector<uint64_t>> Keys;		// the numeric columns' values, by row
-	};
-
-	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-	LRESULT OnViewChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnTotalPE(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
-
-	void BuildTables();
-	void ShowView();
+	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+		m_View.Init(m_hWnd, m_Props.ImagePath);
+		InitDynamicLayout(false, false);
+		return TRUE;
+	}
+	LRESULT OnViewChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+		m_View.OnViewChanged();
+		return 0;
+	}
+	LRESULT OnTotalPE(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+		m_View.OnTotalPE();
+		return 0;
+	}
+	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+		m_View.OnCopy();
+		return 0;
+	}
+	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/) {
+		m_View.OnColumnClick(reinterpret_cast<NMLISTVIEW*>(pnmh)->iSubItem);
+		return 0;
+	}
 
 	ProcessProperties const& m_Props;
-	std::optional<WinSys::PEFile> m_File;
-	DWORD m_Error{ 0 };
-	Table m_Tables[4];
-	CListViewCtrl m_List;
-	int m_SortColumn{ -1 };
-	bool m_SortAscending{ true };
+	CPEView m_View;
 };

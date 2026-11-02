@@ -1,5 +1,6 @@
 #include "pch.h"
-#include "ImagePage.h"
+#include "PEView.h"
+#include "resource.h"
 #include "FormatHelper.h"
 #include "TotalPE.h"
 #include <ClipboardHelper.h>
@@ -17,6 +18,16 @@ namespace {
 		return std::wstring(text.begin(), text.end());	// names in PE files are ASCII
 	}
 
+	// the PDB's path as the linker wrote it: UTF-8
+	std::wstring FromUtf8(std::string const& text) {
+		if (text.empty())
+			return L"";
+		auto size = ::MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), nullptr, 0);
+		std::wstring result(size, L'\0');
+		::MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), result.data(), size);
+		return result;
+	}
+
 	// a time stamp as a date, unless it's a reproducible build's hash (not a plausible time)
 	std::wstring TimeStampText(uint32_t stamp) {
 		auto now = (uint64_t)::_time64(nullptr);
@@ -25,29 +36,33 @@ namespace {
 		auto filetime = ((int64_t)stamp + 11644473600LL) * 10000000;
 		return FormatHelper::FormatDateTime(filetime) + L" (UTC " + Hex(stamp) + L")";
 	}
+
+	std::wstring GuidText(GUID const& guid) {
+		WCHAR text[64];
+		return ::StringFromGUID2(guid, text, _countof(text)) ? text : L"";
+	}
 }
 
-CProcImagePage::CProcImagePage(ProcessProperties const& props) : m_Props(props) {
-}
-
-LRESULT CProcImagePage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	m_List.Attach(GetDlgItem(IDC_PE_LIST));
+void CPEView::Init(HWND hDlg, std::wstring path) {
+	m_Dlg = hDlg;
+	m_Path = std::move(path);
+	m_List.Attach(m_Dlg.GetDlgItem(IDC_PE_LIST));
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
 	ListViewHelper::EnableColumnDpiScaling(m_List);
-	CComboBox view(GetDlgItem(IDC_PE_VIEW));
-	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports" })
+	CComboBox view(m_Dlg.GetDlgItem(IDC_PE_VIEW));
+	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports", L"Debug" })
 		view.AddString(name);
 	view.SetCurSel(0);
 
-	if (m_Props.ImagePath.empty())
+	if (m_Path.empty())
 		m_Error = ERROR_FILE_NOT_FOUND;
 	else {
 		CWaitCursor wait;
-		m_File = PEFile::Load(m_Props.ImagePath);
+		m_File = PEFile::Load(m_Path);
 		if (!m_File)
 			m_Error = ::GetLastError();
 	}
-	GetDlgItem(IDC_PE_TOTALPE).EnableWindow(!m_Props.ImagePath.empty());
+	m_Dlg.GetDlgItem(IDC_PE_TOTALPE).EnableWindow(!m_Path.empty());
 	if (m_File) {
 		BuildTables();
 		auto& h = m_File->GetHeaders();
@@ -56,22 +71,20 @@ LRESULT CProcImagePage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 		for (auto& l : imports)
 			functions += l.Functions.size();
 		auto exports = m_File->GetExports();
-		SetDlgItemText(IDC_PE_SUMMARY, std::format(L"{} {}, {}; {} sections, {} imports from {} libraries, {} exports",
+		m_Dlg.SetDlgItemText(IDC_PE_SUMMARY, std::format(L"{} {}, {}; {} sections, {} imports from {} libraries, {} exports",
 			PEFile::MachineName(h.Machine), h.Is64 ? L"PE32+" : L"PE32", PEFile::SubsystemName(h.Subsystem),
 			m_File->GetSections().size(), functions, imports.size(), exports ? exports->Functions.size() : 0).c_str());
 	}
 	ShowView();
-	InitDynamicLayout(false, false);
-	return TRUE;
 }
 
-void CProcImagePage::BuildTables() {
+void CPEView::BuildTables() {
 	auto& h = m_File->GetHeaders();
 
 	auto& headers = m_Tables[(int)View::Headers];
 	headers.Columns = { { L"Field", 170 }, { L"Value", 470 } };
 	auto field = [&](PCWSTR name, std::wstring value) { headers.Rows.push_back({ name, std::move(value) }); };
-	field(L"File", m_Props.ImagePath);
+	field(L"File", m_Path);
 	field(L"Machine", std::format(L"{} ({})", PEFile::MachineName(h.Machine), Hex(h.Machine, 4)));
 	field(L"Format", h.Is64 ? L"PE32+ (64-bit)" : L"PE32 (32-bit)");
 	field(L"Time stamp", TimeStampText(h.TimeDateStamp));
@@ -124,16 +137,32 @@ void CProcImagePage::BuildTables() {
 				f.Forwarder.empty() ? Hex(f.Rva) : L"", Wide(f.Forwarder) });
 			exports.Keys.push_back({ f.Ordinal, 0, f.Forwarder.empty() ? f.Rva : 0, 0 });
 		}
+
+	auto& debug = m_Tables[(int)View::Debug];
+	debug.Columns = { { L"Type", 170 }, { L"Size", 70 }, { L"RVA", 100 }, { L"Details", 480 } };
+	debug.Numeric = { false, true, true, false };
+	auto codeView = m_File->GetCodeView();
+	for (auto& d : m_File->GetDebugEntries()) {
+		std::wstring details;
+		if (d.Type == IMAGE_DEBUG_TYPE_CODEVIEW && codeView)
+			details = std::format(L"{}, GUID {}, age {}", FromUtf8(codeView->PdbPath), GuidText(codeView->Signature), codeView->Age);
+		else if (d.Type == 20)	// IMAGE_DEBUG_TYPE_EX_DLLCHARACTERISTICS
+			details = std::format(L"{} ({})", PEFile::ExDllCharacteristicsText(d.Value), Hex(d.Value, 2));
+		else if (d.Type == 16)	// IMAGE_DEBUG_TYPE_REPRO
+			details = L"A reproducible build: the time stamps are hashes of its inputs";
+		debug.Rows.push_back({ std::format(L"{} ({})", PEFile::DebugTypeName(d.Type), d.Type), std::to_wstring(d.Size), Hex(d.Rva), details });
+		debug.Keys.push_back({ 0, d.Size, d.Rva, 0 });
+	}
 }
 
-void CProcImagePage::ShowView() {
-	auto view = CComboBox(GetDlgItem(IDC_PE_VIEW)).GetCurSel();
+void CPEView::ShowView() {
+	auto view = CComboBox(m_Dlg.GetDlgItem(IDC_PE_VIEW)).GetCurSel();
 	auto& table = m_Tables[(std::max)(view, 0)];
 	m_List.SetRedraw(FALSE);
 	m_List.DeleteAllItems();
 	while (m_List.GetHeader().GetItemCount() > 0)
 		m_List.DeleteColumn(0);
-	auto dpi = ::GetDpiForWindow(m_hWnd);
+	auto dpi = ::GetDpiForWindow(m_Dlg);
 	for (int c = 0; c < (int)table.Columns.size(); c++)
 		m_List.InsertColumn(c, table.Columns[c].first, c < (int)table.Numeric.size() && table.Numeric[c] ? LVCFMT_RIGHT : LVCFMT_LEFT,
 			::MulDiv(table.Columns[c].second, dpi, 96));
@@ -161,37 +190,32 @@ void CProcImagePage::ShowView() {
 
 	std::wstring status;
 	if (!m_File)
-		status = m_Props.ImagePath.empty() ? L"The process has no image file" : L"Can't read the image: " + Helpers::GetErrorText(m_Error);
-	else if (view == (int)View::Exports && table.Rows.empty())
-		status = L"No exports";
-	else if (view == (int)View::Imports && table.Rows.empty())
-		status = L"No imports";
+		status = m_Path.empty() ? L"No image file" : L"Can't read the image: " + Helpers::GetErrorText(m_Error);
+	else if (table.Rows.empty())
+		status = view == (int)View::Exports ? L"No exports" : view == (int)View::Imports ? L"No imports" : view == (int)View::Debug
+			? L"No debug directory" : L"None";
 	else
 		status = std::format(L"{} rows", table.Rows.size());
-	SetDlgItemText(IDC_PE_STATUS, status.c_str());
+	m_Dlg.SetDlgItemText(IDC_PE_STATUS, status.c_str());
 }
 
-LRESULT CProcImagePage::OnViewChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+void CPEView::OnViewChanged() {
 	m_SortColumn = -1;
 	ShowView();
-	return 0;
 }
 
-LRESULT CProcImagePage::OnColumnClick(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/) {
-	auto column = reinterpret_cast<NMLISTVIEW*>(pnmh)->iSubItem;
+void CPEView::OnColumnClick(int column) {
 	m_SortAscending = column == m_SortColumn ? !m_SortAscending : true;
 	m_SortColumn = column;
 	ShowView();
-	return 0;
 }
 
-LRESULT CProcImagePage::OnTotalPE(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (!m_Props.ImagePath.empty())
-		TotalPE::Open(m_hWnd, m_Props.ImagePath);
-	return 0;
+void CPEView::OnTotalPE() {
+	if (!m_Path.empty())
+		TotalPE::Open(m_Dlg, m_Path);
 }
 
-LRESULT CProcImagePage::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+void CPEView::OnCopy() {
 	std::wstring text;
 	auto header = m_List.GetHeader();
 	int columns = header.GetItemCount();
@@ -215,6 +239,5 @@ LRESULT CProcImagePage::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 		}
 		text += L"\r\n";
 	}
-	ClipboardHelper::CopyText(m_hWnd, text.c_str());
-	return 0;
+	ClipboardHelper::CopyText(m_Dlg, text.c_str());
 }

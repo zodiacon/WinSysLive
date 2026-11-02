@@ -77,6 +77,7 @@ public:
 		COMMAND_ID_HANDLER(ID_MODULE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_MODULE_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_MODULE_TOTALPE, OnOpenInTotalPE)
+		COMMAND_ID_HANDLER(ID_MODULE_IMAGE, OnImageDetails)
 		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_SUBMIT, OnVirusTotalCommand)
@@ -122,6 +123,7 @@ private:
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnOpenInTotalPE(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnImageDetails(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	ModuleRow const* GetSelectedRow() const;
 	// the rows that match the filter (any shown column contains it), sorted as the list is, with the selection kept

@@ -491,7 +491,7 @@
     <ClCompile Include="EventsView.cpp" />
     <ClCompile Include="EventDetailsDlg.cpp" />
     <ClCompile Include="TotalPE.cpp" />
-    <ClCompile Include="ImagePage.cpp" />
+    <ClCompile Include="PEView.cpp" />
     <ClCompile Include="DeviceResourcesDlg.cpp" />
     <ClCompile Include="DeviceResourceMapDlg.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
@@ -600,6 +600,8 @@
     <ClInclude Include="EventDetailsDlg.h" />
     <ClInclude Include="TotalPE.h" />
     <ClInclude Include="ImagePage.h" />
+    <ClInclude Include="PEView.h" />
+    <ClInclude Include="PEFileDlg.h" />
     <ClInclude Include="EventFilter.h" />
     <ClInclude Include="DeviceResourcesDlg.h" />
     <ClInclude Include="DeviceResourceMapDlg.h" />

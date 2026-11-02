@@ -263,6 +263,28 @@ TEST(PEFile_OwnImage) {
 	CHECK(!pe->GetExports().has_value());
 	// the entry point is in a section's raw data
 	CHECK(pe->RvaToOffset(h.EntryPoint).has_value());
+	// built with /DEBUG: a CodeView entry naming Tests.pdb, with a GUID and an age
+	auto cv = pe->GetCodeView();
+	CHECK(cv.has_value());
+	if (cv) {
+		CHECK(cv->PdbPath.size() > 9 && ::_stricmp(cv->PdbPath.c_str() + cv->PdbPath.size() - 9, "Tests.pdb") == 0);
+		CHECK(cv->Age >= 1);
+		CHECK(cv->Signature != GUID{});
+	}
+	CHECK(std::ranges::any_of(pe->GetDebugEntries(), [](auto& e) { return e.Type == IMAGE_DEBUG_TYPE_CODEVIEW; }));
+}
+
+TEST(PEFile_LiveKernel32Debug) {
+	// a system DLL's CodeView names its PDB (as the symbol server knows it)
+	WCHAR path[MAX_PATH];
+	::GetSystemDirectory(path, _countof(path));
+	auto pe = PEFile::Load(std::wstring(path) + L"\\kernel32.dll");
+	if (!pe)
+		return;
+	auto cv = pe->GetCodeView();
+	CHECK(cv.has_value());
+	if (cv)
+		CHECK(::_stricmp(cv->PdbPath.c_str(), "kernel32.pdb") == 0);
 }
 
 TEST(PEFile_LiveKernel32) {
