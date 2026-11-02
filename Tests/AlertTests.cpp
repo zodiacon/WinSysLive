@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "TestFramework.h"
 #include "../WinSysLive/AlertRules.h"
+#include "../WinSysLive/EventFilter.h"
 
 // the AlertRules setting's text, the descriptions, the patterns and the threshold conditions (WinSysLive\AlertRules.h)
 
@@ -273,4 +274,89 @@ TEST(Alerts_EventText) {
 	CHECK_EQ(EventAlertText::LogonTypeText(L"99"), std::wstring(L"type 99"));
 	CHECK_EQ(std::wstring(EventAlertText::LogonFailureText(L"0xC0000234")), std::wstring(L"account locked out"));
 	CHECK_EQ(std::wstring(EventAlertText::LogonFailureText(L"0x0")), std::wstring());
+}
+
+TEST(Alerts_Throttle) {
+	// without a quiet period: up to GroupLimit each, more as one
+	AlertThrottle t;
+	auto shown = t.Apply({ L"a", L"b", L"c" }, 1000, 0);
+	CHECK_EQ(shown.size(), (size_t)3);
+	shown = t.Apply({ L"a", L"b", L"c", L"d", L"e" }, 2000, 0);
+	CHECK_EQ(shown.size(), (size_t)1);
+	if (shown.size() == 1) {
+		CHECK_EQ(shown[0].first, (size_t)0);
+		CHECK_EQ(shown[0].second, std::wstring(L"a (and 4 more like it)"));
+	}
+	CHECK(t.Apply({}, 3000, 0).empty());
+
+	// a quiet period of 10 seconds: one an update, nothing during it, the next one counting those held back
+	AlertThrottle q;
+	shown = q.Apply({ L"first", L"second" }, 10000, 10);
+	CHECK_EQ(shown.size(), (size_t)1);
+	if (shown.size() == 1)
+		CHECK_EQ(shown[0].second, std::wstring(L"first (and 1 more like it)"));
+	CHECK(q.Apply({ L"x", L"y" }, 15000, 10).empty());
+	CHECK(q.Apply({ L"z" }, 19999, 10).empty());
+	shown = q.Apply({ L"after" }, 20000, 10);
+	CHECK_EQ(shown.size(), (size_t)1);
+	if (shown.size() == 1)
+		CHECK_EQ(shown[0].second, std::wstring(L"after (3 more during the quiet period)"));
+	// held and grouped together
+	CHECK(q.Apply({ L"h" }, 25000, 10).empty());
+	shown = q.Apply({ L"p", L"q" }, 30000, 10);
+	if (shown.size() == 1)
+		CHECK_EQ(shown[0].second, std::wstring(L"p (and 1 more like it; 1 more during the quiet period)"));
+	// the period turned off: everything again
+	shown = q.Apply({ L"a", L"b" }, 30001, 0);
+	CHECK_EQ(shown.size(), (size_t)2);
+}
+
+TEST(Alerts_QuietPeriodText) {
+	// written as an eighth field only when set (empty event fields for the other kinds); read back
+	AlertRule r;
+	r.Kind = AlertKind::ProcessStarted;
+	r.Pattern = L"cmd.exe";
+	CHECK_EQ(AlertRule::FormatRules({ r }), std::wstring(L"ProcessStarted|1|0|0|cmd.exe"));
+	r.Quiet = 60;
+	CHECK_EQ(AlertRule::FormatRules({ r }), std::wstring(L"ProcessStarted|1|0|0|cmd.exe||0|60"));
+	CHECK_EQ(r.Describe(), std::wstring(L"cmd.exe starts, at most once a minute"));
+	auto rules = AlertRule::ParseRules(L"ProcessStarted|1|0|0|cmd.exe||0|60\nEventLogged|1|0|0|X|System|7031|30\nEventLogged|1|0|0|Y|System|1");
+	CHECK_EQ(rules.size(), (size_t)3);
+	if (rules.size() == 3) {
+		CHECK_EQ(rules[0].Quiet, 60);
+		CHECK(rules[0].Log.empty());
+		CHECK_EQ(rules[1].Quiet, 30);
+		CHECK_EQ(rules[1].EventId, (uint32_t)7031);
+		CHECK_EQ(rules[1].Describe(), std::wstring(L"Event 7031 from X in System, at most once in 30 seconds"));
+		CHECK_EQ(rules[2].Quiet, 0);
+	}
+	r.Quiet = 300;
+	CHECK_EQ(r.Describe(), std::wstring(L"cmd.exe starts, at most once in 5 minutes"));
+}
+
+TEST(Events_FilterIds) {
+	// ids, lists and ranges, with text around them
+	auto f = EventFilter::Parse(L"id:4625");
+	CHECK(f.Text.empty());
+	CHECK(f.MatchesId(4625));
+	CHECK(!f.MatchesId(4624));
+	f = EventFilter::Parse(L"  bob id:4624,4720-4767   ZODIAC ");
+	CHECK_EQ(f.Text, std::wstring(L"bob ZODIAC"));
+	CHECK(f.MatchesId(4624));
+	CHECK(f.MatchesId(4720));
+	CHECK(f.MatchesId(4767));
+	CHECK(!f.MatchesId(4768));
+	CHECK(!f.MatchesId(4625));
+	// tokens add up; case doesn't matter
+	f = EventFilter::Parse(L"ID:1 id:2");
+	CHECK(f.MatchesId(1) && f.MatchesId(2) && !f.MatchesId(3));
+	// not ID lists: text, and no ID restriction
+	for (auto text : { L"id:", L"id:abc", L"id:5-3", L"id:1,,2", L"id:-4", L"id:12345678901" }) {
+		f = EventFilter::Parse(text);
+		CHECK_EQ(f.Text, std::wstring(text));
+		CHECK(f.MatchesId(12345));
+	}
+	f = EventFilter::Parse(L"");
+	CHECK(f.Text.empty());
+	CHECK(f.MatchesId(0));
 }

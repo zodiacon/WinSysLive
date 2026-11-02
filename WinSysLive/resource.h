@@ -762,6 +762,15 @@
 #define IDC_DR_COPY                     1455
 #define ID_DEVICE_RESOURCES             33012
 #define ID_EVENT_ALERT                  33013
+#define IDC_AR_QUIET                    1456
+#define IDC_AR_QUIET_LABEL              1457
+#define IDC_AR_QUIET_HINT               1458
+#define IDD_DEVICERESOURCEMAP           338
+#define IDC_RM_FILTER                   1459
+#define IDC_RM_LIST                     1460
+#define IDC_RM_STATUS                   1461
+#define IDC_RM_COPY                     1462
+#define ID_DEVICES_RESOURCEMAP          33014
 #define IDC_AR_LOG                      1425
 #define IDC_AR_LOG_LABEL                1426
 #define IDC_AR_EVENTID                  1427
@@ -796,9 +805,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        338
-#define _APS_NEXT_COMMAND_VALUE         33014
-#define _APS_NEXT_CONTROL_VALUE         1456
+#define _APS_NEXT_RESOURCE_VALUE        339
+#define _APS_NEXT_COMMAND_VALUE         33015
+#define _APS_NEXT_CONTROL_VALUE         1463
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

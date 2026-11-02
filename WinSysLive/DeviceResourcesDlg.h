@@ -4,6 +4,7 @@
 #include "DpiLayout.h"
 #include <WinSys/Devices.h>
 #include <WinSys/FileVersion.h>
+#include <array>
 #include <atomic>
 #include <functional>
 #include <thread>
@@ -29,6 +30,9 @@ public:
 	// Drivers tab
 	CDeviceResourcesDlg(WinSys::DeviceInfo device, HICON icon, std::function<void(std::wstring const&)> goToDriver)
 		: m_Device(std::move(device)), m_Icon(icon), m_GoToDriver(std::move(goToDriver)) {}
+
+	// a resource's cells as both resource lists show them: type, setting, size, flags
+	static std::array<std::wstring, 4> ResourceCells(WinSys::DeviceResource const& r);
 
 	BEGIN_DLGRESIZE_MAP(CDeviceResourcesDlg)
 		DLGRESIZE_CONTROL(IDC_DR_TITLE, DLSZ_SIZE_X)

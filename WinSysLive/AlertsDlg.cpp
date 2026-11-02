@@ -191,6 +191,7 @@ LRESULT CAlertRuleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	log.SetCurSel(it == AlertRule::EventLogs().end() ? 0 : (int)(it - AlertRule::EventLogs().begin()) + 1);
 	if (m_Rule.EventId)
 		SetDlgItemInt(IDC_AR_EVENTID, m_Rule.EventId, FALSE);
+	SetDlgItemInt(IDC_AR_QUIET, m_Rule.Quiet, FALSE);
 	UpdateFields();
 	CenterWindow(GetParent());
 	return TRUE;
@@ -265,6 +266,9 @@ LRESULT CAlertRuleDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BO
 		auto seconds = GetDlgItemInt(IDC_AR_SECONDS, &ok, FALSE);
 		m_Rule.Seconds = ok ? (int)(std::min)(seconds, 86400u) : 0;
 	}
+	BOOL ok = FALSE;
+	auto quiet = GetDlgItemInt(IDC_AR_QUIET, &ok, FALSE);
+	m_Rule.Quiet = ok ? (int)(std::min)(quiet, 86400u) : 0;
 	EndDialog(wID);
 	return 0;
 }

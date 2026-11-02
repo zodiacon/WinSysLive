@@ -5,8 +5,9 @@
 //
 // Alert rules without the app around them, so the tests can take them (Tests\AlertTests.cpp): the kinds, a rule and its
 // description, the AlertRules setting's text (one rule a line, Kind|Enabled|Threshold|Seconds|Pattern, the kind's key,
-// which must not change; the event kinds add |Log|EventId, lines older builds skip), the event matching and the event
-// log queries built from the rules, and a threshold condition's state. CAlerts (Alerts.h) evaluates them.
+// which must not change; the event kinds add |Log|EventId, and a quiet period |Log|EventId|Quiet, written only when set:
+// lines older builds skip), the event matching and the event log queries built from the rules, a threshold condition's
+// state and the throttle of a rule's alerts. CAlerts (Alerts.h) evaluates them.
 //
 enum class AlertKind {
 	ProcessStarted, ProcessExited, SystemCpu, CommitCharge, PhysicalMemory, ProcessCpu, ProcessPrivateBytes,
@@ -21,9 +22,12 @@ struct AlertRule {
 	int Seconds{ 0 };		// how long the value must stay above the threshold
 	std::wstring Log;		// the event kinds': System, Application or Security (empty: any of them); AuditFailure's is Security
 	uint32_t EventId{ 0 };	// the event kinds': 0 for any
+	int Quiet{ 0 };			// seconds after an alert in which the rule's next ones are held back (0: none)
 
-	// "notepad.exe starts", "CPU above 90% for 10 seconds"
+	// "notepad.exe starts", "CPU above 90% for 10 seconds", with the quiet period ("..., at most once a minute")
 	std::wstring Describe() const;
+	// the same without the quiet period
+	std::wstring DescribeCondition() const;
 
 	static PCWSTR KindName(AlertKind kind);	// for the rule dialog's combo box
 	static bool HasPattern(AlertKind kind);
@@ -48,10 +52,23 @@ struct AlertRule {
 	// " for 10 seconds", " for a second", empty for 0
 	static std::wstring ForSeconds(int seconds);
 
-	// the setting's text; lines that aren't five fields (seven for the event kinds) or name no known kind are left out
+	// the setting's text; lines that aren't five, seven or eight fields or name no known kind are left out
 	static std::vector<AlertRule> ParseRules(std::wstring const& text);
 	// a pattern loses '|' and line breaks, which the text uses
 	static std::wstring FormatRules(std::vector<AlertRule> const& rules);
+};
+
+// a rule's alerts in one update, throttled: more than GroupLimit at once become one ("<the first> (and 24 more like
+// it)"); with a quiet period, at most one an update, and none until the period after it ends, the next one saying how
+// many were held back ("(5 more during the quiet period)"; those held back when nothing fires after the period aren't
+// reported)
+struct AlertThrottle {
+	static constexpr size_t GroupLimit = 3;
+	uint64_t QuietUntil{ 0 };	// a tick count in ms
+	size_t Held{ 0 };			// held back since the last alert shown
+
+	// the alerts to show of this update's texts: each one's index and its text (with the counts added)
+	std::vector<std::pair<size_t, std::wstring>> Apply(std::vector<std::wstring> const& texts, uint64_t now, int quietSeconds);
 };
 
 // an event alert's text from the event's data fields (WinSys EventLog::GetData), rather than the message's first line

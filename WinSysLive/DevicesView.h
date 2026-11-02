@@ -94,6 +94,7 @@ public:
 		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_DEVICE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_DEVICE_RESOURCES, OnResources)
+		COMMAND_ID_HANDLER(ID_DEVICES_RESOURCEMAP, OnResourceMap)
 		COMMAND_ID_HANDLER(ID_DEVICE_GOTODRIVER, OnGoToDriver)
 		COMMAND_ID_HANDLER(ID_DEVICE_COPYID, OnCopyId)
 		COMMAND_ID_HANDLER(ID_DEVICE_ENABLE, OnEnable)
@@ -147,6 +148,9 @@ private:
 	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResources(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResourceMap(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the device's Resources and Drivers dialog (a copy: a scan may replace m_Devices while it's open)
+	void ShowResources(WinSys::DeviceInfo device, HWND owner);
 	LRESULT OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopyId(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEnable(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

@@ -26,7 +26,8 @@ namespace {
 		{ L"Event ID", L"EventId", 70, LVCFMT_RIGHT, true },
 		{ L"Process", L"Process", 130, LVCFMT_LEFT, true },
 		{ L"PID", L"ProcessId", 60, LVCFMT_RIGHT, true },
-		{ L"Message", L"Message", 700, LVCFMT_LEFT, true },
+		{ L"Message", L"Message", 380, LVCFMT_LEFT, true },
+		{ L"Details", L"Details", 600, LVCFMT_LEFT, true },
 	};
 
 	const ToolBarButtonInfo s_BarButtons[] = {
@@ -98,7 +99,7 @@ LRESULT CEventsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	}
 	m_Hours = std::ranges::find(s_Spans, settings.EventsHours()) != std::end(s_Spans) ? settings.EventsHours() : 24;
 
-	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 320, L"Filter: source, message, ID, log or process (Ctrl+F)", m_List, [this](auto&) {
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 320, L"Filter: source, message, details, log or process; id:4625 or id:4720-4767 (Ctrl+F)", m_List, [this](auto&) {
 		ShowRows();
 		UpdateStatus();
 		});
@@ -316,7 +317,7 @@ bool CEventsView::Included(EventLogEntry const& e) const {
 
 void CEventsView::StartWatching() {
 	// a log that can't be watched (Security without elevation) leaves the others watched
-	m_Watcher.Start(Channels(), MaxLevel(), *this);
+	m_Watcher.Start(Channels(), MaxLevel(), *this, true);
 }
 
 void CEventsView::StartRead() {
@@ -330,9 +331,13 @@ void CEventsView::StartRead() {
 		std::vector<std::pair<std::wstring, DWORD>> failed;
 		for (auto& channel : channels) {
 			// a loop, not a range insert: that warns C4530 in Release, which has no exceptions (winsys/docs)
-			if (auto events = EventLog::Query(channel, maxLevel, hours, MaxEvents)) {
-				for (auto& e : *events)
+			// the data fields for the Details column: every Security event's, the others' without a message
+			auto data = ::_wcsicmp(channel.c_str(), L"Security") == 0 ? EventDataRead::All : EventDataRead::NoMessage;
+			if (auto events = EventLog::Query(channel, maxLevel, hours, MaxEvents, data)) {
+				for (auto& e : *events) {
+					Condense(e);
 					all.push_back(std::move(e));
+				}
 			}
 			else
 				failed.push_back({ channel, ::GetLastError() });
@@ -372,7 +377,29 @@ LRESULT CEventsView::OnRead(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	return 0;
 }
 
+void CEventsView::Condense(EventLogEntry& e) {
+	if (e.Data.empty())
+		return;
+	auto line = FirstLine(e.Message);
+	std::wstring summary;
+	if (EventAlertText::UsesData(e.Channel, !e.Message.empty()))
+		summary = EventAlertText::Summarize(e.Channel, e.EventId, line, e.Data);
+	e.Data.clear();
+	// what the message's line doesn't say already ("<line> (fields)" keeps only the fields)
+	if (!line.empty() && summary.starts_with(line))
+		summary = summary.size() > line.size() + 2 ? summary.substr(line.size() + 2, summary.size() - line.size() - 3) : L"";
+	if (!summary.empty() && summary != line)
+		e.Data.push_back({ L"", std::move(summary) });
+	e.Data.shrink_to_fit();
+}
+
+std::wstring const& CEventsView::Details(EventLogEntry const& e) {
+	static const std::wstring empty;
+	return e.Data.empty() ? empty : e.Data[0].Value;
+}
+
 void CEventsView::OnEvent(EventLogEntry&& entry) {
+	Condense(entry);
 	bool first;
 	{
 		std::lock_guard lock(m_Lock);
@@ -419,16 +446,20 @@ LRESULT CEventsView::OnNewEvents(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 }
 
 bool CEventsView::Matches(EventLogEntry const& e) const {
-	auto& filter = m_Filter.GetText();
+	// "id:" tokens choose IDs, the rest is text (EventFilter)
+	if (!m_ParsedFilter.MatchesId(e.EventId))
+		return false;
+	auto& filter = m_ParsedFilter.Text;
 	if (filter.empty())
 		return true;
 	return CFilterBox::Contains(e.Provider, filter) || CFilterBox::Contains(e.Message, filter) || CFilterBox::Contains(e.Channel, filter)
-		|| CFilterBox::Contains(std::wstring(EventLog::LevelText(e)), filter)
+		|| CFilterBox::Contains(std::wstring(EventLog::LevelText(e)), filter) || CFilterBox::Contains(Details(e), filter)
 		|| CFilterBox::Contains(std::to_wstring(e.EventId), filter) || CFilterBox::Contains(ProcessName(e), filter);
 }
 
 void CEventsView::ShowRows() {
 	auto selected = GetSelected() ? KeyOf(*GetSelected()) : std::wstring();
+	m_ParsedFilter = EventFilter::Parse(m_Filter.GetText());
 	m_Rows.clear();
 	for (auto& e : m_All)
 		if (Matches(e))
@@ -496,6 +527,7 @@ std::wstring CEventsView::GetText(EventLogEntry const& e, Column column) const {
 		case Column::Process: return ProcessName(e);
 		case Column::ProcessId: return e.ProcessId ? std::to_wstring(e.ProcessId) : L"";
 		case Column::Message: return FirstLine(e.Message);
+		case Column::Details: return Details(e);
 	}
 	return L"";
 }

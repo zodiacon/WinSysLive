@@ -79,7 +79,8 @@ void CAlerts::UpdateEventWatcher() {
 			queries.push_back({ log, query });
 	// a log that can't be watched (Security without elevation) leaves the others
 	if (!queries.empty())
-		m_EventWatcher.Start(queries, *this);
+		// with the events' data fields, for the alerts' text (EventAlertText): read with the event, not found again later
+		m_EventWatcher.Start(queries, *this, true);
 }
 
 void CAlerts::SetRules(std::vector<AlertRule> rules) {
@@ -114,8 +115,10 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 
 	auto time = Now();
 	auto tick = ::GetTickCount64();
-	auto add = [&](std::wstring text, uint32_t pid = 0, bool running = false) {
-		events.push_back({ time, std::move(text), pid, running });
+	// each rule's alerts of this update, throttled at the end (AlertThrottle: grouped, held back in its quiet period)
+	std::vector<std::vector<AlertEvent>> pending(m_Rules.size());
+	auto add = [&](size_t rule, std::wstring text, uint32_t pid = 0, bool running = false) {
+		pending[rule].push_back({ time, std::move(text), pid, running });
 	};
 
 	// the system's values, read only if a rule needs them
@@ -150,8 +153,6 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		std::lock_guard lock(m_EventLock);
 		logged.swap(m_Events);
 	}
-	// the data fields read for at most this many events a tick (a query each: a burst of failed logons stays cheap)
-	int dataReads = 10;
 	for (auto& e : logged) {
 		auto rule = std::ranges::find_if(m_Rules, [&](auto& r) {
 			return r.Enabled && r.MatchesEvent(e.Channel, e.Provider, e.EventId, e.IsAuditFailure());
@@ -159,16 +160,12 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		if (rule == m_Rules.end())
 			continue;
 		auto line = e.Message.substr(0, e.Message.find_first_of(L"\r\n"));
-		if (EventAlertText::UsesData(e.Channel, !e.Message.empty()) && dataReads > 0) {
-			dataReads--;
-			if (auto data = EventLog::GetData(e.Channel, e.RecordId))
-				line = EventAlertText::Summarize(e.Channel, e.EventId, line, *data);
-		}
+		line = EventAlertText::Summarize(e.Channel, e.EventId, line, e.Data);
 		auto p = e.ProcessId ? pm.GetProcessById(e.ProcessId) : nullptr;
 		bool running = p && p->Key.Created <= e.Time;
 		// the Security log's own source goes without saying (the summary is what matters, and a balloon is short)
 		bool auditing = e.Provider == L"Microsoft-Windows-Security-Auditing";
-		add(rule->Kind == AlertKind::AuditFailure
+		add(rule - m_Rules.begin(), rule->Kind == AlertKind::AuditFailure
 			? std::format(L"Security audit failure {}{}: {}", e.EventId, auditing ? L"" : L" (" + e.Provider + L")", line)
 			: std::format(L"{} event {}{}: {}", e.Channel, e.EventId, auditing ? L"" : L" from " + e.Provider, line), e.ProcessId, running);
 	}
@@ -185,14 +182,14 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 				if (!baseline)
 					for (auto& p : pm.GetNewProcesses())
 						if (AlertRule::Matches(rule.Pattern, p->GetImageName()))
-							add(std::format(L"{} ({}) started", p->GetImageName(), p->Id), p->Id, true);
+							add(i, std::format(L"{} ({}) started", p->GetImageName(), p->Id), p->Id, true);
 				break;
 
 			case AlertKind::ProcessExited:
 				if (!baseline)
 					for (auto& p : pm.GetTerminatedProcesses())
 						if (AlertRule::Matches(rule.Pattern, p->GetImageName()))
-							add(std::format(L"{} ({}) exited", p->GetImageName(), p->Id), p->Id, false);
+							add(i, std::format(L"{} ({}) exited", p->GetImageName(), p->Id), p->Id, false);
 				break;
 
 			case AlertKind::SystemCpu:
@@ -204,7 +201,7 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 					break;
 				if (state.System.Update(*value > rule.Threshold, tick, rule.Seconds) && !baseline) {
 					PCWSTR what = rule.Kind == AlertKind::SystemCpu ? L"CPU" : rule.Kind == AlertKind::CommitCharge ? L"Commit charge" : L"Physical memory";
-					add(std::format(L"{} above {}{} (now {:.0f}%)", what, limit, AlertRule::ForSeconds(rule.Seconds), *value));
+					add(i, std::format(L"{} above {}{} (now {:.0f}%)", what, limit, AlertRule::ForSeconds(rule.Seconds), *value));
 				}
 				break;
 			}
@@ -222,7 +219,7 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 					if (condition.Update(value > rule.Threshold, tick, rule.Seconds) && !baseline) {
 						auto now = rule.Kind == AlertKind::ProcessCpu ? std::format(L"{:.0f}%", value)
 							: FormatHelper::FormatBytes((int64_t)p->NativeInfo->PrivatePageCount);
-						add(std::format(L"{} ({}): {} above {}{} (now {})", p->GetImageName(), p->Id,
+						add(i, std::format(L"{} ({}): {} above {}{} (now {})", p->GetImageName(), p->Id,
 							rule.Kind == AlertKind::ProcessCpu ? L"CPU" : L"private bytes", limit, AlertRule::ForSeconds(rule.Seconds), now), p->Id, true);
 					}
 					// only the processes still running are kept
@@ -242,15 +239,28 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 					bool failed = c.State == WinSys::ServiceState::Stopped && c.ExitCode != 0 && c.ExitCode != ERROR_SERVICE_NEVER_STARTED;
 					auto label = std::format(L"{} ({})", c.DisplayName, c.Name);
 					if (rule.Kind == AlertKind::ServiceStarted && c.State == WinSys::ServiceState::Running)
-						add(std::format(L"Service {} started (PID {})", label, c.Pid), c.Pid, true);
+						add(i, std::format(L"Service {} started (PID {})", label, c.Pid), c.Pid, true);
 					else if (rule.Kind == AlertKind::ServiceStopped && c.State == WinSys::ServiceState::Stopped)
-						add(std::format(L"Service {} stopped{}", label, failed ? L" with an error" : L""), c.Pid, false);
+						add(i, std::format(L"Service {} stopped{}", label, failed ? L" with an error" : L""), c.Pid, false);
 					else if (rule.Kind == AlertKind::ServiceFailed && failed)
-						add(std::format(L"Service {} failed: {}", label, c.ExitCode == ERROR_SERVICE_SPECIFIC_ERROR
+						add(i, std::format(L"Service {} failed: {}", label, c.ExitCode == ERROR_SERVICE_SPECIFIC_ERROR
 							? std::format(L"service error {} (0x{:X})", c.ServiceExitCode, c.ServiceExitCode)
 							: Helpers::GetErrorText(c.ExitCode)), c.Pid, false);
 				}
 				break;
+		}
+	}
+
+	for (size_t i = 0; i < pending.size(); i++) {
+		if (pending[i].empty())
+			continue;
+		std::vector<std::wstring> texts;
+		for (auto& e : pending[i])
+			texts.push_back(e.Text);
+		for (auto& [index, text] : m_States[i].Throttle.Apply(texts, tick, m_Rules[i].Quiet)) {
+			auto e = pending[i][index];
+			e.Text = std::move(text);
+			events.push_back(std::move(e));
 		}
 	}
 

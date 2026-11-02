@@ -127,6 +127,15 @@ std::wstring AlertRule::ForSeconds(int seconds) {
 }
 
 std::wstring AlertRule::Describe() const {
+	auto text = DescribeCondition();
+	if (Quiet > 0)
+		text += Quiet == 1 ? L", at most once a second" : Quiet % 60 == 0
+			? (Quiet == 60 ? std::wstring(L", at most once a minute") : std::format(L", at most once in {} minutes", Quiet / 60))
+			: std::format(L", at most once in {} seconds", Quiet);
+	return text;
+}
+
+std::wstring AlertRule::DescribeCondition() const {
 	auto who = !Pattern.empty() ? Pattern : IsServiceKind(Kind) ? std::wstring(L"Any service") : std::wstring(L"Any process");
 	auto limit = FormatNumber(Threshold) + (Kind == AlertKind::ProcessPrivateBytes ? L" MB" : L"%");
 	switch (Kind) {
@@ -159,7 +168,7 @@ std::vector<AlertRule> AlertRule::ParseRules(std::wstring const& text) {
 		// a line written with CRLF keeps its CR on the last field
 		if (!fields.empty() && !fields.back().empty() && fields.back().back() == L'\r')
 			fields.back().pop_back();
-		if (fields.size() != 5 && fields.size() != 7)
+		if (fields.size() != 5 && fields.size() != 7 && fields.size() != 8)
 			continue;
 		auto it = std::ranges::find_if(s_Kinds, [&](auto& k) { return fields[0] == k.Key; });
 		if (it == std::end(s_Kinds))
@@ -170,10 +179,12 @@ std::vector<AlertRule> AlertRule::ParseRules(std::wstring const& text) {
 		rule.Threshold = ::_wtof(fields[2].c_str());
 		rule.Seconds = ::_wtoi(fields[3].c_str());
 		rule.Pattern = fields[4];
-		if (fields.size() == 7) {
+		if (fields.size() >= 7 && IsEventKind(rule.Kind)) {
 			rule.Log = fields[5];
 			rule.EventId = (uint32_t)::wcstoul(fields[6].c_str(), nullptr, 10);
 		}
+		if (fields.size() == 8)
+			rule.Quiet = (std::max)(::_wtoi(fields[7].c_str()), 0);
 		rules.push_back(std::move(rule));
 	}
 	return rules;
@@ -187,11 +198,47 @@ std::wstring AlertRule::FormatRules(std::vector<AlertRule> const& rules) {
 		auto pattern = r.Pattern;
 		std::erase_if(pattern, [](wchar_t c) { return c == L'|' || c == L'\n' || c == L'\r'; });
 		text += std::format(L"{}|{}|{}|{}|{}", Info(r.Kind).Key, r.Enabled ? 1 : 0, FormatNumber(r.Threshold), r.Seconds, pattern);
-		// the event kinds' fields (the log is a channel name, which has neither separator)
-		if (IsEventKind(r.Kind))
-			text += std::format(L"|{}|{}", r.Log, r.EventId);
+		// the event kinds' fields (the log is a channel name, which has neither separator), and the quiet period after
+		// them when it's set (empty event fields for the other kinds), so that rules without one stay as older builds read
+		if (IsEventKind(r.Kind) || r.Quiet > 0)
+			text += IsEventKind(r.Kind) ? std::format(L"|{}|{}", r.Log, r.EventId) : std::wstring(L"||0");
+		if (r.Quiet > 0)
+			text += std::format(L"|{}", r.Quiet);
 	}
 	return text;
+}
+
+std::vector<std::pair<size_t, std::wstring>> AlertThrottle::Apply(std::vector<std::wstring> const& texts, uint64_t now,
+	int quietSeconds) {
+	std::vector<std::pair<size_t, std::wstring>> shown;
+	if (texts.empty())
+		return shown;
+	if (quietSeconds > 0 && now < QuietUntil) {
+		Held += texts.size();
+		return shown;
+	}
+	// each one, or the first for all (always with a quiet period: at most one an update)
+	bool group = quietSeconds > 0 || texts.size() > GroupLimit;
+	if (!group) {
+		for (size_t i = 0; i < texts.size(); i++)
+			shown.emplace_back(i, texts[i]);
+	}
+	else {
+		std::wstring counts;
+		if (texts.size() > 1)
+			counts = std::format(L"and {} more like it", texts.size() - 1);
+		shown.emplace_back(0, texts[0]);
+		if (Held)
+			counts += (counts.empty() ? L"" : L"; ") + std::format(L"{} more during the quiet period", Held);
+		if (!counts.empty())
+			shown[0].second += L" (" + counts + L")";
+	}
+	if (!group && Held) {
+		shown[0].second += std::format(L" ({} more during the quiet period)", Held);
+	}
+	Held = 0;
+	QuietUntil = quietSeconds > 0 ? now + (uint64_t)quietSeconds * 1000 : 0;
+	return shown;
 }
 
 bool AlertCondition::Update(bool holds, uint64_t now, int seconds) {

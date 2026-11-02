@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.h"
+#include "EventFilter.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
 #include "ColumnLayout.h"
@@ -95,7 +96,7 @@ public:
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
 private:
-	enum class Column { Time, Level, Log, Source, EventId, Process, ProcessId, Message, _Count };
+	enum class Column { Time, Level, Log, Source, EventId, Process, ProcessId, Message, Details, _Count };
 	enum { MaxEvents = 5000, MaxTotal = 15000 };	// MaxEvents a log, so Security's audits don't push out the others
 
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -131,6 +132,10 @@ private:
 	void UpdateBar();
 	void UpdateStatus();
 	bool Matches(WinSys::EventLogEntry const& e) const;
+	// the event's data fields replaced by their summary (EventAlertText::Summarize), as a single item, for the Details
+	// column; none when it says nothing the message doesn't. On the reading threads, so the fields aren't kept
+	static void Condense(WinSys::EventLogEntry& e);
+	static std::wstring const& Details(WinSys::EventLogEntry const& e);
 	// the list's rows: the events that match the filter, sorted as the list is
 	void ShowRows();
 	std::wstring GetText(WinSys::EventLogEntry const& e, Column column) const;
@@ -145,6 +150,7 @@ private:
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;
+	EventFilter m_ParsedFilter;	// m_Filter's text, parsed by ShowRows
 	CToolBarCtrl m_Bar;
 	CFont m_BarFont;
 	int m_MenuColumn{ -1 };

@@ -39,45 +39,44 @@ namespace {
 		list.InsertItem(0, L"");
 		list.SetItemText(0, column, text.c_str());
 	}
+}
 
-	// the cells of a resource's row
-	std::array<std::wstring, 4> Cells(DeviceResource const& r) {
-		std::array<std::wstring, 4> cells;
-		cells[ResType] = Devices::ResourceTypeName(r.Type);
-		switch (r.Type) {
-			case DeviceResourceType::Memory:
-			case DeviceResourceType::LargeMemory:
-				cells[ResSetting] = Range(r.Start, r.End, r.End > 0xFFFFFFFF ? 16 : 8);
-				cells[ResSize] = FormatHelper::FormatBytes(r.End - r.Start + 1);
-				cells[ResFlags] = MemoryFlags(r.Flags);
-				break;
-			case DeviceResourceType::Io:
-				cells[ResSetting] = Range(r.Start, r.End, 4);
-				cells[ResSize] = std::to_wstring(r.End - r.Start + 1) + L" ports";
-				cells[ResFlags] = (r.Flags & fIOD_PortType) == fIOD_Memory ? L"Memory mapped" : L"";
-				break;
-			case DeviceResourceType::Interrupt:
-				// a message-signaled interrupt's number is negative, as Device Manager shows it (its 32-bit form in hex)
-				if ((int32_t)r.Value < 0) {
-					cells[ResSetting] = std::format(L"{} (0x{:08X})", (int32_t)r.Value, r.Value);
-					cells[ResFlags] = L"Message signaled";
-				}
-				else {
-					cells[ResSetting] = std::to_wstring(r.Value);
-					cells[ResFlags] = std::wstring((r.Flags & mIRQD_Edge_Level) == fIRQD_Edge ? L"Edge" : L"Level")
-						+ ((r.Flags & mIRQD_Share) == fIRQD_Share ? L", shared" : L", exclusive");
-				}
-				break;
-			case DeviceResourceType::Dma:
+std::array<std::wstring, 4> CDeviceResourcesDlg::ResourceCells(DeviceResource const& r) {
+	std::array<std::wstring, 4> cells;
+	cells[ResType] = Devices::ResourceTypeName(r.Type);
+	switch (r.Type) {
+		case DeviceResourceType::Memory:
+		case DeviceResourceType::LargeMemory:
+			cells[ResSetting] = Range(r.Start, r.End, r.End > 0xFFFFFFFF ? 16 : 8);
+			cells[ResSize] = FormatHelper::FormatBytes(r.End - r.Start + 1);
+			cells[ResFlags] = MemoryFlags(r.Flags);
+			break;
+		case DeviceResourceType::Io:
+			cells[ResSetting] = Range(r.Start, r.End, 4);
+			cells[ResSize] = std::to_wstring(r.End - r.Start + 1) + L" ports";
+			cells[ResFlags] = (r.Flags & fIOD_PortType) == fIOD_Memory ? L"Memory mapped" : L"";
+			break;
+		case DeviceResourceType::Interrupt:
+			// a message-signaled interrupt's number is negative, as Device Manager shows it (its 32-bit form in hex)
+			if ((int32_t)r.Value < 0) {
+				cells[ResSetting] = std::format(L"{} (0x{:08X})", (int32_t)r.Value, r.Value);
+				cells[ResFlags] = L"Message signaled";
+			}
+			else {
 				cells[ResSetting] = std::to_wstring(r.Value);
-				break;
-			case DeviceResourceType::BusNumber:
-				cells[ResSetting] = r.Start == r.End ? std::to_wstring(r.Start) : std::format(L"{} - {}", r.Start, r.End);
-				cells[ResSize] = std::to_wstring(r.End - r.Start + 1);
-				break;
-		}
-		return cells;
+				cells[ResFlags] = std::wstring((r.Flags & mIRQD_Edge_Level) == fIRQD_Edge ? L"Edge" : L"Level")
+					+ ((r.Flags & mIRQD_Share) == fIRQD_Share ? L", shared" : L", exclusive");
+			}
+			break;
+		case DeviceResourceType::Dma:
+			cells[ResSetting] = std::to_wstring(r.Value);
+			break;
+		case DeviceResourceType::BusNumber:
+			cells[ResSetting] = r.Start == r.End ? std::to_wstring(r.Start) : std::format(L"{} - {}", r.Start, r.End);
+			cells[ResSize] = std::to_wstring(r.End - r.Start + 1);
+			break;
 	}
+	return cells;
 }
 
 LRESULT CDeviceResourcesDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -132,7 +131,7 @@ void CDeviceResourcesDlg::LoadResources() {
 	}
 	int row = 0;
 	for (auto& r : *resources) {
-		auto cells = Cells(r);
+		auto cells = ResourceCells(r);
 		m_Resources.InsertItem(row, cells[0].c_str());
 		for (int c = 1; c < (int)cells.size(); c++)
 			m_Resources.SetItemText(row, c, cells[c].c_str());

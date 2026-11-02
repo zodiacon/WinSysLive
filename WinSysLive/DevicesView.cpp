@@ -4,6 +4,7 @@
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include "DeviceResourcesDlg.h"
+#include "DeviceResourceMapDlg.h"
 #include <IconHelper.h>
 #include <ListViewhelper.h>
 #include <DpiHelper.h>
@@ -706,6 +707,7 @@ void CDevicesView::ShowContextMenu(POINT pt) {
 	menu.AppendMenu(MF_STRING | (d ? 0 : MF_GRAYED), ID_DEVICE_COPYID, L"Copy &Instance ID");
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy");
 	menu.AppendMenu(MF_SEPARATOR);
+	menu.AppendMenu(MF_STRING, ID_DEVICES_RESOURCEMAP, L"Resources by &Type...");
 	menu.AppendMenu(MF_STRING, ID_DEVICE_SCANHARDWARE, L"&Scan for Hardware Changes");
 	menu.SetMenuDefaultItem(ID_DEVICE_RESOURCES);
 	Frame()->ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
@@ -733,15 +735,26 @@ LRESULT CDevicesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 }
 
 LRESULT CDevicesView::OnResources(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto d = GetSelectedDevice();
-	if (!d)
-		return 0;
-	// a copy: a scan may replace m_Devices while the dialog is open
-	auto device = *d;
+	if (auto d = GetSelectedDevice())
+		ShowResources(*d, m_hWnd);
+	return 0;
+}
+
+void CDevicesView::ShowResources(DeviceInfo device, HWND owner) {
 	if (device.Depth == 0)
 		device.ClassGuid = L"{4d36e966-e325-11ce-bfc1-08002be10318}";	// the computer, as its row's icon
 	auto icon = LoadClassIcon(device.ClassGuid, ::GetSystemMetricsForDpi(SM_CXICON, ::GetDpiForWindow(m_hWnd)));
-	CDeviceResourcesDlg dlg(std::move(device), icon, [this](std::wstring const& path) { Frame()->GoToDriver(path); });
+	// Go to Driver from over Resources by Type closes that too (the owner's chain ends at the view)
+	CDeviceResourcesDlg dlg(std::move(device), icon, [this, owner](std::wstring const& path) {
+		if (owner != m_hWnd)
+			::EndDialog(owner, IDOK);
+		Frame()->GoToDriver(path);
+		});
+	dlg.DoModal(owner);
+}
+
+LRESULT CDevicesView::OnResourceMap(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CDeviceResourceMapDlg dlg([this](DeviceInfo const& device, HWND owner) { ShowResources(device, owner); });
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

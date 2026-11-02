@@ -53,6 +53,7 @@ private:
 	struct RuleState {
 		AlertCondition System;
 		std::unordered_map<WinSys::ProcessOrThreadKey, AlertCondition> Processes;
+		AlertThrottle Throttle;	// the rule's alerts grouped and held back (its quiet period)
 	};
 
 	// a service as last seen: its state (not a pending one) and process

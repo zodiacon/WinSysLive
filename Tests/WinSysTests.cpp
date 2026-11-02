@@ -150,6 +150,23 @@ TEST(EventLog_LiveEventData) {
 			withData++;
 	}
 	CHECK(withData > 0);
+	// read with the query: the same fields as found again by record ID; none asked for, none read
+	auto read = EventLog::Query(L"System", 4, 24 * 7, 20, EventDataRead::All);
+	CHECK(read.has_value());
+	if (read)
+		for (auto& e : *read) {
+			auto again = EventLog::GetData(L"System", e.RecordId);
+			if (!again)
+				continue;	// gone since (the log wrapped)
+			CHECK_EQ(e.Data.size(), again->size());
+			if (e.Data.size() == again->size())
+				for (size_t i = 0; i < e.Data.size(); i++)
+					CHECK(e.Data[i].Name == (*again)[i].Name && e.Data[i].Value == (*again)[i].Value);
+		}
+	auto none = EventLog::Query(L"System", 4, 24 * 7, 20);
+	if (none)
+		for (auto& e : *none)
+			CHECK(e.Data.empty());
 }
 
 TEST(EventLog_LevelNames) {
