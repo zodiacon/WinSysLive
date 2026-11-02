@@ -449,6 +449,7 @@ Details...** show an executable image's contents. A combo box chooses the view:
 | Window Stations and Desktops... | Sessions, window stations and desktops, and a desktop's top-level windows; Show, Hide, Minimize, Maximize, Restore, Bring to Front, Close..., and Child Windows and Properties (the window's tree of child windows with their styles) |
 | Power Requests... | What keeps the display or the system awake (power requests by process, service or driver, with their reasons), the wake timers and the system timer resolution (elevated), as `powercfg /requests` |
 | Pipes and Mailslots... | Every named pipe and mailslot |
+| Installed Packages... | The installed MSIX/AppX packages: name, version, architecture, kind (main, framework, resource...), publisher, signature, status, install date, running processes and location; every user's with All Users (elevated). Launch (one of the package's apps, from a submenu when it has several), Open Folder, Go to Process |
 | RAM... | Physical memory by use (process private, mapped files, page tables, pools...) and by list, as RAMMap (elevated; takes a few seconds) |
 | Memory Lists | Empty Working Sets, Flush Modified List, Purge Standby List, Purge Low-Priority Standby List (elevated) |
 

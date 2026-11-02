@@ -786,6 +786,18 @@
 #define IDC_HEAPS_STATUS                1472
 #define IDC_HEAPS_COPY                  1473
 #define IDC_HEAPS_COPYALL               1474
+#define IDD_PACKAGES                    343
+#define IDC_PK_FILTER                   1475
+#define IDC_PK_LIST                     1476
+#define IDC_PK_FRAMEWORKS               1477
+#define IDC_PK_ALLUSERS                 1478
+#define IDC_PK_STATUS                   1479
+#define IDC_PK_REFRESH                  1480
+#define IDC_PK_COPY                     1481
+#define ID_SYSTEM_PACKAGES              33028
+#define ID_PACKAGES_OPENFOLDER          33029
+#define ID_PACKAGES_GOTOPROCESS         33030
+#define ID_PACKAGES_COPYFULLNAME        33031
 #define ID_MODULE_TOTALPE               33015
 #define IDD_PEFILE                      340
 #define ID_MODULE_IMAGE                 33016
@@ -834,9 +846,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        343
-#define _APS_NEXT_COMMAND_VALUE         33028
-#define _APS_NEXT_CONTROL_VALUE         1475
+#define _APS_NEXT_RESOURCE_VALUE        344
+#define _APS_NEXT_COMMAND_VALUE         33032
+#define _APS_NEXT_CONTROL_VALUE         1482
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

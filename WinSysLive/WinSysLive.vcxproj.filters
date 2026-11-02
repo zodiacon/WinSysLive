@@ -333,6 +333,9 @@
     <ClCompile Include="PipesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="PackagesDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="RamDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -675,6 +678,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="PipesDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="PackagesDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="RamDlg.h">

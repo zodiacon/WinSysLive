@@ -453,6 +453,7 @@
     <ClCompile Include="MemoryStringsDlg.cpp" />
     <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="PipesDlg.cpp" />
+    <ClCompile Include="PackagesDlg.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
@@ -568,6 +569,7 @@
     <ClInclude Include="MemoryStringsDlg.h" />
     <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="PipesDlg.h" />
+    <ClInclude Include="PackagesDlg.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />

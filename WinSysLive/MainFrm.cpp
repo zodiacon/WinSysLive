@@ -31,6 +31,7 @@
 #include "RamDlg.h"
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
+#include "PackagesDlg.h"
 #include "ServiceInstallDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
@@ -903,6 +904,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_OPTIONS_ALERTS, IDI_ALERT },
 		{ ID_SYSTEM_POWERREQUESTS, IDI_CAPABILITY },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
+		{ ID_SYSTEM_PACKAGES, IDI_MODULES },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
 		{ ID_FILE_SNAPSHOTS, IDI_SNAPSHOT },
@@ -1473,6 +1475,19 @@ LRESULT CMainFrame::OnComputerCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 
 LRESULT CMainFrame::OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CPipesDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnPackages(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the packaged processes, by package full name, from the current snapshot (on this thread, which owns it)
+	CPackagesDlg dlg([this] {
+		std::unordered_map<std::wstring, std::vector<uint32_t>> running;
+		for (auto& p : m_ProcessManager.GetProcesses())
+			if (auto& name = p->GetPackageName(); !name.empty())
+				running[name].push_back(p->Id);
+		return running;
+		}, [this](uint32_t pid) { GoToProcess(pid); });
 	dlg.DoModal(m_hWnd);
 	return 0;
 }
