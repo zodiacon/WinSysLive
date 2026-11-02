@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "WindowStationsDlg.h"
 #include "WindowsPage.h"
-#include <ResizablePropertySheet.h>
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <ListViewhelper.h>
@@ -371,36 +370,11 @@ LRESULT CWindowStationsDlg::OnWindowAction(WORD /*wNotifyCode*/, WORD id, HWND /
 	return 0;
 }
 
-namespace {
-	// the Windows page alone, rooted at a window: resizable (the page lays itself out), Close only
-	class CWindowSheet : public CResizablePropertySheetImpl<CWindowSheet> {
-	public:
-		using CResizablePropertySheetImpl::CResizablePropertySheetImpl;
-		void OnSheetInitialized() {
-			CResizablePropertySheetImpl::OnSheetInitialized();
-			if (auto ok = GetDlgItem(IDOK))
-				ok.ShowWindow(SW_HIDE);
-			if (auto cancel = GetDlgItem(IDCANCEL))
-				cancel.SetWindowText(L"Close");
-			CenterWindow(GetParent());
-		}
-	};
-}
-
 LRESULT CWindowStationsDlg::OnWindowTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	auto w = GetSelectedWindow();
 	if (!w || !::IsWindow(w->Handle))
 		return 0;
-	// the page reads only the process's ID (and a root window: no process-wide list)
-	ProcessProperties props;
-	props.Id = w->ProcessId;
-	props.ImageName = m_ProcessName ? m_ProcessName(w->ProcessId) : std::wstring();
-	auto title = std::format(L"{} - Windows", w->Text.empty() ? std::format(L"({})", w->ClassName) : w->Text);
-	CWindowSheet sheet(title.c_str(), 0, m_hWnd);
-	sheet.m_psh.dwFlags |= PSH_NOAPPLYNOW | PSH_NOCONTEXTHELP;
-	CProcWindowsPage page(props, w->Handle);
-	sheet.AddPage(page);
-	sheet.DoModal(m_hWnd);
+	ShowWindowTree(m_hWnd, w->Handle);
 	return 0;
 }
 

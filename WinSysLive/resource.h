@@ -779,6 +779,7 @@
 #define IDC_PE_STATUS                   1467
 #define IDC_PE_TOTALPE                  1468
 #define IDC_PE_COPY                     1469
+#define IDC_DN_GC                       1470
 #define ID_MODULE_TOTALPE               33015
 #define IDD_PEFILE                      340
 #define ID_MODULE_IMAGE                 33016
@@ -829,7 +830,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        341
 #define _APS_NEXT_COMMAND_VALUE         33028
-#define _APS_NEXT_CONTROL_VALUE         1470
+#define _APS_NEXT_CONTROL_VALUE         1471
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

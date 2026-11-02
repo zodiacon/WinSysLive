@@ -14,6 +14,11 @@
 // AppDomain, flags (dynamic, native image, ReadyToRun, domain neutral, collectible), the manifest module's file, the
 // native image (NGen), culture and public key token; any column sorts, the filter matches name, version, AppDomain and
 // paths. Right-click: Copy (the selected rows, or all shown) and Open File Location.
+// Without elevation a .NET Core (or later) runtime still says its version, entry assembly and architecture over its
+// diagnostics pipe (DotNetInfo::QueryCoreProcessInfo, with the query), which makes the runtime line then. The managed
+// heap line below it follows the process's garbage collections while the page exists (DotNetGcMonitor, an ETW session
+// of its own, "WinSysLive GC <pid>.<n>", a prefix apart from the query's, whose orphan check would stop it; elevation needed): the generations' sizes, the collections, the last
+// and longest pause and the share of the time paused, read again every second.
 //
 class CProcDotNetPage : public CPropertyPageImpl<CProcDotNetPage> {
 public:
@@ -31,6 +36,7 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_DOTNET_DONE, OnDone)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		NOTIFY_HANDLER(IDC_DN_LIST, LVN_COLUMNCLICK, OnColumnClick)
 		COMMAND_HANDLER(IDC_DN_FILTER, EN_CHANGE, OnFilterChanged)
 		COMMAND_ID_HANDLER(IDC_DN_REFRESH, OnRefresh)
@@ -56,6 +62,7 @@ private:
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDone(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnColumnClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -67,6 +74,9 @@ private:
 	void BuildRows(WinSys::DotNetProcessDetails const& details);
 	void ShowRows();
 	void UpdateStatus();
+	// the managed heap line, from the GC monitor
+	void ShowGc();
+	enum { GcTimerId = 1 };
 	std::wstring const& GetText(Row const& row, Column column) const;
 	Row const* GetSelectedRow() const;
 
@@ -89,4 +99,9 @@ private:
 	std::mutex m_ResultLock;
 	std::optional<WinSys::DotNetProcessDetails> m_Result;
 	DWORD m_ResultError{ 0 };
+	std::optional<WinSys::DotNetCoreProcessInfo> m_ResultCore, m_CoreInfo;	// the diagnostics pipe's answer
+
+	WinSys::DotNetGcMonitor m_Gc;
+	DWORD m_GcError{ 0 };		// the monitor couldn't start
+	uint64_t m_GcStarted{ 0 };	// when (a tick count): the share of the time paused is since then
 };

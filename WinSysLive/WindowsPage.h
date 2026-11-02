@@ -15,6 +15,10 @@
 // With a root window (the Window Stations dialog's Child Windows and Properties, in a sheet of its own) it shows that
 // window and its descendants only (ProcessWindows::EnumTree), the root expanded and selected at first.
 //
+// a window's tree and properties: the Windows page alone, rooted at the window, in a resizable sheet of its own (Close
+// only), modal over the owner (the Window Stations dialog's Child Windows and Properties, the window finder's drop)
+void ShowWindowTree(HWND owner, HWND window);
+
 class CProcWindowsPage : public CPropertyPageImpl<CProcWindowsPage> {
 public:
 	enum { IDD = IDD_PROC_WINDOWS };

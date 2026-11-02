@@ -4,6 +4,7 @@
 #include <WinSys/Devices.h>
 #include <WinSys/EventLog.h>
 #include <WinSys/PEFile.h>
+#include <WinSys/Job.h>
 #include <WinSys/FileVersion.h>
 #include <WinSys/PowerRequests.h>
 #include <WinSys/SecurityHelper.h>
@@ -169,6 +170,31 @@ TEST(EventLog_LiveEventData) {
 	if (none)
 		for (auto& e : *none)
 			CHECK(e.Data.empty());
+}
+
+TEST(Job_LiveAppSilo) {
+	// a job made a silo (an app silo: JobObjectCreateSilo, which needs no rights) reads as one; a plain job doesn't
+	wil::unique_handle plain(::CreateJobObject(nullptr, nullptr));
+	CHECK(plain != nullptr);
+	if (plain)
+		CHECK(!JobInfo::GetSiloInfo(plain.get()).has_value());
+	// the kernel makes only a job with kill-on-close a silo (STATUS_INVALID_PARAMETER otherwise); closing it ends the silo
+	wil::unique_handle silo(::CreateJobObject(nullptr, nullptr));
+	CHECK(silo != nullptr);
+	if (!silo)
+		return;
+	JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+	limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+	CHECK(::SetInformationJobObject(silo.get(), (JOBOBJECTINFOCLASS)JobObjectExtendedLimitInformation, &limits, sizeof(limits)));
+	CHECK(::SetInformationJobObject(silo.get(), (JOBOBJECTINFOCLASS)JobObjectCreateSilo, nullptr, 0));
+	auto info = JobInfo::GetSiloInfo(silo.get());
+	CHECK(info.has_value());
+	if (info) {
+		CHECK(info->Id != 0);
+		CHECK(!info->ServerSilo);
+		CHECK_EQ(info->Processes, 0u);
+	}
+	CHECK_EQ(std::wstring(JobInfo::ServerSiloStateName(1)), std::wstring(L"Started"));
 }
 
 TEST(EventLog_LevelNames) {

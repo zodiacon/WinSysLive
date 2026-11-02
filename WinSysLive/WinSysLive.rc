@@ -1144,6 +1144,7 @@ CAPTION ".NET"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     LTEXT           "",IDC_DN_RUNTIME,7,7,316,20,SS_NOPREFIX | SS_PATHELLIPSIS
+    LTEXT           "",IDC_DN_GC,7,27,316,10,SS_NOPREFIX | SS_ENDELLIPSIS
     EDITTEXT        IDC_DN_FILTER,7,30,259,14,ES_AUTOHSCROLL
     PUSHBUTTON      "&Refresh",IDC_DN_REFRESH,273,30,50,14
     CONTROL         "",IDC_DN_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,48,316,160
@@ -1982,7 +1983,7 @@ END
 
 STRINGTABLE
 BEGIN
-    ID_FIND_WINDOW          "Drag onto a window to select the process that owns it\nFind Window's Process (drag onto a window)"
+    ID_FIND_WINDOW          "Drag onto a window to show its child windows and properties (with Shift: select the process that owns it)\nFind Window (drag onto a window; Shift: its process)"
     ID_PROCESS_KILLTREE     "Terminate the selected process and all its descendants\nKill Process Tree"
     ID_PROCESS_RESTART      "Terminate the selected process and start it again with the same command line, directory and environment\nRestart"
     ID_PROCESS_EMPTYWORKINGSET 

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DotNetPage.h"
+#include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
 #include <ListViewhelper.h>
@@ -62,6 +63,13 @@ LRESULT CProcDotNetPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 		m_List.InsertColumn(i, columns[i].Name, columns[i].Format, ::MulDiv(columns[i].Width, dpi, 96));
 	ListViewHelper::EnableColumnDpiScaling(m_List);
 	::SendDlgItemMessage(m_hWnd, IDC_DN_FILTER, EM_SETCUEBANNER, TRUE, (LPARAM)L"Filter by name, version, AppDomain or path");
+	// the garbage collections from now on, for as long as the page exists
+	if (m_Gc.Start(m_Props.Id, L"WinSysLive GC "))
+		m_GcStarted = ::GetTickCount64();
+	else
+		m_GcError = ::GetLastError();
+	ShowGc();
+	SetTimer(GcTimerId, 1000);
 	CRect rc;
 	GetClientRect(&rc);
 	Layout(rc.Width(), rc.Height());
@@ -84,11 +92,13 @@ void CProcDotNetPage::Layout(int cx, int cy) {
 	MapDialogRect(&row);
 	MapDialogRect(&line);
 	int x = margin.left, y = margin.top, width = cx - margin.left - margin.right;
-	// the runtime line, the filter with Refresh beside it, the list, the status line
+	// the runtime line, the managed heap line, the filter with Refresh beside it, the list, the status line
 	// a line per runtime (two side by side in some .NET Framework processes)
 	int lines = 1 + (int)std::ranges::count(m_Runtimes, L'\n');
 	GetDlgItem(IDC_DN_RUNTIME).MoveWindow(x, y, width, line.Height() * lines);
-	y += line.Height() * lines + margin.top / 2;
+	y += line.Height() * lines;
+	GetDlgItem(IDC_DN_GC).MoveWindow(x, y, width, line.Height());
+	y += line.Height() + margin.top / 2;
 	GetDlgItem(IDC_DN_FILTER).MoveWindow(x, y, width - row.Width() - margin.left, row.Height());
 	GetDlgItem(IDC_DN_REFRESH).MoveWindow(cx - margin.right - row.Width(), y, row.Width(), row.Height());
 	y += row.Height() + margin.top / 2;
@@ -111,12 +121,15 @@ void CProcDotNetPage::StartQuery() {
 	UpdateStatus();
 	// the previous query is done (m_Querying was off): joining it doesn't wait
 	m_Worker = std::jthread([this, hWnd = m_hWnd, pid = m_Props.Id] {
+		// the diagnostics pipe first: no elevation, .NET Core and later only
+		auto core = DotNetInfo::QueryCoreProcessInfo(pid);
 		auto result = DotNetInfo::QueryProcess(pid, L"WinSysLive DotNet ", 5000, m_Cancel.get());
 		auto error = result ? 0 : ::GetLastError();
 		{
 			std::lock_guard lock(m_ResultLock);
 			m_Result = std::move(result);
 			m_ResultError = error;
+			m_ResultCore = std::move(core);
 		}
 		::PostMessage(hWnd, WM_DOTNET_DONE, 0, 0);
 		});
@@ -131,9 +144,20 @@ LRESULT CProcDotNetPage::OnDone(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		result = std::move(m_Result);
 		m_Error = m_ResultError;
 		m_Result.reset();
+		m_CoreInfo = std::move(m_ResultCore);
 	}
 	if (result)
 		BuildRows(*result);
+	else if (m_CoreInfo) {
+		// no rundown (no elevation): the runtime line from the diagnostics pipe
+		auto& c = *m_CoreInfo;
+		m_Runtimes = std::format(L"CoreCLR {}{}, {}", c.ClrVersion.empty() ? L"(version not said: before .NET 6)" : c.ClrVersion,
+			c.EntryAssembly.empty() ? L"" : L", entry assembly " + c.EntryAssembly, c.Architecture);
+		SetDlgItemText(IDC_DN_RUNTIME, m_Runtimes.c_str());
+		CRect rc;
+		GetClientRect(&rc);
+		Layout(rc.Width(), rc.Height());
+	}
 	ShowRows();
 	return 0;
 }
@@ -149,6 +173,9 @@ void CProcDotNetPage::BuildRows(DotNetProcessDetails const& details) {
 	}
 	if (m_Runtimes.empty())
 		m_Runtimes = L"No runtime answered";
+	// the entry assembly, which only the diagnostics pipe says
+	else if (m_CoreInfo && !m_CoreInfo->EntryAssembly.empty())
+		m_Runtimes += L" (entry assembly " + m_CoreInfo->EntryAssembly + L")";
 	SetDlgItemText(IDC_DN_RUNTIME, m_Runtimes.c_str());
 	CRect rc;
 	GetClientRect(&rc);
@@ -258,12 +285,50 @@ void CProcDotNetPage::ShowRows() {
 	UpdateStatus();
 }
 
+LRESULT CProcDotNetPage::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id != GcTimerId) {
+		bHandled = FALSE;
+		return 0;
+	}
+	ShowGc();
+	return 0;
+}
+
+void CProcDotNetPage::ShowGc() {
+	std::wstring text;
+	if (!m_Gc.IsRunning())
+		text = m_GcError == ERROR_ACCESS_DENIED && !SecurityHelper::IsRunningElevated()
+			? L"Managed heap: following the garbage collections needs elevation (the runtime reports them through ETW)"
+			: L"Managed heap: the garbage collections can't be followed: " + Helpers::GetErrorText(m_GcError);
+	else {
+		auto s = m_Gc.GetStats();
+		if (s.Collections == 0 && !s.HasHeap)
+			text = L"Managed heap: waiting for a garbage collection (none since the page opened)";
+		else {
+			auto bytes = [](uint64_t n) { return n ? FormatHelper::FormatBytes(n) : std::wstring(L"0 B"); };
+			auto ms = [](uint64_t ticks) { return std::format(L"{:.1f} ms", ticks / 10000.0); };
+			auto elapsed = (::GetTickCount64() - m_GcStarted) * 10000;	// 100 ns
+			text = std::format(L"Managed heap {}", s.HasHeap ? bytes(s.HeapSize()) : std::wstring(L"(sizes after the next collection)"));
+			if (s.HasHeap)
+				text += std::format(L" (gen 0 {}, gen 1 {}, gen 2 {}, LOH {}{})", bytes(s.GenerationSize[0]),
+					bytes(s.GenerationSize[1]), bytes(s.GenerationSize[2]), bytes(s.LohSize),
+					s.PohSize ? L", POH " + bytes(s.PohSize) : L"");
+			text += std::format(L"; {} collections ({}/{}/{})", s.Collections, s.ByGeneration[0], s.ByGeneration[1], s.ByGeneration[2]);
+			if (s.MaxPause)
+				text += std::format(L", pauses: last {}, longest {}, {:.2f}% of the time", ms(s.LastPause), ms(s.MaxPause),
+					elapsed ? 100.0 * s.TotalPause / elapsed : 0.0);
+		}
+	}
+	SetDlgItemText(IDC_DN_GC, text.c_str());
+}
+
 void CProcDotNetPage::UpdateStatus() {
 	std::wstring text;
 	if (m_Querying)
 		text = L"Asking the runtime for its assemblies...";
 	else if (m_Error == ERROR_ACCESS_DENIED && !SecurityHelper::IsRunningElevated())
-		text = L"Listing the assemblies needs elevation (the runtime's rundown is an ETW provider)";
+		text = m_CoreInfo ? L"The runtime from its diagnostics pipe; listing the assemblies needs elevation (the runtime's rundown is an ETW provider)"
+			: L"Listing the assemblies needs elevation (the runtime's rundown is an ETW provider)";
 	else if (m_Error)
 		text = L"The runtime couldn't be asked: " + Helpers::GetErrorText(m_Error);
 	else if (m_Rows.empty())

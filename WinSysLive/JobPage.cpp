@@ -319,6 +319,27 @@ void CProcJobPage::ShowStatistics(HANDLE hJob) {
 		return FormatHelper::FormatNumber(value);
 	};
 
+	// a silo's first: what kind, its ID and namespace, and a container's state and builds (WinSys JobInfo::GetSiloInfo)
+	if (auto silo = WinSys::JobInfo::GetSiloInfo(hJob)) {
+		add(L"Silo", silo->ServerSilo ? L"Server silo (a container)" : L"App silo");
+		add(L"Silo ID", std::to_wstring(silo->Id));
+		if (silo->ParentId)
+			add(L"Parent silo", std::to_wstring(silo->ParentId));
+		add(L"Silo processes", number(silo->Processes));
+		if (!silo->RootDirectory.empty())
+			add(L"Root directory", silo->RootDirectory);
+		if (silo->HasServerInfo) {
+			add(L"Container state", WinSys::JobInfo::ServerSiloStateName(silo->State));
+			add(L"Service session", std::to_wstring(silo->ServiceSessionId));
+			if (silo->ContainerBuild)
+				add(L"Container build", std::to_wstring(silo->ContainerBuild));
+			if (silo->HostBuild)
+				add(L"Host build", std::to_wstring(silo->HostBuild));
+			if (silo->State >= 3)	// terminating, terminated
+				add(L"Exit status", std::format(L"0x{:08X}", silo->ExitStatus));
+		}
+	}
+
 	JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION info;
 	if (!::QueryInformationJobObject(hJob, (JOBOBJECTINFOCLASS)JobObjectBasicAndIoAccountingInformation, &info, sizeof(info), nullptr)) {
 		add(L"Error", WinSys::Helpers::GetErrorText(::GetLastError()));

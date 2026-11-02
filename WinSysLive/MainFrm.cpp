@@ -21,6 +21,7 @@
 #include "DevicesView.h"
 #include "DeviceResourcesDlg.h"
 #include "PEFileDlg.h"
+#include "WindowsPage.h"
 #include <WinSys/KernelModules.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Connections.h>
@@ -1937,9 +1938,15 @@ void CMainFrame::OnFinderHover(HWND hWnd) {
 }
 
 void CMainFrame::OnWindowFound(HWND hWnd) {
-	DWORD pid = 0;
-	if (::GetWindowThreadProcessId(hWnd, &pid))
-		GoToProcess(pid);
+	// the window's tree and properties; with Shift, its process in the Processes tab (as before)
+	if (::GetKeyState(VK_SHIFT) < 0) {
+		DWORD pid = 0;
+		if (::GetWindowThreadProcessId(hWnd, &pid))
+			GoToProcess(pid);
+		return;
+	}
+	RestoreWindow();
+	ShowWindowTree(m_hWnd, hWnd);
 }
 
 void CMainFrame::GoToProcess(uint32_t pid) {

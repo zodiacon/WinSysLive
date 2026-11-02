@@ -152,3 +152,149 @@ TEST(DotNet_TruncatedPayloadsAddNothing) {
 	CHECK(d.Runtimes.empty());
 	CHECK(d.AppDomains.empty());
 }
+
+namespace {
+	// a payload as the runtime writes it
+	struct PayloadWriter {
+		std::vector<uint8_t> Bytes;
+		template<typename T>
+		void Put(T value) {
+			auto p = reinterpret_cast<uint8_t const*>(&value);
+			Bytes.insert(Bytes.end(), p, p + sizeof(T));
+		}
+		void String(std::wstring const& text) {
+			Put<uint32_t>((uint32_t)text.size() + 1);
+			for (auto c : text)
+				Put<wchar_t>(c);
+			Put<wchar_t>(0);
+		}
+	};
+}
+
+TEST(DotNet_ParseProcessInfo) {
+	PayloadWriter w;
+	w.Put<uint64_t>(1234);
+	GUID cookie{ 0x11223344, 0x5566, 0x7788, { 1, 2, 3, 4, 5, 6, 7, 8 } };
+	w.Put(cookie);
+	w.String(L"\"C:\\app\\app.exe\" --run");
+	w.String(L"Windows");
+	w.String(L"x64");
+	w.String(L"app");
+	w.String(L"8.0.10+81cabf2857");
+	auto info = DotNetInfo::ParseProcessInfo(w.Bytes.data(), w.Bytes.size(), true);
+	CHECK(info.has_value());
+	if (info) {
+		CHECK_EQ(info->ProcessId, (uint64_t)1234);
+		CHECK(info->RuntimeCookie == cookie);
+		CHECK_EQ(info->CommandLine, std::wstring(L"\"C:\\app\\app.exe\" --run"));
+		CHECK_EQ(info->Architecture, std::wstring(L"x64"));
+		CHECK_EQ(info->EntryAssembly, std::wstring(L"app"));
+		CHECK_EQ(info->ClrVersion, std::wstring(L"8.0.10+81cabf2857"));
+	}
+	// ProcessInfo (v1) stops after the architecture
+	auto v1 = DotNetInfo::ParseProcessInfo(w.Bytes.data(), w.Bytes.size(), false);
+	CHECK(v1.has_value() && v1->EntryAssembly.empty() && v1->Os == L"Windows");
+	// cut anywhere before its end: nothing, never a read past it
+	for (size_t cut = 0; cut < w.Bytes.size(); cut += 3)
+		CHECK(!DotNetInfo::ParseProcessInfo(w.Bytes.data(), cut, true).has_value());
+	// a string's count past the payload
+	PayloadWriter bad;
+	bad.Put<uint64_t>(1);
+	bad.Put(cookie);
+	bad.Put<uint32_t>(0x7FFFFFFF);
+	CHECK(!DotNetInfo::ParseProcessInfo(bad.Bytes.data(), bad.Bytes.size(), false).has_value());
+}
+
+TEST(DotNet_GcEvents) {
+	DotNetGcStats stats;
+	// a generation 1 collection: GCStart V2 (count, depth, reason, type, instance, sequence)
+	PayloadWriter start;
+	start.Put<uint32_t>(7);
+	start.Put<uint32_t>(1);
+	start.Put<uint32_t>(0);
+	start.Put<uint32_t>(0);
+	start.Put<uint16_t>(9);
+	start.Put<uint64_t>(0);
+	CHECK(DotNetGcMonitor::ApplyGcEvent(1, 2, start.Bytes.data(), start.Bytes.size(), 0, stats));
+	CHECK_EQ(stats.Collections, 1u);
+	CHECK_EQ(stats.ByGeneration[1], 1u);
+	CHECK_EQ(stats.LastGeneration, 1u);
+	// the pause: suspend at 10,000,000, restart 25 ms later
+	CHECK(DotNetGcMonitor::ApplyGcEvent(9, 1, nullptr, 0, 10000000, stats));
+	CHECK(DotNetGcMonitor::ApplyGcEvent(3, 1, nullptr, 0, 10250000, stats));
+	CHECK_EQ(stats.LastPause, (uint64_t)250000);
+	CHECK_EQ(stats.MaxPause, (uint64_t)250000);
+	// a restart without its suspend counts nothing
+	CHECK(!DotNetGcMonitor::ApplyGcEvent(3, 1, nullptr, 0, 20000000, stats));
+	CHECK_EQ(stats.TotalPause, (uint64_t)250000);
+	// GCHeapStats V2: the sizes (and the pinned object heap's)
+	PayloadWriter heap;
+	for (uint64_t g = 0; g < 4; g++) {
+		heap.Put<uint64_t>((g + 1) * 1000);
+		heap.Put<uint64_t>(0);
+	}
+	heap.Put<uint64_t>(0);
+	heap.Put<uint64_t>(0);
+	heap.Put<uint32_t>(5);	// pinned objects
+	heap.Put<uint32_t>(0);
+	heap.Put<uint32_t>(42);	// GC handles
+	heap.Put<uint16_t>(9);
+	heap.Put<uint64_t>(500);	// pinned object heap
+	heap.Put<uint64_t>(0);
+	CHECK(DotNetGcMonitor::ApplyGcEvent(4, 2, heap.Bytes.data(), heap.Bytes.size(), 0, stats));
+	CHECK(stats.HasHeap);
+	CHECK_EQ(stats.GenerationSize[0], (uint64_t)1000);
+	CHECK_EQ(stats.LohSize, (uint64_t)4000);
+	CHECK_EQ(stats.PohSize, (uint64_t)500);
+	CHECK_EQ(stats.GcHandles, 42u);
+	CHECK_EQ(stats.HeapSize(), (uint64_t)(1000 + 2000 + 3000 + 4000 + 500));
+	// cut short: nothing changes
+	auto before = stats.Collections;
+	CHECK(!DotNetGcMonitor::ApplyGcEvent(1, 2, start.Bytes.data(), 6, 0, stats));
+	CHECK(!DotNetGcMonitor::ApplyGcEvent(4, 2, heap.Bytes.data(), 40, 0, stats));
+	CHECK_EQ(stats.Collections, before);
+}
+
+TEST(DotNet_LiveCoreProcessInfo) {
+	// a .NET (Core) process of this user that has a diagnostics pipe: PowerShell 7, if one runs
+	for (auto pid : DotNetInfo::GetCoreRuntimeProcesses()) {
+		wil::unique_handle process(::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
+		if (!process)
+			continue;
+		auto info = DotNetInfo::QueryCoreProcessInfo(pid);
+		if (!info)
+			continue;	// another user's, or one that didn't answer
+		CHECK_EQ(info->ProcessId, (uint64_t)pid);
+		CHECK(!info->CommandLine.empty());
+		CHECK(!info->Os.empty());
+		return;
+	}
+}
+
+TEST(DotNet_LiveGcMonitor) {
+	// a PowerShell 7 of ours that forces a collection two seconds in (pwsh: a .NET process; skipped without it or
+	// without elevation)
+	WCHAR pwsh[MAX_PATH];
+	if (!::SearchPath(nullptr, L"pwsh.exe", nullptr, _countof(pwsh), pwsh, nullptr))
+		return;
+	std::wstring cmd = L"\"" + std::wstring(pwsh) + L"\" -NoProfile -NonInteractive -Command \"Start-Sleep 2; [GC]::Collect(); Start-Sleep 2\"";
+	STARTUPINFO si{ sizeof(si) };
+	PROCESS_INFORMATION pi{};
+	if (!::CreateProcess(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+		return;
+	wil::unique_handle process(pi.hProcess), thread(pi.hThread);
+	DotNetGcMonitor monitor;
+	if (!monitor.Start(pi.dwProcessId, L"WinSysLive Tests GC ")) {
+		::TerminateProcess(pi.hProcess, 0);
+		return;	// not elevated
+	}
+	::WaitForSingleObject(pi.hProcess, 15000);
+	monitor.Flush();
+	::Sleep(1500);
+	auto stats = monitor.GetStats();
+	monitor.Stop();
+	CHECK(stats.Collections >= 1);
+	CHECK(stats.ByGeneration[2] >= 1);	// GC.Collect() is a full collection
+	CHECK(stats.HasHeap && stats.HeapSize() > 0);
+	CHECK(stats.MaxPause > 0);
+}
