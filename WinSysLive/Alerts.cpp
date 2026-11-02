@@ -150,6 +150,8 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		std::lock_guard lock(m_EventLock);
 		logged.swap(m_Events);
 	}
+	// the data fields read for at most this many events a tick (a query each: a burst of failed logons stays cheap)
+	int dataReads = 10;
 	for (auto& e : logged) {
 		auto rule = std::ranges::find_if(m_Rules, [&](auto& r) {
 			return r.Enabled && r.MatchesEvent(e.Channel, e.Provider, e.EventId, e.IsAuditFailure());
@@ -157,10 +159,18 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		if (rule == m_Rules.end())
 			continue;
 		auto line = e.Message.substr(0, e.Message.find_first_of(L"\r\n"));
+		if (EventAlertText::UsesData(e.Channel, !e.Message.empty()) && dataReads > 0) {
+			dataReads--;
+			if (auto data = EventLog::GetData(e.Channel, e.RecordId))
+				line = EventAlertText::Summarize(e.Channel, e.EventId, line, *data);
+		}
 		auto p = e.ProcessId ? pm.GetProcessById(e.ProcessId) : nullptr;
 		bool running = p && p->Key.Created <= e.Time;
-		add(rule->Kind == AlertKind::AuditFailure ? std::format(L"Security audit failure {} ({}): {}", e.EventId, e.Provider, line)
-			: std::format(L"{} event {} from {}: {}", e.Channel, e.EventId, e.Provider, line), e.ProcessId, running);
+		// the Security log's own source goes without saying (the summary is what matters, and a balloon is short)
+		bool auditing = e.Provider == L"Microsoft-Windows-Security-Auditing";
+		add(rule->Kind == AlertKind::AuditFailure
+			? std::format(L"Security audit failure {}{}: {}", e.EventId, auditing ? L"" : L" (" + e.Provider + L")", line)
+			: std::format(L"{} event {}{}: {}", e.Channel, e.EventId, auditing ? L"" : L" from " + e.Provider, line), e.ProcessId, running);
 	}
 
 	auto processes = pm.GetProcesses();

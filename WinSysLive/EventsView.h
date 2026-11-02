@@ -85,6 +85,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EVENT_GOTOPROCESS, OnGoToProcess)
 		COMMAND_RANGE_HANDLER(ID_EVENTS_WARNINGS, ID_EVENTS_REFRESH, OnBarCommand)
 		COMMAND_ID_HANDLER(ID_EVENT_OPENVIEWER, OnOpenViewer)
+		COMMAND_ID_HANDLER(ID_EVENT_ALERT, OnAlertLikeThis)
 		CHAIN_MSG_MAP_ALT(CViewBase<CEventsView>, 1)
 	END_MSG_MAP()
 
@@ -106,6 +107,7 @@ private:
 	LRESULT OnBarCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBarDropDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnOpenViewer(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnAlertLikeThis(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCustomDraw(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

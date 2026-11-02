@@ -10,6 +10,7 @@
 #include <WTLHelper.h>
 #include <ranges>
 #include "EventDetailsDlg.h"
+#include "AlertRules.h"
 #include <WinSys/Helpers.h>
 #include <WinSys/SecurityHelper.h>
 
@@ -282,6 +283,20 @@ LRESULT CEventsView::OnBarDropDown(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 		m_Hours = s_Spans[choice - 1];
 	LogsChanged();
 	return TBDDRET_DEFAULT;
+}
+
+LRESULT CEventsView::OnAlertLikeThis(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto e = GetSelected();
+	if (!e)
+		return 0;
+	// the event's log, source and ID; a Security audit failure as the audit failure kind (the keyword told)
+	AlertRule rule;
+	rule.Kind = e->IsAuditFailure() ? AlertKind::AuditFailure : AlertKind::EventLogged;
+	rule.Log = e->Channel;
+	rule.Pattern = e->Provider;
+	rule.EventId = e->EventId;
+	Frame()->AddAlertRule(rule);
+	return 0;
 }
 
 LRESULT CEventsView::OnOpenViewer(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -572,6 +587,7 @@ bool CEventsView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	menu.AppendMenu(MF_STRING, ID_EVENT_DETAILS, L"&Details...");
 	menu.AppendMenu(MF_STRING | (IsRunning(*m_Rows[row]) ? 0 : MF_GRAYED), ID_EVENT_GOTOPROCESS, L"&Go to Process");
 	menu.AppendMenu(MF_STRING, ID_EVENT_OPENVIEWER, L"Open in &Event Viewer");
+	menu.AppendMenu(MF_STRING, ID_EVENT_ALERT, L"&Alert on Events Like This...");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy");
 	menu.SetMenuDefaultItem(ID_EVENT_DETAILS);

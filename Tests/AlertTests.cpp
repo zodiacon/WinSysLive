@@ -236,3 +236,41 @@ TEST(Alerts_EventDescriptions) {
 	a.EventId = 4625;
 	CHECK_EQ(a.Describe(), std::wstring(L"Security audit failure 4625"));
 }
+
+TEST(Alerts_EventText) {
+	using Data = std::vector<WinSys::EventDataItem>;
+	// a failed logon: the sub-status's reason rather than the generic status, the address, the type
+	Data failed = { { L"SubjectUserSid", L"S-1-0-0" }, { L"TargetUserName", L"bob" }, { L"TargetDomainName", L"ZODIAC" },
+		{ L"Status", L"0xc000006d" }, { L"FailureReason", L"%%2313" }, { L"SubStatus", L"0xc000006a" }, { L"LogonType", L"3" },
+		{ L"WorkstationName", L"LAPTOP" }, { L"IpAddress", L"10.0.0.5" } };
+	CHECK_EQ(EventAlertText::Summarize(L"Security", 4625, L"An account failed to log on.", failed),
+		std::wstring(LR"(failed logon of ZODIAC\bob from 10.0.0.5 (network): wrong password)"));
+	// a process created
+	Data created = { { L"SubjectUserName", L"zodia" }, { L"SubjectDomainName", L"ZODIAC" },
+		{ L"NewProcessName", LR"(C:\Windows\System32\cmd.exe)" }, { L"ParentProcessName", LR"(C:\Windows\explorer.exe)" } };
+	CHECK_EQ(EventAlertText::Summarize(L"Security", 4688, L"A new process has been created.", created),
+		std::wstring(LR"(C:\Windows\System32\cmd.exe created by ZODIAC\zodia, parent C:\Windows\explorer.exe)"));
+	// the log cleared (UserData's fields)
+	Data cleared = { { L"SubjectUserSid", L"S-1-5-21-1" }, { L"SubjectUserName", L"zodia" }, { L"SubjectDomainName", L"ZODIAC" } };
+	CHECK_EQ(EventAlertText::Summarize(L"Security", 1102, L"The audit log was cleared.", cleared),
+		std::wstring(LR"(the Security log was cleared by ZODIAC\zodia)"));
+	// another Security event: the line and its main fields
+	Data other = { { L"SubjectUserName", L"zodia" }, { L"SubjectDomainName", L"ZODIAC" }, { L"ObjectName", LR"(\Device\X)" } };
+	CHECK_EQ(EventAlertText::Summarize(L"Security", 4907, L"Auditing settings on object were changed.", other),
+		std::wstring(LR"(Auditing settings on object were changed. (by ZODIAC\zodia, object \Device\X))"));
+	// a System event with a message: unchanged; without one: its first fields
+	CHECK_EQ(EventAlertText::Summarize(L"System", 7031, L"The X service terminated unexpectedly.", other),
+		std::wstring(L"The X service terminated unexpectedly."));
+	CHECK(!EventAlertText::UsesData(L"System", true));
+	CHECK(EventAlertText::UsesData(L"System", false));
+	CHECK(EventAlertText::UsesData(L"Security", true));
+	Data unnamed = { { L"", L"first" }, { L"", L"-" }, { L"", L"second" } };
+	CHECK_EQ(EventAlertText::Summarize(L"Application", 1000, L"", unnamed), std::wstring(L"first, second"));
+	// no data: the line
+	CHECK_EQ(EventAlertText::Summarize(L"Security", 4625, L"An account failed to log on.", {}), std::wstring(L"An account failed to log on."));
+	// the words
+	CHECK_EQ(EventAlertText::LogonTypeText(L"10"), std::wstring(L"remote interactive (RDP)"));
+	CHECK_EQ(EventAlertText::LogonTypeText(L"99"), std::wstring(L"type 99"));
+	CHECK_EQ(std::wstring(EventAlertText::LogonFailureText(L"0xC0000234")), std::wstring(L"account locked out"));
+	CHECK_EQ(std::wstring(EventAlertText::LogonFailureText(L"0x0")), std::wstring());
+}

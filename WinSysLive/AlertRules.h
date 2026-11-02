@@ -1,5 +1,7 @@
 #pragma once
 
+#include <WinSys/EventLog.h>
+
 //
 // Alert rules without the app around them, so the tests can take them (Tests\AlertTests.cpp): the kinds, a rule and its
 // description, the AlertRules setting's text (one rule a line, Kind|Enabled|Threshold|Seconds|Pattern, the kind's key,
@@ -50,6 +52,24 @@ struct AlertRule {
 	static std::vector<AlertRule> ParseRules(std::wstring const& text);
 	// a pattern loses '|' and line breaks, which the text uses
 	static std::wstring FormatRules(std::vector<AlertRule> const& rules);
+};
+
+// an event alert's text from the event's data fields (WinSys EventLog::GetData), rather than the message's first line
+// alone, which says little for the Security log ("An account failed to log on.")
+struct EventAlertText final {
+	// the well-known Security events in words ("failed logon of ZODIAC\bob from 10.0.0.5 (network): wrong password",
+	// "C:\Windows\System32\cmd.exe created by ZODIAC\zodia"); other Security events, and any event without a message,
+	// the message's first line with up to three main fields after it ("... (user ZODIAC\bob, process C:\x.exe)"); else the
+	// line
+	static std::wstring Summarize(std::wstring const& log, uint32_t eventId, std::wstring const& firstLine,
+		std::vector<WinSys::EventDataItem> const& data);
+	// the events whose data Summarize uses (the Security log's, and those without a message): the caller reads the data
+	// only for these
+	static bool UsesData(std::wstring const& log, bool hasMessage);
+	// a logon type in words: 3 "network", 10 "remote interactive (RDP)"; the number for others
+	static std::wstring LogonTypeText(std::wstring const& type);
+	// an NTSTATUS of a failed logon in words: 0xC000006A "wrong password"; empty for others
+	static PCWSTR LogonFailureText(std::wstring const& status);
 };
 
 // a threshold condition: since when it's held (a tick count in ms; 0: it doesn't) and whether it fired

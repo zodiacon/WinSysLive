@@ -20,14 +20,34 @@ jobs:
 
     steps:
       - name: Check out (with the WinSys and WTLHelper submodules)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # not recursive: WinSys lists a WTLHelper submodule of its own that nothing builds
           submodules: true
 
+      # vcpkg's binary cache (VCPKG_DEFAULT_BINARY_CACHE: the built packages, which actions/cache keeps between runs;
+      # vcpkg's own GitHub cache provider is gone). Its key: the image's vcpkg (its commit decides the ports' versions and
+      # so the packages' hashes) and the packages; a new image misses, restores the last cache (vcpkg skips what no longer
+      # matches) and saves a new one
+      - name: Find the vcpkg version
+        id: vcpkg
+        shell: pwsh
+        run: |
+          $cache = Join-Path $env:RUNNER_TEMP 'vcpkg-binary-cache'
+          New-Item -ItemType Directory -Force $cache | Out-Null
+          "VCPKG_DEFAULT_BINARY_CACHE=$cache" >> $env:GITHUB_ENV
+          "commit=$(git -C $env:VCPKG_INSTALLATION_ROOT rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore the vcpkg packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-${{ steps.vcpkg.outputs.commit }}-phnt-wil-detours-wtl
+          restore-keys: vcpkg-
+
       # vcpkg with user-wide integration, as the projects expect: phnt (WinSys and the app), WIL, Detours (WTLHelper's
       # dark mode) and WTL; both triplets, as WTLHelper and HexControl use the static one (VcpkgUseStatic), the rest the
-      # default one
+      # default one. From the binary cache when it has them
       - name: Install the vcpkg packages (phnt, WIL, Detours, WTL)
         shell: pwsh
         run: |
@@ -39,7 +59,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Build
         shell: pwsh
@@ -63,7 +83,7 @@ jobs:
 
       - name: Upload the build
         if: matrix.configuration == 'Release'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: WinSysLive-x64-Release
           path: |

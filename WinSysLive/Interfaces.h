@@ -24,6 +24,8 @@ enum class TabType {
 	Events,		// the System and Application event logs
 };
 
+struct AlertRule;
+
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)
 struct IMainFrame abstract : IIconSource {
 	virtual HWND GetHwnd() const = 0;
@@ -45,6 +47,8 @@ struct IMainFrame abstract : IIconSource {
 	virtual void GoToKernelModule(std::wstring const& path) = 0;
 	// switches to the Drivers tab and selects the driver service whose image is the file, or says there's none
 	virtual void GoToDriver(std::wstring const& path) = 0;
+	// the alert rule dialog with the rule filled in; on OK the rule is added (enabled, saved, the alerts icon shown)
+	virtual void AddAlertRule(AlertRule const& rule) = 0;
 };
 
 struct IView abstract {

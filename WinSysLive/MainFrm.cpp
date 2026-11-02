@@ -440,6 +440,17 @@ LRESULT CMainFrame::OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 	return 0;
 }
 
+void CMainFrame::AddAlertRule(AlertRule const& rule) {
+	CAlertRuleDlg dlg(rule);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return;
+	auto rules = m_Alerts.GetRules();
+	rules.push_back(dlg.GetRule());
+	CAlerts::Save(rules);
+	m_Alerts.SetRules(std::move(rules));
+	m_AlertIcon.Show(m_Alerts.AnyEnabled());
+}
+
 void CMainFrame::ShowAlerts(std::vector<AlertEvent> const& events) {
 	if (events.empty())
 		return;

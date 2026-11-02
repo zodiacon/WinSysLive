@@ -761,6 +761,7 @@
 #define IDC_DR_GOTODRIVER               1454
 #define IDC_DR_COPY                     1455
 #define ID_DEVICE_RESOURCES             33012
+#define ID_EVENT_ALERT                  33013
 #define IDC_AR_LOG                      1425
 #define IDC_AR_LOG_LABEL                1426
 #define IDC_AR_EVENTID                  1427
@@ -796,7 +797,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        338
-#define _APS_NEXT_COMMAND_VALUE         33013
+#define _APS_NEXT_COMMAND_VALUE         33014
 #define _APS_NEXT_CONTROL_VALUE         1456
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

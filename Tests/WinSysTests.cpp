@@ -95,6 +95,63 @@ TEST(Devices_LiveResourcesAndDrivers) {
 	CHECK(!Devices::GetResources(L"PCI\\NO_SUCH_DEVICE\\0").has_value());
 }
 
+TEST(EventLog_ParseEventData) {
+	// as EvtRender gives it: single quotes, one line; named, empty and entity-encoded values
+	std::wstring xml = L"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing'/>"
+		L"<EventID>4625</EventID><Data>not this</Data></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data>"
+		L"<Data Name='TargetUserName'>bob</Data><Data Name='TargetDomainName'>ZODIAC</Data><Data Name='Status'>0xc000006d</Data>"
+		L"<Data Name='Empty'/><Data Name=\"Quoted\">a &amp; b &lt;c&gt; &#65;&#x42;</Data><Data Name='IpAddress'>10.0.0.5</Data>"
+		L"</EventData></Event>";
+	auto data = EventLog::ParseData(xml);
+	CHECK_EQ(data.size(), (size_t)7);
+	if (data.size() == 7) {
+		CHECK_EQ(data[0].Name, std::wstring(L"SubjectUserSid"));
+		CHECK_EQ(data[1].Value, std::wstring(L"bob"));
+		CHECK_EQ(data[4].Name, std::wstring(L"Empty"));
+		CHECK(data[4].Value.empty());
+		CHECK_EQ(data[5].Name, std::wstring(L"Quoted"));
+		CHECK_EQ(data[5].Value, std::wstring(L"a & b <c> AB"));
+		CHECK_EQ(data[6].Value, std::wstring(L"10.0.0.5"));
+	}
+	// the classic logs' unnamed items
+	data = EventLog::ParseData(L"<Event><System/><EventData><Data>first</Data><Data>second</Data><Binary>00</Binary></EventData></Event>");
+	CHECK_EQ(data.size(), (size_t)2);
+	if (data.size() == 2) {
+		CHECK(data[0].Name.empty());
+		CHECK_EQ(data[1].Value, std::wstring(L"second"));
+	}
+	// UserData: the elements under its first child (1102, the log cleared)
+	data = EventLog::ParseData(L"<Event><System/><UserData><LogFileCleared xmlns='http://manifests.microsoft.com/win/2004/08/windows/eventlog'>"
+		L"<SubjectUserSid>S-1-5-21-1</SubjectUserSid><SubjectUserName>zodia</SubjectUserName><SubjectDomainName>ZODIAC</SubjectDomainName>"
+		L"<SubjectLogonId>0x57d1a2</SubjectLogonId></LogFileCleared></UserData></Event>");
+	CHECK_EQ(data.size(), (size_t)4);
+	if (data.size() == 4) {
+		CHECK_EQ(data[1].Name, std::wstring(L"SubjectUserName"));
+		CHECK_EQ(data[1].Value, std::wstring(L"zodia"));
+	}
+	// none, and broken XML: nothing, no crash
+	CHECK(EventLog::ParseData(L"<Event><System/><EventData/></Event>").empty());
+	CHECK(EventLog::ParseData(L"<Event><System/></Event>").empty());
+	CHECK(EventLog::ParseData(L"<Event><EventData><Data Name='x'>unterminated").empty());
+	CHECK(EventLog::ParseData(L"").empty());
+}
+
+TEST(EventLog_LiveEventData) {
+	// the newest System events' data, read again by record ID: most events have some fields
+	auto events = EventLog::Query(L"System", 4, 24 * 7, 20);
+	CHECK(events.has_value());
+	if (!events || events->empty())
+		return;
+	int withData = 0;
+	for (auto& e : *events) {
+		auto data = EventLog::GetData(L"System", e.RecordId);
+		CHECK(data.has_value());
+		if (data && !data->empty())
+			withData++;
+	}
+	CHECK(withData > 0);
+}
+
 TEST(EventLog_LevelNames) {
 	CHECK_EQ(std::wstring(EventLog::LevelName(1)), std::wstring(L"Critical"));
 	CHECK_EQ(std::wstring(EventLog::LevelName(2)), std::wstring(L"Error"));

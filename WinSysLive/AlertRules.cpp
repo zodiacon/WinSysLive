@@ -207,3 +207,220 @@ bool AlertCondition::Update(bool holds, uint64_t now, int seconds) {
 	Fired = true;
 	return true;
 }
+
+namespace {
+	// a field's value; empty for none and for the log's placeholders ("-", the null SID, an unresolved "%%1793")
+	std::wstring Field(std::vector<WinSys::EventDataItem> const& data, PCWSTR name) {
+		for (auto& item : data)
+			if (::_wcsicmp(item.Name.c_str(), name) == 0)
+				return item.Value == L"-" || item.Value == L"S-1-0-0" || item.Value.starts_with(L"%%") ? std::wstring() : item.Value;
+		return L"";
+	}
+
+	// DOMAIN\user from the fields with the prefix (Target, Subject); the user alone without a domain
+	std::wstring Account(std::vector<WinSys::EventDataItem> const& data, std::wstring const& prefix) {
+		auto user = Field(data, (prefix + L"UserName").c_str());
+		auto domain = Field(data, (prefix + L"DomainName").c_str());
+		if (user.empty())
+			return L"";
+		return domain.empty() ? user : domain + L"\\" + user;
+	}
+
+	// " from <address>" (the IP address, else the workstation), empty for neither or a local one
+	std::wstring From(std::vector<WinSys::EventDataItem> const& data) {
+		auto address = Field(data, L"IpAddress");
+		if (address == L"::1" || address == L"127.0.0.1")
+			address.clear();
+		if (address.empty())
+			address = Field(data, L"WorkstationName");
+		if (address.empty())
+			address = Field(data, L"Workstation");
+		return address.empty() ? L"" : L" from " + address;
+	}
+
+	// the failure: the sub-status in words if it has one (the status is often the generic "bad user name or password"),
+	// else the status's, else the code
+	std::wstring Failure(std::vector<WinSys::EventDataItem> const& data) {
+		for (auto name : { L"SubStatus", L"Status" }) {
+			auto code = Field(data, name);
+			if (auto text = EventAlertText::LogonFailureText(code); *text)
+				return text;
+		}
+		auto code = Field(data, L"SubStatus");
+		if (code.empty() || code == L"0x0")
+			code = Field(data, L"Status");
+		return code.empty() || code == L"0x0" ? L"" : L"status " + code;
+	}
+
+	std::wstring Join(std::initializer_list<std::wstring> parts, PCWSTR separator) {
+		std::wstring text;
+		for (auto& p : parts)
+			if (!p.empty())
+				text += (text.empty() ? L"" : separator) + p;
+		return text;
+	}
+}
+
+bool EventAlertText::UsesData(std::wstring const& log, bool hasMessage) {
+	return !hasMessage || ::_wcsicmp(log.c_str(), L"Security") == 0;
+}
+
+std::wstring EventAlertText::LogonTypeText(std::wstring const& type) {
+	switch (_wtoi(type.c_str())) {
+		case 2: return L"interactive";
+		case 3: return L"network";
+		case 4: return L"batch";
+		case 5: return L"service";
+		case 7: return L"unlock";
+		case 8: return L"network, cleartext";
+		case 9: return L"new credentials";
+		case 10: return L"remote interactive (RDP)";
+		case 11: return L"cached interactive";
+	}
+	return type.empty() ? L"" : L"type " + type;
+}
+
+PCWSTR EventAlertText::LogonFailureText(std::wstring const& status) {
+	static const struct {
+		uint32_t Code;
+		PCWSTR Text;
+	} failures[] = {
+		{ 0xC000006A, L"wrong password" },
+		{ 0xC0000064, L"no such user" },
+		{ 0xC000006D, L"bad user name or password" },
+		{ 0xC000006E, L"account restriction" },
+		{ 0xC000006F, L"outside the allowed hours" },
+		{ 0xC0000070, L"not allowed from this workstation" },
+		{ 0xC0000071, L"password expired" },
+		{ 0xC0000072, L"account disabled" },
+		{ 0xC0000133, L"clocks out of sync" },
+		{ 0xC000015B, L"logon type not granted" },
+		{ 0xC0000193, L"account expired" },
+		{ 0xC0000224, L"password must be changed" },
+		{ 0xC0000234, L"account locked out" },
+		{ 0xC0000413, L"authentication firewall" },
+		// Kerberos (4771's Status: KDC error codes)
+		{ 0x18, L"wrong password" },
+		{ 0x6, L"no such user" },
+		{ 0x12, L"account disabled, expired or locked out" },
+		{ 0x17, L"password expired" },
+		{ 0x25, L"clocks out of sync" },
+	};
+	if (status.empty())
+		return L"";
+	auto code = (uint32_t)::wcstoul(status.c_str(), nullptr, 0);
+	if (code == 0)
+		return L"";
+	for (auto& f : failures)
+		if (f.Code == code)
+			return f.Text;
+	return L"";
+}
+
+std::wstring EventAlertText::Summarize(std::wstring const& log, uint32_t eventId, std::wstring const& firstLine,
+	std::vector<WinSys::EventDataItem> const& data) {
+	if (data.empty() || !UsesData(log, !firstLine.empty()))
+		return firstLine;
+	bool security =::_wcsicmp(log.c_str(), L"Security") == 0;
+	if (security) {
+		auto target = Account(data, L"Target");
+		auto subject = Account(data, L"Subject");
+		auto logonType = LogonTypeText(Field(data, L"LogonType"));
+		auto typeText = logonType.empty() ? L"" : L" (" + logonType + L")";
+		std::wstring text;
+		switch (eventId) {
+			case 4624:	// a logon
+				text = L"logon of " + (target.empty() ? L"(unknown)" : target) + From(data) + typeText;
+				break;
+			case 4625:	// a failed logon
+				text = Join({ L"failed logon of " + (target.empty() ? L"(unknown)" : target) + From(data) + typeText, Failure(data) }, L": ");
+				break;
+			case 4648:	// a logon with explicit credentials (runas)
+				text = Join({ L"explicit credentials for " + (target.empty() ? L"(unknown)" : target), subject.empty() ? L"" : L"by " + subject,
+					Field(data, L"ProcessName") }, L", ");
+				break;
+			case 4688:	// a process created
+				if (auto name = Field(data, L"NewProcessName"); !name.empty())
+					text = Join({ name + L" created" + (subject.empty() ? L"" : L" by " + subject),
+						Field(data, L"ParentProcessName").empty() ? L"" : L"parent " + Field(data, L"ParentProcessName") }, L", ");
+				break;
+			case 4720: case 4722: case 4725: case 4726: case 4738: case 4724: case 4723: {	// an account changed
+				PCWSTR action = eventId == 4720 ? L"created" : eventId == 4722 ? L"enabled" : eventId == 4725 ? L"disabled"
+					: eventId == 4726 ? L"deleted" : eventId == 4738 ? L"changed" : eventId == 4724 ? L"password reset" : L"password changed";
+				if (!target.empty())
+					text = std::format(L"account {} {}{}", target, action, subject.empty() ? L"" : L" by " + subject);
+				break;
+			}
+			case 4728: case 4732: case 4756: case 4729: case 4733: case 4757: {	// a group's members changed
+				bool added = eventId == 4728 || eventId == 4732 || eventId == 4756;
+				auto member = Field(data, L"MemberName");
+				if (member.empty())
+					member = Field(data, L"MemberSid");
+				if (!target.empty())
+					text = std::format(L"{} {} group {}{}", member.empty() ? L"a member" : member, added ? L"added to" : L"removed from",
+						target, subject.empty() ? L"" : L" by " + subject);
+				break;
+			}
+			case 4740:	// an account locked out (TargetDomainName is the caller's computer here, not a domain)
+				if (auto user = Field(data, L"TargetUserName"); !user.empty()) {
+					auto caller = Field(data, L"TargetDomainName");
+					text = L"account " + user + L" locked out" + (caller.empty() ? L"" : L", from " + caller);
+				}
+				break;
+			case 4771:	// Kerberos pre-authentication failed
+				text = Join({ L"Kerberos pre-authentication failed for " + (Field(data, L"TargetUserName").empty() ? L"(unknown)" : Field(data, L"TargetUserName"))
+					+ From(data), Failure(data) }, L": ");
+				break;
+			case 4776:	// NTLM credential validation
+				if (auto user = Field(data, L"TargetUserName"); !user.empty()) {
+					auto failure = Failure(data);
+					text = Join({ std::wstring(failure.empty() ? L"credentials validated for " : L"credential validation failed for ") + user + From(data), failure }, L": ");
+				}
+				break;
+			case 4656: case 4663:	// an object accessed
+				if (auto object = Field(data, L"ObjectName"); !object.empty())
+					text = Join({ object + L" accessed" + (subject.empty() ? L"" : L" by " + subject), Field(data, L"ProcessName") }, L", ");
+				break;
+			case 4697: case 7045:	// a service installed
+				if (auto service = Field(data, L"ServiceName"); !service.empty())
+					text = Join({ L"service " + service + L" installed" + (subject.empty() ? L"" : L" by " + subject), Field(data, L"ServiceFileName") }, L", ");
+				break;
+			case 1102:	// the log cleared (UserData: SubjectUserName, SubjectDomainName)
+				text = L"the Security log was cleared" + (subject.empty() ? std::wstring() : L" by " + subject);
+				break;
+		}
+		if (!text.empty())
+			return text;
+	}
+	// the line and the main fields
+	static const struct {
+		PCWSTR Name, Label;
+	} fields[] = {
+		{ L"TargetUserName", L"user" }, { L"SubjectUserName", L"by" }, { L"IpAddress", L"from" }, { L"NewProcessName", L"process" },
+		{ L"ProcessName", L"process" }, { L"ObjectName", L"object" }, { L"ServiceName", L"service" }, { L"param1", L"" }, { L"param2", L"" },
+	};
+	std::wstring details;
+	int count = 0;
+	for (auto& f : fields) {
+		std::wstring value = f.Name == std::wstring(L"TargetUserName") ? Account(data, L"Target")
+			: f.Name == std::wstring(L"SubjectUserName") ? Account(data, L"Subject") : Field(data, f.Name);
+		if (value.empty() || details.find(value) != std::wstring::npos)
+			continue;
+		details += (details.empty() ? L"" : L", ") + (*f.Label ? std::wstring(f.Label) + L" " : L"") + value;
+		if (++count == 3)
+			break;
+	}
+	// nothing known: the first fields, with their names
+	if (details.empty() && firstLine.empty()) {
+		for (auto& item : data) {
+			if (item.Value.empty() || item.Value == L"-")
+				continue;
+			details += (details.empty() ? L"" : L", ") + (item.Name.empty() ? item.Value : item.Name + L" " + item.Value);
+			if (++count == 3)
+				break;
+		}
+	}
+	if (details.empty())
+		return firstLine;
+	return firstLine.empty() ? details : firstLine + L" (" + details + L")";
+}

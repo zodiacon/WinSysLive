@@ -254,6 +254,7 @@ private:
 	void GoToProcess(uint32_t pid) override;
 	void GoToKernelModule(std::wstring const& path) override;
 	void GoToDriver(std::wstring const& path) override;
+	void AddAlertRule(AlertRule const& rule) override;
 	// switches to the tab, opening it if it's closed; its view
 	IView* ActivateTab(TabType type);
 
