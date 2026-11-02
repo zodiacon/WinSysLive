@@ -12,7 +12,10 @@
 // (WindowStations::EnumDesktopWindows: title, class, process, thread, state, rectangle). Another station's desktops
 // can't have their windows listed (the status line says why). Visible Only (on at first) and the filter (title, class,
 // process, handle) choose the rows; any column sorts (# is the Z order). Double-click or Go to Process selects the
-// window's process in the Processes tab, closing the dialog; Bring to Front; Copy copies the selected rows, or all shown.
+// window's process in the Processes tab, closing the dialog; Bring to Front; Show, Hide, Minimize, Maximize and Restore
+// (ShowWindowAsync, so a hung window can't hang the dialog) and Close (WM_CLOSE posted, after asking), then the list read
+// again with the window still selected; Hide and Close are grayed for the app's own windows; Copy copies the selected
+// rows, or all shown.
 //
 class CWindowStationsDlg :
 	public CDialogImpl<CWindowStationsDlg>,
@@ -50,6 +53,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_WS_COPY, OnCopy)
 		COMMAND_ID_HANDLER(ID_WINDOW_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_WINDOW_BRINGTOFRONT, OnBringToFront)
+		COMMAND_RANGE_HANDLER(ID_WINDOW_SHOW, ID_WINDOW_CLOSE, OnWindowAction)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		CHAIN_MSG_MAP(CDpiDialogResize<CWindowStationsDlg>)
 		CHAIN_MSG_MAP(CDialogResize<CWindowStationsDlg>)
@@ -74,6 +78,7 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBringToFront(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnWindowAction(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnClose(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// the stations again, the tree rebuilt with the same desktop selected (by station and name)

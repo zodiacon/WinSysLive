@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "KernelModulesView.h"
+#include "PEFileDlg.h"
 #include "Highlight.h"
 #include "AppSettings.h"
 #include "VirusTotalDlg.h"
@@ -345,6 +346,7 @@ bool CKernelModulesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	menu.AppendMenu(MF_STRING, ID_KMODULE_PROPERTIES, L"&Properties...");
 	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTOFILELOCATION, L"Open File &Location");
 	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTODRIVER, L"Go to &Driver");
+	menu.AppendMenu(MF_STRING | (m_Rows[row]->Module.Path.empty() ? MF_GRAYED : 0), ID_KMODULE_IMAGE, L"&Image Details...");
 	VirusTotalCommands::AppendMenu(menu, !m_Rows[row]->Module.Path.empty());
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
@@ -371,6 +373,14 @@ bool CKernelModulesView::ShowKernelModule(std::wstring const& path) {
 LRESULT CKernelModulesView::OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto row = GetSelected())
 		Frame()->GoToDriver(row->Module.Path);
+	return 0;
+}
+
+LRESULT CKernelModulesView::OnImageDetails(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelected(); row && !row->Module.Path.empty()) {
+		CPEFileDlg dlg(row->Module.Path);
+		dlg.DoModal(m_hWnd);
+	}
 	return 0;
 }
 

@@ -10,7 +10,8 @@
 // Sections (name, virtual address and size, raw offset and size, protection and contents), Imports (library, function,
 // hint or ordinal, delay-loaded), Exports (ordinal, name, RVA, forwarder), Debug (the debug directory's entries: the
 // CodeView's PDB path, GUID and age, which symbols match; the extended DLL characteristics, CET among them), Resources
-// (type, name, language, size, code page), Version (the version resource's fixed versions and strings: WinSys
+// (type, name, language, size, code page), Icons (each icon of each icon group drawn at a fixed preview size, with its
+// own size, colors, bytes and RT_ICON ID: PEFile::GetIconGroup, CreateIconFromResourceEx, which takes PNG ones), Version (the version resource's fixed versions and strings: WinSys
 // FileVersion::ReadDetails), Manifest (the manifest's lines) and .NET (the CLR header: managed or mixed, the metadata's
 // runtime version, the flags). The Headers view says whether the checksum matches the computed one. A header
 // sorts by its column (the numbers by value). Open in TotalPE opens the file there (TotalPE.h); Copy copies the
@@ -26,7 +27,7 @@ public:
 	void OnCopy();
 
 private:
-	enum class View { Headers, Sections, Imports, Exports, Debug, Resources, Version, Manifest, DotNet, _Count };
+	enum class View { Headers, Sections, Imports, Exports, Debug, Resources, Icons, Version, Manifest, DotNet, _Count };
 
 	// a view's table: its columns, which of them sort as numbers, and its rows
 	struct Table {
@@ -34,6 +35,7 @@ private:
 		std::vector<bool> Numeric;
 		std::vector<std::vector<std::wstring>> Rows;
 		std::vector<std::vector<uint64_t>> Keys;		// the numeric columns' values, by row
+		std::vector<int> Images;	// each row's image in m_IconImages (the Icons view's); empty: no images
 	};
 
 	void BuildTables();
@@ -47,6 +49,7 @@ private:
 	DWORD m_Error{ 0 };
 	Table m_Tables[(int)View::_Count];
 	CListViewCtrl m_List;
+	CImageListManaged m_IconImages;	// the icons at the preview size (the list shares it: LVS_SHAREIMAGELISTS)
 	int m_SortColumn{ -1 };
 	bool m_SortAscending{ true };
 };

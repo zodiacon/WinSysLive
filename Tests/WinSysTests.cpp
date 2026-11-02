@@ -417,6 +417,20 @@ TEST(PEFile_AppResources) {
 		CHECK(text.find("assembly") != std::string::npos);
 	}
 	CHECK(std::wstring(PEFile::ResourceTypeName(24)) == L"Manifest");
+	// each icon group's icons are there, as RT_ICON resources of the sizes the group says
+	for (auto& group : resources) {
+		if (group.TypeId != 14)
+			continue;
+		auto icons = pe->GetIconGroup(group);
+		CHECK(!icons.empty());
+		for (auto& icon : icons) {
+			CHECK(icon.Width >= 16 && icon.Width <= 256);
+			auto found = pe->FindIcon(resources, icon.IconId, group.Language);
+			CHECK(found.has_value());
+			if (found)
+				CHECK_EQ(found->Size, icon.Size);
+		}
+	}
 	CHECK(!pe->GetDotNet().has_value());
 }
 

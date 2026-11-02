@@ -74,6 +74,7 @@ public:
 		COMMAND_ID_HANDLER(ID_SERVICE_INSTALL, OnInstall)
 		COMMAND_ID_HANDLER(ID_SERVICE_DELETE, OnDelete)
 		COMMAND_ID_HANDLER(ID_SERVICE_GOTOKMODULE, OnGoToKernelModule)
+		COMMAND_ID_HANDLER(ID_DRIVER_IMAGE, OnImageDetails)
 		COMMAND_RANGE_HANDLER(ID_SERVICE_START_AUTO, ID_SERVICE_START_DISABLED, OnStartType)
 		COMMAND_ID_HANDLER(ID_SERVICE_START_BOOT, OnStartType)
 		COMMAND_ID_HANDLER(ID_SERVICE_START_SYSTEM, OnStartType)
@@ -130,6 +131,7 @@ private:
 	LRESULT OnInstall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDelete(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToKernelModule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnImageDetails(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// a driver service's image as a Win32 path (WinSys KernelModules::DriverImagePath); empty if its configuration can't be read
 	std::wstring DriverPath(ServiceItem& item) const;
 	LRESULT OnStartType(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

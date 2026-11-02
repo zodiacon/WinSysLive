@@ -290,6 +290,17 @@ LRESULT CWindowStationsDlg::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM l
 	menu.AppendMenu(MF_STRING, ID_WINDOW_GOTOPROCESS, L"&Go to Process");
 	menu.AppendMenu(MF_STRING, ID_WINDOW_BRINGTOFRONT, L"&Bring to Front");
 	menu.AppendMenu(MF_SEPARATOR);
+	// not the app's own windows: hiding or closing them from here would leave it without them
+	auto w = GetSelectedWindow();
+	bool own = w->ProcessId == ::GetCurrentProcessId();
+	bool visible = ::IsWindowVisible(w->Handle), minimized = ::IsIconic(w->Handle), maximized = ::IsZoomed(w->Handle);
+	menu.AppendMenu(MF_STRING | (visible ? MF_GRAYED : 0), ID_WINDOW_SHOW, L"&Show");
+	menu.AppendMenu(MF_STRING | (!visible || own ? MF_GRAYED : 0), ID_WINDOW_HIDE, L"&Hide");
+	menu.AppendMenu(MF_STRING | (minimized ? MF_GRAYED : 0), ID_WINDOW_MINIMIZE, L"Mi&nimize");
+	menu.AppendMenu(MF_STRING | (maximized ? MF_GRAYED : 0), ID_WINDOW_MAXIMIZE, L"Ma&ximize");
+	menu.AppendMenu(MF_STRING | (!minimized && !maximized ? MF_GRAYED : 0), ID_WINDOW_RESTORE, L"&Restore");
+	menu.AppendMenu(MF_STRING | (own ? MF_GRAYED : 0), ID_WINDOW_CLOSE, L"C&lose...");
+	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, IDC_WS_COPY, L"&Copy");
 	menu.SetMenuDefaultItem(ID_WINDOW_GOTOPROCESS);
 	menu.TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd);
@@ -309,6 +320,51 @@ LRESULT CWindowStationsDlg::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HW
 LRESULT CWindowStationsDlg::OnBringToFront(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	if (auto w = GetSelectedWindow(); w && !WinSys::ProcessWindows::BringToFront(w->Handle))
 		SetDlgItemText(IDC_WS_STATUS, (L"Bring to Front failed: " + WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
+	return 0;
+}
+
+LRESULT CWindowStationsDlg::OnWindowAction(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto w = GetSelectedWindow();
+	if (!w || !::IsWindow(w->Handle))
+		return 0;
+	auto hWnd = w->Handle;
+	bool own = w->ProcessId == ::GetCurrentProcessId();
+	if ((id == ID_WINDOW_HIDE || id == ID_WINDOW_CLOSE) && own)
+		return 0;
+	BOOL ok = TRUE;
+	switch (id) {
+		case ID_WINDOW_SHOW: ok = ::ShowWindowAsync(hWnd, SW_SHOW); break;
+		case ID_WINDOW_HIDE:
+			// a hidden window has no taskbar button: it comes back from here (Visible Only off, Show)
+			ok = ::ShowWindowAsync(hWnd, SW_HIDE);
+			break;
+		case ID_WINDOW_MINIMIZE: ok = ::ShowWindowAsync(hWnd, SW_MINIMIZE); break;
+		case ID_WINDOW_MAXIMIZE: ok = ::ShowWindowAsync(hWnd, SW_MAXIMIZE); break;
+		case ID_WINDOW_RESTORE: ok = ::ShowWindowAsync(hWnd, SW_RESTORE); break;
+		case ID_WINDOW_CLOSE: {
+			auto title = w->Text.empty() ? std::format(L"({})", w->ClassName) : w->Text;
+			auto process = m_ProcessName ? m_ProcessName(w->ProcessId) : std::wstring();
+			if (AtlMessageBox(m_hWnd, std::format(L"Close the window \"{}\" of {} ({})?\n\nIt's asked to close (WM_CLOSE), as its close button "
+				L"would: it may ask to save its work, or refuse.", title, process.empty() ? L"?" : process, w->ProcessId).c_str(),
+				L"Window Stations and Desktops", MB_ICONQUESTION | MB_YESNO) != IDYES)
+				return 0;
+			ok = ::PostMessage(hWnd, WM_CLOSE, 0, 0);
+			break;
+		}
+	}
+	if (!ok) {
+		SetDlgItemText(IDC_WS_STATUS, (L"The window didn't take it: " + WinSys::Helpers::GetErrorText(::GetLastError())).c_str());
+		return 0;
+	}
+	// the new state, once the window had a moment to act; the same window selected again
+	::Sleep(200);
+	Load();
+	for (int i = 0; i < m_List.GetItemCount(); i++)
+		if (m_Windows[m_List.GetItemData(i)].Handle == hWnd) {
+			m_List.SetItemState(i, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+			m_List.EnsureVisible(i, FALSE);
+			break;
+		}
 	return 0;
 }
 

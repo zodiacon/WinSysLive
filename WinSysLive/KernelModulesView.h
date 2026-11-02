@@ -73,6 +73,7 @@ public:
 		COMMAND_ID_HANDLER(ID_KMODULE_PROPERTIES, OnProperties)
 		COMMAND_ID_HANDLER(ID_KMODULE_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_KMODULE_GOTODRIVER, OnGoToDriver)
+		COMMAND_ID_HANDLER(ID_KMODULE_IMAGE, OnImageDetails)
 		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_SUBMIT, OnVirusTotalCommand)
@@ -117,6 +118,7 @@ private:
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnImageDetails(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// true if a module was loaded
 	bool Merge(std::vector<WinSys::KernelModule> current);

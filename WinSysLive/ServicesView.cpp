@@ -2,6 +2,7 @@
 #include <DpiHelper.h>
 #include "resource.h"
 #include "ServicesView.h"
+#include "PEFileDlg.h"
 #include "Highlight.h"
 #include "ServiceSheet.h"
 #include "ServiceInstallDlg.h"
@@ -549,6 +550,9 @@ bool CServicesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 				popup.DeleteMenu(i, MF_BYPOSITION);
 				popup.InsertMenu(i, MF_BYPOSITION | MF_STRING | (state == ServiceState::Running ? 0 : MF_GRAYED), ID_SERVICE_GOTOKMODULE,
 					L"Go to &Kernel Module");
+				// the driver's file as a PE image, loaded or not
+				popup.InsertMenu(i + 1, MF_BYPOSITION | MF_STRING | (DriverPath(item).empty() ? MF_GRAYED : 0), ID_DRIVER_IMAGE,
+					L"&Image Details...");
 				break;
 			}
 	}
@@ -630,6 +634,16 @@ bool CServicesView::ShowDriver(std::wstring const& path) {
 		m_List.EnsureVisible(selected, FALSE);
 	m_List.SetFocus();
 	return true;
+}
+
+LRESULT CServicesView::OnImageDetails(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto item = GetSelectedService()) {
+		if (auto path = DriverPath(*item); !path.empty()) {
+			CPEFileDlg dlg(path);
+			dlg.DoModal(m_hWnd);
+		}
+	}
+	return 0;
 }
 
 LRESULT CServicesView::OnGoToKernelModule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

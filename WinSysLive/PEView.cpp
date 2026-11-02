@@ -51,9 +51,11 @@ void CPEView::Init(HWND hDlg, std::wstring path) {
 	m_Path = std::move(path);
 	m_List.Attach(m_Dlg.GetDlgItem(IDC_PE_LIST));
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
+	// the Icons view's image list is ours
+	m_List.ModifyStyle(0, LVS_SHAREIMAGELISTS);
 	ListViewHelper::EnableColumnDpiScaling(m_List);
 	CComboBox view(m_Dlg.GetDlgItem(IDC_PE_VIEW));
-	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports", L"Debug", L"Resources", L"Version", L"Manifest", L".NET" })
+	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports", L"Debug", L"Resources", L"Icons", L"Version", L"Manifest", L".NET" })
 		view.AddString(name);
 	view.SetCurSel(0);
 
@@ -182,6 +184,34 @@ void CPEView::BuildMoreTables() {
 		res.Keys.push_back({ 0, 0, r.Language, r.Size, r.Rva, r.CodePage });
 	}
 
+	// each icon group's icons, drawn at the preview size (a small one stretched: its own size is in its row)
+	auto& icons = m_Tables[(int)View::Icons];
+	icons.Columns = { { L"Group", 120 }, { L"Size", 90 }, { L"Colors", 90 }, { L"Bytes", 80 }, { L"Icon ID", 70 }, { L"Language", 80 } };
+	icons.Numeric = { false, true, true, true, true, true };
+	auto preview = ::MulDiv(48, ::GetDpiForWindow(m_Dlg), 96);
+	m_IconImages.Create(preview, preview, ILC_COLOR32 | ILC_MASK, 16, 16);
+	for (auto& group : resources) {
+		if (group.TypeId != 14)
+			continue;
+		auto groupName = group.NameId ? std::format(L"#{}", group.NameId) : group.Name;
+		for (auto& e : m_File->GetIconGroup(group)) {
+			int image = -1;
+			if (auto icon = m_File->FindIcon(resources, e.IconId, group.Language)) {
+				auto data = m_File->GetResourceData(*icon);
+				if (!data.empty())
+					if (auto hIcon = ::CreateIconFromResourceEx(data.data(), (DWORD)data.size(), TRUE, 0x00030000, e.Width, e.Height, LR_DEFAULTCOLOR)) {
+						image = m_IconImages.AddIcon(hIcon);
+						::DestroyIcon(hIcon);
+					}
+			}
+			auto colors = e.BitCount ? std::format(L"{}-bit", e.BitCount) : e.ColorCount ? std::format(L"{} colors", e.ColorCount) : std::wstring(L"");
+			icons.Rows.push_back({ groupName, std::format(L"{} \x00D7 {}", e.Width, e.Height), colors, std::to_wstring(e.Size),
+				std::to_wstring(e.IconId), std::format(L"0x{:04X}", group.Language) });
+			icons.Keys.push_back({ 0, (uint64_t)e.Width * 1000 + e.Height, e.BitCount, e.Size, e.IconId, group.Language });
+			icons.Images.push_back(image);
+		}
+	}
+
 	auto& version = m_Tables[(int)View::Version];
 	version.Columns = { { L"Field", 170 }, { L"Value", 470 } };
 	if (auto v = FileVersion::ReadDetails(m_Path)) {
@@ -266,9 +296,15 @@ void CPEView::ShowView() {
 			return m_SortAscending ? result < 0 : result > 0;
 			});
 	}
+	// the Icons view's previews, as the rows' images; none for the other views
+	bool images = !table.Images.empty();
+	m_List.SetImageList(images ? m_IconImages.m_hImageList : nullptr, LVSIL_SMALL);
 	for (int row = 0; row < (int)order.size(); row++) {
 		auto& cells = table.Rows[order[row]];
-		m_List.InsertItem(row, cells[0].c_str());
+		if (images)
+			m_List.InsertItem(LVIF_TEXT | LVIF_IMAGE, row, cells[0].c_str(), 0, 0, table.Images[order[row]], 0);
+		else
+			m_List.InsertItem(row, cells[0].c_str());
 		for (int c = 1; c < (int)cells.size(); c++)
 			m_List.SetItemText(row, c, cells[c].c_str());
 	}
@@ -279,7 +315,7 @@ void CPEView::ShowView() {
 		status = m_Path.empty() ? L"No image file" : L"Can't read the image: " + Helpers::GetErrorText(m_Error);
 	else if (table.Rows.empty())
 		status = view == (int)View::Exports ? L"No exports" : view == (int)View::Imports ? L"No imports" : view == (int)View::Debug
-			? L"No debug directory" : view == (int)View::Resources ? L"No resources" : view == (int)View::Version ? L"No version resource"
+			? L"No debug directory" : view == (int)View::Resources ? L"No resources" : view == (int)View::Icons ? L"No icons" : view == (int)View::Version ? L"No version resource"
 			: view == (int)View::Manifest ? L"No manifest" : view == (int)View::DotNet ? L"Not a .NET image (a .NET Core app's exe is a native host: its DLL is the managed image)" : L"None";
 	else
 		status = std::format(L"{} rows", table.Rows.size());
