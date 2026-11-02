@@ -42,6 +42,15 @@
     <ClCompile Include="SiloTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="FirewallTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="PowerTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessHistoryTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="WinSysTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
@@ -58,6 +67,9 @@
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\VersionInfo.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinSysLive\ProcessHistory.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp">

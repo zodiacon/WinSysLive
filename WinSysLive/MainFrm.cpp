@@ -32,6 +32,7 @@
 #include "NetworkSharesDlg.h"
 #include "PipesDlg.h"
 #include "PackagesDlg.h"
+#include "FirewallDlg.h"
 #include "ServiceInstallDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
@@ -55,6 +56,7 @@
 #include <WinSys/LogonTask.h>
 #include "SettingsTransfer.h"
 #include "Recorders.h"
+#include "NetworkTracking.h"
 #include <DpiHelper.h>
 
 namespace {
@@ -258,6 +260,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	// initial snapshot, so views have data when created; CPU usage is only valid from the next update
 	m_ProcessManager.Update();
+	RecordHistory();
 	UpdateStatusBar();
 	// before the views, so an open History tab shows the frame's recorder from the start
 	if (AppSettings::Get().RecordFromStartup())
@@ -931,7 +934,8 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_OPTIONS_ALERTS, IDI_ALERT },
 		{ ID_SYSTEM_POWERREQUESTS, IDI_CAPABILITY },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
-		{ ID_SYSTEM_PACKAGES, IDI_MODULES },
+		{ ID_SYSTEM_PACKAGES, IDI_PACKAGE },
+		{ ID_SYSTEM_FIREWALL, IDI_FIREWALL },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
 		{ ID_FILE_SNAPSHOTS, IDI_SNAPSHOT },
@@ -1127,6 +1131,7 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& b
 
 void CMainFrame::Refresh() {
 	m_ProcessManager.Update();
+	RecordHistory();
 	// the History recorder takes the changes and the trackers forget the exited processes before the views look
 	Recorders::OnRefresh(m_ProcessManager);
 	for (auto& v : m_Views)
@@ -1139,6 +1144,34 @@ void CMainFrame::Refresh() {
 		cpu = std::clamp(100.0 - idle->CPU / 10000.0, 0.0, 100.0);
 	m_TrayIcons.Refresh(cpu);
 	ShowAlerts(m_Alerts.Evaluate(m_ProcessManager, cpu));
+}
+
+void CMainFrame::RecordHistory() {
+	static const int processors = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+	static const int64_t frequency = [] { LARGE_INTEGER f; ::QueryPerformanceFrequency(&f); return f.QuadPart; }();
+	LARGE_INTEGER now;
+	::QueryPerformanceCounter(&now);
+	// network bytes only while someone runs the tracker (it isn't started for this)
+	auto network = NetworkTracking::Current();
+	for (auto& p : m_ProcessManager.GetProcesses()) {
+		auto info = p->NativeInfo;
+		ProcessCounters counters;
+		counters.Time = now.QuadPart;
+		counters.KernelTime = info->KernelTime.QuadPart;
+		counters.UserTime = info->UserTime.QuadPart;
+		counters.Read = info->ReadTransferCount.QuadPart;
+		counters.Write = info->WriteTransferCount.QuadPart;
+		counters.Other = info->OtherTransferCount.QuadPart;
+		counters.Private = (int64_t)info->PrivatePageCount;
+		counters.WorkingSet = (int64_t)info->WorkingSetSize;
+		if (network) {
+			auto net = network->GetCounters(p->Id);
+			counters.HasNetwork = true;
+			counters.Received = net.Received;
+			counters.Sent = net.Sent;
+		}
+		p->GetHistory().Push(counters, processors, frequency);
+	}
 }
 
 void CMainFrame::UpdateStatusBar() {
@@ -1504,6 +1537,23 @@ LRESULT CMainFrame::OnComputerCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 
 LRESULT CMainFrame::OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CPipesDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnFirewall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the processes by image path (lowercase), from the current snapshot (on this thread, which owns it)
+	CFirewallDlg dlg([this] {
+		std::unordered_map<std::wstring, std::vector<uint32_t>> running;
+		for (auto& p : m_ProcessManager.GetProcesses()) {
+			auto path = p->GetImagePath();
+			if (path.empty())
+				continue;
+			::CharLowerBuff(path.data(), (DWORD)path.size());
+			running[path].push_back(p->Id);
+		}
+		return running;
+		}, [this](uint32_t pid) { GoToProcess(pid); });
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

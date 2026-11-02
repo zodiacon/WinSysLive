@@ -10,4 +10,6 @@
 namespace NetworkTracking {
 	// nullptr if it can't start, with the error from GetLastError() (ERROR_ACCESS_DENIED when not elevated)
 	std::shared_ptr<WinSys::ProcessNetworkTracker> Acquire();
+	// the tracker if one runs (someone holds it); nullptr otherwise, without starting one
+	std::shared_ptr<WinSys::ProcessNetworkTracker> Current();
 }

@@ -70,7 +70,23 @@ LRESULT CPerfView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		m_Pages.push_back(std::move(page));
 		m_Nav.AddItem(std::format(L"NPU {}", i), PerfColors::Npu, CPerfNav::GraphType::Percent);
 	}
+	// Power, last, for a machine with a battery or an ACPI thermal zone (a laptop, mostly); the zones as they are now
+	m_HasBattery = m_Battery.Open() > 0;
+	m_HasThermal = m_Thermal.Open();
+	if (m_HasBattery || m_HasThermal) {
+		std::vector<std::wstring> zones;
+		if (m_HasThermal)
+			for (auto& z : m_Thermal.Read())
+				zones.push_back(z.Name);
+		auto page = std::make_unique<CPerfPowerPage>(m_Battery.GetCount(), std::move(zones));
+		page->CreatePage(m_hWnd);
+		page->SetTimeSpan(m_TimeSpanText, m_Interval);
+		m_Pages.push_back(std::move(page));
+		m_Nav.AddItem(L"Power", m_HasBattery ? PerfColors::Battery : PerfColors::Temperature, CPerfNav::GraphType::Percent);
+		m_HasPower = true;
+	}
 	SampleGpus(sample);
+	SamplePower(sample);
 	for (auto& page : m_Pages)
 		page->Update(sample, false);
 	UpdateNav(sample);
@@ -117,6 +133,7 @@ void CPerfView::OnRefresh(bool active) {
 	SampleNetwork(sample);
 	SampleDisks(sample);
 	SampleGpus(sample);
+	SamplePower(sample);
 	for (int i = 0; i < (int)m_Pages.size(); i++)
 		m_Pages[i]->Update(sample, active && i == m_Page);
 	UpdateNav(sample);
@@ -281,6 +298,24 @@ int CPerfView::FirstNpuItem() const {
 	return FirstGpuItem() + (int)WinSys::GpuInfo::GetAdapters().size();
 }
 
+int CPerfView::PowerItem() const {
+	return m_HasPower ? FirstNpuItem() + (int)WinSys::GpuInfo::GetAdapters(WinSys::GpuAdapterKind::Npu).size() : -1;
+}
+
+void CPerfView::SamplePower(PerfSample& sample) {
+	if (!m_HasPower)
+		return;
+	if (m_HasBattery) {
+		m_Batteries = m_Battery.Read();
+		sample.Batteries = &m_Batteries;
+		sample.Power = WinSys::BatteryMonitor::GetSystemState();
+	}
+	if (m_HasThermal) {
+		m_Zones = m_Thermal.Read();
+		sample.ThermalZones = &m_Zones;
+	}
+}
+
 void CPerfView::SyncDiskPages() {
 	auto& volumes = m_Disks.GetVolumes();
 	auto exists = [&](wchar_t letter) {
@@ -375,6 +410,11 @@ void CPerfView::UpdateNav(PerfSample const& sample) {
 			m_Nav.SetItemValue(FirstNpuItem() + (int)i, std::format(L"{:.0f}%  {}", usage, adapters[i].Name));
 		}
 	}
+	if (m_HasPower) {
+		if (auto value = CPerfPowerPage::NavValue(sample))
+			m_Nav.PushItemSample(PowerItem(), *value);
+		m_Nav.SetItemValue(PowerItem(), CPerfPowerPage::NavText(sample));
+	}
 	if (sample.HasCpu || sample.HasMemory) {
 		m_Nav.SetItemValue(SummaryItem, std::format(L"CPU {:.0f}%    Memory {:.0f}%", sample.CpuPercent(), sample.MemoryPercent()));
 	}
@@ -416,6 +456,8 @@ std::wstring CPerfView::PageKey(int index) const {
 		return std::wstring(L"Disk:") + m_DiskLetters[index - FirstDiskItem];
 	if (index < FirstNpuItem())
 		return L"GPU:" + std::to_wstring(index - FirstGpuItem());
+	if (index == PowerItem())
+		return L"Power";
 	return L"NPU:" + std::to_wstring(index - FirstNpuItem());
 }
 

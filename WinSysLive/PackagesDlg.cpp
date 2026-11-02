@@ -17,8 +17,8 @@ namespace {
 }
 
 LRESULT CPackagesDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	SetIcon(AtlLoadIconImage(IDI_MODULES, LR_SHARED, ::GetSystemMetrics(SM_CXICON), ::GetSystemMetrics(SM_CYICON)), TRUE);
-	SetIcon(AtlLoadIconImage(IDI_MODULES, LR_SHARED, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON)), FALSE);
+	SetIcon(AtlLoadIconImage(IDI_PACKAGE, LR_SHARED, ::GetSystemMetrics(SM_CXICON), ::GetSystemMetrics(SM_CYICON)), TRUE);
+	SetIcon(AtlLoadIconImage(IDI_PACKAGE, LR_SHARED, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON)), FALSE);
 
 	auto dpi = ::GetDpiForWindow(m_hWnd);
 	auto width = [&](int w) { return ::MulDiv(w, dpi, 96); };

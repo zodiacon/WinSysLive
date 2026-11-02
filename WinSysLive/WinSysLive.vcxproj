@@ -406,6 +406,7 @@
     <ClCompile Include="ColumnsTreeDlg.cpp" />
     <ClCompile Include="ProcessSheet.cpp" />
     <ClCompile Include="NetworkTracking.cpp" />
+    <ClCompile Include="ProcessHistory.cpp" />
     <ClCompile Include="Recorders.cpp" />
     <ClCompile Include="HistoryRecorder.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
@@ -457,6 +458,7 @@
     <ClCompile Include="NetworkSharesDlg.cpp" />
     <ClCompile Include="PipesDlg.cpp" />
     <ClCompile Include="PackagesDlg.cpp" />
+    <ClCompile Include="FirewallDlg.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
@@ -526,6 +528,7 @@
     <ClInclude Include="ColumnsTreeDlg.h" />
     <ClInclude Include="ProcessSheet.h" />
     <ClInclude Include="NetworkTracking.h" />
+    <ClInclude Include="ProcessHistory.h" />
     <ClInclude Include="Recorders.h" />
     <ClInclude Include="HistoryRecorder.h" />
     <ClInclude Include="ProcessPages.h" />
@@ -576,6 +579,7 @@
     <ClInclude Include="NetworkSharesDlg.h" />
     <ClInclude Include="PipesDlg.h" />
     <ClInclude Include="PackagesDlg.h" />
+    <ClInclude Include="FirewallDlg.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
@@ -693,6 +697,8 @@
     <Image Include="res\stack.ico" />
     <Image Include="res\heap.ico" />
     <Image Include="res\DLL-unloaded.ico" />
+    <Image Include="res\Firewall.ico" />
+    <Image Include="res\package.ico" />
     <Image Include="res\thread.ico" />
     <Image Include="res\timer.ico" />
     <Image Include="res\token.ico" />

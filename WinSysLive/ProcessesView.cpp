@@ -2127,6 +2127,10 @@ LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	props.ShowUnnamedHandles = AppSettings::Get().ShowUnnamedHandles();
 	props.UpdateInterval = AppSettings::Get().UpdateInterval();
 	props.Frame = Frame()->GetHwnd();
+	// the graphs start with what the frame recorded of the process
+	auto& history = p.GetHistory();
+	props.History.assign(history.GetSamples().begin(), history.GetSamples().end());
+	props.HistoryLast = history.GetLast();
 	// the parent, if it's still the process that created this one
 	if (auto parent = Frame()->GetProcessManager().GetProcessById(p.ParentId); parent && parent->Key.Created <= p.Key.Created)
 		props.ParentName = parent->GetImageName();

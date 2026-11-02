@@ -894,3 +894,212 @@ void CPerfGpuPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
 		graph->SetExpectedInterval(interval);
 	}
 }
+
+//
+// Power
+//
+
+namespace {
+	void FormatCelsius(float value, wchar_t* buffer, size_t cch) {
+		swprintf_s(buffer, cch, L"%.1f \u00B0C", value);
+	}
+
+	void FormatWatts(float value, wchar_t* buffer, size_t cch) {
+		swprintf_s(buffer, cch, L"%.1f W", value);
+	}
+
+	std::wstring Duration(uint32_t seconds) {
+		return std::format(L"{}:{:02}", seconds / 3600, seconds / 60 % 60);
+	}
+
+	// "TZ00" for "\_TZ.TZ00"
+	std::wstring ZoneName(std::wstring const& name) {
+		auto dot = name.find_last_of(L".\\");
+		return dot == std::wstring::npos ? name : name.substr(dot + 1);
+	}
+}
+
+std::vector<CGraphControl*> CPerfPowerPage::Graphs() {
+	std::vector<CGraphControl*> graphs;
+	if (m_BatteryCount) {
+		graphs.push_back(&m_Charge);
+		graphs.push_back(&m_Rate);
+	}
+	if (!m_Zones.empty())
+		graphs.push_back(&m_Temperature);
+	return graphs;
+}
+
+void CPerfPowerPage::CreateGraphs() {
+	auto style = GCS_GRID | GCS_SCROLLGRID | GCS_AXISLABELS | GCS_TOOLTIP;
+	if (m_BatteryCount) {
+		m_Charge.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, style | GCS_FILL | (m_BatteryCount > 1 ? GCS_LEGEND : GCS_VALUEOVERLAY));
+		for (size_t i = 0; i < m_BatteryCount; i++)
+			m_Charge.AddSeries(m_BatteryCount > 1 ? std::format(L"Battery {}", i + 1) : std::wstring(L"Charge"), SeriesStyle{ PerfColors::Battery, PerfColors::Battery });
+		m_Charge.SetTitle(L"Battery Charge");
+		m_Charge.SetRange(0, 100);
+		m_Charge.SetValueFormatter(Format::Percent);
+		m_Charge.SetHistoryLength(PerfHistoryLength);
+
+		m_Rate.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, style | GCS_FILL | GCS_LEGEND);
+		m_Rate.AddSeries(L"Charging", SeriesStyle{ PerfColors::Charging, PerfColors::Charging });
+		m_Rate.AddSeries(L"Discharging", SeriesStyle{ PerfColors::Discharging, PerfColors::Discharging });
+		m_Rate.SetTitle(L"Battery Power");
+		m_Rate.SetRange(0, 20);
+		m_Rate.SetAutoScale(true);
+		m_Rate.SetValueFormatter(FormatWatts);
+		m_Rate.SetHistoryLength(PerfHistoryLength);
+	}
+	if (!m_Zones.empty()) {
+		m_Temperature.Create(m_hWnd, 0, 0, 0, 0, WS_CHILD | WS_VISIBLE, style | (m_Zones.size() > 1 ? GCS_LEGEND : GCS_VALUEOVERLAY));
+		for (auto& zone : m_Zones)
+			m_Temperature.AddSeries(ZoneName(zone), SeriesStyle{ PerfColors::Temperature, PerfColors::Temperature });
+		m_Temperature.SetTitle(m_Zones.size() > 1 ? L"Thermal Zones" : L"Temperature");
+		m_Temperature.SetRange(0, 100);
+		m_Temperature.SetAutoScale(true);
+		m_Temperature.SetValueFormatter(FormatCelsius);
+		m_Temperature.SetHistoryLength(PerfHistoryLength);
+	}
+	// a line per battery, the system's, the zones'
+	m_Lines.resize(m_BatteryCount + (m_BatteryCount ? 1 : 0) + (m_Zones.empty() ? 0 : 1));
+}
+
+void CPerfPowerPage::LayoutGraphs(CRect const& rc, int gap) {
+	auto graphs = Graphs();
+	if (graphs.empty())
+		return;
+	int count = (int)graphs.size();
+	int height = std::max(0, rc.Height() - gap * (count - 1)) / count;
+	int y = rc.top;
+	for (auto graph : graphs) {
+		graph->MoveWindow(rc.left, y, rc.Width(), height);
+		y += height + gap;
+	}
+}
+
+void CPerfPowerPage::Sample(PerfSample const& sample) {
+	size_t line = 0;
+	if (m_BatteryCount) {
+		std::vector<float> charge(m_BatteryCount, MissingSample);
+		float charging = MissingSample, discharging = MissingSample;
+		auto batteries = sample.Batteries;
+		for (size_t i = 0; batteries && i < batteries->size() && i < m_BatteryCount; i++) {
+			auto& b = (*batteries)[i];
+			std::wstring text = m_BatteryCount > 1 ? std::format(L"Battery {}: ", i + 1) : L"Battery: ";
+			if (!b.HasReading) {
+				m_Lines[line++] = text + L"not present";
+				continue;
+			}
+			auto& r = b.Reading;
+			if (auto percent = b.ChargePercent()) {
+				charge[i] = *percent;
+				text += std::format(L"{:.0f}%, ", *percent);
+			}
+			text += WinSys::BatteryMonitor::StateText(r.PowerState);
+			if (r.Rate) {
+				// the rate is negative while discharging; the two series add the batteries up
+				auto watts = *r.Rate / 1000.0f;
+				if (watts >= 0)
+					charging = (charging == MissingSample ? 0 : charging) + watts;
+				else
+					discharging = (discharging == MissingSample ? 0 : discharging) - watts;
+				if (*r.Rate)
+					text += std::format(L", {:+.1f} W", watts);
+			}
+			if (r.Voltage)
+				text += std::format(L", {:.2f} V", *r.Voltage / 1000.0);
+			if (r.EstimatedSeconds && (r.PowerState & WinSys::BatteryReading::Discharging))
+				text += L", " + Duration(*r.EstimatedSeconds) + L" left";
+			if (r.TemperatureC)
+				text += std::format(L", {:.1f} \u00B0C", *r.TemperatureC);
+			auto unit = b.Relative ? L"" : L" mWh";
+			if (b.FullChargedCapacity)
+				text += std::format(L";  full {}{}", FormatHelper::FormatNumber(*b.FullChargedCapacity), unit);
+			if (b.DesignedCapacity)
+				text += std::format(L" of {}{} designed", FormatHelper::FormatNumber(*b.DesignedCapacity), unit);
+			if (auto health = b.HealthPercent())
+				text += std::format(L" ({:.0f}%)", *health);
+			if (b.CycleCount)
+				text += std::format(L", {} cycles", b.CycleCount);
+			if (!b.Chemistry.empty())
+				text += L", " + WinSys::BatteryMonitor::ChemistryText(b.Chemistry);
+			if (!b.Name.empty())
+				text += L";  " + b.Name + (b.Manufacturer.empty() ? L"" : L" (" + b.Manufacturer + L")");
+			m_Lines[line++] = std::move(text);
+		}
+		while (line < m_BatteryCount)
+			m_Lines[line++] = std::format(L"Battery {}: not present", line + 1);
+		m_Charge.PushSamples(charge.data(), (int)charge.size());
+		float rate[] = { charging, discharging };
+		m_Rate.PushSamples(rate, _countof(rate));
+
+		auto& power = sample.Power;
+		std::wstring system = L"Power source: ";
+		system += !power.OnAc ? L"unknown" : *power.OnAc ? L"AC" : L"battery";
+		if (power.Percent)
+			system += std::format(L"    All batteries: {}%", *power.Percent);
+		if (power.SecondsLeft && power.OnAc && !*power.OnAc)
+			system += L", " + Duration(*power.SecondsLeft) + L" left";
+		if (power.Saver)
+			system += L"    Battery saver on";
+		m_Lines[line++] = std::move(system);
+	}
+	if (!m_Zones.empty()) {
+		std::vector<float> temperatures(m_Zones.size(), MissingSample);
+		std::wstring text = L"Thermal zones:";
+		if (sample.ThermalZones)
+			for (auto& z : *sample.ThermalZones) {
+				auto it = std::ranges::find(m_Zones, z.Name);
+				if (it != m_Zones.end())
+					temperatures[it - m_Zones.begin()] = z.Celsius;
+				text += std::format(L"  {} {:.1f} \u00B0C", ZoneName(z.Name), z.Celsius);
+			}
+		m_Temperature.PushSamples(temperatures.data(), (int)temperatures.size());
+		m_Lines[line++] = std::move(text);
+	}
+}
+
+std::optional<float> CPerfPowerPage::NavValue(PerfSample const& sample) {
+	if (sample.Batteries)
+		for (auto& b : *sample.Batteries)
+			if (b.HasReading)
+				if (auto percent = b.ChargePercent())
+					return percent;
+	if (sample.Power.Percent)
+		return (float)*sample.Power.Percent;
+	std::optional<float> hottest;
+	if (sample.ThermalZones)
+		for (auto& z : *sample.ThermalZones)
+			if (!hottest || z.Celsius > *hottest)
+				hottest = z.Celsius;
+	return hottest;
+}
+
+std::wstring CPerfPowerPage::NavText(PerfSample const& sample) {
+	std::wstring text;
+	if (sample.Batteries && sample.Power.Percent) {
+		text = std::format(L"{}%", *sample.Power.Percent);
+		if (sample.Power.OnAc)
+			text += *sample.Power.OnAc ? L"  AC" : L"  Battery";
+	}
+	std::optional<float> hottest;
+	if (sample.ThermalZones)
+		for (auto& z : *sample.ThermalZones)
+			if (!hottest || z.Celsius > *hottest)
+				hottest = z.Celsius;
+	if (hottest)
+		text += std::format(L"{}{:.0f} \u00B0C", text.empty() ? L"" : L"  ", *hottest);
+	return text;
+}
+
+void CPerfPowerPage::ApplyTheme() {
+	for (auto graph : Graphs())
+		graph->SetTheme(m_Theme);
+}
+
+void CPerfPowerPage::ApplyTimeSpan(std::wstring const& text, UINT interval) {
+	for (auto graph : Graphs()) {
+		graph->SetTimeSpanText(text);
+		graph->SetExpectedInterval(interval);
+	}
+}

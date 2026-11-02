@@ -9,6 +9,7 @@
 #include "resource.h"
 #include "DpiLayout.h"
 #include <WinSys/Token.h>
+#include "ProcessHistory.h"
 
 namespace WinSys {
 	class ProcessNetworkTracker;
@@ -29,6 +30,9 @@ struct ProcessProperties {
 	std::wstring ThreadColumns, ModuleColumns, HandleColumns;
 	bool ShowUnnamedHandles{ true };
 	int UpdateInterval{ 1000 };
+	// the process's recent samples (the frame keeps them for every process), for the Performance page to start with
+	std::vector<ProcessHistorySample> History;
+	std::optional<ProcessCounters> HistoryLast;
 	HWND Frame{ nullptr };	// the main window, for the pages' requests (WM_SHOW_OBJECT_PATH); may be gone
 };
 

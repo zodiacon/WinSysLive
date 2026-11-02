@@ -8,6 +8,8 @@
 #include <WinSys/Disk.h>
 #include <WinSys/Gpu.h>
 #include <WinSys/MemoryLists.h>
+#include <WinSys/Battery.h>
+#include <WinSys/ThermalZones.h>
 #include <deque>
 
 // samples kept by the graphs
@@ -28,6 +30,10 @@ namespace PerfColors {
 	const COLORREF Gpu = RGB(196, 84, 168);
 	const COLORREF GpuShared = RGB(96, 118, 170);
 	const COLORREF Npu = RGB(70, 170, 120);
+	const COLORREF Battery = RGB(80, 170, 70);
+	const COLORREF Charging = RGB(80, 170, 70);
+	const COLORREF Discharging = RGB(220, 120, 60);
+	const COLORREF Temperature = RGB(214, 94, 94);
 }
 
 //
@@ -81,6 +87,12 @@ struct PerfSample {
 	// the NPUs, as the GPUs (WinSys::GpuAdapterKind::Npu)
 	std::vector<WinSys::GpuTracker::AdapterSample> const* Npus{ nullptr };
 	bool HasNpu{ false };
+
+	// the batteries (WinSys::BatteryMonitor, in its order) and the ACPI thermal zones (by name); owned by CPerfView and
+	// valid for the duration of the update; null when the machine has none
+	std::vector<WinSys::BatteryInfo> const* Batteries{ nullptr };
+	WinSys::SystemPowerState Power;	// GetSystemPowerStatus, with the batteries
+	std::vector<WinSys::ThermalZone> const* ThermalZones{ nullptr };
 
 	float CpuPercent() const {
 		return KernelCpu + UserCpu;
@@ -495,4 +507,38 @@ private:
 	GraphCtrl::SeriesId m_ActiveSeries{ GraphCtrl::InvalidSeries };
 	GraphCtrl::CCompositionBar m_Space;
 	wchar_t m_Letter;
+};
+
+//
+// Power: the batteries and the ACPI thermal zones, for a machine that has either (a laptop, mostly; added by CPerfView
+// only then). The batteries' charge (percent of the full charge) and their charging or discharging power (W), a graph
+// of each zone's temperature (and a battery's own, when it reports one); below, a line per battery (state, rate,
+// voltage, time left, capacity against its design, cycles, chemistry, name) and the system's (AC power, battery
+// saver), and the zones' temperatures. A battery that's gone or a value the driver doesn't report shows as a gap.
+// Written without a battery or a thermal zone to test on: what the drivers report varies by machine.
+//
+class CPerfPowerPage : public CPerfPage<CPerfPowerPage> {
+public:
+	DECLARE_WND_CLASS_EX(L"WinSysLivePerfPower", CS_HREDRAW | CS_VREDRAW, -1)
+
+	// the batteries' count and the zones' names, fixed when the page is made
+	CPerfPowerPage(size_t batteries, std::vector<std::wstring> zones) : m_BatteryCount(batteries), m_Zones(std::move(zones)) {}
+
+	void CreateGraphs();
+	void LayoutGraphs(CRect const& rc, int gap);
+	void Sample(PerfSample const& sample);
+	void ApplyTheme();
+	void ApplyTimeSpan(std::wstring const& text, UINT interval);
+
+	// the navigation list's text: the charge and state, else the hottest zone
+	static std::wstring NavText(PerfSample const& sample);
+	// the navigation list's graph value: the charge, else the hottest zone (Celsius, on a percent scale)
+	static std::optional<float> NavValue(PerfSample const& sample);
+
+private:
+	std::vector<GraphCtrl::CGraphControl*> Graphs();
+
+	size_t m_BatteryCount;
+	std::vector<std::wstring> m_Zones;
+	GraphCtrl::CGraphControl m_Charge, m_Rate, m_Temperature;
 };

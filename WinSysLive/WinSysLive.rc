@@ -193,6 +193,7 @@ BEGIN
         MENUITEM "Po&wer Requests...",          ID_SYSTEM_POWERREQUESTS
         MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
         MENUITEM "Installed P&ackages...",      ID_SYSTEM_PACKAGES
+        MENUITEM "Firewall R&ules...",          ID_SYSTEM_FIREWALL
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
@@ -501,6 +502,8 @@ IDI_NETWORK             ICON                    "res\\network.ico"
 IDI_STACK               ICON                    "res\\stack.ico"
 IDI_HEAP                ICON                    "res\\heap.ico"
 IDI_DLL_UNLOADED        ICON                    "res\\DLL-unloaded.ico"
+IDI_FIREWALL            ICON                    "res\\Firewall.ico"
+IDI_PACKAGE             ICON                    "res\\package.ico"
 
 IDI_DELETE              ICON                    "res\\delete.ico"
 
@@ -727,6 +730,23 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_PK_REFRESH,453,319,50,14
     PUSHBUTTON      "&Copy",IDC_PK_COPY,508,319,50,14
     PUSHBUTTON      "Close",IDCANCEL,563,319,50,14
+END
+
+IDD_FIREWALL DIALOGEX 0, 0, 640, 350
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Firewall Rules"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "",IDC_FWR_PROFILES,7,7,626,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    EDITTEXT        IDC_FWR_FILTER,7,20,418,13,ES_AUTOHSCROLL
+    CONTROL         "&Inbound",IDC_FWR_INBOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,433,22,50,10
+    CONTROL         "&Outbound",IDC_FWR_OUTBOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,487,22,55,10
+    CONTROL         "&Enabled Only",IDC_FWR_ENABLEDONLY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,546,22,87,10
+    CONTROL         "",IDC_FWR_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,38,626,285
+    LTEXT           "",IDC_FWR_STATUS,7,332,420,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_FWR_REFRESH,473,329,50,14
+    PUSHBUTTON      "&Copy",IDC_FWR_COPY,528,329,50,14
+    PUSHBUTTON      "Close",IDCANCEL,583,329,50,14
 END
 
 IDD_PIPES DIALOGEX 0, 0, 520, 320
@@ -2192,6 +2212,7 @@ BEGIN
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
     ID_OPTIONS_RECORDFROMSTARTUP 
                             "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
+    ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"
     ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
 END
 

@@ -883,6 +883,26 @@ LRESULT CProcPerformancePage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPA
 		m_NetworkError = ::GetLastError();
 	m_Network.Create(m_hWnd, !m_NetworkTracker ? L"Network Throughput (not available)" : L"Network Throughput");
 
+	// the process's recent history, which the frame keeps for every process, so the graphs don't start empty; pushed
+	// before the expected interval is set, as a burst of pushes isn't missed intervals; the rates go on from its last
+	// counters
+	static_assert(ProcessHistory::Capacity == PerfHistoryLength);
+	for (auto& s : m_Props.History) {
+		PerfSample cpu;
+		cpu.HasCpu = s.HasRates;
+		cpu.KernelCpu = s.KernelCpu;
+		cpu.UserCpu = s.UserCpu;
+		m_Cpu.Push(cpu);
+		float memory[] = { s.Private, s.WorkingSet };
+		m_Memory.PushSamples(memory, _countof(memory));
+		float io[] = { s.HasRates ? s.Read : MissingSample, s.HasRates ? s.Write : MissingSample, s.HasRates ? s.Other : MissingSample };
+		m_Io.PushSamples(io, _countof(io));
+		m_Network.Push(s.Received, s.Sent, s.HasRates && s.HasNetwork && m_NetworkTracker);
+	}
+	if (auto& last = m_Props.HistoryLast)
+		m_Prev = Counters{ last->Time, last->KernelTime, last->UserTime, last->Read, last->Write, last->Other,
+			last->HasNetwork ? last->Received : 0, last->HasNetwork ? last->Sent : 0 };
+
 	auto theme = WTLHelper::IsDarkMode() ? GraphTheme::Dark() : GraphTheme::Light();
 	auto timeSpan = TimeSpanText(m_Props.UpdateInterval);
 	for (CGraphControl* graph : { (CGraphControl*)&m_Cpu, &m_Memory, &m_Io, (CGraphControl*)&m_Network }) {

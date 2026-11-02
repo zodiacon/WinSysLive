@@ -184,7 +184,7 @@ separate window with its own taskbar button and stays open while you keep workin
 |---|---|
 | General | Image, command line, directories, parent, user, start time, architecture, mitigations (ASLR, CFG, CET, DEP); signature verification; Kill |
 | Statistics | CPU, memory, I/O, handles and GUI objects counters, with their peaks and the change since the last update |
-| Performance | CPU, memory, I/O and network graphs of the process since the sheet opened |
+| Performance | CPU, memory, I/O and network graphs of the process, starting with its last two minutes (WinSysLive records them for every process; network traffic only while it was being tracked) |
 | GPU | Per adapter, a graph per engine (3D, Copy, Video Decode...) and the dedicated and shared memory (on systems with a GPU) |
 | Threads, Modules, Handles | As in the lower pane |
 | Unloaded | The DLLs the process unloaded lately (the last 64 the loader keeps), newest first: name, base address, size, version, link time stamp and checksum. For a 32-bit process, only its 64-bit DLLs |
@@ -237,6 +237,7 @@ their history while hidden.
 - **I/O:** the system's read, write and other transfer rates.
 - **Disk (one per drive):** read and write rates, active time and response time.
 - **GPU and NPU (one per adapter):** a graph per engine, and dedicated and shared memory.
+- **Power** (on a machine with a battery or ACPI thermal zones, such as a laptop): the batteries' charge and charging or discharging power, the thermal zones' temperatures, and below them each battery's state, rate, voltage, time left, capacity against its design (its wear), cycles and chemistry, and the power source.
 
 ![The CPU page with a graph per processor](images/performance-cpu.png)
 
@@ -451,6 +452,7 @@ Details...** show an executable image's contents. A combo box chooses the view:
 | Window Stations and Desktops... | Sessions, window stations and desktops, and a desktop's top-level windows; Show, Hide, Minimize, Maximize, Restore, Bring to Front, Close..., and Child Windows and Properties (the window's tree of child windows with their styles) |
 | Power Requests... | What keeps the display or the system awake (power requests by process, service or driver, with their reasons), the wake timers and the system timer resolution (elevated), as `powercfg /requests` |
 | Pipes and Mailslots... | Every named pipe and mailslot |
+| Firewall Rules... | Windows Defender Firewall's profiles and rules: direction, action, enabled, profiles, protocol, ports, addresses, program, service; Enable or Disable rules (elevated), Open File Location, Go to Process |
 | Installed Packages... | The installed MSIX/AppX packages: name, version, architecture, kind (main, framework, resource...), publisher, signature, status, install date, running processes and location; every user's with All Users (elevated). Launch (one of the package's apps, from a submenu when it has several), Open Folder, Go to Process |
 | RAM... | Physical memory by use (process private, mapped files, page tables, pools...) and by list, as RAMMap (elevated; takes a few seconds) |
 | Memory Lists | Empty Working Sets, Flush Modified List, Purge Standby List, Purge Low-Priority Standby List (elevated) |

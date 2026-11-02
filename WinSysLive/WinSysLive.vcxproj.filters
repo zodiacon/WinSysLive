@@ -249,6 +249,9 @@
     <ClCompile Include="NetworkTracking.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="ProcessHistory.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="Recorders.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -343,6 +346,9 @@
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="PackagesDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="FirewallDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="RamDlg.cpp">
@@ -608,6 +614,9 @@
     <ClInclude Include="NetworkTracking.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="ProcessHistory.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="Recorders.h">
       <Filter>Helpers</Filter>
     </ClInclude>
@@ -699,6 +708,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="PackagesDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="FirewallDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="RamDlg.h">
@@ -864,6 +876,12 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\DLL-unloaded.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Firewall.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\package.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\network.ico">

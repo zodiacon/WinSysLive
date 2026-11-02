@@ -79,6 +79,9 @@
     <ClCompile Include="HistoryTests.cpp" />
     <ClCompile Include="UnloadedModuleTests.cpp" />
     <ClCompile Include="SiloTests.cpp" />
+    <ClCompile Include="FirewallTests.cpp" />
+    <ClCompile Include="PowerTests.cpp" />
+    <ClCompile Include="ProcessHistoryTests.cpp" />
     <ClCompile Include="WinSysTests.cpp" />
     <!-- the app's (its #include "pch.h" takes this project's precompiled header, which is the app's pch) -->
     <ClCompile Include="..\WinSysLive\AlertRules.cpp" />
@@ -87,6 +90,7 @@
     <ClCompile Include="..\WinSysLive\HistoryRecorder.cpp" />
     <ClCompile Include="..\WinSysLive\ProcessInfoEx.cpp" />
     <ClCompile Include="..\WinSysLive\VersionInfo.cpp" />
+    <ClCompile Include="..\WinSysLive\ProcessHistory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

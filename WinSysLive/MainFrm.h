@@ -127,6 +127,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_SEARCH, OnCommandPalette)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PIPES, OnPipes)
 		COMMAND_ID_HANDLER(ID_SYSTEM_PACKAGES, OnPackages)
+		COMMAND_ID_HANDLER(ID_SYSTEM_FIREWALL, OnFirewall)
 		COMMAND_ID_HANDLER(ID_SYSTEM_RAM, OnRam)
 		COMMAND_ID_HANDLER(ID_TOOLS_INSTALLSERVICE, OnInstallService)
 		COMMAND_RANGE_HANDLER(ID_COMPUTER_LOCK, ID_COMPUTER_FIRMWARE, OnComputerCommand)
@@ -205,6 +206,7 @@ public:
 	LRESULT OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPackages(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFirewall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the Computer menu: lock, log off, sleep, hibernate, restart, shut down, restart to the boot options or the firmware
@@ -357,6 +359,8 @@ private:
 	void ApplyFont();
 	void Refresh();
 	void UpdateStatusBar();
+	// a performance sample for every process (ProcessInfoEx::GetHistory), after each snapshot
+	void RecordHistory();
 	void SetUpdateInterval(int interval);
 	void SetPaused(bool paused);
 	void SaveSettings();

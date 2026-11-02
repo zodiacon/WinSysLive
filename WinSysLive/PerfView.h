@@ -7,7 +7,7 @@
 
 //
 // System-wide performance: a list of pages on the left (Summary, CPU, Memory, Network, I/O, a page per drive, per GPU
-// and per NPU) and the selected page on the right.
+// and per NPU, and Power on a machine with a battery or an ACPI thermal zone) and the selected page on the right.
 // Samples are taken on every refresh tick and handed to every page, also while the tab or the page is hidden,
 // so the history is there when it's shown.
 //
@@ -52,6 +52,7 @@ private:
 	void SampleNetwork(PerfSample& sample);
 	void SampleDisks(PerfSample& sample);
 	void SampleGpus(PerfSample& sample);	// and the NPUs
+	void SamplePower(PerfSample& sample);	// the batteries and the thermal zones, when there's a Power page
 	// adds and removes drive pages to match the drives that exist
 	void SyncDiskPages();
 	void UpdateNav(PerfSample const& sample);
@@ -67,6 +68,8 @@ private:
 	enum NavItem { SummaryItem, CpuItem, MemoryItem, NetworkItem, IoItem, FirstDiskItem };
 	int FirstGpuItem() const;
 	int FirstNpuItem() const;
+	// the Power page, last; -1 if there's none
+	int PowerItem() const;
 
 	CPerfNav m_Nav;
 	std::vector<std::unique_ptr<IPerfPage>> m_Pages;	// in NavItem order
@@ -93,4 +96,10 @@ private:
 	WinSys::DiskTracker m_Disks;
 	WinSys::GpuTracker m_Gpu, m_Npu{ WinSys::GpuAdapterKind::Npu };
 	std::vector<wchar_t> m_DiskLetters;
+	// the Power page's data: opened with the view, the page only when either has something
+	WinSys::BatteryMonitor m_Battery;
+	WinSys::ThermalZoneMonitor m_Thermal;
+	std::vector<WinSys::BatteryInfo> m_Batteries;
+	std::vector<WinSys::ThermalZone> m_Zones;
+	bool m_HasPower{ false }, m_HasBattery{ false }, m_HasThermal{ false };
 };
