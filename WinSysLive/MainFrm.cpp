@@ -54,6 +54,7 @@
 #include "TrayIconsDlg.h"
 #include <WinSys/LogonTask.h>
 #include "SettingsTransfer.h"
+#include "Recorders.h"
 #include <DpiHelper.h>
 
 namespace {
@@ -258,6 +259,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// initial snapshot, so views have data when created; CPU usage is only valid from the next update
 	m_ProcessManager.Update();
 	UpdateStatusBar();
+	// before the views, so an open History tab shows the frame's recorder from the start
+	if (AppSettings::Get().RecordFromStartup())
+		m_Recorders.Start(m_ProcessManager);
+	UISetCheck(ID_OPTIONS_RECORDFROMSTARTUP, AppSettings::Get().RecordFromStartup());
 
 	CreateTabs();
 
@@ -488,6 +493,28 @@ LRESULT CMainFrame::OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 		CTrayIcons::Save(dlg.GetModes());
 		ApplyTrayIcons(dlg.GetModes());
 	}
+	return 0;
+}
+
+LRESULT CMainFrame::OnRecordFromStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	bool on = !settings.RecordFromStartup();
+	settings.RecordFromStartup(on);
+	settings.Save();
+	UISetCheck(ID_OPTIONS_RECORDFROMSTARTUP, on);
+	if (!on) {
+		// the open tabs keep theirs
+		m_Recorders.Stop();
+		return 0;
+	}
+	// from now on, and from the start next time
+	m_Recorders.Start(m_ProcessManager);
+	if (auto error = m_Recorders.GetTrackerError())
+		AtlMessageBox(m_hWnd, error == ERROR_ACCESS_DENIED
+			? L"History is recorded from now on, and from the start next time.\n\n"
+				L"RPC/ALPC, Disk and network traffic need administrator rights: run WinSysLive as administrator to record them too."
+			: std::format(L"History is recorded from now on. RPC/ALPC, Disk or network recording failed to start: {}", WinSys::Helpers::GetErrorText(error)).c_str(),
+			IDR_MAINFRAME, MB_ICONINFORMATION);
 	return 0;
 }
 
@@ -1100,6 +1127,8 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& b
 
 void CMainFrame::Refresh() {
 	m_ProcessManager.Update();
+	// the History recorder takes the changes and the trackers forget the exited processes before the views look
+	Recorders::OnRefresh(m_ProcessManager);
 	for (auto& v : m_Views)
 		v.View->OnRefresh(v.View == m_ActiveView);
 	// the CPU usage is the Idle process's, relative to the previous update: none on the first (UpdateStatusBar)

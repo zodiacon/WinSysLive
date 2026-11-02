@@ -122,7 +122,9 @@ private:
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// in the view's rebar
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
-	std::unique_ptr<WinSys::IpcTracker> m_Tracker;	// from the first time the tab is shown
+	// shared (Recorders): from the first time the tab is shown, or the frame's since the app started (Record from
+	// Startup); the frame prunes the exited processes (Recorders::OnRefresh)
+	std::shared_ptr<WinSys::IpcTracker> m_Tracker;
 	DWORD m_TrackerError{ 0 };	// why it didn't start
 	std::vector<Row> m_All;	// the last merge
 	std::vector<Row const*> m_Rows;	// into m_All: the list's rows, in display order

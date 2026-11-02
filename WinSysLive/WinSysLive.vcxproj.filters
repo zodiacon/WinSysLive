@@ -249,6 +249,12 @@
     <ClCompile Include="NetworkTracking.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="Recorders.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="HistoryRecorder.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="ProcessPages.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
@@ -265,6 +271,9 @@
       <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="HeapsPage.cpp">
+      <Filter>Pages</Filter>
+    </ClCompile>
+    <ClCompile Include="UnloadedModulesPage.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="StatisticsPage.cpp">
@@ -599,6 +608,12 @@
     <ClInclude Include="NetworkTracking.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="Recorders.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="HistoryRecorder.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="ProcessPages.h">
       <Filter>Pages</Filter>
     </ClInclude>
@@ -615,6 +630,9 @@
       <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="HeapsPage.h">
+      <Filter>Pages</Filter>
+    </ClInclude>
+    <ClInclude Include="UnloadedModulesPage.h">
       <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="StatisticsPage.h">
@@ -843,6 +861,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\heap.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\DLL-unloaded.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\network.ico">

@@ -186,6 +186,7 @@ separate window with its own taskbar button and stays open while you keep workin
 | Performance | CPU, memory, I/O and network graphs of the process since the sheet opened |
 | GPU | Per adapter, a graph per engine (3D, Copy, Video Decode...) and the dedicated and shared memory (on systems with a GPU) |
 | Threads, Modules, Handles | As in the lower pane |
+| Unloaded | The DLLs the process unloaded lately (the last 64 the loader keeps), newest first: name, base address, size, version, link time stamp and checksum. For a 32-bit process, only its 64-bit DLLs |
 | Image | The executable as a [PE file](#pe-files) |
 | .NET | For a .NET process: its runtimes and loaded assemblies (elevated; a .NET Core or later runtime is named without elevation), and a managed heap line that follows its garbage collections: heap size by generation, collections, pauses (elevated) |
 | Memory | The address space as a tree of allocations and regions (with the PEB, TEBs, stacks and mapped files named), and a hex view of a region: group bytes by 1, 2, 4 or 8, Find (Ctrl+F; text, Unicode text or hex bytes; F3 finds the next), Go To (Ctrl+G), Save a region to a file, and Edit to change memory |
@@ -273,7 +274,7 @@ Boot and System, and **Go to Kernel Module** for a running driver.
 
 Which processes talk to which (elevated): ALPC messages between client and server processes, and RPC calls by
 interface (named where known), endpoint and protocol, with their counts and rates. Only traffic seen since the tab
-opened shows. Double-click goes to the server or the client.
+opened shows (since WinSysLive started, with **Options > Record from Startup**). Double-click goes to the server or the client.
 
 ![The RPC/ALPC tab, filtered to RPC calls](images/rpc-alpc.png)
 
@@ -318,7 +319,7 @@ minute drop off. **Go to Process**, **File Properties** and **Open File Location
 
 ## History
 
-A log of events while the tab is open: processes started (with parent, user and command line) and exited (with how
+A log of events while the tab is open (or since WinSysLive started, with **Options > Record from Startup**): processes started (with parent, user and command line) and exited (with how
 long they ran and the exit code), and services started, stopped, failed, paused, resumed, installed and deleted. The
 log has its own filter, search (Ctrl+F) and level buttons. The context menu chooses the **Events** to log and has
 **Go to Process**, **Copy**, **Save Log** (also Ctrl+S) and **Clear**.
@@ -482,6 +483,7 @@ control, account and dependencies, and optionally starts it.
 | Resolve Symbols / Symbol Settings... | See [Symbols](#symbols) |
 | VirusTotal... | See [VirusTotal](#virustotal) |
 | Resolve Addresses | Show network addresses as DNS names |
+| Record from Startup | Records History, RPC/ALPC, Disk and per-connection network traffic from WinSysLive's start, so their tabs show what happened before they were opened (all but History need elevation; it costs a little all the time) |
 | Tray Icons... | Up to five notification area icons with small graphs: CPU, I/O, commit charge, physical memory, network. Click one to bring the window back; right-click for a menu |
 | Alerts... | See [Alerts](#alerts) |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |

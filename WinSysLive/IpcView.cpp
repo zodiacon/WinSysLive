@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "IpcView.h"
+#include "Recorders.h"
 #include "Highlight.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
@@ -22,9 +23,6 @@ namespace {
 		{ L"First Seen", L"FirstSeen", 150, LVCFMT_LEFT, false },
 		{ L"Last Seen", L"LastSeen", 150, LVCFMT_LEFT, true },
 	};
-
-	// the session's name is this and the process ID
-	const PCWSTR SessionPrefix = L"WinSysLive IPC";
 
 	std::wstring GuidText(GUID const& iface) {
 		WCHAR text[64];
@@ -78,10 +76,7 @@ void CIpcView::OnActivate(bool active) {
 void CIpcView::StartTracker() {
 	if (m_Tracker || m_TrackerError)
 		return;
-	auto tracker = std::make_unique<WinSys::IpcTracker>();
-	if (tracker->Start(SessionPrefix))
-		m_Tracker = std::move(tracker);
-	else
+	if (!(m_Tracker = Recorders::AcquireIpc()))
 		m_TrackerError = ::GetLastError();
 }
 
@@ -91,11 +86,9 @@ void CIpcView::OnFontChanged(HFONT font) {
 }
 
 void CIpcView::OnRefresh(bool active) {
+	// the frame made the tracker forget the exited processes (Recorders::OnRefresh): their rows go
 	if (!m_Tracker)
 		return;
-	// an exited process's ID may be reused: its rows go
-	for (auto& p : Frame()->GetProcessManager().GetTerminatedProcesses())
-		m_Tracker->RemoveProcess(p->Id);
 
 	LARGE_INTEGER now, frequency;
 	::QueryPerformanceCounter(&now);

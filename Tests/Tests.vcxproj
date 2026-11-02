@@ -76,11 +76,16 @@
     <ClCompile Include="DotNetTests.cpp" />
     <ClCompile Include="HeapTests.cpp" />
     <ClCompile Include="PackageTests.cpp" />
+    <ClCompile Include="HistoryTests.cpp" />
+    <ClCompile Include="UnloadedModuleTests.cpp" />
     <ClCompile Include="WinSysTests.cpp" />
     <!-- the app's (its #include "pch.h" takes this project's precompiled header, which is the app's pch) -->
     <ClCompile Include="..\WinSysLive\AlertRules.cpp" />
     <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp" />
     <ClCompile Include="..\WinSysLive\Snapshot.cpp" />
+    <ClCompile Include="..\WinSysLive\HistoryRecorder.cpp" />
+    <ClCompile Include="..\WinSysLive\ProcessInfoEx.cpp" />
+    <ClCompile Include="..\WinSysLive\VersionInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

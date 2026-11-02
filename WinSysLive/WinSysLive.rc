@@ -234,6 +234,7 @@ BEGIN
         MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
         MENUITEM "&VirusTotal...",              ID_OPTIONS_VIRUSTOTAL
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
+        MENUITEM "Record from Startu&p",         ID_OPTIONS_RECORDFROMSTARTUP
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
         MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
@@ -499,6 +500,7 @@ IDI_NETWORK             ICON                    "res\\network.ico"
 
 IDI_STACK               ICON                    "res\\stack.ico"
 IDI_HEAP                ICON                    "res\\heap.ico"
+IDI_DLL_UNLOADED        ICON                    "res\\DLL-unloaded.ico"
 
 IDI_DELETE              ICON                    "res\\delete.ico"
 
@@ -1025,6 +1027,17 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_LS_REFRESH,353,309,50,14
     PUSHBUTTON      "&Copy",IDC_LS_COPY,408,309,50,14
     PUSHBUTTON      "Close",IDCANCEL,463,309,50,14
+END
+
+IDD_PROC_UNLOADED DIALOGEX 0, 0, 330, 232
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPCHILDREN | WS_CAPTION
+CAPTION "Unloaded"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_UNLOADED_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,7,316,195
+    LTEXT           "",IDC_UNLOADED_STATUS,7,211,190,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Copy",IDC_UNLOADED_COPY,213,208,52,14
+    PUSHBUTTON      "Copy &All",IDC_UNLOADED_COPYALL,271,208,52,14
 END
 
 IDD_PROC_HEAPS DIALOGEX 0, 0, 330, 232
@@ -1784,6 +1797,15 @@ BEGIN
     100, 100, 0, 0
 END
 
+IDD_PROC_UNLOADED AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    0, 0, 100, 100,
+    0, 100, 100, 0,
+    100, 100, 0, 0,
+    100, 100, 0, 0
+END
+
 IDD_PROC_HEAPS AFX_DIALOG_LAYOUT
 BEGIN
     0,
@@ -2168,6 +2190,8 @@ BEGIN
     ID_OPTIONS_TRAYICON     "Choose the icons in the notification area: CPU, I/O, commit charge, physical memory, network\nTray Icons"
     ID_OPTIONS_MINIMIZETOTRAY 
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
+    ID_OPTIONS_RECORDFROMSTARTUP 
+                            "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
     ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
 END
 

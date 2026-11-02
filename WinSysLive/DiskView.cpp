@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DiskView.h"
+#include "Recorders.h"
 #include "Highlight.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
@@ -22,9 +23,6 @@ namespace {
 		{ L"First I/O", L"FirstSeen", 150, LVCFMT_LEFT, false },
 		{ L"Last I/O", L"LastSeen", 150, LVCFMT_LEFT, true },
 	};
-
-	// the session's name is this and the process ID
-	const PCWSTR SessionPrefix = L"WinSysLive Disk";
 
 	std::wstring FormatRate(double rate) {
 		// below a byte a second is nothing
@@ -78,10 +76,7 @@ void CDiskView::OnActivate(bool active) {
 void CDiskView::StartTracker() {
 	if (m_Tracker || m_TrackerError)
 		return;
-	auto tracker = std::make_unique<WinSys::FileIoTracker>();
-	if (tracker->Start(SessionPrefix))
-		m_Tracker = std::move(tracker);
-	else
+	if (!(m_Tracker = Recorders::AcquireFileIo()))
 		m_TrackerError = ::GetLastError();
 }
 
@@ -91,11 +86,9 @@ void CDiskView::OnFontChanged(HFONT font) {
 }
 
 void CDiskView::OnRefresh(bool active) {
+	// the frame made the tracker forget the exited processes (Recorders::OnRefresh): their rows go
 	if (!m_Tracker)
 		return;
-	// an exited process's ID may be reused: its rows go
-	for (auto& p : Frame()->GetProcessManager().GetTerminatedProcesses())
-		m_Tracker->RemoveProcess(p->Id);
 
 	LARGE_INTEGER now, frequency;
 	::QueryPerformanceCounter(&now);

@@ -702,6 +702,7 @@
 #define IDI_DOTNET                      331
 #define IDI_ALERT                       334
 #define IDI_HEAP                        342
+#define IDI_DLL_UNLOADED                345
 #define IDD_POWERREQUESTS               335
 #define IDC_PR_RESOLUTION               1418
 #define IDC_PR_INACTIVE                 1419
@@ -798,6 +799,12 @@
 #define ID_PACKAGES_OPENFOLDER          33029
 #define ID_PACKAGES_GOTOPROCESS         33030
 #define ID_PACKAGES_COPYFULLNAME        33031
+#define ID_OPTIONS_RECORDFROMSTARTUP    33032
+#define IDD_PROC_UNLOADED               344
+#define IDC_UNLOADED_LIST               1482
+#define IDC_UNLOADED_STATUS             1483
+#define IDC_UNLOADED_COPY               1484
+#define IDC_UNLOADED_COPYALL            1485
 #define ID_MODULE_TOTALPE               33015
 #define IDD_PEFILE                      340
 #define ID_MODULE_IMAGE                 33016
@@ -846,9 +853,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        344
-#define _APS_NEXT_COMMAND_VALUE         33032
-#define _APS_NEXT_CONTROL_VALUE         1482
+#define _APS_NEXT_RESOURCE_VALUE        346
+#define _APS_NEXT_COMMAND_VALUE         33033
+#define _APS_NEXT_CONTROL_VALUE         1486
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

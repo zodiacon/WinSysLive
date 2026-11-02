@@ -7,6 +7,7 @@
 #include "WindowsPage.h"
 #include "MemoryPage.h"
 #include "HeapsPage.h"
+#include "UnloadedModulesPage.h"
 #include "JobPage.h"
 #include "ServicesPage.h"
 #include "TcpIpPage.h"
@@ -18,7 +19,7 @@
 //
 // A process's properties: a modeless, resizable property sheet with tab icons, run on a thread of its own (see
 // ShowProcessProperties), so a slow page doesn't hold up the main window and the main window's refreshes don't hold
-// up the sheet. It takes a snapshot of the processes every UpdateInterval for the Performance, Threads, Heaps, TCP/IP and Job pages. It has no owner, and a taskbar button of its own. The Job page is added only for a process in a job,
+// up the sheet. It takes a snapshot of the processes every UpdateInterval for the Performance, Threads, Heaps, Unloaded, TCP/IP and Job pages. It has no owner, and a taskbar button of its own. The Job page is added only for a process in a job,
 // the Services page only for a process hosting services.
 //
 class CProcessSheet :
@@ -38,7 +39,7 @@ public:
 private:
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
-	// takes a snapshot for the pages: the Performance page gets every one, the Statistics, Threads, Heaps, TCP/IP and Job pages
+	// takes a snapshot for the pages: the Performance page gets every one, the Statistics, Threads, Heaps, Unloaded, TCP/IP and Job pages
 	// only while they're active
 	void Sample();
 
@@ -57,6 +58,7 @@ private:
 	std::unique_ptr<CProcWindowsPage> m_Windows;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
 	std::unique_ptr<CProcModulesPage> m_Modules;
+	std::unique_ptr<CProcUnloadedPage> m_Unloaded;
 	std::unique_ptr<CProcImagePage> m_Image;
 	std::unique_ptr<CProcHandlesPage> m_Handles;
 	std::unique_ptr<CProcTcpIpPage> m_TcpIp;

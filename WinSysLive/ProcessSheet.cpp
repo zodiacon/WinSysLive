@@ -78,6 +78,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Threads);
 	m_Modules = std::make_unique<CProcModulesPage>(m_Props, L"Modules", IDI_MODULES);
 	AddPage(*m_Modules);
+	m_Unloaded = std::make_unique<CProcUnloadedPage>(m_Props, m_Snapshot);
+	AddPage(*m_Unloaded);
 	m_Image = std::make_unique<CProcImagePage>(m_Props);
 	m_ImageTab = GetPageCount();
 	AddPage(*m_Image);
@@ -166,6 +168,8 @@ void CProcessSheet::Sample() {
 		m_Modules->OnSample(m_Snapshot);
 	if (m_Handles->IsWindow() && GetActivePage() == m_Handles->m_hWnd)
 		m_Handles->OnSample(m_Snapshot);
+	if (m_Unloaded->IsWindow() && GetActivePage() == m_Unloaded->m_hWnd)
+		m_Unloaded->OnSample(m_Snapshot);
 	if (m_Heaps->IsWindow() && GetActivePage() == m_Heaps->m_hWnd)
 		m_Heaps->OnSample(m_Snapshot);
 	if (m_TcpIp->IsWindow() && GetActivePage() == m_TcpIp->m_hWnd)

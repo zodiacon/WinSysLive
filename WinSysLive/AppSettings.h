@@ -40,7 +40,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(DiskColumns, L"");	// the Disk tab
 		SETTING(CheckForUpdates, 0, SettingType::Int32);	// once a day at startup (UpdateChecker)
 		SETTING_STRING(LastUpdateCheck, L"");	// FILETIME, as a number
-		SETTING(HistoryEvents, 0x3F, SettingType::Int32);	// the History tab's kinds of events, 1 << CHistoryView::Event
+		SETTING(HistoryEvents, 0x3F, SettingType::Int32);	// the History tab's kinds of events, 1 << HistoryRecorder::Event
 		SETTING_STRING(ObjectManagerPath, L"\\");	// its directory
 		SETTING(ObjectManagerSplitterPos, 25, SettingType::Int32);	// the tree's width, in percent
 		SETTING_STRING(VirusTotalKey, L"");	// the API key, DPAPI-encrypted (VirusTotalChecker::Protect), as hex
@@ -79,6 +79,7 @@ struct AppSettings : Settings {
 		SETTING(TrayIcon, 1, SettingType::Bool);	// the CPU graph in the notification area
 		SETTING_STRING(TrayIcons, L"");	// Key:Mode per icon (CTrayIcons::Load); empty: TrayIcon's CPU graph
 		SETTING(MinimizeToTray, 0, SettingType::Bool);	// minimized, the window leaves the taskbar
+		SETTING(RecordFromStartup, 0, SettingType::Bool);	// the frame holds the recorders from its start (Recorders::Holder)
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
 		SETTING(SingleInstance, 0, SettingType::Bool);	// starting the app again brings the running instance to the front
 		SETTING(ResolveAddresses, 1, SettingType::Bool);	// connections' addresses by their DNS names (AddressResolver)
@@ -155,6 +156,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(Font, LOGFONT)
 	DEF_SETTING(TrayIcon, int)
 	DEF_SETTING(MinimizeToTray, int)
+	DEF_SETTING(RecordFromStartup, int)
 	DEF_SETTING_STRING(TrayIcons)
 	DEF_SETTING(AlwaysOnTop, int)
 	DEF_SETTING(SingleInstance, int)
