@@ -3,8 +3,9 @@
 A live view of a Windows system, in the spirit of Process Explorer and System Informer: processes as a tree with
 their threads, modules, handles, memory, token, windows, jobs and services; performance graphs (CPU, memory, I/O,
 network, disks, GPUs, NPUs); services and drivers; users; network connections; kernel modules; RPC/ALPC traffic;
-zombie processes; object types and the object manager namespace; kernel pool tags; firmware and TPM; with VirusTotal
-checks, symbols, wait chains and dumps.
+zombie processes; object types and the object manager namespace; kernel pool tags; disk I/O; autoruns; devices; event
+logs; firmware and TPM; system snapshots to compare; a PE file viewer; alerts; with VirusTotal checks, symbols, wait
+chains and dumps.
 
 Some information (other users' processes, network traffic, RPC/ALPC, pool tags...) needs the app to run elevated.
 
@@ -21,10 +22,12 @@ or download the zip from [Releases](https://github.com/zodiacon/WinSysLive/relea
 
 ## Build
 
-Visual Studio 2026 (toolset v145) with the Windows SDK 10.0.26100.0, phnt and WIL from vcpkg, and the submodules:
+Visual Studio 2026 (toolset v145) with the Windows SDK 10.0.26100.0, the submodules, and from vcpkg (user-wide
+integration) phnt, WIL, Detours and WTL in both the `x64-windows` and `x64-windows-static` triplets:
 
 ```
-git clone --recursive https://github.com/zodiacon/WinSysLive
-nuget restore wtlhelper\WTLHelper.sln
+git clone https://github.com/zodiacon/WinSysLive
+cd WinSysLive
+git submodule update --init
 msbuild WinSysLive.sln /p:Configuration=Release /p:Platform=x64
 ```

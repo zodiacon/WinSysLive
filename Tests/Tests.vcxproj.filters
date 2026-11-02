@@ -27,6 +27,9 @@
     <ClCompile Include="DotNetTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="HeapTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="WinSysTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>

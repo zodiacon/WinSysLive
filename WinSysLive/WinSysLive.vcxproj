@@ -430,6 +430,7 @@
     <ClCompile Include="FindHandleDlg.cpp" />
     <ClCompile Include="SymbolSettingsDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
+    <ClCompile Include="HeapsPage.cpp" />
     <ClCompile Include="StatisticsPage.cpp" />
     <ClCompile Include="WindowsPage.cpp" />
     <ClCompile Include="FirmwareDlg.cpp" />
@@ -545,6 +546,7 @@
     <ClInclude Include="FindHandleDlg.h" />
     <ClInclude Include="SymbolSettingsDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
+    <ClInclude Include="HeapsPage.h" />
     <ClInclude Include="StatisticsPage.h" />
     <ClInclude Include="WindowsPage.h" />
     <ClInclude Include="FirmwareDlg.h" />
@@ -681,6 +683,7 @@
     <Image Include="res\semaphore.ico" />
     <Image Include="res\session.ico" />
     <Image Include="res\stack.ico" />
+    <Image Include="res\heap.ico" />
     <Image Include="res\thread.ico" />
     <Image Include="res\timer.ico" />
     <Image Include="res\token.ico" />

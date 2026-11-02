@@ -701,6 +701,7 @@
 #define IDD_PROC_DOTNET                 330
 #define IDI_DOTNET                      331
 #define IDI_ALERT                       334
+#define IDI_HEAP                        342
 #define IDD_POWERREQUESTS               335
 #define IDC_PR_RESOLUTION               1418
 #define IDC_PR_INACTIVE                 1419
@@ -780,6 +781,11 @@
 #define IDC_PE_TOTALPE                  1468
 #define IDC_PE_COPY                     1469
 #define IDC_DN_GC                       1470
+#define IDD_PROC_HEAPS                  341
+#define IDC_HEAPS_LIST                  1471
+#define IDC_HEAPS_STATUS                1472
+#define IDC_HEAPS_COPY                  1473
+#define IDC_HEAPS_COPYALL               1474
 #define ID_MODULE_TOTALPE               33015
 #define IDD_PEFILE                      340
 #define ID_MODULE_IMAGE                 33016
@@ -828,9 +834,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        341
+#define _APS_NEXT_RESOURCE_VALUE        343
 #define _APS_NEXT_COMMAND_VALUE         33028
-#define _APS_NEXT_CONTROL_VALUE         1471
+#define _APS_NEXT_CONTROL_VALUE         1475
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

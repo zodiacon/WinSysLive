@@ -264,6 +264,9 @@
     <ClCompile Include="TcpIpPage.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
+    <ClCompile Include="HeapsPage.cpp">
+      <Filter>Pages</Filter>
+    </ClCompile>
     <ClCompile Include="StatisticsPage.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
@@ -608,6 +611,9 @@
     <ClInclude Include="TcpIpPage.h">
       <Filter>Pages</Filter>
     </ClInclude>
+    <ClInclude Include="HeapsPage.h">
+      <Filter>Pages</Filter>
+    </ClInclude>
     <ClInclude Include="StatisticsPage.h">
       <Filter>Pages</Filter>
     </ClInclude>
@@ -828,6 +834,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\stack.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\heap.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\network.ico">

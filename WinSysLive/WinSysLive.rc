@@ -497,6 +497,7 @@ IDI_JOB                 ICON                    "res\\job.ico"
 IDI_NETWORK             ICON                    "res\\network.ico"
 
 IDI_STACK               ICON                    "res\\stack.ico"
+IDI_HEAP                ICON                    "res\\heap.ico"
 
 IDI_DELETE              ICON                    "res\\delete.ico"
 
@@ -1008,6 +1009,17 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_LS_REFRESH,353,309,50,14
     PUSHBUTTON      "&Copy",IDC_LS_COPY,408,309,50,14
     PUSHBUTTON      "Close",IDCANCEL,463,309,50,14
+END
+
+IDD_PROC_HEAPS DIALOGEX 0, 0, 330, 232
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPCHILDREN | WS_CAPTION
+CAPTION "Heaps"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_HEAPS_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,7,316,195
+    LTEXT           "",IDC_HEAPS_STATUS,7,211,190,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Copy",IDC_HEAPS_COPY,213,208,52,14
+    PUSHBUTTON      "Copy &All",IDC_HEAPS_COPYALL,271,208,52,14
 END
 
 IDD_PROC_TCPIP DIALOGEX 0, 0, 330, 232
@@ -1748,6 +1760,15 @@ BEGIN
 END
 
 IDD_PROC_STATS AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    0, 0, 100, 100,
+    0, 100, 100, 0,
+    100, 100, 0, 0,
+    100, 100, 0, 0
+END
+
+IDD_PROC_HEAPS AFX_DIALOG_LAYOUT
 BEGIN
     0,
     0, 0, 100, 100,

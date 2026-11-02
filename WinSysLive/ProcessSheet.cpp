@@ -62,6 +62,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Environment);
 	m_Memory = std::make_unique<CProcMemoryPage>(m_Props);
 	AddPage(*m_Memory);
+	m_Heaps = std::make_unique<CProcHeapsPage>(m_Props, m_Snapshot);
+	AddPage(*m_Heaps);
 	m_Token = std::make_unique<CProcTokenPage>(m_Props);
 	AddPage(*m_Token);
 	m_Windows = std::make_unique<CProcWindowsPage>(m_Props);
@@ -164,6 +166,8 @@ void CProcessSheet::Sample() {
 		m_Modules->OnSample(m_Snapshot);
 	if (m_Handles->IsWindow() && GetActivePage() == m_Handles->m_hWnd)
 		m_Handles->OnSample(m_Snapshot);
+	if (m_Heaps->IsWindow() && GetActivePage() == m_Heaps->m_hWnd)
+		m_Heaps->OnSample(m_Snapshot);
 	if (m_TcpIp->IsWindow() && GetActivePage() == m_TcpIp->m_hWnd)
 		m_TcpIp->OnSample(m_Snapshot);
 	if (m_Job && m_Job->IsWindow() && GetActivePage() == m_Job->m_hWnd)

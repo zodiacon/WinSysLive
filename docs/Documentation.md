@@ -1,8 +1,8 @@
 # WinSysLive Documentation
 
 WinSysLive shows a live view of a Windows system: processes and everything inside them, performance, services and
-drivers, users, network connections, kernel modules, RPC/ALPC traffic, the object manager, kernel pools, disk I/O and
-more, with the tools to act on them.
+drivers, users, network connections, kernel modules, RPC/ALPC traffic, the object manager, kernel pools, disk I/O,
+autoruns, devices, event logs and more, with the tools to act on them.
 
 This document describes every tab, dialog and option. For installation, see the [README](../README.md).
 
@@ -25,12 +25,19 @@ This document describes every tab, dialog and option. For installation, see the 
 - [Pool Tags](#pool-tags)
 - [Disk](#disk)
 - [History](#history)
+- [Autoruns](#autoruns)
+- [Devices](#devices)
+- [Event Log](#event-log)
+- [Command palette and Search](#command-palette-and-search)
 - [Find Handle or DLL](#find-handle-or-dll)
-- [File menu: Run and Run As](#file-menu-run-and-run-as)
+- [File menu](#file-menu)
+- [Snapshots](#snapshots)
+- [PE files](#pe-files)
 - [System menu](#system-menu)
 - [Computer menu](#computer-menu)
 - [Tools menu](#tools-menu)
 - [Options](#options)
+- [Alerts](#alerts)
 - [Symbols](#symbols)
 - [VirusTotal](#virustotal)
 - [Updates](#updates)
@@ -73,6 +80,11 @@ Common to the list tabs:
 The toolbar also has the **window finder**: drag the target button onto any window to select its process in the
 Processes tab, as in Process Explorer. While dragging, the window is outlined and named in the status bar; Escape
 cancels.
+
+**View > Command Palette...** (Ctrl+Q) runs any menu command by typing part of its name, and **View > Search...**
+(Ctrl+Shift+Q) finds processes, services, drivers, devices, connections and the open tabs' rows (see
+[Command palette and Search](#command-palette-and-search)). Dropping a file on the window opens it as a
+[PE file](#pe-files).
 
 ## Processes
 
@@ -127,7 +139,7 @@ Each page has its own filter box, columns and Copy.
   (for service hosts) and more. The context menu has **Stack** (also a double-click: the call stack with symbols),
   **Wait Chain...**, **Set Priority**, **Affinity...**, **Suspend**, **Resume** and **Terminate**.
 - **Modules:** loaded images and mapped data files with their version information. Properties opens the shell's file
-  properties; Open File Location opens the folder.
+  properties; Open File Location opens the folder; **Image Details...** shows the image as a [PE file](#pe-files).
 - **Handles:** the process's handles with their types, names, access (decoded) and, while the Address column is shown,
   the kernel object addresses (elevated). **View > Show Unnamed Handles** shows or hides handles without a name.
   Properties (or a double-click) opens the **handle sheet**: general information, the object's type-specific details
@@ -172,14 +184,18 @@ separate window with its own taskbar button and stays open while you keep workin
 | General | Image, command line, directories, parent, user, start time, architecture, mitigations (ASLR, CFG, CET, DEP); signature verification; Kill |
 | Statistics | CPU, memory, I/O, handles and GUI objects counters, with their peaks and the change since the last update |
 | Performance | CPU, memory, I/O and network graphs of the process since the sheet opened |
+| GPU | Per adapter, a graph per engine (3D, Copy, Video Decode...) and the dedicated and shared memory (on systems with a GPU) |
 | Threads, Modules, Handles | As in the lower pane |
+| Image | The executable as a [PE file](#pe-files) |
+| .NET | For a .NET process: its runtimes and loaded assemblies (elevated; a .NET Core or later runtime is named without elevation), and a managed heap line that follows its garbage collections: heap size by generation, collections, pauses (elevated) |
 | Memory | The address space as a tree of allocations and regions (with the PEB, TEBs, stacks and mapped files named), and a hex view of a region: group bytes by 1, 2, 4 or 8, Find (Ctrl+F; text, Unicode text or hex bytes; F3 finds the next), Go To (Ctrl+G), Save a region to a file, and Edit to change memory |
+| Heaps | The process's heaps: NT or segment heap, class (the default heap said), committed and reserved sizes, the bytes in use (NT heaps), segments and flags; refreshed while shown. Not for 32-bit or protected processes; other users' processes need elevation |
 | Environment | The environment variables |
 | Token | User, groups, privileges (enable or disable them), integrity level (lower it), logon session, AppContainer capabilities; Security... for the token's permissions |
 | Windows | The process's windows and child windows with their styles, rectangles and DPI; Show, Hide, Bring to Front, Close Window |
 | TCP/IP | The process's connections and endpoints, highlighted as they come and go; Close Connection |
 | Security | The process's permissions (the system's editor) |
-| Job | For a process in a job: the job (and the jobs it's nested in), its limits, accounting and processes |
+| Job | For a process in a job: the job (and the jobs it's nested in), its limits, accounting and processes; for a silo (an app silo or a container), its ID, parent, root directory and, for a container, its state |
 | Services | For a service host: its services with their configuration, DLL and triggers; Start and Stop |
 
 ![The Memory page with the hex view](images/process-memory.png)
@@ -309,28 +325,129 @@ log has its own filter, search (Ctrl+F) and level buttons. The context menu choo
 
 ![The History tab, filtered to one program's runs](images/history.png)
 
+## Autoruns
+
+What starts by itself, as Sysinternals' Autoruns shows it: Run and RunOnce keys, startup folders, Active Setup,
+scheduled tasks, auto-start services and drivers, Winlogon, AppInit, BootExecute, LSA packages, and Image File
+Execution Options debuggers and silent process exit monitors. Each entry's image is checked for a signature; an image
+that isn't there is yellow and a disabled entry gray.
+
+The toolbar beside the filter has **Hide Microsoft Entries** (on by default: entries signed by Microsoft are left out)
+and **Scan Again**. The tab scans when it first opens and again when it's activated a minute or more after the last
+scan. The context menu has **Enabled** (Run keys, startup items and tasks), **Delete** (after a confirmation), **Jump to
+Entry** (Regedit at the key, Explorer at the file), **Properties**, **Open File Location**, **VirusTotal** and **Copy**.
+Changing entries outside your own Run key and startup folder needs elevation.
+
+## Devices
+
+The device tree, as Device Manager shows it: by type (a row per class, with how many of its devices have problems) or,
+with **By Connection**, from the computer down. Each device has its status (the problem in words), driver, manufacturer,
+driver version and date, INF, location, instance ID and more. A device with a problem has a warm background; disabled
+and disconnected devices are gray. The toolbar also has **Problem Devices** (only those with problems or disabled),
+**Hidden Devices**, **Disconnected Devices** and **Scan Again**; the tree updates by itself when devices come and go.
+
+The context menu:
+
+- **Resources and Drivers...** (also a double-click): the device's memory and I/O ranges, interrupts, DMA channels and
+  bus numbers, and its driver stack with each file's version and signature; **Go to Driver** selects a driver in the
+  Drivers tab.
+- **Properties:** Device Manager's property sheet.
+- **Enable Device** / **Disable Device...** (elevated; disabling asks first, with a stronger warning for the devices the
+  computer or its input depends on).
+- **Go to Driver**, **Copy Instance ID**, **Copy**.
+- **Resources by Type...:** every device's resources in one list, ordered by type and address, as Device Manager's View
+  > Resources by type.
+- **Scan for Hardware Changes** (elevated).
+
+## Event Log
+
+The newest events of the chosen logs (System and Application by default; also Security, Setup, PowerShell, Defender,
+Task Scheduler and Sysmon's logs where they exist) over the chosen time span (the last hour to 30 days), merged by time,
+then the new ones as they're written. Errors and critical events are always shown; the toolbar's **Warnings** and
+**Information** buttons add those levels, and its **Logs** and time span drop-downs choose the rest. The Security log
+needs elevation; its events show as Audit Success or Audit Failure (orange).
+
+Errors are red and warnings yellow. The **Details** column words the event's data where the message says little, so
+a Security event 4688 reads "C:\Windows\System32\cmd.exe created by ..., parent ...". The filter matches the source,
+message, log, process and details; `id:4625`, `id:4624,4625` or `id:4720-4767` choose event IDs.
+
+Double-click (or **Details...**) opens the event with all its fields and the message, or its XML (**Show XML**);
+**Previous** and **Next** walk the list. The context menu also has **Open in Event Viewer**, **Alert on Events Like
+This...** (see [Alerts](#alerts)), **Go to Process** and **Copy**.
+
+## Command palette and Search
+
+**View > Command Palette...** (Ctrl+Q) lists the menus' commands that are available now: type any words of a command's
+name or menu path, then Enter runs it. With nothing typed, the commands you ran from it last come first. From two
+characters on, it also lists matching items below the commands, as Search does.
+
+**View > Search...** (Ctrl+Shift+Q) searches alone: processes (by name or `PID n`), services, loaded drivers, present
+devices, network connections, and the rows of the open tabs, such as the Event Log's events. Choosing an item goes to
+it: its tab opens with the row selected, or a device's Resources and Drivers opens.
+
 ## Find Handle or DLL
 
 **Process > Find Handle or DLL...** (Ctrl+Shift+F) searches every process for handles and loaded modules whose names
 contain the text. Double-click a result to go to its process; **Properties** opens a handle's sheet.
 
-## File menu: Run and Run As
+## File menu
 
 - **Run...** (Ctrl+R) runs a command line as the shell does (a program, document, folder or URL), optionally
   elevated.
 - **Run As...** runs a program as another user (with their profile, or with the credentials for network access only,
   as `runas /netonly`).
 - **Run as Limited User...** runs a program without administrator rights, from an elevated WinSysLive.
+- **Run as System...** runs a program as the LocalSystem account (elevated).
 - **Run as Administrator** restarts WinSysLive elevated.
+- **Export List...** and **Copy All Rows**: see [The main window](#the-main-window).
+- **Snapshots...** (Ctrl+Shift+N): see [Snapshots](#snapshots).
+- **Open PE File...**: see [PE files](#pe-files).
+
+## Snapshots
+
+**File > Snapshots...** saves the system's state to a file and compares two states: processes (with their command
+lines, users and loaded modules), services with their configuration, kernel modules and autoruns. Handles aren't
+recorded.
+
+**Save Snapshot** captures the system now (a few seconds) to a `.wslsnap` file and makes it **Before**; later, Compare
+against **After**, the system now (captured again on each Compare) or another file. Rows show what was added (green),
+removed (red) or changed (amber), such as a service whose start type changed or a new autorun entry. With no Before,
+the list shows After's contents. The filter matches every column; Copy and Open File Location (also a double-click) act
+on the rows.
+
+## PE files
+
+**File > Open PE File...** (or a file dropped on the window), a process's **Image** page and the Modules lists' **Image
+Details...** show an executable image's contents. A combo box chooses the view:
+
+| View | Contents |
+|---|---|
+| Headers | The signature, the file and optional headers in words (machine, time stamp, entry point, subsystem, DLL characteristics such as ASLR, DEP and CFG, the checksum, checked), and the data directories |
+| Sections | Each section's addresses, sizes, protection and contents |
+| Imports | Each imported function by library, delay-loaded ones said |
+| Exports | Each exported function with its ordinal, address or forwarder |
+| Debug | The debug directory: the PDB's path, GUID and age, and the extended characteristics (CET compatible...) |
+| Resources | Each resource by type, name and language |
+| Icons | Every icon in every size the file has |
+| Version | The version resource |
+| Manifest | The embedded manifest, indented |
+| .NET | For a managed image: the CLR header (IL only or mixed, the metadata version, the entry point) |
+
+**Open in TotalPE** opens the file in TotalPE when it's installed.
 
 ## System menu
 
 | Command | What it shows |
 |---|---|
+| System Information... | A tab per area: Operating System (edition, version and build, install and boot times, uptime, names), Computer (SMBIOS system, baseboard and BIOS), Processor (model, microcode, cores with the P/E split, caches, features), Memory (each module) and Security (Secure Boot, VBS, memory integrity, Credential Guard, LSA protection, speculation mitigations, UAC...) |
 | Firmware and TPM... | Firmware type, Secure Boot, boot entries and order, the TPM; and (elevated) every UEFI variable with its value |
 | Logon Sessions... | Every logon session with its user, type, package, time and server, and details |
 | Page Files... | The page files in use, commit charge, the page file configuration and the swap file |
 | Network Shares... | The local shares with their settings and share permissions |
+| Network Information... | Listening ports with their processes, the DNS cache (with Flush DNS Cache), neighbors (ARP) and routes |
+| ETW Sessions... | The running event tracing sessions and each one's providers; the filter finds who traces a provider. Stop Session, and Stop Orphaned for sessions left by a WinSysLive that's gone |
+| Window Stations and Desktops... | Sessions, window stations and desktops, and a desktop's top-level windows; Show, Hide, Minimize, Maximize, Restore, Bring to Front, Close..., and Child Windows and Properties (the window's tree of child windows with their styles) |
+| Power Requests... | What keeps the display or the system awake (power requests by process, service or driver, with their reasons), the wake timers and the system timer resolution (elevated), as `powercfg /requests` |
 | Pipes and Mailslots... | Every named pipe and mailslot |
 | RAM... | Physical memory by use (process private, mapped files, page tables, pools...) and by list, as RAMMap (elevated; takes a few seconds) |
 | Memory Lists | Empty Working Sets, Flush Modified List, Purge Standby List, Purge Low-Priority Standby List (elevated) |
@@ -365,6 +482,7 @@ control, account and dependencies, and optionally starts it.
 | VirusTotal... | See [VirusTotal](#virustotal) |
 | Resolve Addresses | Show network addresses as DNS names |
 | Tray Icons... | Up to five notification area icons with small graphs: CPU, I/O, commit charge, physical memory, network. Click one to bring the window back; right-click for a menu |
+| Alerts... | See [Alerts](#alerts) |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |
 | Always on Top | Keeps the window above others |
 | Single Instance | Starting WinSysLive again brings the running instance to the front |
@@ -373,6 +491,21 @@ control, account and dependencies, and optionally starts it.
 | Run at Windows Startup (Elevated) | The same, elevated without a UAC prompt (a scheduled task; changing it needs elevation) |
 | Check for Updates at Startup | Checks once a day at most |
 | Export Settings... / Import Settings... | Saves all settings to an INI file, or loads them (applied on restart) |
+
+## Alerts
+
+**Options > Alerts...** (also in the tray icons' menu) sets rules that raise a notification balloon when:
+
+- a process starts or exits (by image name; wildcards and `;`-separated patterns);
+- the system's CPU, commit charge or physical memory stays above a percentage for some seconds;
+- a process's CPU or private bytes stays above a threshold;
+- a service starts, stops or fails;
+- an event is logged (System, Application, Security or any, by source and ID), or a Security audit failure is.
+
+Rules are checked on every update (not while paused). A rule with many alerts at once makes one ("and 24 more like
+it"), and a quiet period limits a rule to one alert in that time. Clicking a balloon brings the window back and goes to
+the alert's process. The dialog lists the rules, how often each fired, and the recent alerts. The Event Log tab's
+**Alert on Events Like This...** fills in a rule from an event.
 
 ## Symbols
 
@@ -406,6 +539,10 @@ When installed with WinGet, update with `winget upgrade ScorpioSoftware.WinSysLi
 |---|---|
 | Ctrl+1 ... Ctrl+9, Ctrl+0 | Processes, Services, Performance, Users, Network, Kernel Modules, Drivers, RPC/ALPC, Zombie Processes, Object Types |
 | Ctrl+Shift+O / P / D / H | Object Manager, Pool Tags, Disk, History |
+| Ctrl+Shift+A / E / L | Autoruns, Devices, Event Log |
+| Ctrl+Q | Command palette |
+| Ctrl+Shift+Q | Search |
+| Ctrl+Shift+N | Snapshots |
 | Ctrl+T | Process tree / flat list |
 | Ctrl+L | Lower pane |
 | F5 | Refresh |
@@ -434,4 +571,9 @@ elevated:
 - UEFI variables and Restart to Firmware
 - RAM and Memory Lists
 - Critical Process
+- Run as System
+- The Security event log
+- Power requests and wake timers
+- A .NET process's assemblies and garbage collections
+- Enabling and disabling devices, and Scan for Hardware Changes
 - Replace Task Manager and Run at Windows Startup (Elevated) (to change them)
