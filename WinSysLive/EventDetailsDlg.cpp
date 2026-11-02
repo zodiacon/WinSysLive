@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "EventDetailsDlg.h"
+#include "XmlText.h"
 #include "FormatHelper.h"
 #include <IconHelper.h>
 #include <ClipboardHelper.h>
@@ -94,7 +95,7 @@ std::wstring const& CEventDetailsDlg::Xml() {
 	if (!m_Xml) {
 		CWaitCursor wait;
 		auto xml = EventLog::GetXml(m_Entry.Channel, m_Entry.RecordId);
-		m_Xml = xml ? Indent(*xml) : L"(the event can't be read: " + Helpers::GetErrorText(::GetLastError()) + L")";
+		m_Xml = xml ? XmlText::Indent(*xml) : L"(the event can't be read: " + Helpers::GetErrorText(::GetLastError()) + L")";
 	}
 	return *m_Xml;
 }
@@ -106,44 +107,6 @@ std::wstring CEventDetailsDlg::WithCrLf(std::wstring const& text) {
 		if (text[i] == L'\n' && (i == 0 || text[i - 1] != L'\r'))
 			result += L'\r';
 		result += text[i];
-	}
-	return result;
-}
-
-std::wstring CEventDetailsDlg::Indent(std::wstring const& xml) {
-	// a line per element, indented by its depth; an element's text stays on its line (<Data Name='x'>value</Data>)
-	std::wstring result;
-	int depth = 0;
-	size_t i = 0;
-	while (i < xml.size()) {
-		if (xml[i] != L'<') {
-			// text: up to the next tag
-			auto next = xml.find(L'<', i);
-			result.append(xml, i, next == std::wstring::npos ? std::wstring::npos : next - i);
-			i = next == std::wstring::npos ? xml.size() : next;
-			continue;
-		}
-		auto end = xml.find(L'>', i);
-		if (end == std::wstring::npos) {
-			result.append(xml, i);
-			break;
-		}
-		auto tag = xml.substr(i, end - i + 1);
-		bool closing = tag.starts_with(L"</");
-		bool selfClosing = tag.ends_with(L"/>") || tag.starts_with(L"<?") || tag.starts_with(L"<!");
-		// a closing tag right after its text stays on the text's line
-		bool afterText = !result.empty() && result.back() != L'>' && result.back() != L'\n';
-		if (closing)
-			depth--;
-		if (!(closing && afterText)) {
-			if (!result.empty())
-				result += L'\n';
-			result.append((size_t)(std::max)(depth, 0) * 2, L' ');
-		}
-		result += tag;
-		if (!closing && !selfClosing)
-			depth++;
-		i = end + 1;
 	}
 	return result;
 }

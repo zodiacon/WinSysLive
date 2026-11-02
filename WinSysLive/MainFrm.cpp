@@ -20,6 +20,7 @@
 #include "AlertsDlg.h"
 #include "DevicesView.h"
 #include "DeviceResourcesDlg.h"
+#include "PEFileDlg.h"
 #include <WinSys/KernelModules.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Connections.h>
@@ -280,6 +281,11 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	// an elevated instance still gets these from the shell and a second, non-elevated instance (UIPI)
 	::ChangeWindowMessageFilterEx(m_hWnd, s_TaskbarCreated, MSGFLT_ALLOW, nullptr);
 	::ChangeWindowMessageFilterEx(m_hWnd, ActivateMessage, MSGFLT_ALLOW, nullptr);
+	// files dropped on the window open in Image Details; the app runs elevated, and without these UIPI drops the drag
+	// from a non-elevated Explorer (WM_COPYGLOBALDATA, 0x49, carries the file list)
+	for (UINT msg : { (UINT)WM_DROPFILES, (UINT)WM_COPYDATA, 0x0049u })
+		::ChangeWindowMessageFilterEx(m_hWnd, msg, MSGFLT_ALLOW, nullptr);
+	::DragAcceptFiles(m_hWnd, TRUE);
 	m_TrayIcons.Init(m_hWnd, WM_TRAYICON);
 	ApplyTrayIcons(CTrayIcons::Load());
 	m_Alerts.SetRules(CAlerts::Load());
@@ -1855,6 +1861,37 @@ IView* CMainFrame::ActivateTab(TabType type) {
 void CMainFrame::GoToKernelModule(std::wstring const& path) {
 	if (auto view = ActivateTab(TabType::KernelModules); view && !view->ShowKernelModule(path))
 		AtlMessageBox(m_hWnd, std::format(L"{} isn't loaded.", path).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
+LRESULT CMainFrame::OnOpenPEFile(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
+		L"PE files (*.exe;*.dll;*.sys;*.ocx;*.cpl;*.scr;*.efi;*.mui;*.drv)\0*.exe;*.dll;*.sys;*.ocx;*.cpl;*.scr;*.efi;*.mui;*.drv\0All files (*.*)\0*.*\0", m_hWnd);
+	if (dlg.DoModal(m_hWnd) == IDOK) {
+		CPEFileDlg details(dlg.m_szFileName);
+		details.DoModal(m_hWnd);
+	}
+	return 0;
+}
+
+LRESULT CMainFrame::OnDropFiles(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// each file in Image Details, one after the other
+	auto drop = reinterpret_cast<HDROP>(wParam);
+	std::vector<std::wstring> files;
+	auto count = ::DragQueryFile(drop, 0xFFFFFFFF, nullptr, 0);
+	for (UINT i = 0; i < count; i++) {
+		WCHAR path[MAX_PATH * 2];
+		if (::DragQueryFile(drop, i, path, _countof(path)))
+			files.push_back(path);
+	}
+	::DragFinish(drop);
+	::SetForegroundWindow(m_hWnd);
+	for (auto& file : files) {
+		if (::GetFileAttributes(file.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+			continue;
+		CPEFileDlg details(file);
+		details.DoModal(m_hWnd);
+	}
+	return 0;
 }
 
 void CMainFrame::GoToService(std::wstring const& name) {

@@ -85,7 +85,6 @@ private:
 	std::wstring const& Xml();
 	// the edits' line breaks are CRLF
 	static std::wstring WithCrLf(std::wstring const& text);
-	static std::wstring Indent(std::wstring const& xml);
 
 	WinSys::EventLogEntry m_Entry;
 	Callbacks m_Callbacks;

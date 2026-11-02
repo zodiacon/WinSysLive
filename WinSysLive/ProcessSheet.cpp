@@ -77,6 +77,7 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	m_Modules = std::make_unique<CProcModulesPage>(m_Props, L"Modules", IDI_MODULES);
 	AddPage(*m_Modules);
 	m_Image = std::make_unique<CProcImagePage>(m_Props);
+	m_ImageTab = GetPageCount();
 	AddPage(*m_Image);
 	if (IsDotNet(m_Props)) {
 		m_DotNet = std::make_unique<CProcDotNetPage>(m_Props);
@@ -105,6 +106,19 @@ void CProcessSheet::OnSheetInitialized() {
 	BaseSheet::OnSheetInitialized();
 	if (m_SecurityTab >= 0)
 		SetSecurityTabIcon(m_hWnd, m_SecurityTab);
+	if (m_ImageTab >= 0) {
+		// the executable's icon at the tab's size (the sheet's small one, the application icon, for a file without any);
+		// added to the tab's image list, which the sheet makes again in a new size on a DPI change
+		auto size = DpiHelper::SmallIconSize(m_hWnd);
+		CIcon icon;
+		if (m_Props.ImagePath.empty() || FAILED(::SHDefExtractIconW(m_Props.ImagePath.c_str(), 0, 0, &icon.m_hIcon, nullptr, MAKELONG(size, size))))
+			icon = (HICON)::CopyImage(m_SmallIcon, IMAGE_ICON, size, size, 0);
+		CTabCtrl tabs(GetTabControl());
+		CImageList images(tabs.GetImageList());
+		TCITEM item{ TCIF_IMAGE };
+		item.iImage = images && icon ? images.AddIcon(icon) : -1;
+		tabs.SetItem(m_ImageTab, &item);
+	}
 	m_AclTheming.Install(m_hWnd);
 
 	// a window of its own: the main window belongs to another thread

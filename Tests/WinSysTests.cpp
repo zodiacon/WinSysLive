@@ -4,6 +4,7 @@
 #include <WinSys/Devices.h>
 #include <WinSys/EventLog.h>
 #include <WinSys/PEFile.h>
+#include <WinSys/FileVersion.h>
 #include <WinSys/PowerRequests.h>
 #include <WinSys/SecurityHelper.h>
 
@@ -390,5 +391,94 @@ TEST(PEFile_AppDelayImports) {
 		CHECK(dbghelp->Delayed);
 		CHECK(!dbghelp->Functions.empty());
 		CHECK(std::ranges::all_of(dbghelp->Functions, [](auto& f) { return f.ByOrdinal || !f.Name.empty(); }));
+	}
+}
+
+TEST(PEFile_AppResources) {
+	// the app beside the tests: an icon group, a version and a manifest (whose text is XML)
+	auto path = OwnPath();
+	path = path.substr(0, path.rfind(L'\\') + 1) + L"WinSysLive.exe";
+	if (::GetFileAttributes(path.c_str()) == INVALID_FILE_ATTRIBUTES)
+		return;
+	auto pe = PEFile::Load(path);
+	CHECK(pe.has_value());
+	if (!pe)
+		return;
+	auto resources = pe->GetResources();
+	auto has = [&](uint16_t type) { return std::ranges::any_of(resources, [&](auto& r) { return r.TypeId == type; }); };
+	CHECK(has(14));	// icon group
+	CHECK(has(16));	// version
+	auto manifest = std::ranges::find_if(resources, [](auto& r) { return r.TypeId == 24; });
+	CHECK(manifest != resources.end());
+	if (manifest != resources.end()) {
+		auto data = pe->GetResourceData(*manifest);
+		CHECK(data.size() == manifest->Size);
+		std::string text(data.begin(), data.end());
+		CHECK(text.find("assembly") != std::string::npos);
+	}
+	CHECK(std::wstring(PEFile::ResourceTypeName(24)) == L"Manifest");
+	CHECK(!pe->GetDotNet().has_value());
+}
+
+TEST(PEFile_LiveChecksumAndVersion) {
+	// a system DLL's header checksum is the computed one; a byte changed changes it
+	WCHAR path[MAX_PATH];
+	::GetSystemDirectory(path, _countof(path));
+	std::wstring kernel32 = std::wstring(path) + L"\\kernel32.dll";
+	auto pe = PEFile::Load(kernel32);
+	CHECK(pe.has_value());
+	if (!pe)
+		return;
+	auto checksum = pe->ComputeChecksum();
+	CHECK(pe->GetHeaders().CheckSum != 0);
+	CHECK_EQ(checksum, pe->GetHeaders().CheckSum);
+	// the same bytes with one changed (past the headers)
+	auto file = ::CreateFile(kernel32.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+	LARGE_INTEGER size;
+	::GetFileSizeEx(file, &size);
+	std::vector<uint8_t> bytes((size_t)size.QuadPart);
+	DWORD read;
+	::ReadFile(file, bytes.data(), (DWORD)bytes.size(), &read, nullptr);
+	::CloseHandle(file);
+	bytes[bytes.size() / 2] ^= 0x5A;
+	auto changed = PEFile::Parse(std::move(bytes));
+	CHECK(changed.has_value());
+	if (changed)
+		CHECK(changed->ComputeChecksum() != checksum);
+	// its version resource in full
+	auto version = FileVersion::ReadDetails(kernel32);
+	CHECK(version.has_value());
+	if (version) {
+		CHECK(version->FileVersion != 0);
+		auto company = std::ranges::find_if(version->Strings, [](auto& s) { return s.first == L"CompanyName"; });
+		CHECK(company != version->Strings.end());
+		if (company != version->Strings.end())
+			CHECK(company->second.find(L"Microsoft") != std::wstring::npos);
+		// 10.0, or 6.2 for this unmanifested test program (GetFileVersionInfo's version lie for system DLLs; the app's
+		// manifest declares Windows 10 and sees the truth)
+		auto text = FileVersion::VersionText(version->FileVersion);
+		CHECK(text.starts_with(L"10.0.") || text.starts_with(L"6.2."));
+		CHECK(std::ranges::count(text, L'.') == 3);
+	}
+}
+
+TEST(PEFile_LiveDotNet) {
+	// the .NET Framework's System.dll: managed, IL only, metadata for v4.0.30319
+	WCHAR windows[MAX_PATH];
+	::GetWindowsDirectory(windows, _countof(windows));
+	auto path = std::wstring(windows) + L"\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll";
+	if (::GetFileAttributes(path.c_str()) == INVALID_FILE_ATTRIBUTES)
+		return;
+	auto pe = PEFile::Load(path);
+	CHECK(pe.has_value());
+	if (!pe)
+		return;
+	auto net = pe->GetDotNet();
+	CHECK(net.has_value());
+	if (net) {
+		CHECK(net->IsILOnly());
+		CHECK_EQ(net->MetadataVersion, std::string("v4.0.30319"));
+		CHECK(net->RuntimeMajor == 2);
+		CHECK(PEFile::DotNetFlagsText(net->Flags).find(L"IL only") != std::wstring::npos);
 	}
 }

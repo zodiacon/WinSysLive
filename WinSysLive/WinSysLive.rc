@@ -64,6 +64,7 @@ BEGIN
         MENUITEM "&Copy All Rows\tCtrl+Shift+C", ID_EDIT_COPYALL
         MENUITEM SEPARATOR
         MENUITEM "S&napshots...\tCtrl+Shift+N", ID_FILE_SNAPSHOTS
+        MENUITEM "Open &PE File...",            ID_FILE_OPENPE
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
@@ -2027,6 +2028,7 @@ BEGIN
     ID_DEVICES_RESCAN       "Read the devices again\nScan Again"
     ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
     ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
+    ID_FILE_OPENPE          "Show a PE file's headers, sections, imports, exports, resources and more (or drop files on the window)\nOpen PE File"
 END
 
 STRINGTABLE

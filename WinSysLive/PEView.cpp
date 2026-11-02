@@ -3,9 +3,11 @@
 #include "resource.h"
 #include "FormatHelper.h"
 #include "TotalPE.h"
+#include "XmlText.h"
 #include <ClipboardHelper.h>
 #include <ListViewhelper.h>
 #include <WinSys/Helpers.h>
+#include <WinSys/FileVersion.h>
 
 using namespace WinSys;
 
@@ -50,7 +52,7 @@ void CPEView::Init(HWND hDlg, std::wstring path) {
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
 	ListViewHelper::EnableColumnDpiScaling(m_List);
 	CComboBox view(m_Dlg.GetDlgItem(IDC_PE_VIEW));
-	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports", L"Debug" })
+	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports", L"Debug", L"Resources", L"Version", L"Manifest", L".NET" })
 		view.AddString(name);
 	view.SetCurSel(0);
 
@@ -65,6 +67,7 @@ void CPEView::Init(HWND hDlg, std::wstring path) {
 	m_Dlg.GetDlgItem(IDC_PE_TOTALPE).EnableWindow(!m_Path.empty());
 	if (m_File) {
 		BuildTables();
+		BuildMoreTables();
 		auto& h = m_File->GetHeaders();
 		auto imports = m_File->GetImports();
 		size_t functions = 0;
@@ -98,7 +101,14 @@ void CPEView::BuildTables() {
 	field(L"Subsystem", std::format(L"{} {}.{}", PEFile::SubsystemName(h.Subsystem), h.SubsystemMajor, h.SubsystemMinor));
 	field(L"OS version", std::format(L"{}.{}", h.OsMajor, h.OsMinor));
 	field(L"DLL characteristics", std::format(L"{} ({})", PEFile::DllCharacteristicsText(h.DllCharacteristics), Hex(h.DllCharacteristics, 4)));
-	field(L"Checksum", h.CheckSum ? Hex(h.CheckSum) : L"0 (none)");
+	// the header's checksum against the computed one (drivers must match; executables mostly leave it 0)
+	auto computed = m_File->ComputeChecksum();
+	field(L"Checksum", h.CheckSum == 0 ? std::format(L"0 (none; computed {})", Hex(computed))
+		: h.CheckSum == computed ? std::format(L"{} (correct)", Hex(h.CheckSum))
+		: std::format(L"{} (wrong: computed {})", Hex(h.CheckSum), Hex(computed)));
+	if (auto net = m_File->GetDotNet())
+		field(L".NET", std::format(L"{}, metadata {}", net->IsILOnly() ? L"Managed (IL only)" : L"Mixed (managed and native)",
+			Wide(net->MetadataVersion)));
 	field(L"Stack", std::format(L"{} reserved, {} committed", FormatHelper::FormatBytes(h.StackReserve), FormatHelper::FormatBytes(h.StackCommit)));
 	field(L"Heap", std::format(L"{} reserved, {} committed", FormatHelper::FormatBytes(h.HeapReserve), FormatHelper::FormatBytes(h.HeapCommit)));
 	for (int i = 0; i < (int)h.Directories.size(); i++) {
@@ -155,6 +165,79 @@ void CPEView::BuildTables() {
 	}
 }
 
+void CPEView::BuildMoreTables() {
+	auto resources = m_File->GetResources();
+	auto& res = m_Tables[(int)View::Resources];
+	res.Columns = { { L"Type", 150 }, { L"Name", 160 }, { L"Language", 80 }, { L"Size", 90 }, { L"RVA", 100 }, { L"Code Page", 80 } };
+	res.Numeric = { false, false, true, true, true, true };
+	for (auto& r : resources) {
+		auto type = r.TypeId ? std::wstring(PEFile::ResourceTypeName(r.TypeId)) : r.Type;
+		if (r.TypeId && type.empty())
+			type = std::format(L"#{}", r.TypeId);
+		res.Rows.push_back({ type, r.NameId ? std::format(L"#{}", r.NameId) : r.Name, std::format(L"0x{:04X}", r.Language),
+			std::to_wstring(r.Size), Hex(r.Rva), std::to_wstring(r.CodePage) });
+		res.Keys.push_back({ 0, 0, r.Language, r.Size, r.Rva, r.CodePage });
+	}
+
+	auto& version = m_Tables[(int)View::Version];
+	version.Columns = { { L"Field", 170 }, { L"Value", 470 } };
+	if (auto v = FileVersion::ReadDetails(m_Path)) {
+		version.Rows.push_back({ L"File version", FileVersion::VersionText(v->FileVersion) });
+		version.Rows.push_back({ L"Product version", FileVersion::VersionText(v->ProductVersion) });
+		std::wstring flags;
+		for (auto [flag, name] : { std::pair{ (DWORD)VS_FF_DEBUG, L"Debug" }, { (DWORD)VS_FF_PRERELEASE, L"Prerelease" },
+			{ (DWORD)VS_FF_PATCHED, L"Patched" }, { (DWORD)VS_FF_PRIVATEBUILD, L"Private build" }, { (DWORD)VS_FF_SPECIALBUILD, L"Special build" } })
+			if (v->FileFlags & flag)
+				flags += (flags.empty() ? L"" : L", ") + std::wstring(name);
+		if (!flags.empty())
+			version.Rows.push_back({ L"Flags", flags });
+		WCHAR language[128]{};
+		::VerLanguageName(v->Language, language, _countof(language));
+		version.Rows.push_back({ L"Language", std::format(L"{} (0x{:04X}), code page {}", language, v->Language, v->CodePage) });
+		for (auto& [name, value] : v->Strings)
+			version.Rows.push_back({ name, value });
+	}
+
+	// the manifest's lines (one line of XML broken at its tags)
+	auto& manifest = m_Tables[(int)View::Manifest];
+	manifest.Columns = { { L"Manifest", 900 } };
+	if (auto it = std::ranges::find_if(resources, [](auto& r) { return r.TypeId == 24; }); it != resources.end()) {
+		auto data = m_File->GetResourceData(*it);
+		std::string text(data.begin(), data.end());
+		if (text.starts_with("\xEF\xBB\xBF"))
+			text.erase(0, 3);
+		// a line per element, indented (the linker writes the merged manifest on one line)
+		auto wide = XmlText::Indent(FromUtf8(text));
+		size_t start = 0;
+		while (start < wide.size()) {
+			auto end = wide.find(L'\n', start);
+			auto line = wide.substr(start, end == std::wstring::npos ? std::wstring::npos : end - start);
+			if (!line.empty() && line.back() == L'\r')
+				line.pop_back();
+			// tabs as spaces: the list shows no tabs
+			for (size_t t; (t = line.find(L'\t')) != std::wstring::npos; )
+				line.replace(t, 1, L"    ");
+			if (!line.empty())
+				manifest.Rows.push_back({ line });
+			if (end == std::wstring::npos)
+				break;
+			start = end + 1;
+		}
+	}
+
+	auto& net = m_Tables[(int)View::DotNet];
+	net.Columns = { { L"Field", 170 }, { L"Value", 470 } };
+	if (auto n = m_File->GetDotNet()) {
+		net.Rows.push_back({ L"Kind", n->IsILOnly() ? L"Managed (IL only)" : L"Mixed (managed and native: C++/CLI)" });
+		net.Rows.push_back({ L"Metadata version", Wide(n->MetadataVersion) + L" (.NET Framework 4 and .NET Core/5+ alike)" });
+		net.Rows.push_back({ L"CLR header version", std::format(L"{}.{}", n->RuntimeMajor, n->RuntimeMinor) });
+		net.Rows.push_back({ L"Flags", std::format(L"{} ({})", PEFile::DotNetFlagsText(n->Flags), Hex(n->Flags)) });
+		net.Rows.push_back({ L"Entry point", n->EntryPointToken == 0 ? std::wstring(L"(none: a library)")
+			: (n->Flags & COMIMAGE_FLAGS_NATIVE_ENTRYPOINT) ? L"RVA " + Hex(n->EntryPointToken) : L"Token " + Hex(n->EntryPointToken) });
+		net.Rows.push_back({ L"Metadata", std::format(L"RVA {}, {} bytes", Hex(n->MetadataRva), n->MetadataSize) });
+	}
+}
+
 void CPEView::ShowView() {
 	auto view = CComboBox(m_Dlg.GetDlgItem(IDC_PE_VIEW)).GetCurSel();
 	auto& table = m_Tables[(std::max)(view, 0)];
@@ -193,7 +276,8 @@ void CPEView::ShowView() {
 		status = m_Path.empty() ? L"No image file" : L"Can't read the image: " + Helpers::GetErrorText(m_Error);
 	else if (table.Rows.empty())
 		status = view == (int)View::Exports ? L"No exports" : view == (int)View::Imports ? L"No imports" : view == (int)View::Debug
-			? L"No debug directory" : L"None";
+			? L"No debug directory" : view == (int)View::Resources ? L"No resources" : view == (int)View::Version ? L"No version resource"
+			: view == (int)View::Manifest ? L"No manifest" : view == (int)View::DotNet ? L"Not a .NET image (a .NET Core app's exe is a native host: its DLL is the managed image)" : L"None";
 	else
 		status = std::format(L"{} rows", table.Rows.size());
 	m_Dlg.SetDlgItemText(IDC_PE_STATUS, status.c_str());

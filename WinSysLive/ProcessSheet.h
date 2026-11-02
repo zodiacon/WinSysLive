@@ -65,6 +65,7 @@ private:
 	// WRITE_DAC and WRITE_OWNER it allows
 	CObjectSecurityInfo* m_Security{ nullptr };
 	int m_SecurityTab{ -1 };
+	int m_ImageTab{ -1 };	// its tab has the executable's icon, set after the sheet is up (as the Security tab's)
 	CAclDialogTheming m_AclTheming;	// the ACL editor's dialogs (also the Token page's)
 };
 

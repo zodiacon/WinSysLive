@@ -3,6 +3,7 @@
 #include "../WinSysLive/AlertRules.h"
 #include "../WinSysLive/EventFilter.h"
 #include "../WinSysLive/ColumnLayout.h"
+#include "../WinSysLive/XmlText.h"
 
 // the AlertRules setting's text, the descriptions, the patterns and the threshold conditions (WinSysLive\AlertRules.h)
 
@@ -408,4 +409,16 @@ TEST(ColumnLayout_NewDefaultColumns) {
 	// a table without added columns writes no version
 	const ColumnDef plain[] = { { L"A", L"A", 10, LVCFMT_LEFT, true } };
 	CHECK_EQ(ColumnLayout::Format({ { 0, 10 } }, plain), std::wstring(L"A:10"));
+}
+
+TEST(XmlText_Indent) {
+	// a manifest as the linker writes it: the declaration, a line break, then everything on one line
+	auto text = XmlText::Indent(L"<?xml version=\"1.0\"?>\r\n<assembly a='1'><dependency><x/></dependency><b>text</b></assembly>");
+	CHECK_EQ(text, std::wstring(L"<?xml version=\"1.0\"?>\n<assembly a='1'>\n  <dependency>\n    <x/>\n  </dependency>\n  <b>text</b>\n</assembly>"));
+	// the source's own layout replaced, an event's data on its lines
+	text = XmlText::Indent(L"<Event>\n    <Data Name='a'>1</Data>\n\t<Data Name='b'/>\n</Event>");
+	CHECK_EQ(text, std::wstring(L"<Event>\n  <Data Name='a'>1</Data>\n  <Data Name='b'/>\n</Event>"));
+	// broken: what's there, no crash
+	CHECK_EQ(XmlText::Indent(L"<a><b"), std::wstring(L"<a><b"));
+	CHECK(XmlText::Indent(L"").empty());
 }
