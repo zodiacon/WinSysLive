@@ -27,7 +27,7 @@ namespace {
 		{ L"Process", L"Process", 130, LVCFMT_LEFT, true },
 		{ L"PID", L"ProcessId", 60, LVCFMT_RIGHT, true },
 		{ L"Message", L"Message", 380, LVCFMT_LEFT, true },
-		{ L"Details", L"Details", 600, LVCFMT_LEFT, true },
+		{ L"Details", L"Details", 600, LVCFMT_LEFT, true, false, nullptr, 1 },	// added: shown once in older layouts
 	};
 
 	const ToolBarButtonInfo s_BarButtons[] = {

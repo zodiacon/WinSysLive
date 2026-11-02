@@ -7,7 +7,8 @@
 
 //
 // The Events tab's Details: a modal, resizable dialog of one event. The level's icon (the system's stock error, warning
-// or information icon; the key for the Security log's audits, as the list) and the source and event ID as its title; the event's
+// or information icon; the key for the Security log's audits, as the list) and the source and event ID as its title, the
+// summary of its data under it (the tab's Details: the entry's single condensed data item, CEventsView::Condense); the event's
 // fields as selectable read-only text in two columns (log, source, level, event ID, time, record ID, process with its
 // name, thread, computer, keywords); the message in a scrolling box with its line breaks, or, with Show XML, the event's
 // XML (WinSys EventLog::GetXml, by record ID), indented. Previous and Next walk the tab's rows (the view's callback
@@ -33,6 +34,7 @@ public:
 
 	BEGIN_DLGRESIZE_MAP(CEventDetailsDlg)
 		DLGRESIZE_CONTROL(IDC_ED_TITLE, DLSZ_SIZE_X)
+		DLGRESIZE_CONTROL(IDC_ED_SUMMARY, DLSZ_SIZE_X)
 		DLGRESIZE_CONTROL(IDC_ED_SOURCE, DLSZ_SIZE_X)
 		DLGRESIZE_CONTROL(IDC_ED_EVENTID, DLSZ_SIZE_X)
 		DLGRESIZE_CONTROL(IDC_ED_RECORDID, DLSZ_SIZE_X)

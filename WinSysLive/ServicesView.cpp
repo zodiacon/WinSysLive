@@ -598,6 +598,22 @@ std::wstring CServicesView::DriverPath(ServiceItem& item) const {
 	return config ? WinSys::KernelModules::DriverImagePath(item.Info.GetName(), config->BinaryPathName) : std::wstring();
 }
 
+bool CServicesView::ShowService(std::wstring const& name) {
+	if (m_Kind != Kind::Services)
+		return false;
+	auto it = std::ranges::find_if(m_All, [&](auto& item) { return ::_wcsicmp(item->Info.GetName().c_str(), name.c_str()) == 0; });
+	if (it == m_All.end())
+		return false;
+	// a filter that hides it goes
+	if (!Matches(**it))
+		m_Filter.Clear();
+	SelectService((*it)->Info.GetName());
+	if (int selected = m_List.GetSelectedIndex(); selected >= 0)
+		m_List.EnsureVisible(selected, FALSE);
+	m_List.SetFocus();
+	return true;
+}
+
 bool CServicesView::ShowDriver(std::wstring const& path) {
 	if (m_Kind != Kind::Drivers)
 		return false;

@@ -18,6 +18,10 @@
 #include "NetworkInfoDlg.h"
 #include "CommandPaletteDlg.h"
 #include "AlertsDlg.h"
+#include "DevicesView.h"
+#include "DeviceResourcesDlg.h"
+#include <WinSys/KernelModules.h>
+#include <WinSys/ServiceManager.h>
 #include "EtwSessionsDlg.h"
 #include "WindowStationsDlg.h"
 #include "PowerRequestsDlg.h"
@@ -1523,8 +1527,45 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	}
 
 	CCommandPaletteDlg dlg(std::move(commands), m_Images, recent);
+	// the search: the processes from the snapshot now; the services, the loaded drivers and the devices read on the
+	// palette's thread (WinSys only there: the icons' indices are looked up here)
+	std::vector<CCommandPaletteDlg::SearchItem> processes;
+	for (auto& p : m_ProcessManager.GetProcesses()) {
+		if (p->Id == 0)
+			continue;
+		auto pid = p->Id;
+		processes.push_back({ p->GetImageName(), L"Process", std::format(L"PID {}", pid), GetProcessIcon(*p),
+			[this, pid] { GoToProcess(pid); } });
+	}
+	auto tabIcon = [&](TabType type) {
+		auto tab = std::ranges::find(s_Tabs, type, &TabInfo::Type);
+		return tab == std::end(s_Tabs) ? -1 : GetIconIndex(tab->Icon);
+	};
+	int serviceIcon = tabIcon(TabType::Services), driverIcon = tabIcon(TabType::KernelModules), deviceIcon = tabIcon(TabType::Devices);
+	dlg.SetSearch(std::move(processes), [this, serviceIcon, driverIcon, deviceIcon] {
+		std::vector<CCommandPaletteDlg::SearchItem> items;
+		for (auto& s : WinSys::ServiceManager::EnumServices(WinSys::ServiceEnumType::AllServices)) {
+			auto name = s.GetName();
+			items.push_back({ s.GetDisplayName(), L"Service", name, serviceIcon, [this, name] { GoToService(name); } });
+		}
+		for (auto& m : WinSys::KernelModules::Enum()) {
+			auto path = m.Path;
+			items.push_back({ m.Name, L"Driver", path, driverIcon, [this, path] { GoToKernelModule(path); } });
+		}
+		if (auto devices = WinSys::Devices::Enum(false))
+			for (auto& d : *devices) {
+				if (d.Depth == 0 || d.Name.empty())
+					continue;
+				items.push_back({ d.Name, L"Device", d.ClassName, deviceIcon, [this, d] { ShowDevice(d); } });
+			}
+		return items;
+		});
 	if (dlg.DoModal(m_hWnd) != IDOK)
 		return 0;
+	if (auto& go = dlg.GetSearchAction()) {
+		go();
+		return 0;
+	}
 	auto id = dlg.GetCommand();
 	std::erase(recent, id);
 	recent.insert(recent.begin(), id);
@@ -1777,6 +1818,17 @@ IView* CMainFrame::ActivateTab(TabType type) {
 void CMainFrame::GoToKernelModule(std::wstring const& path) {
 	if (auto view = ActivateTab(TabType::KernelModules); view && !view->ShowKernelModule(path))
 		AtlMessageBox(m_hWnd, std::format(L"{} isn't loaded.", path).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
+void CMainFrame::GoToService(std::wstring const& name) {
+	if (auto view = ActivateTab(TabType::Services); view && !view->ShowService(name))
+		AtlMessageBox(m_hWnd, std::format(L"There's no service {}.", name).c_str(), IDR_MAINFRAME, MB_ICONINFORMATION);
+}
+
+void CMainFrame::ShowDevice(WinSys::DeviceInfo device) {
+	auto icon = CDevicesView::LoadClassIcon(device.ClassGuid, ::GetSystemMetricsForDpi(SM_CXICON, ::GetDpiForWindow(m_hWnd)));
+	CDeviceResourcesDlg dlg(std::move(device), icon, [this](std::wstring const& path) { GoToDriver(path); });
+	dlg.DoModal(m_hWnd);
 }
 
 void CMainFrame::GoToDriver(std::wstring const& path) {

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <WinSys/Devices.h>
 #include "resource.h"
 #include "WTLHelper.h"
 #include <NativeCustomTabView.h>
@@ -254,6 +255,10 @@ private:
 	void GoToProcess(uint32_t pid) override;
 	void GoToKernelModule(std::wstring const& path) override;
 	void GoToDriver(std::wstring const& path) override;
+	// the Services tab with the service selected (the command palette's search)
+	void GoToService(std::wstring const& name);
+	// the device's Resources and Drivers (the command palette's search; not the Devices tab, whose scan may not be done)
+	void ShowDevice(WinSys::DeviceInfo device);
 	void AddAlertRule(AlertRule const& rule) override;
 	// switches to the tab, opening it if it's closed; its view
 	IView* ActivateTab(TabType type);

@@ -12,51 +12,7 @@ namespace ColumnLayout {
 		}
 	}
 
-	std::vector<ShownColumn> Parse(std::wstring_view text, std::span<ColumnDef const> defs) {
-		std::vector<ShownColumn> columns;
-		for (auto part : std::views::split(text, L',')) {
-			std::wstring_view entry(part.begin(), part.end());
-			auto colon = entry.find(L':');
-			if (colon == entry.npos)
-				continue;
-			auto key = entry.substr(0, colon);
-			auto def = std::ranges::find_if(defs, [&](auto& d) { return key == d.Key; });
-			if (def == defs.end())
-				continue;
-			int id = (int)(def - defs.begin());
-			int width = _wtoi(std::wstring(entry.substr(colon + 1)).c_str());
-			if (width > 0 && !Contains(columns, id))
-				columns.push_back({ id, width });
-		}
-
-		if (columns.empty()) {
-			for (int i = 0; i < (int)defs.size(); i++)
-				if (defs[i].Default)
-					columns.push_back({ i, defs[i].Width });
-		}
-		// a missing mandatory column goes after the mandatory column before it in the table, or first
-		int previous = -1;
-		for (int i = 0; i < (int)defs.size(); i++) {
-			if (!defs[i].Mandatory)
-				continue;
-			if (!Contains(columns, i)) {
-				auto pos = previous < 0 ? columns.begin() : std::ranges::find(columns, previous, &ShownColumn::Id) + 1;
-				columns.insert(pos, { i, defs[i].Width });
-			}
-			previous = i;
-		}
-		return columns;
-	}
-
-	std::wstring Format(std::vector<ShownColumn> const& columns, std::span<ColumnDef const> defs) {
-		std::wstring text;
-		for (auto& c : columns) {
-			if (!text.empty())
-				text += L',';
-			text += std::format(L"{}:{}", defs[c.Id].Key, c.Width);
-		}
-		return text;
-	}
+	// Parse and Format are in ColumnLayoutText.cpp (the tests take it)
 
 	std::wstring CategoryOf(ColumnDef const& def) {
 		return def.Category ? def.Category : L"Other";

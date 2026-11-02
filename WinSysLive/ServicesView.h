@@ -45,6 +45,7 @@ public:
 	void OnFrameIdle() override;
 	// the Drivers tab: the driver service whose image is the file
 	bool ShowDriver(std::wstring const& path) override;
+	bool ShowService(std::wstring const& name) override;
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;

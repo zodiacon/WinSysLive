@@ -395,6 +395,7 @@
     <ClCompile Include="AboutDlg.cpp" />
     <ClCompile Include="UpdateDlg.cpp" />
     <ClCompile Include="ColumnLayout.cpp" />
+    <ClCompile Include="ColumnLayoutText.cpp" />
     <ClCompile Include="ConnectionRows.cpp" />
     <ClCompile Include="HandleIcons.cpp" />
     <ClCompile Include="FilterBox.cpp" />

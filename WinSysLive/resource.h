@@ -771,6 +771,7 @@
 #define IDC_RM_STATUS                   1461
 #define IDC_RM_COPY                     1462
 #define ID_DEVICES_RESOURCEMAP          33014
+#define IDC_ED_SUMMARY                  1463
 #define IDC_AR_LOG                      1425
 #define IDC_AR_LOG_LABEL                1426
 #define IDC_AR_EVENTID                  1427
@@ -807,7 +808,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        339
 #define _APS_NEXT_COMMAND_VALUE         33015
-#define _APS_NEXT_CONTROL_VALUE         1463
+#define _APS_NEXT_CONTROL_VALUE         1464
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

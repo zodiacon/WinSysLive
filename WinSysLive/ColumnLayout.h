@@ -18,6 +18,9 @@ namespace ColumnLayout {
 		bool Default;	// shown until the user chooses otherwise
 		bool Mandatory{ false };	// can't be hidden
 		PCWSTR Category{ nullptr };	// with categories, Select shows a tree of them (CColumnsTreeDlg)
+		// the table's version that added the column (0: the first): a default column newer than a saved layout is added
+		// to it once (Parse); raise it past the table's highest when adding a default column
+		int Added{ 0 };
 	};
 
 	struct ShownColumn {
@@ -25,9 +28,13 @@ namespace ColumnLayout {
 		int Width;	// at 96 DPI, scaled to the list's DPI when the column is inserted
 	};
 
-	// Unknown keys are skipped. Nothing usable gives the defaults; mandatory columns that are missing are added.
+	// Unknown keys are skipped. Nothing usable gives the defaults; mandatory columns that are missing are added, and so
+	// are the default columns added to the table since the text was written (its "~:N" entry, the table's version then;
+	// none: 0). In ColumnLayoutText.cpp, which the tests take
 	std::vector<ShownColumn> Parse(std::wstring_view text, std::span<ColumnDef const> defs);
+	// "Key:width,...", and "~:N" last when the table's version (its highest Added) is above 0
 	std::wstring Format(std::vector<ShownColumn> const& columns, std::span<ColumnDef const> defs);
+	int Version(std::span<ColumnDef const> defs);
 
 	// Runs the column selection dialog. Columns that stay keep their width; the result is empty if it was canceled.
 	// categories: the order of the columns' categories in the tree (others follow in table order)

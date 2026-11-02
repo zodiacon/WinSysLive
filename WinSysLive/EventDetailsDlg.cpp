@@ -15,7 +15,7 @@ namespace {
 	} s_Fields[] = {
 		{ IDC_ED_LOG, L"Log" }, { IDC_ED_SOURCE, L"Source" }, { IDC_ED_LEVEL, L"Level" }, { IDC_ED_EVENTID, L"Event ID" },
 		{ IDC_ED_TIME, L"Time" }, { IDC_ED_RECORDID, L"Record ID" }, { IDC_ED_PROCESS, L"Process" }, { IDC_ED_THREAD, L"Thread" },
-		{ IDC_ED_COMPUTER, L"Computer" }, { IDC_ED_KEYWORDS, L"Keywords" },
+		{ IDC_ED_COMPUTER, L"Computer" }, { IDC_ED_KEYWORDS, L"Keywords" }, { IDC_ED_SUMMARY, L"Details" },
 	};
 }
 
@@ -50,6 +50,8 @@ void CEventDetailsDlg::ShowEntry() {
 	m_Xml.reset();
 	auto process = m_Callbacks.ProcessName ? m_Callbacks.ProcessName(e) : std::wstring();
 	SetDlgItemText(IDC_ED_TITLE, std::format(L"{} {}", e.Provider, e.EventId).c_str());
+	// the tab's Details (the view condenses the data fields to their summary, the only item)
+	SetDlgItemText(IDC_ED_SUMMARY, e.Data.empty() ? L"" : e.Data[0].Value.c_str());
 	SetDlgItemText(IDC_ED_LOG, e.Channel.c_str());
 	SetDlgItemText(IDC_ED_SOURCE, e.Provider.c_str());
 	SetDlgItemText(IDC_ED_LEVEL, EventLog::LevelText(e));

@@ -2,6 +2,7 @@
 #include "TestFramework.h"
 #include "../WinSysLive/AlertRules.h"
 #include "../WinSysLive/EventFilter.h"
+#include "../WinSysLive/ColumnLayout.h"
 
 // the AlertRules setting's text, the descriptions, the patterns and the threshold conditions (WinSysLive\AlertRules.h)
 
@@ -359,4 +360,52 @@ TEST(Events_FilterIds) {
 	f = EventFilter::Parse(L"");
 	CHECK(f.Text.empty());
 	CHECK(f.MatchesId(0));
+}
+
+namespace {
+	using ColumnLayout::ColumnDef;
+	// a table as a view's: Name mandatory, Size added in version 1 (shown by default), Owner in version 2 (not shown)
+	const ColumnDef s_Defs[] = {
+		{ L"Name", L"Name", 200, LVCFMT_LEFT, true, true },
+		{ L"Type", L"Type", 100, LVCFMT_LEFT, true },
+		{ L"Path", L"Path", 300, LVCFMT_LEFT, false },
+		{ L"Size", L"Size", 80, LVCFMT_RIGHT, true, false, nullptr, 1 },
+		{ L"Owner", L"Owner", 120, LVCFMT_LEFT, false, false, nullptr, 2 },
+	};
+
+	std::wstring Keys(std::vector<ColumnLayout::ShownColumn> const& columns) {
+		std::wstring text;
+		for (auto& c : columns)
+			text += (text.empty() ? L"" : L",") + std::wstring(s_Defs[c.Id].Key);
+		return text;
+	}
+}
+
+TEST(ColumnLayout_Parse) {
+	// nothing: the defaults, in table order
+	CHECK_EQ(Keys(ColumnLayout::Parse(L"", s_Defs)), std::wstring(L"Name,Type,Size"));
+	// widths kept, unknown keys and bad widths skipped, duplicates once, the mandatory column added first
+	auto columns = ColumnLayout::Parse(L"Type:150,Gone:10,Path:0,Type:90,Path:250", s_Defs);
+	CHECK_EQ(Keys(columns), std::wstring(L"Name,Type,Path,Size"));
+	if (columns.size() == 4)
+		CHECK_EQ(columns[1].Width, 150);
+}
+
+TEST(ColumnLayout_NewDefaultColumns) {
+	// a layout saved before versions: Size, a default column added since, comes after the nearest column before it in
+	// the table that's shown (Path, wherever it's been dragged)
+	auto columns = ColumnLayout::Parse(L"Name:200,Path:300,Type:100", s_Defs);
+	CHECK_EQ(Keys(columns), std::wstring(L"Name,Path,Size,Type"));
+	// written with the table's version, so hiding it then sticks; Owner (not a default) never comes by itself
+	CHECK_EQ(ColumnLayout::Version(s_Defs), 2);
+	auto text = ColumnLayout::Format(columns, s_Defs);
+	CHECK_EQ(text, std::wstring(L"Name:200,Path:300,Size:80,Type:100,~:2"));
+	CHECK_EQ(Keys(ColumnLayout::Parse(L"Name:200,Type:100,~:2", s_Defs)), std::wstring(L"Name,Type"));
+	// saved at version 1: Size was there then (hidden since), nothing new to add
+	CHECK_EQ(Keys(ColumnLayout::Parse(L"Type:100,Name:200,~:1", s_Defs)), std::wstring(L"Type,Name"));
+	// a shown column before it in the table missing: after the nearest one that's there
+	CHECK_EQ(Keys(ColumnLayout::Parse(L"Type:100,Name:200", s_Defs)), std::wstring(L"Type,Size,Name"));
+	// a table without added columns writes no version
+	const ColumnDef plain[] = { { L"A", L"A", 10, LVCFMT_LEFT, true } };
+	CHECK_EQ(ColumnLayout::Format({ { 0, 10 } }, plain), std::wstring(L"A:10"));
 }

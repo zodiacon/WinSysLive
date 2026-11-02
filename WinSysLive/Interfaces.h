@@ -83,6 +83,8 @@ struct IView abstract {
 	// GoToDriver); false if there's none
 	virtual bool ShowKernelModule(std::wstring const& /*path*/) { return false; }
 	virtual bool ShowDriver(std::wstring const& /*path*/) { return false; }
+	// the Services tab: selects the service (by name), clearing a filter that hides it; false if there's none
+	virtual bool ShowService(std::wstring const& /*name*/) { return false; }
 	// the view's main list, for File > Export List and Copy All Rows (a list in the view with the focus comes first);
 	// nullptr if it has none
 	virtual HWND GetExportList() { return nullptr; }

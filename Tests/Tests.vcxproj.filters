@@ -33,6 +33,9 @@
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

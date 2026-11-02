@@ -42,6 +42,9 @@
     <ClCompile Include="ColumnLayout.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="ColumnLayoutText.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="AddressResolver.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>

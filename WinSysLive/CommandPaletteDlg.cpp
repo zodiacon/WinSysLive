@@ -11,7 +11,19 @@ namespace {
 
 LRESULT CCommandPaletteDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	m_Filter.SubclassWindow(GetDlgItem(IDC_CP_FILTER));
-	m_Filter.SetCueBannerText(L"Type a command or a tab's name");
+	m_Filter.SetCueBannerText(m_Loader || !m_Search.empty() ? L"Type a command, a tab's name, or a process, service, driver or device"
+		: L"Type a command or a tab's name");
+	if (m_Loader) {
+		m_Loading = true;
+		m_Worker = std::jthread([this, hWnd = m_hWnd] {
+			auto items = m_Loader();
+			{
+				std::lock_guard lock(m_LoadLock);
+				m_Loaded = std::move(items);
+			}
+			::PostMessage(hWnd, WM_SEARCHLOADED, 0, 0);
+			});
+	}
 	m_List.Attach(GetDlgItem(IDC_CP_LIST));
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 	if (m_Images)
@@ -36,6 +48,20 @@ LRESULT CCommandPaletteDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARA
 	m_Filter.SetFocus();
 	PostMessage(WM_SHOWN);
 	return FALSE;	// the focus is set
+}
+
+LRESULT CCommandPaletteDlg::OnSearchLoaded(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	{
+		std::lock_guard lock(m_LoadLock);
+		if (m_Loaded) {
+			for (auto& item : *m_Loaded)
+				m_Search.push_back(std::move(item));
+			m_Loaded.reset();
+		}
+	}
+	m_Loading = false;
+	ShowCommands();
+	return 0;
 }
 
 LRESULT CCommandPaletteDlg::OnShown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -81,6 +107,25 @@ void CCommandPaletteDlg::ShowCommands() {
 	for (auto i : rest)
 		first.push_back(i);
 
+	// the search's results, from two characters: names starting with the text first, each kind in the order given
+	std::vector<int> found, foundRest;
+	if (filter.size() >= 2) {
+		for (int i = 0; i < (int)m_Search.size() && found.size() + foundRest.size() < MaxResults * 4; i++) {
+			auto& item = m_Search[i];
+			auto name = Lowercase(item.Name);
+			auto haystack = name + L" " + Lowercase(item.Kind) + L" " + Lowercase(item.Detail);
+			if (std::ranges::all_of(words, [&](auto& w) { return haystack.find(w) != std::wstring::npos; }))
+				(name.starts_with(filter) ? found : foundRest).push_back(i);
+		}
+		for (auto i : foundRest)
+			found.push_back(i);
+		// at most MaxPerKind of a kind (thirty svchost.exe processes mustn't hide the services), MaxResults in all
+		std::unordered_map<std::wstring, size_t> perKind;
+		std::erase_if(found, [&](int i) { return ++perKind[m_Search[i].Kind] > MaxPerKind; });
+		if (found.size() > MaxResults)
+			found.resize(MaxResults);
+	}
+
 	// no SetRedraw: the first fill happens before the dialog is shown, and a list whose redraw was turned off and on
 	// then stayed unpainted until its contents changed (a hundred or so rows fill quickly anyway)
 	m_List.DeleteAllItems();
@@ -92,7 +137,17 @@ void CCommandPaletteDlg::ShowCommands() {
 		m_List.SetItemText(row, 1, c.Path.c_str());
 		m_List.SetItemText(row, 2, c.Shortcut.c_str());
 	}
-	if (!first.empty()) {
+	// a search result's item data: -1 - its index (a command's is its index)
+	for (auto i : found) {
+		auto& item = m_Search[i];
+		int row = m_List.GetItemCount();
+		m_List.InsertItem(LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM, row, item.Name.c_str(), 0, 0, item.Image, -1 - i);
+		m_List.SetItemText(row, 1, item.Kind.c_str());
+		m_List.SetItemText(row, 2, item.Detail.c_str());
+	}
+	if (filter.size() >= 2 && m_Loading)
+		m_List.InsertItem(LVIF_TEXT | LVIF_PARAM, m_List.GetItemCount(), L"Searching services, drivers and devices...", 0, 0, -1, INT_MIN);
+	if (m_List.GetItemCount() > 0 && (LPARAM)m_List.GetItemData(0) != INT_MIN) {
 		m_List.SetItemState(0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		m_List.EnsureVisible(0, FALSE);
 	}
@@ -133,7 +188,15 @@ LRESULT CCommandPaletteDlg::OnOK(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	int selected = m_List.GetNextItem(-1, LVNI_SELECTED);
 	if (selected < 0)
 		return 0;
-	m_Chosen = m_Commands[m_List.GetItemData(selected)].Id;
+	auto data = (LPARAM)m_List.GetItemData(selected);
+	if (data == INT_MIN)	// "Searching..."
+		return 0;
+	if (data < 0) {
+		m_SearchAction = m_Search[-1 - data].Go;
+		m_Chosen = 0;
+	}
+	else
+		m_Chosen = m_Commands[data].Id;
 	m_Closing = true;
 	EndDialog(IDOK);
 	return 0;
