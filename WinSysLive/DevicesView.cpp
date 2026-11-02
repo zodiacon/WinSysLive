@@ -3,6 +3,8 @@
 #include "DevicesView.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
+#include "DeviceResourcesDlg.h"
+#include <IconHelper.h>
 #include <ListViewhelper.h>
 #include <DpiHelper.h>
 #include <ClipboardHelper.h>
@@ -75,18 +77,56 @@ std::wstring CDevicesView::Row::Key() const {
 	return Kind == RowKind::Device ? std::wstring() : (Kind == RowKind::Class ? L"class:" : L"group:") + Name;
 }
 
+HICON CDevicesView::LoadClassIcon(std::wstring const& classGuid, int size) {
+	// GUID_DEVCLASS_UNKNOWN for none (Device Manager's "Other devices" icon)
+	auto guidText = classGuid.empty() ? std::wstring(L"{4d36e97e-e325-11ce-bfc1-08002be10318}") : classGuid;
+	HICON icon = nullptr;
+	// "file,index" (a negative index is a resource ID), at the size asked for
+	if (auto path = Devices::GetClassIconPath(guidText); !path.empty()) {
+		int index = 0;
+		if (auto comma = path.rfind(L','); comma != std::wstring::npos) {
+			index = _wtoi(path.c_str() + comma + 1);
+			path.resize(comma);
+		}
+		if (FAILED(::SHDefExtractIconW(path.c_str(), index, 0, &icon, nullptr, MAKELONG(size, size))))
+			icon = nullptr;
+	}
+	if (!icon) {
+		// SetupAPI's (32x32), scaled
+		GUID guid;
+		HICON large = nullptr;
+		if (SUCCEEDED(::CLSIDFromString(guidText.c_str(), &guid)) && ::SetupDiLoadClassIcon(&guid, &large, nullptr) && large) {
+			icon = (HICON)::CopyImage(large, IMAGE_ICON, size, size, LR_COPYFROMRESOURCE);
+			if (icon)
+				::DestroyIcon(large);
+			else
+				icon = large;
+		}
+	}
+	return icon ? icon : IconHelper::Load(IconId(IDI_DEVICE), size);
+}
+
+void CDevicesView::CreateClassImages() {
+	int cx = 16, cy = 16;
+	ImageList_GetIconSize(Frame()->GetImageList(), &cx, &cy);
+	m_Tree.SetImageList(nullptr, LVSIL_SMALL);
+	if (m_ClassImages)
+		m_ClassImages.Destroy();
+	m_ClassImages.Create(cx, cy, ILC_COLOR32 | ILC_MASK, 32, 8);
+	m_ClassImageIndex.clear();
+	m_Tree.SetImageList(m_ClassImages, LVSIL_SMALL);
+}
+
 int CDevicesView::ClassImage(std::wstring const& classGuid) {
-	if (!m_ClassImages.ImageList)
-		return Frame()->GetIconIndex(IDI_DEVICE);
 	if (auto it = m_ClassImageIndex.find(classGuid); it != m_ClassImageIndex.end())
 		return it->second;
-	// GUID_DEVCLASS_UNKNOWN for none (Device Manager's "Other devices" icon)
-	GUID guid = { 0x4d36e97e, 0xe325, 0x11ce, { 0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18 } };
-	if (!classGuid.empty())
-		::CLSIDFromString(classGuid.c_str(), &guid);
+	int cx = 16, cy = 16;
+	m_ClassImages.GetIconSize(cx, cy);
 	int index = -1;
-	if (!::SetupDiGetClassImageIndex(&m_ClassImages, &guid, &index))
-		index = -1;
+	if (auto icon = LoadClassIcon(classGuid, cx)) {
+		index = m_ClassImages.AddIcon(icon);
+		::DestroyIcon(icon);
+	}
 	m_ClassImageIndex[classGuid] = index;
 	return index;
 }
@@ -100,14 +140,9 @@ LRESULT CDevicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 	m_hWndClient = m_Tree.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-	// a shared list either way: the class image list is destroyed with SetupDiDestroyClassImageList, the frame's by the frame
+	// shared: the view makes it again on a DPI change and destroys it
 	m_Tree.GetListCtrl().ModifyStyle(0, LVS_SHAREIMAGELISTS);
-	if (::SetupDiGetClassImageList(&m_ClassImages))
-		m_Tree.SetImageList(m_ClassImages.ImageList, LVSIL_SMALL);
-	else {
-		m_ClassImages.ImageList = nullptr;
-		m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
-	}
+	CreateClassImages();
 	m_Tree.SetCallbackMode(true);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
 	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
@@ -161,11 +196,9 @@ LRESULT CDevicesView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_Notification = nullptr;
 	if (m_Worker.joinable())
 		m_Worker.join();
-	if (m_ClassImages.ImageList) {
-		m_Tree.SetImageList(nullptr, LVSIL_SMALL);
-		::SetupDiDestroyClassImageList(&m_ClassImages);
-		m_ClassImages.ImageList = nullptr;
-	}
+	m_Tree.SetImageList(nullptr, LVSIL_SMALL);
+	if (m_ClassImages)
+		m_ClassImages.Destroy();
 	SaveColumns();
 	bHandled = FALSE;
 	return 0;
@@ -662,6 +695,7 @@ void CDevicesView::ShowContextMenu(POINT pt) {
 	auto d = GetSelectedDevice();
 	CMenu menu;
 	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING | (d ? 0 : MF_GRAYED), ID_DEVICE_RESOURCES, L"&Resources and Drivers...");
 	menu.AppendMenu(MF_STRING | (d && d->Depth > 0 ? 0 : MF_GRAYED), ID_DEVICE_PROPERTIES, L"&Properties...");
 	// a present device's state can change; the computer's can't
 	bool changeable = d && d->Present && d->Depth > 0;
@@ -673,15 +707,15 @@ void CDevicesView::ShowContextMenu(POINT pt) {
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_DEVICE_SCANHARDWARE, L"&Scan for Hardware Changes");
-	menu.SetMenuDefaultItem(ID_DEVICE_PROPERTIES);
+	menu.SetMenuDefaultItem(ID_DEVICE_RESOURCES);
 	Frame()->ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
 }
 
 LRESULT CDevicesView::OnDoubleClick(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& bHandled) {
-	// a device's properties; a class row expands (the TreeListView does that)
-	if (auto d = GetSelectedDevice(); d && d->Depth > 0) {
+	// a device's resources and drivers; a class row expands (the TreeListView does that)
+	if (GetSelectedDevice()) {
 		BOOL handled;
-		OnProperties(0, 0, nullptr, handled);
+		OnResources(0, 0, nullptr, handled);
 	}
 	else
 		bHandled = FALSE;
@@ -695,6 +729,20 @@ LRESULT CDevicesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	// Device Manager's property sheet for the device
 	auto args = std::format(L"devmgr.dll,DeviceProperties_RunDLL /DeviceID {}", d->InstanceId);
 	::ShellExecute(m_hWnd, nullptr, L"rundll32.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+	return 0;
+}
+
+LRESULT CDevicesView::OnResources(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto d = GetSelectedDevice();
+	if (!d)
+		return 0;
+	// a copy: a scan may replace m_Devices while the dialog is open
+	auto device = *d;
+	if (device.Depth == 0)
+		device.ClassGuid = L"{4d36e966-e325-11ce-bfc1-08002be10318}";	// the computer, as its row's icon
+	auto icon = LoadClassIcon(device.ClassGuid, ::GetSystemMetricsForDpi(SM_CXICON, ::GetDpiForWindow(m_hWnd)));
+	CDeviceResourcesDlg dlg(std::move(device), icon, [this](std::wstring const& path) { Frame()->GoToDriver(path); });
+	dlg.DoModal(m_hWnd);
 	return 0;
 }
 

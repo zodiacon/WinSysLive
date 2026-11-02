@@ -56,6 +56,45 @@ TEST(Devices_LiveTree) {
 	}
 }
 
+TEST(Devices_LiveResourcesAndDrivers) {
+	// some started PCI device has memory or interrupts, and its stack has a function driver with an image on disk, then
+	// the bus driver (pci) at the bottom; a device that isn't there isn't found
+	auto devices = Devices::Enum(false);
+	CHECK(devices.has_value());
+	if (!devices)
+		return;
+	bool withResources = false, withStack = false;
+	for (auto& d : *devices) {
+		if (d.Enumerator != L"PCI" || d.Service.empty() || d.HasProblem() || d.IsDisabled())
+			continue;
+		auto resources = Devices::GetResources(d.InstanceId);
+		CHECK(resources.has_value());
+		if (resources) {
+			for (auto& r : *resources) {
+				if (r.Type == DeviceResourceType::Memory || r.Type == DeviceResourceType::LargeMemory || r.Type == DeviceResourceType::Io)
+					CHECK(r.End >= r.Start);
+				if (r.Type == DeviceResourceType::Memory || r.Type == DeviceResourceType::LargeMemory || r.Type == DeviceResourceType::Interrupt)
+					withResources = true;
+			}
+		}
+		auto stack = Devices::GetDriverStack(d.InstanceId);
+		CHECK(stack.has_value());
+		if (stack && !stack->empty()) {
+			auto function = std::ranges::find_if(*stack, [](auto& s) { return s.Role == DriverRole::Function; });
+			CHECK(function != stack->end());
+			if (function != stack->end() && !function->Path.empty() && ::GetFileAttributesW(function->Path.c_str()) != INVALID_FILE_ATTRIBUTES)
+				withStack = true;
+			CHECK(stack->back().Role == DriverRole::Bus);
+			// the roles in the stack's order, from the top
+			for (size_t i = 1; i < stack->size(); i++)
+				CHECK((int)(*stack)[i - 1].Role <= (int)(*stack)[i].Role);
+		}
+	}
+	CHECK(withResources);
+	CHECK(withStack);
+	CHECK(!Devices::GetResources(L"PCI\\NO_SUCH_DEVICE\\0").has_value());
+}
+
 TEST(EventLog_LevelNames) {
 	CHECK_EQ(std::wstring(EventLog::LevelName(1)), std::wstring(L"Critical"));
 	CHECK_EQ(std::wstring(EventLog::LevelName(2)), std::wstring(L"Error"));

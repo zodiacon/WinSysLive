@@ -489,6 +489,7 @@
     <ClCompile Include="DevicesView.cpp" />
     <ClCompile Include="EventsView.cpp" />
     <ClCompile Include="EventDetailsDlg.cpp" />
+    <ClCompile Include="DeviceResourcesDlg.cpp" />
     <ClCompile Include="KernelModulesView.cpp" />
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
@@ -593,6 +594,7 @@
     <ClInclude Include="DevicesView.h" />
     <ClInclude Include="EventsView.h" />
     <ClInclude Include="EventDetailsDlg.h" />
+    <ClInclude Include="DeviceResourcesDlg.h" />
     <ClInclude Include="KernelModulesView.h" />
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />

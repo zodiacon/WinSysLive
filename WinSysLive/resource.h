@@ -750,6 +750,17 @@
 #define IDC_ED_NEXT                     1444
 #define IDC_ED_GOTOPROCESS              1445
 #define IDC_ED_COPY                     1446
+#define IDD_DEVICERESOURCES             337
+#define IDC_DR_ICON                     1447
+#define IDC_DR_TITLE                    1448
+#define IDC_DR_ID                       1449
+#define IDC_DR_RESOURCES                1450
+#define IDC_DR_DRIVERS_LABEL            1451
+#define IDC_DR_DRIVERS                  1452
+#define IDC_DR_PROPERTIES               1453
+#define IDC_DR_GOTODRIVER               1454
+#define IDC_DR_COPY                     1455
+#define ID_DEVICE_RESOURCES             33012
 #define IDC_AR_LOG                      1425
 #define IDC_AR_LOG_LABEL                1426
 #define IDC_AR_EVENTID                  1427
@@ -784,9 +795,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        337
-#define _APS_NEXT_COMMAND_VALUE         33012
-#define _APS_NEXT_CONTROL_VALUE         1447
+#define _APS_NEXT_RESOURCE_VALUE        338
+#define _APS_NEXT_COMMAND_VALUE         33013
+#define _APS_NEXT_CONTROL_VALUE         1456
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

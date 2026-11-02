@@ -18,8 +18,9 @@
 // "Other devices" for those without one, the class's devices under it) or by connection (the tree from the computer
 // down; disconnected devices under a row of their own). Columns: name, class, status (a problem code in words, disabled,
 // not connected), driver service, manufacturer, driver version, date and provider, INF, location, instance ID, PDO name,
-// enumerator. Each row has its class's icon from Device Manager's class image list (SetupDiGetClassImageList, the
-// system's small icon size). A device with a problem is highlighted, a disabled or disconnected one grayed. The toolbar right of the
+// enumerator. Each row has its class's icon, loaded at the tab's icon size from where the class says it is
+// (Devices::GetClassIconPath, "setupapi.dll,-5": SHDefExtractIcon), so it's sharp at any DPI; else SetupDiLoadClassIcon's
+// (32x32, scaled), else IDI_DEVICE. The view's own image list, made again on a DPI change. A device with a problem is highlighted, a disabled or disconnected one grayed. The toolbar right of the
 // filter box: By Connection, Problem Devices (only those with a problem or disabled), Hidden Devices (DN_NO_SHOW_IN_DM,
 // which Device Manager hides too), Disconnected Devices and Scan Again; all but Problem Devices are saved (DevicesBy-
 // Connection, DevicesShowHidden, DevicesShowDisconnected). The filter matches name, class, instance ID, driver,
@@ -55,10 +56,12 @@ public:
 	void SaveSettings() override {
 		SaveColumns();
 	}
+	// a class's icon at a size (the caller destroys it): from its icon path, else SetupAPI's, else IDI_DEVICE
+	static HICON LoadClassIcon(std::wstring const& classGuid, int size);
 	void OnDpiChanged(UINT /*dpi*/) override {
-		// the class image list stays (the system's small icon size); the frame's has the new size
-		if (!m_ClassImages.ImageList)
-			m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+		// the class icons again at the new size
+		CreateClassImages();
+		m_Tree.GetListCtrl().Invalidate();
 		LayoutBar();
 	}
 	// the toolbar's band takes the rest of the row
@@ -90,6 +93,7 @@ public:
 		COMMAND_ID_HANDLER(ID_COLUMN_HIDE, OnHideColumn)
 		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_DEVICE_PROPERTIES, OnProperties)
+		COMMAND_ID_HANDLER(ID_DEVICE_RESOURCES, OnResources)
 		COMMAND_ID_HANDLER(ID_DEVICE_GOTODRIVER, OnGoToDriver)
 		COMMAND_ID_HANDLER(ID_DEVICE_COPYID, OnCopyId)
 		COMMAND_ID_HANDLER(ID_DEVICE_ENABLE, OnEnable)
@@ -142,6 +146,7 @@ private:
 	LRESULT OnHideColumn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnResources(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToDriver(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopyId(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEnable(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -190,9 +195,10 @@ private:
 	std::optional<std::vector<WinSys::DeviceInfo>> m_Result;
 	int64_t m_ScanTime{ 0 };
 	HCMNOTIFICATION m_Notification{ nullptr };
-	// Device Manager's class icons (SetupDiGetClassImageList), the tree's image list; the frame's IDI_DEVICE without it
-	SP_CLASSIMAGELIST_DATA m_ClassImages{ sizeof(m_ClassImages) };
+	// the class icons at the frame's image list's size, the tree's (shared: the view destroys it)
+	CImageList m_ClassImages;
 	std::unordered_map<std::wstring, int> m_ClassImageIndex;	// by class GUID (text)
+	void CreateClassImages();
 	// a class's icon in the tree's image list (an empty GUID: the unknown class's)
 	int ClassImage(std::wstring const& classGuid);
 };
