@@ -4,6 +4,7 @@
 #include "../WinSysLive/EventFilter.h"
 #include "../WinSysLive/ColumnLayout.h"
 #include "../WinSysLive/XmlText.h"
+#include "../WinSysLive/Snapshot.h"
 
 // the AlertRules setting's text, the descriptions, the patterns and the threshold conditions (WinSysLive\AlertRules.h)
 
@@ -421,4 +422,142 @@ TEST(XmlText_Indent) {
 	// broken: what's there, no crash
 	CHECK_EQ(XmlText::Indent(L"<a><b"), std::wstring(L"<a><b"));
 	CHECK(XmlText::Indent(L"").empty());
+}
+
+TEST(Events_LevelFilter) {
+	using WinSys::EventLogEntry;
+	auto entry = [](uint8_t level, uint64_t keywords = 0) {
+		EventLogEntry e;
+		e.Level = level;
+		e.Keywords = keywords;
+		return e;
+	};
+	auto error = entry(2), critical = entry(1), warning = entry(3), info = entry(4), zero = entry(0);
+	auto failure = entry(0, EventLogEntry::AuditFailureKeyword), success = entry(0, EventLogEntry::AuditSuccessKeyword);
+	// errors only: errors and critical events
+	CHECK(EventFilter::IsIncluded(error, false, false) && EventFilter::IsIncluded(critical, false, false));
+	CHECK(!EventFilter::IsIncluded(warning, false, false) && !EventFilter::IsIncluded(info, false, false));
+	CHECK(!EventFilter::IsIncluded(failure, false, false) && !EventFilter::IsIncluded(success, false, false));
+	// with warnings: the audit failures too, not the successes or level 0
+	CHECK(EventFilter::IsIncluded(warning, true, false) && EventFilter::IsIncluded(failure, true, false));
+	CHECK(!EventFilter::IsIncluded(success, true, false) && !EventFilter::IsIncluded(zero, true, false));
+	CHECK(!EventFilter::IsIncluded(info, true, false));
+	// with information: everything to level 4, level 0 and the successes
+	CHECK(EventFilter::IsIncluded(info, false, true) && EventFilter::IsIncluded(zero, false, true));
+	CHECK(EventFilter::IsIncluded(success, false, true) && EventFilter::IsIncluded(failure, false, true));
+	CHECK(!EventFilter::IsIncluded(entry(5), true, true));	// verbose never
+	CHECK_EQ(EventFilter::MaxLevel(false, false), (uint8_t)2);
+	CHECK_EQ(EventFilter::MaxLevel(true, false), (uint8_t)3);
+	CHECK_EQ(EventFilter::MaxLevel(true, true), (uint8_t)4);
+}
+
+namespace {
+	std::wstring TempFile(PCWSTR name) {
+		WCHAR dir[MAX_PATH];
+		::GetTempPath(_countof(dir), dir);
+		return std::wstring(dir) + name;
+	}
+}
+
+TEST(Snapshot_SaveLoadRoundTrip) {
+	// every kind of record, with the characters the format escapes (tabs, line breaks, backslashes) in its fields
+	Snapshot s;
+	s.Computer = L"ZODIAC";
+	s.Os = L"Windows 11 10.0.26100.1";
+	s.Time = 134000000000000000;
+	Snapshot::Process p;
+	p.Pid = 1234;
+	p.ParentPid = 4;
+	p.Name = L"app.exe";
+	p.Path = LR"(C:\Program Files\App\app.exe)";
+	p.CommandLine = L"app.exe \"a\tb\"\nnext\\line";
+	p.User = LR"(ZODIAC\zodia)";
+	p.CreateTime = 133999999999999999;
+	p.Threads = 12;
+	p.Handles = 345;
+	p.PrivateBytes = 1ull << 33;
+	p.Modules = { LR"(C:\Windows\System32\ntdll.dll)", LR"(C:\Windows\System32\kernel32.dll)" };
+	s.Processes.push_back(p);
+	s.Services.push_back({ L"Spooler", L"Print Spooler", L"Running", L"Automatic", L"LocalSystem", LR"(C:\Windows\System32\spoolsv.exe)", 6060 });
+	s.Drivers.push_back({ L"ntoskrnl.exe", LR"(C:\Windows\system32\ntoskrnl.exe)" });
+	s.Autoruns.push_back({ L"Logon", LR"(HKCU\Software\Microsoft\Windows\CurrentVersion\Run)", L"App", L"Yes", L"\"app.exe\" /start", LR"(C:\App\app.exe)" });
+
+	auto path = TempFile(L"WinSysLiveTests.snapshot");
+	CHECK(s.Save(path));
+	std::wstring error;
+	auto loaded = Snapshot::Load(path, error);
+	::DeleteFile(path.c_str());
+	CHECK(loaded.has_value());
+	if (!loaded)
+		return;
+	CHECK(error.empty());
+	CHECK_EQ(loaded->Computer, s.Computer);
+	CHECK_EQ(loaded->Os, s.Os);
+	CHECK_EQ(loaded->Time, s.Time);
+	CHECK_EQ(loaded->Processes.size(), (size_t)1);
+	if (loaded->Processes.size() == 1) {
+		auto& q = loaded->Processes[0];
+		CHECK_EQ(q.Pid, p.Pid);
+		CHECK_EQ(q.ParentPid, p.ParentPid);
+		CHECK_EQ(q.Path, p.Path);
+		CHECK_EQ(q.CommandLine, p.CommandLine);
+		CHECK_EQ(q.User, p.User);
+		CHECK_EQ(q.CreateTime, p.CreateTime);
+		CHECK_EQ(q.PrivateBytes, p.PrivateBytes);
+		CHECK(q.Modules == p.Modules);
+	}
+	CHECK(loaded->Services.size() == 1 && loaded->Services[0].DisplayName == L"Print Spooler" && loaded->Services[0].Pid == 6060);
+	CHECK(loaded->Drivers.size() == 1 && loaded->Drivers[0].Path == s.Drivers[0].Path);
+	CHECK(loaded->Autoruns.size() == 1 && loaded->Autoruns[0].Command == s.Autoruns[0].Command);
+}
+
+TEST(Snapshot_LoadRejectsOtherFiles) {
+	auto path = TempFile(L"WinSysLiveTests.notasnapshot");
+	auto file = ::CreateFile(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+	DWORD written;
+	::WriteFile(file, "hello\r\nworld\r\n", 14, &written, nullptr);
+	::CloseHandle(file);
+	std::wstring error;
+	CHECK(!Snapshot::Load(path, error).has_value());
+	CHECK(!error.empty());
+	::DeleteFile(path.c_str());
+	error.clear();
+	CHECK(!Snapshot::Load(TempFile(L"WinSysLiveTests.missing"), error).has_value());
+	CHECK(!error.empty());
+}
+
+TEST(Snapshot_Compare) {
+	Snapshot before, after;
+	auto process = [](PCWSTR path, uint32_t pid) {
+		Snapshot::Process p;
+		p.Path = path;
+		p.Name = std::wstring(path).substr(std::wstring(path).rfind(L'\\') + 1);
+		p.Pid = pid;
+		return p;
+	};
+	// a process stays (another PID: the same by path), one goes, one comes
+	before.Processes = { process(LR"(C:\a.exe)", 10), process(LR"(C:\gone.exe)", 11) };
+	after.Processes = { process(LR"(C:\a.exe)", 20), process(LR"(C:\new.exe)", 21) };
+	// a service's state changes; a driver comes
+	before.Services.push_back({ L"Spooler", L"Print Spooler", L"Running", L"Automatic", L"LocalSystem", L"spoolsv.exe", 1 });
+	after.Services.push_back({ L"Spooler", L"Print Spooler", L"Stopped", L"Automatic", L"LocalSystem", L"spoolsv.exe", 0 });
+	after.Drivers.push_back({ L"new.sys", LR"(C:\new.sys)" });
+	auto rows = SnapshotCompare::Compare(before, after);
+	auto find = [&](SnapshotRow::Kind kind, SnapshotRow::Change change, PCWSTR name) {
+		return std::ranges::any_of(rows, [&](auto& r) { return r.Type == kind && r.Diff == change && r.Name.find(name) != std::wstring::npos; });
+	};
+	CHECK(find(SnapshotRow::Kind::Process, SnapshotRow::Change::Added, L"new.exe"));
+	CHECK(find(SnapshotRow::Kind::Process, SnapshotRow::Change::Removed, L"gone.exe"));
+	CHECK(!std::ranges::any_of(rows, [](auto& r) { return r.Name.find(L"a.exe") != std::wstring::npos && r.Diff != SnapshotRow::Change::Changed; }));
+	CHECK(find(SnapshotRow::Kind::Service, SnapshotRow::Change::Changed, L"Spooler"));
+	auto spooler = std::ranges::find_if(rows, [](auto& r) { return r.Type == SnapshotRow::Kind::Service; });
+	if (spooler != rows.end())
+		CHECK(spooler->Details.find(L"Running") != std::wstring::npos && spooler->Details.find(L"Stopped") != std::wstring::npos);
+	CHECK(find(SnapshotRow::Kind::Driver, SnapshotRow::Change::Added, L"new.sys"));
+	// the same snapshot twice: nothing
+	CHECK(SnapshotCompare::Compare(after, after).empty());
+	// one snapshot's contents: every record, unchanged
+	auto contents = SnapshotCompare::Contents(after);
+	CHECK(contents.size() >= 4);
+	CHECK(std::ranges::all_of(contents, [](auto& r) { return r.Diff == SnapshotRow::Change::None; }));
 }

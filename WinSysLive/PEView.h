@@ -6,7 +6,7 @@
 // A PE file shown in a dialog's controls (IDC_PE_VIEW, a combo box of the views; IDC_PE_SUMMARY; IDC_PE_LIST, a report
 // list view; IDC_PE_STATUS; IDC_PE_TOTALPE and IDC_PE_COPY buttons): the process sheet's Image page and the module
 // dialog (CPEFileDlg) host it and route their messages to it. The file (WinSys PEFile) is read by Init; one list shows
-// the view chosen: Headers (the file and optional headers' fields in words, then the data directories in use),
+// the view chosen: Headers (the signature, the file and optional headers' fields in words, then the data directories in use),
 // Sections (name, virtual address and size, raw offset and size, protection and contents), Imports (library, function,
 // hint or ordinal, delay-loaded), Exports (ordinal, name, RVA, forwarder), Debug (the debug directory's entries: the
 // CodeView's PDB path, GUID and age, which symbols match; the extended DLL characteristics, CET among them), Resources

@@ -51,6 +51,11 @@ public:
 		m_Loader = std::move(loader);
 	}
 
+	// the search alone (View > Search, Ctrl+Shift+Q): no commands listed
+	void SetSearchOnly() {
+		m_SearchOnly = true;
+	}
+
 	// after IDOK: the command chosen, or 0 for a search result (its action)
 	UINT GetCommand() const {
 		return m_Chosen;
@@ -104,6 +109,7 @@ private:
 	bool m_Closing{ false };	// ending: the deactivation that follows isn't a cancel
 
 	std::vector<SearchItem> m_Search;
+	bool m_SearchOnly{ false };
 	std::function<std::vector<SearchItem>()> m_Loader;
 	bool m_Loading{ false };
 	std::mutex m_LoadLock;

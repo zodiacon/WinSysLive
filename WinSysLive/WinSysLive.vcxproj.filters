@@ -321,6 +321,9 @@
     <ClCompile Include="Snapshot.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="SnapshotCapture.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="NetworkSharesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>

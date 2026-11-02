@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <WinSys/EventLog.h>
 
 //
 // The Events tab's filter text: "id:" tokens choose event IDs ("id:4625", "id:4624,4625", "id:4720-4767"; several
@@ -31,6 +32,20 @@ struct EventFilter {
 			result.Text += (result.Text.empty() ? L"" : L" ") + token;
 		}
 		return result;
+	}
+
+	// the levels the toolbar's Warnings and Information buttons choose: errors and critical events always; level 0 counts
+	// as information; the Security log's audit failures come with the warnings (or the information), its successes with
+	// the information
+	static uint8_t MaxLevel(bool warnings, bool information) {
+		return information ? 4 : warnings ? 3 : 2;
+	}
+	static bool IsIncluded(WinSys::EventLogEntry const& e, bool warnings, bool information) {
+		if (e.IsAuditFailure())
+			return warnings || information;
+		if (e.IsAuditSuccess() || e.Level == 0)
+			return information;
+		return e.Level <= MaxLevel(warnings, information);
 	}
 
 	bool MatchesId(uint32_t id) const {

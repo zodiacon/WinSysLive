@@ -1484,7 +1484,7 @@ LRESULT CMainFrame::OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	return 0;
 }
 
-LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	// the main menu's commands, in menu order, with the menus they're in; the disabled ones left out
 	std::vector<CCommandPaletteDlg::Command> commands;
 	auto collect = [&](auto& self, HMENU hMenu, std::wstring const& path) -> void {
@@ -1534,6 +1534,9 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	}
 
 	CCommandPaletteDlg dlg(std::move(commands), m_Images, recent);
+	// View > Search (Ctrl+Shift+Q): the same, without the commands
+	if (wID == ID_VIEW_SEARCH)
+		dlg.SetSearchOnly();
 	// the search: the processes from the snapshot now; the services, the loaded drivers and the devices read on the
 	// palette's thread (WinSys only there: the icons' indices are looked up here)
 	std::vector<CCommandPaletteDlg::SearchItem> processes;

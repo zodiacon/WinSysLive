@@ -11,7 +11,10 @@ namespace {
 
 LRESULT CCommandPaletteDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	m_Filter.SubclassWindow(GetDlgItem(IDC_CP_FILTER));
-	m_Filter.SetCueBannerText(m_Loader || !m_Search.empty() ? L"Type a command, a tab's name, or a process, service, driver, connection, device or event"
+	if (m_SearchOnly)
+		m_Filter.SetCueBannerText(L"Search processes, services, drivers, connections, devices and events");
+	else
+		m_Filter.SetCueBannerText(m_Loader || !m_Search.empty() ? L"Type a command, a tab's name, or a process, service, driver, connection, device or event"
 		: L"Type a command or a tab's name");
 	if (m_Loader) {
 		m_Loading = true;
@@ -87,14 +90,14 @@ void CCommandPaletteDlg::ShowCommands() {
 	}
 	std::vector<int> first, rest;	// names starting with the text, then the others, each in menu order
 	// with nothing typed, the recent commands first, newest first
-	if (filter.empty())
+	if (filter.empty() && !m_SearchOnly)
 		for (auto id : m_Recent)
 			for (int i = 0; i < (int)m_Commands.size(); i++)
 				if (m_Commands[i].Id == id && std::ranges::find(first, i) == first.end()) {
 					first.push_back(i);
 					break;
 				}
-	for (int i = 0; i < (int)m_Commands.size(); i++) {
+	for (int i = 0; i < (int)m_Commands.size() && !m_SearchOnly; i++) {
 		auto& c = m_Commands[i];
 		auto name = Lowercase(c.Name);
 		auto haystack = name + L" " + Lowercase(c.Path);

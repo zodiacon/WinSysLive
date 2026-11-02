@@ -201,7 +201,7 @@ void CEventsView::OnFontChanged(HFONT font) {
 }
 
 uint8_t CEventsView::MaxLevel() const {
-	return m_Information ? 4 : m_Warnings ? 3 : 2;
+	return EventFilter::MaxLevel(m_Warnings, m_Information);
 }
 
 std::vector<std::wstring> CEventsView::Channels() const {
@@ -308,11 +308,7 @@ LRESULT CEventsView::OnOpenViewer(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 }
 
 bool CEventsView::Included(EventLogEntry const& e) const {
-	if (e.IsAuditFailure())
-		return m_Warnings || m_Information;
-	if (e.IsAuditSuccess() || e.Level == 0)
-		return m_Information;
-	return e.Level <= MaxLevel();
+	return EventFilter::IsIncluded(e, m_Warnings, m_Information);
 }
 
 void CEventsView::StartWatching() {

@@ -4,6 +4,7 @@
 #include "FormatHelper.h"
 #include "TotalPE.h"
 #include "XmlText.h"
+#include "Signature.h"
 #include <ClipboardHelper.h>
 #include <ListViewhelper.h>
 #include <WinSys/Helpers.h>
@@ -88,6 +89,8 @@ void CPEView::BuildTables() {
 	headers.Columns = { { L"Field", 170 }, { L"Value", 470 } };
 	auto field = [&](PCWSTR name, std::wstring value) { headers.Rows.push_back({ name, std::move(value) }); };
 	field(L"File", m_Path);
+	// Authenticode: the embedded signature, else a catalog's (as the General page's check)
+	field(L"Signature", FormatSignature(FileSignature::Verify(m_Path.c_str())));
 	field(L"Machine", std::format(L"{} ({})", PEFile::MachineName(h.Machine), Hex(h.Machine, 4)));
 	field(L"Format", h.Is64 ? L"PE32+ (64-bit)" : L"PE32 (32-bit)");
 	field(L"Time stamp", TimeStampText(h.TimeDateStamp));

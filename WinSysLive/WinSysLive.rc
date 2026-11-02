@@ -71,6 +71,7 @@ BEGIN
     POPUP "&View"
     BEGIN
         MENUITEM "Command &Palette...\tCtrl+Q",  ID_VIEW_COMMANDPALETTE
+        MENUITEM "&Search...\tCtrl+Shift+Q",     ID_VIEW_SEARCH
         MENUITEM SEPARATOR
         MENUITEM "&Processes\tCtrl+1",          ID_VIEW_PROCESSES
         MENUITEM "&Services\tCtrl+2",           ID_VIEW_SERVICES
@@ -1651,6 +1652,7 @@ BEGIN
     "E",            ID_VIEW_DEVICES,        VIRTKEY, SHIFT, CONTROL
     "L",            ID_VIEW_EVENTS,         VIRTKEY, SHIFT, CONTROL
     "Q",            ID_VIEW_COMMANDPALETTE, VIRTKEY, CONTROL
+    "Q",            ID_VIEW_SEARCH,         VIRTKEY, SHIFT, CONTROL
     "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
     VK_F5,          ID_VIEW_REFRESH,        VIRTKEY 
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY 
@@ -2043,6 +2045,7 @@ BEGIN
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
     ID_VIEW_COMMANDPALETTE  "Find a command or a tab by typing part of its name\nCommand Palette (Ctrl+Q)"
+    ID_VIEW_SEARCH          "Find a process, service, driver, connection, device or event by typing part of its name\nSearch (Ctrl+Shift+Q)"
     ID_SYSTEM_POWERREQUESTS "What keeps the system or the display awake, what will wake it, and the timer resolution\nPower Requests"
     ID_SYSTEM_WINSTATIONS   "Show the window stations, their desktops and each desktop's windows\nWindow Stations and Desktops"
     ID_SYSTEM_ETWSESSIONS   "Show the running ETW sessions and the providers enabled in them\nETW Sessions"

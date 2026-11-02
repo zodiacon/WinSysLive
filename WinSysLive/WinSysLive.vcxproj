@@ -437,6 +437,7 @@
     <ClCompile Include="PageFilesDlg.cpp" />
     <ClCompile Include="SystemInfoDlg.cpp" />
     <ClCompile Include="Snapshot.cpp" />
+    <ClCompile Include="SnapshotCapture.cpp" />
     <ClCompile Include="SnapshotDlg.cpp" />
     <ClCompile Include="GpuPage.cpp" />
     <ClCompile Include="DotNetPage.cpp" />
