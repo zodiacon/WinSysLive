@@ -17,6 +17,12 @@
 // rules that's per process. Nothing fires on the first update: what's running then is the baseline. The rules, their
 // setting's text and the conditions are in AlertRules.h.
 //
+// how often a rule fired since the app started: its matches, and the alerts they became (fewer when grouped or held
+// back in its quiet period)
+struct AlertCount {
+	size_t Fired{ 0 }, Shown{ 0 };
+};
+
 struct AlertEvent {
 	int64_t Time{ 0 };	// FILETIME, UTC
 	std::wstring Text;
@@ -45,6 +51,8 @@ public:
 	std::vector<AlertEvent> Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu);
 
 	std::deque<AlertEvent> const& GetRecent() const;
+	// the rule's counts (kept across SetRules for a rule that stays the same, enabled or not)
+	AlertCount GetCount(AlertRule const& rule) const;
 	void ClearRecent();
 
 	static constexpr size_t RecentLimit = 500;
@@ -75,6 +83,9 @@ private:
 	std::vector<RuleState> m_States;	// by m_Rules' index
 	std::unordered_map<std::wstring, KnownService> m_Services;	// while a service rule is on (empty: the next read is a baseline)
 	std::deque<AlertEvent> m_Recent;	// the newest last
+	std::unordered_map<std::wstring, AlertCount> m_Counts;	// by CountKey
+	// the rule's text, enabled: a rule edited is a new one, one turned off and on the same
+	static std::wstring CountKey(AlertRule rule);
 	bool m_Baseline{ false };	// the first update was seen
 	int64_t m_PageSize{ 0 }, m_PhysicalTotal{ 0 };
 

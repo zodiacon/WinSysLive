@@ -26,6 +26,12 @@ enum class TabType {
 
 struct AlertRule;
 
+// a row a view offers the command palette's search (IView::GetSearchEntries), found again by its key
+struct SearchEntry {
+	std::wstring Name, Kind, Detail, Key;
+	int Image{ -1 };	// in the frame's image list
+};
+
 // the shared 16x16 image list with the app's icons (IIconSource: views should use LVS_SHAREIMAGELISTS)
 struct IMainFrame abstract : IIconSource {
 	virtual HWND GetHwnd() const = 0;
@@ -85,6 +91,11 @@ struct IView abstract {
 	virtual bool ShowDriver(std::wstring const& /*path*/) { return false; }
 	// the Services tab: selects the service (by name), clearing a filter that hides it; false if there's none
 	virtual bool ShowService(std::wstring const& /*name*/) { return false; }
+	// the rows of the tab's own data the command palette's search may find, while it's open (the Events tab's events)
+	virtual void GetSearchEntries(std::vector<SearchEntry>& /*entries*/) const {}
+	// selects the row of an entry it gave (after the frame activated the tab), clearing a filter that hides it; false if
+	// it's gone
+	virtual bool ShowSearchEntry(std::wstring const& /*key*/) { return false; }
 	// the view's main list, for File > Export List and Copy All Rows (a list in the view with the focus comes first);
 	// nullptr if it has none
 	virtual HWND GetExportList() { return nullptr; }

@@ -11,7 +11,7 @@ namespace {
 
 LRESULT CCommandPaletteDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	m_Filter.SubclassWindow(GetDlgItem(IDC_CP_FILTER));
-	m_Filter.SetCueBannerText(m_Loader || !m_Search.empty() ? L"Type a command, a tab's name, or a process, service, driver or device"
+	m_Filter.SetCueBannerText(m_Loader || !m_Search.empty() ? L"Type a command, a tab's name, or a process, service, driver, connection, device or event"
 		: L"Type a command or a tab's name");
 	if (m_Loader) {
 		m_Loading = true;
@@ -146,7 +146,7 @@ void CCommandPaletteDlg::ShowCommands() {
 		m_List.SetItemText(row, 2, item.Detail.c_str());
 	}
 	if (filter.size() >= 2 && m_Loading)
-		m_List.InsertItem(LVIF_TEXT | LVIF_PARAM, m_List.GetItemCount(), L"Searching services, drivers and devices...", 0, 0, -1, INT_MIN);
+		m_List.InsertItem(LVIF_TEXT | LVIF_PARAM, m_List.GetItemCount(), L"Searching services, drivers, connections and devices...", 0, 0, -1, INT_MIN);
 	if (m_List.GetItemCount() > 0 && (LPARAM)m_List.GetItemData(0) != INT_MIN) {
 		m_List.SetItemState(0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		m_List.EnsureVisible(0, FALSE);

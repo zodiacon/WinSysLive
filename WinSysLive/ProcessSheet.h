@@ -11,6 +11,7 @@
 #include "TcpIpPage.h"
 #include "GpuPage.h"
 #include "DotNetPage.h"
+#include "ImagePage.h"
 #include "ObjectSecurity.h"
 
 //
@@ -54,6 +55,7 @@ private:
 	std::unique_ptr<CProcWindowsPage> m_Windows;
 	std::unique_ptr<CProcThreadsPage> m_Threads;
 	std::unique_ptr<CProcModulesPage> m_Modules;
+	std::unique_ptr<CProcImagePage> m_Image;
 	std::unique_ptr<CProcHandlesPage> m_Handles;
 	std::unique_ptr<CProcTcpIpPage> m_TcpIp;
 	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job

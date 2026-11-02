@@ -76,6 +76,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Threads);
 	m_Modules = std::make_unique<CProcModulesPage>(m_Props, L"Modules", IDI_MODULES);
 	AddPage(*m_Modules);
+	m_Image = std::make_unique<CProcImagePage>(m_Props);
+	AddPage(*m_Image);
 	if (IsDotNet(m_Props)) {
 		m_DotNet = std::make_unique<CProcDotNetPage>(m_Props);
 		AddPage(*m_DotNet);

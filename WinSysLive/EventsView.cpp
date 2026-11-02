@@ -377,6 +377,36 @@ LRESULT CEventsView::OnRead(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	return 0;
 }
 
+void CEventsView::GetSearchEntries(std::vector<SearchEntry>& entries) const {
+	// every event read: its summary (else the message's line), the log, ID and source to match on
+	for (auto& e : m_All) {
+		auto& details = Details(e);
+		auto name = details.empty() ? FirstLine(e.Message) : details;
+		entries.push_back({ name.empty() ? e.Provider : name, L"Event",
+			std::format(L"{} {}, {}", e.Channel, e.EventId, e.Provider), KeyOf(e), LevelImage(e) });
+	}
+}
+
+bool CEventsView::ShowSearchEntry(std::wstring const& key) {
+	auto it = std::ranges::find_if(m_All, [&](auto& e) { return KeyOf(e) == key; });
+	if (it == m_All.end())
+		return false;
+	// a filter that hides it goes
+	if (!Matches(*it)) {
+		m_Filter.Clear();
+		ShowRows();
+	}
+	auto row = std::ranges::find_if(m_Rows, [&](auto r) { return r == &*it; });
+	if (row == m_Rows.end())
+		return false;
+	int index = (int)(row - m_Rows.begin());
+	m_List.SetItemState(-1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+	m_List.SetItemState(index, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+	m_List.EnsureVisible(index, FALSE);
+	m_List.SetFocus();
+	return true;
+}
+
 void CEventsView::Condense(EventLogEntry& e) {
 	if (e.Data.empty())
 		return;
@@ -541,7 +571,10 @@ CString CEventsView::GetColumnText(HWND, int row, int col) const {
 int CEventsView::GetRowImage(HWND, int row, int col) const {
 	if (row >= (int)m_Rows.size() || !ColumnLayout::IsLeftmostColumn(m_List, col))
 		return -1;
-	auto& e = *m_Rows[row];
+	return LevelImage(*m_Rows[row]);
+}
+
+int CEventsView::LevelImage(EventLogEntry const& e) const {
 	if (e.IsAuditFailure() || e.IsAuditSuccess())
 		return Frame()->GetIconIndex(IDI_KEY);
 	// the system's stock icons, as Event Viewer's

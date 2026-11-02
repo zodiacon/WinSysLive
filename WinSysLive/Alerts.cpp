@@ -90,6 +90,16 @@ void CAlerts::SetRules(std::vector<AlertRule> rules) {
 	m_States.assign(m_Rules.size(), {});
 }
 
+std::wstring CAlerts::CountKey(AlertRule rule) {
+	rule.Enabled = true;
+	return AlertRule::FormatRules({ rule });
+}
+
+AlertCount CAlerts::GetCount(AlertRule const& rule) const {
+	auto it = m_Counts.find(CountKey(rule));
+	return it == m_Counts.end() ? AlertCount{} : it->second;
+}
+
 std::vector<AlertRule> const& CAlerts::GetRules() const {
 	return m_Rules;
 }
@@ -257,7 +267,11 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 		std::vector<std::wstring> texts;
 		for (auto& e : pending[i])
 			texts.push_back(e.Text);
-		for (auto& [index, text] : m_States[i].Throttle.Apply(texts, tick, m_Rules[i].Quiet)) {
+		auto shown = m_States[i].Throttle.Apply(texts, tick, m_Rules[i].Quiet);
+		auto& count = m_Counts[CountKey(m_Rules[i])];
+		count.Fired += texts.size();
+		count.Shown += shown.size();
+		for (auto& [index, text] : shown) {
 			auto e = pending[i][index];
 			e.Text = std::move(text);
 			events.push_back(std::move(e));

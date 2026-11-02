@@ -25,12 +25,15 @@ LRESULT CAlertsDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	auto dpi = ::GetDpiForWindow(m_hWnd);
 	m_RuleList.Attach(GetDlgItem(IDC_AL_RULES));
 	m_RuleList.SetExtendedListViewStyle(LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
-	m_RuleList.InsertColumn(0, L"Alert when", LVCFMT_LEFT, ::MulDiv(560, dpi, 96));
+	m_RuleList.InsertColumn(0, L"Alert when", LVCFMT_LEFT, ::MulDiv(440, dpi, 96));
+	// since the app started (CAlerts::GetCount)
+	m_RuleList.InsertColumn(1, L"Fired", LVCFMT_LEFT, ::MulDiv(120, dpi, 96));
 	ListViewHelper::EnableColumnDpiScaling(m_RuleList);
 	m_RecentList.Attach(GetDlgItem(IDC_AL_RECENT));
 	m_RecentList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP | LVS_EX_INFOTIP);
 	m_RecentList.InsertColumn(0, L"Time", LVCFMT_LEFT, ::MulDiv(150, dpi, 96));
-	m_RecentList.InsertColumn(1, L"Alert", LVCFMT_LEFT, ::MulDiv(480, dpi, 96));
+	// wide: the text carries the summary (a process created, a logon failed...)
+	m_RecentList.InsertColumn(1, L"Alert", LVCFMT_LEFT, ::MulDiv(900, dpi, 96));
 	ListViewHelper::EnableColumnDpiScaling(m_RecentList);
 
 	DlgResize_Init(true, true);
@@ -46,6 +49,11 @@ void CAlertsDlg::ShowRules(int select) {
 	m_RuleList.DeleteAllItems();
 	for (int i = 0; i < (int)m_Rules.size(); i++) {
 		m_RuleList.InsertItem(i, m_Rules[i].Describe().c_str());
+		// the matches, and the alerts they became when fewer (grouped, or held back in the quiet period)
+		auto count = m_Alerts.GetCount(m_Rules[i]);
+		auto fired = count.Fired == 0 ? std::wstring() : count.Shown == count.Fired ? (count.Fired == 1 ? std::wstring(L"Once") : std::format(L"{} times", count.Fired))
+			: std::format(L"{} times ({} {})", count.Fired, count.Shown, count.Shown == 1 ? L"alert" : L"alerts");
+		m_RuleList.SetItemText(i, 1, fired.c_str());
 		m_RuleList.SetCheckState(i, m_Rules[i].Enabled);
 	}
 	if (select >= 0 && select < (int)m_Rules.size()) {

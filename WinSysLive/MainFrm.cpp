@@ -22,6 +22,7 @@
 #include "DeviceResourcesDlg.h"
 #include <WinSys/KernelModules.h>
 #include <WinSys/ServiceManager.h>
+#include <WinSys/Connections.h>
 #include "EtwSessionsDlg.h"
 #include "WindowStationsDlg.h"
 #include "PowerRequestsDlg.h"
@@ -1537,12 +1538,31 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 		processes.push_back({ p->GetImageName(), L"Process", std::format(L"PID {}", pid), GetProcessIcon(*p),
 			[this, pid] { GoToProcess(pid); } });
 	}
+	// the open tabs' own rows (the Events tab's events): choosing one activates its tab, which selects it
+	for (int page = 0; page < m_Tabs.GetPageCount(); page++) {
+		auto open = GetPageView(page);
+		if (!open || !open->View)
+			continue;
+		std::vector<SearchEntry> entries;
+		open->View->GetSearchEntries(entries);
+		auto type = open->Type;
+		for (auto& e : entries)
+			processes.push_back({ e.Name, e.Kind, e.Detail, e.Image, [this, type, key = e.Key] {
+				if (auto view = ActivateTab(type); view && !view->ShowSearchEntry(key))
+					AtlMessageBox(m_hWnd, L"It isn't there anymore.", IDR_MAINFRAME, MB_ICONINFORMATION);
+				} });
+	}
+	// the processes' names, for the connections the loader reads
+	std::unordered_map<uint32_t, std::wstring> names;
+	for (auto& p : m_ProcessManager.GetProcesses())
+		names[p->Id] = p->GetImageName();
 	auto tabIcon = [&](TabType type) {
 		auto tab = std::ranges::find(s_Tabs, type, &TabInfo::Type);
 		return tab == std::end(s_Tabs) ? -1 : GetIconIndex(tab->Icon);
 	};
 	int serviceIcon = tabIcon(TabType::Services), driverIcon = tabIcon(TabType::KernelModules), deviceIcon = tabIcon(TabType::Devices);
-	dlg.SetSearch(std::move(processes), [this, serviceIcon, driverIcon, deviceIcon] {
+	int connectionIcon = tabIcon(TabType::Network);
+	dlg.SetSearch(std::move(processes), [this, serviceIcon, driverIcon, deviceIcon, connectionIcon, names = std::move(names)] {
 		std::vector<CCommandPaletteDlg::SearchItem> items;
 		for (auto& s : WinSys::ServiceManager::EnumServices(WinSys::ServiceEnumType::AllServices)) {
 			auto name = s.GetName();
@@ -1552,6 +1572,23 @@ LRESULT CMainFrame::OnCommandPalette(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 			auto path = m.Path;
 			items.push_back({ m.Name, L"Driver", path, driverIcon, [this, path] { GoToKernelModule(path); } });
 		}
+		// the connections, by their remote end (a listener's: its local one): going to the process that owns it
+		if (auto connections = WinSys::ConnectionInfo::Read())
+			for (auto& c : *connections) {
+				bool v6 = c.Id.Proto == WinSys::ConnectionProtocol::Tcp6 || c.Id.Proto == WinSys::ConnectionProtocol::Udp6;
+				auto endpoint = [&](std::wstring const& address, uint16_t port) {
+					return v6 ? std::format(L"[{}]:{}", address, port) : std::format(L"{}:{}", address, port);
+				};
+				bool remote = !c.RemoteText.empty() && c.Id.RemotePort;
+				auto pid = c.Id.Pid;
+				auto name = names.contains(pid) ? names.at(pid) : std::wstring(L"?");
+				std::wstring state = WinSys::ConnectionInfo::StateName(c);
+				items.push_back({ remote ? endpoint(c.RemoteText, c.Id.RemotePort) : endpoint(c.LocalText, c.Id.LocalPort), L"Connection",
+					// the process first: the palette's last column is narrow
+					std::format(L"{} ({}), {}{}{}{}", name, pid, WinSys::ConnectionInfo::ProtocolName(c.Id.Proto), state.empty() ? L"" : L" ", state,
+						remote ? L", local " + endpoint(c.LocalText, c.Id.LocalPort) : L""),
+					connectionIcon, [this, pid] { GoToProcess(pid); } });
+			}
 		if (auto devices = WinSys::Devices::Enum(false))
 			for (auto& d : *devices) {
 				if (d.Depth == 0 || d.Name.empty())

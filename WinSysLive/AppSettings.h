@@ -59,6 +59,7 @@ struct AppSettings : Settings {
 		SETTING(DevicesShowDisconnected, 0, SettingType::Bool);
 		SETTING_STRING(AlertRules, L"");	// CAlerts: one rule a line, Kind|Enabled|Threshold|Seconds|Pattern
 		SETTING_STRING(CommandPaletteRecent, L"");	// the command palette's last commands, newest first, as IDs separated by commas
+		SETTING_STRING(TotalPEPath, L"");	// TotalPE.exe where the user pointed to it (Open in TotalPE), when it wasn't found
 		SETTING(AutorunsHideMicrosoft, 1, SettingType::Bool);	// the Autoruns tab leaves out entries signed by Microsoft
 		SETTING_STRING(DriverColumns, L"");	// the Kernel Modules tab's, from when it was the Drivers tab: read while KernelModuleColumns is empty
 		SETTING_STRING(DriverServiceColumns, L"");	// the Drivers tab (driver services)
@@ -136,6 +137,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(DevicesShowHidden, int)
 	DEF_SETTING(DevicesShowDisconnected, int)
 	DEF_SETTING_STRING(CommandPaletteRecent)
+	DEF_SETTING_STRING(TotalPEPath)
 	DEF_SETTING_STRING(AlertRules)
 	DEF_SETTING(AutorunsHideMicrosoft, int)
 	DEF_SETTING_STRING(DriverColumns)

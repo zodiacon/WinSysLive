@@ -3,6 +3,7 @@
 #include <WinSys/Autoruns.h>
 #include <WinSys/Devices.h>
 #include <WinSys/EventLog.h>
+#include <WinSys/PEFile.h>
 #include <WinSys/PowerRequests.h>
 #include <WinSys/SecurityHelper.h>
 
@@ -227,4 +228,145 @@ TEST(EventLog_LiveSecurityQuery) {
 TEST(PowerRequests_TypeNames) {
 	CHECK_EQ(std::wstring(PowerRequests::TypeName(PowerRequestType::Display)), std::wstring(L"Display"));
 	CHECK_EQ(std::wstring(PowerRequests::TypeName(PowerRequestType::ActiveLockScreen)), std::wstring(L"Active lock screen"));
+}
+
+namespace {
+	std::wstring OwnPath() {
+		WCHAR path[MAX_PATH];
+		::GetModuleFileName(nullptr, path, _countof(path));
+		return path;
+	}
+}
+
+TEST(PEFile_OwnImage) {
+	// the test program: x64 PE32+, an executable with .text, importing KERNEL32.dll (CreateFileW, by name)
+	auto pe = PEFile::Load(OwnPath());
+	CHECK(pe.has_value());
+	if (!pe)
+		return;
+	auto& h = pe->GetHeaders();
+	CHECK(h.Is64);
+	CHECK_EQ(h.Machine, (uint16_t)IMAGE_FILE_MACHINE_AMD64);
+	CHECK(h.Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE);
+	CHECK(!(h.Characteristics & IMAGE_FILE_DLL));
+	CHECK_EQ(h.Subsystem, (uint16_t)IMAGE_SUBSYSTEM_WINDOWS_CUI);
+	CHECK_EQ(h.Directories.size(), (size_t)16);
+	CHECK(h.EntryPoint != 0);
+	CHECK(std::ranges::any_of(pe->GetSections(), [](auto& s) { return s.Name == ".text" && (s.Characteristics & IMAGE_SCN_CNT_CODE); }));
+	auto imports = pe->GetImports();
+	auto kernel32 = std::ranges::find_if(imports, [](auto& l) { return ::_stricmp(l.Name.c_str(), "KERNEL32.dll") == 0; });
+	CHECK(kernel32 != imports.end());
+	if (kernel32 != imports.end()) {
+		CHECK(!kernel32->Delayed);
+		CHECK(std::ranges::any_of(kernel32->Functions, [](auto& f) { return f.Name == "CreateFileW"; }));
+	}
+	CHECK(!pe->GetExports().has_value());
+	// the entry point is in a section's raw data
+	CHECK(pe->RvaToOffset(h.EntryPoint).has_value());
+}
+
+TEST(PEFile_LiveKernel32) {
+	// a DLL with exports, by name and ordinal, and forwarders ("NTDLL.Rtl...")
+	WCHAR path[MAX_PATH];
+	::GetSystemDirectory(path, _countof(path));
+	auto pe = PEFile::Load(std::wstring(path) + L"\\kernel32.dll");
+	CHECK(pe.has_value());
+	if (!pe)
+		return;
+	CHECK(pe->GetHeaders().Characteristics & IMAGE_FILE_DLL);
+	auto exports = pe->GetExports();
+	CHECK(exports.has_value());
+	if (!exports)
+		return;
+	CHECK(::_stricmp(exports->Name.c_str(), "KERNEL32.dll") == 0);
+	CHECK(exports->Functions.size() > 1000);
+	auto create = std::ranges::find_if(exports->Functions, [](auto& f) { return f.Name == "CreateFileW"; });
+	CHECK(create != exports->Functions.end());
+	if (create != exports->Functions.end())
+		CHECK(create->Forwarder.empty() && create->Rva != 0);
+	auto forwarded = std::ranges::find_if(exports->Functions, [](auto& f) { return f.Name == "AcquireSRWLockExclusive"; });
+	CHECK(forwarded != exports->Functions.end());
+	if (forwarded != exports->Functions.end())
+		CHECK(::_strnicmp(forwarded->Forwarder.c_str(), "NTDLL.", 6) == 0);
+	// ordinals in order, from the base
+	for (size_t i = 1; i < exports->Functions.size(); i++)
+		CHECK(exports->Functions[i - 1].Ordinal < exports->Functions[i].Ordinal);
+}
+
+TEST(PEFile_Malformed) {
+	// not PE images, and images whose tables point outside the file: nothing, or what fits; never a crash
+	CHECK(!PEFile::Parse({}).has_value());
+	CHECK(!PEFile::Parse(std::vector<uint8_t>(64, 0)).has_value());
+	auto own = PEFile::Load(OwnPath());
+	if (!own)
+		return;
+	// the real file, cut at every few hundred bytes: either no headers or a parse that stays inside
+	std::vector<uint8_t> bytes;
+	{
+		auto file = ::CreateFile(OwnPath().c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+		LARGE_INTEGER size;
+		::GetFileSizeEx(file, &size);
+		bytes.resize((size_t)size.QuadPart);
+		DWORD read;
+		::ReadFile(file, bytes.data(), (DWORD)bytes.size(), &read, nullptr);
+		::CloseHandle(file);
+	}
+	for (size_t cut = 0; cut < bytes.size(); cut += bytes.size() / 97 + 1) {
+		auto pe = PEFile::Parse(std::vector<uint8_t>(bytes.begin(), bytes.begin() + cut));
+		if (pe) {
+			(void)pe->GetImports();
+			(void)pe->GetExports();
+		}
+	}
+	// e_lfanew past the end, a bad magic, a huge section count and directory sizes
+	auto broken = bytes;
+	reinterpret_cast<IMAGE_DOS_HEADER*>(broken.data())->e_lfanew = 0x7FFFFFF0;
+	CHECK(!PEFile::Parse(broken).has_value());
+	broken = bytes;
+	auto nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(broken.data() + reinterpret_cast<IMAGE_DOS_HEADER*>(broken.data())->e_lfanew);
+	nt->OptionalHeader.Magic = 0x1234;
+	CHECK(!PEFile::Parse(broken).has_value());
+	broken = bytes;
+	nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(broken.data() + reinterpret_cast<IMAGE_DOS_HEADER*>(broken.data())->e_lfanew);
+	nt->FileHeader.NumberOfSections = 0xFFFF;
+	nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = 0xFFFFFFF0;
+	nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress = 0x10;
+	nt->OptionalHeader.NumberOfRvaAndSizes = 0xFFFFFFFF;
+	auto pe = PEFile::Parse(broken);
+	CHECK(pe.has_value());
+	if (pe) {
+		CHECK(pe->GetSections().size() <= 96);
+		CHECK(pe->GetHeaders().Directories.size() <= 16);
+		(void)pe->GetImports();
+		(void)pe->GetExports();
+	}
+}
+
+TEST(PEFile_Names) {
+	CHECK_EQ(std::wstring(PEFile::MachineName(IMAGE_FILE_MACHINE_ARM64)), std::wstring(L"ARM64"));
+	CHECK_EQ(std::wstring(PEFile::SubsystemName(IMAGE_SUBSYSTEM_NATIVE)), std::wstring(L"Native"));
+	CHECK_EQ(std::wstring(PEFile::DirectoryName(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT)), std::wstring(L"Delay Import"));
+	CHECK_EQ(PEFile::DllCharacteristicsText(IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE | IMAGE_DLLCHARACTERISTICS_NX_COMPAT),
+		std::wstring(L"ASLR, DEP"));
+	CHECK_EQ(PEFile::SectionCharacteristicsText(IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_EXECUTE), std::wstring(L"RX: Code"));
+}
+
+TEST(PEFile_AppDelayImports) {
+	// the app beside the tests (the solution builds both into the same folder) delay-loads dbghelp.dll
+	auto path = OwnPath();
+	path = path.substr(0, path.rfind(L'\\') + 1) + L"WinSysLive.exe";
+	if (::GetFileAttributes(path.c_str()) == INVALID_FILE_ATTRIBUTES)
+		return;
+	auto pe = PEFile::Load(path);
+	CHECK(pe.has_value());
+	if (!pe)
+		return;
+	auto imports = pe->GetImports();
+	auto dbghelp = std::ranges::find_if(imports, [](auto& l) { return ::_stricmp(l.Name.c_str(), "dbghelp.dll") == 0; });
+	CHECK(dbghelp != imports.end());
+	if (dbghelp != imports.end()) {
+		CHECK(dbghelp->Delayed);
+		CHECK(!dbghelp->Functions.empty());
+		CHECK(std::ranges::all_of(dbghelp->Functions, [](auto& f) { return f.ByOrdinal || !f.Name.empty(); }));
+	}
 }

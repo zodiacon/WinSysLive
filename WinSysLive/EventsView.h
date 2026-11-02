@@ -52,10 +52,14 @@ public:
 
 	// EventLogSink, on wevtapi's threads
 	void OnEvent(WinSys::EventLogEntry&& entry) override;
+	void GetSearchEntries(std::vector<SearchEntry>& entries) const override;
+	bool ShowSearchEntry(std::wstring const& key) override;
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;
 	int GetRowImage(HWND, int row, int col) const;
+	// the level's icon in the frame's image list (the list's and the search's)
+	int LevelImage(WinSys::EventLogEntry const& e) const;
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
 	bool OnRightClickList(HWND, int row, int col, POINT const& pt);

@@ -138,6 +138,12 @@
     <ClCompile Include="EventsView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ImagePage.cpp">
+      <Filter>Pages</Filter>
+    </ClCompile>
+    <ClCompile Include="TotalPE.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="EventDetailsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -447,6 +453,12 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="EventFilter.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ImagePage.h">
+      <Filter>Pages</Filter>
+    </ClInclude>
+    <ClInclude Include="TotalPE.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="EventDetailsDlg.h">

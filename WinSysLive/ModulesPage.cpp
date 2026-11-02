@@ -2,6 +2,7 @@
 #include <DpiHelper.h>
 #include "ProcessInfoEx.h"
 #include "ModulesPage.h"
+#include "TotalPE.h"
 #include "Highlight.h"
 #include "FormatHelper.h"
 #include "VersionInfo.h"
@@ -334,6 +335,10 @@ LRESULT CModulesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		menu.CreatePopupMenu();
 		menu.AppendMenu(MF_STRING, ID_MODULE_PROPERTIES, L"&Properties...");
 		menu.AppendMenu(MF_STRING, ID_MODULE_GOTOFILELOCATION, L"Open File &Location");
+		// an image (a DLL, the exe), not a mapped data file
+		auto module = GetSelectedRow()->Module;
+		menu.AppendMenu(MF_STRING | (module->Type == MapType::Image && !module->Path.empty() ? 0 : MF_GRAYED), ID_MODULE_TOTALPE,
+			L"Open in &TotalPE");
 		VirusTotalCommands::AppendMenu(menu, GetSelectedRow()->Module->Type == MapType::Image);
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
@@ -457,6 +462,12 @@ LRESULT CModulesPage::OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lP
 	while (::PeekMessage(&msg, m_hWnd, VirusTotalChecker::WM_VIRUSTOTAL, VirusTotalChecker::WM_VIRUSTOTAL, PM_REMOVE))
 		;
 	m_List.Invalidate();
+	return 0;
+}
+
+LRESULT CModulesPage::OnOpenInTotalPE(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedRow(); row && row->Module->Type == MapType::Image && !row->Module->Path.empty())
+		TotalPE::Open(m_hWnd, row->Module->Path);
 	return 0;
 }
 

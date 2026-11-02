@@ -772,6 +772,14 @@
 #define IDC_RM_COPY                     1462
 #define ID_DEVICES_RESOURCEMAP          33014
 #define IDC_ED_SUMMARY                  1463
+#define IDD_PROC_IMAGE                  339
+#define IDC_PE_VIEW                     1464
+#define IDC_PE_SUMMARY                  1465
+#define IDC_PE_LIST                     1466
+#define IDC_PE_STATUS                   1467
+#define IDC_PE_TOTALPE                  1468
+#define IDC_PE_COPY                     1469
+#define ID_MODULE_TOTALPE               33015
 #define IDC_AR_LOG                      1425
 #define IDC_AR_LOG_LABEL                1426
 #define IDC_AR_EVENTID                  1427
@@ -806,9 +814,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        339
-#define _APS_NEXT_COMMAND_VALUE         33015
-#define _APS_NEXT_CONTROL_VALUE         1464
+#define _APS_NEXT_RESOURCE_VALUE        340
+#define _APS_NEXT_COMMAND_VALUE         33016
+#define _APS_NEXT_CONTROL_VALUE         1470
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
