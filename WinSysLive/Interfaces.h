@@ -26,6 +26,10 @@ enum class TabType {
 
 struct AlertRule;
 
+// posted to the main window by a process property sheet's page (the sheets run on threads of their own): opens the Object Manager tab at an object
+// namespace path; lParam: a new std::wstring, the receiver's to delete
+constexpr UINT WM_SHOW_OBJECT_PATH = WM_APP + 0x1E1;
+
 // a row a view offers the command palette's search (IView::GetSearchEntries), found again by its key
 struct SearchEntry {
 	std::wstring Name, Kind, Detail, Key;
@@ -91,6 +95,9 @@ struct IView abstract {
 	virtual bool ShowDriver(std::wstring const& /*path*/) { return false; }
 	// the Services tab: selects the service (by name), clearing a filter that hides it; false if there's none
 	virtual bool ShowService(std::wstring const& /*name*/) { return false; }
+	// the Object Manager tab: opens the directory (or the directory of the object) at an object namespace path; false if
+	// the tab can't (it reports why in the status line)
+	virtual bool ShowObjectPath(std::wstring const& /*path*/) { return false; }
 	// the rows of the tab's own data the command palette's search may find, while it's open (the Events tab's events)
 	virtual void GetSearchEntries(std::vector<SearchEntry>& /*entries*/) const {}
 	// selects the row of an entry it gave (after the frame activated the tab), clearing a filter that hides it; false if

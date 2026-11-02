@@ -146,6 +146,15 @@ const std::wstring& ProcessInfoEx::GetPackageName() {
 	return m_PackageName;
 }
 
+std::optional<uint32_t> ProcessInfoEx::GetServerSiloId() {
+	if (!m_ServerSiloDone) {
+		m_ServerSiloDone = true;
+		if (auto process = GetProcess())
+			m_ServerSiloId = process->GetServerSiloId();
+	}
+	return m_ServerSiloId;
+}
+
 DpiAwareness ProcessInfoEx::GetDpiAwareness() {
 	if (!m_DpiAwarenessDone) {
 		m_DpiAwarenessDone = true;

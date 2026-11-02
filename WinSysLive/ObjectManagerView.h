@@ -39,6 +39,7 @@ public:
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
 	void OnFrameIdle() override;
+	bool ShowObjectPath(std::wstring const& path) override;
 	void SaveSettings() override;
 	// the frame's image list has the new DPI's size: the rows take its height
 	void OnDpiChanged(UINT /*dpi*/) override;

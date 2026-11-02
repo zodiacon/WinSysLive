@@ -12,6 +12,8 @@
 // nested jobs that's the job and its ancestors: a combo box lists them, innermost first (a single job's name is in a
 // read-only edit instead; the combo box is kept, hidden, as the current job's index). The jobs are found when the
 // page is first shown; their limits, statistics and processes are read again on every sample while the page is active.
+// A silo's statistics start with its silo rows; its root directory opens in the main window's Object Manager tab from
+// the list's context menu or a double-click on its row (WM_SHOW_OBJECT_PATH to ProcessProperties::Frame).
 //
 class CProcJobPage :
 	public CPropertyPageImpl<CProcJobPage>,
@@ -29,6 +31,8 @@ public:
 	BEGIN_MSG_MAP(CProcJobPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_HANDLER(IDC_JOB_JOBS, CBN_SELCHANGE, OnJobChanged)
+		NOTIFY_HANDLER(IDC_JOB_STATS, NM_RCLICK, OnStatsRightClick)
+		NOTIFY_HANDLER(IDC_JOB_STATS, NM_DBLCLK, OnStatsDoubleClick)
 		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcJobPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcJobPage>)
 	END_MSG_MAP()
@@ -41,6 +45,12 @@ public:
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnJobChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// a silo's statistics: Open Root Directory in Object Manager (also a double-click on its row)
+	LRESULT OnStatsRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+	LRESULT OnStatsDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+
+	// asks the main window to open the silo's root directory in the Object Manager tab
+	void OpenSiloRoot();
 
 	// fills m_Jobs and the combo box; the status line says why there's no job
 	void FindJobs();
@@ -58,4 +68,5 @@ private:
 	std::unordered_map<WinSys::ProcessOrThreadKey, std::wstring> m_Names;
 	bool m_Loaded{ false };
 	bool m_Selected{ false };	// the sheet's process was selected in the list
+	std::wstring m_SiloRoot;	// the shown job's, when it's a silo with an object namespace root; empty otherwise
 };

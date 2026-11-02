@@ -24,6 +24,8 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	bool IsImmersive();		// a UWP (Store) app
 	// a packaged app's package full name (the snapshot's when elevated); empty otherwise
 	const std::wstring& GetPackageName();
+	// the server silo (a Windows container) it runs in, queried once: 0 for the host; nothing if it can't be queried
+	std::optional<uint32_t> GetServerSiloId();
 	WinSys::DpiAwareness GetDpiAwareness();	// Unknown if the process can't be queried
 	// queried once (a process may turn some on later, such as ACG); nothing if the process can't be queried
 	std::optional<WinSys::ProcessMitigations> const& GetMitigations();
@@ -66,6 +68,8 @@ private:
 	bool m_DpiAwarenessDone{ false };
 	std::optional<WinSys::ProcessMitigations> m_Mitigations;
 	bool m_MitigationsDone{ false };
+	std::optional<uint32_t> m_ServerSiloId;
+	bool m_ServerSiloDone{ false };
 
 	std::wstring m_ImagePath, m_User, m_CommandLine, m_Description;
 	PCWSTR m_Architecture{ L"" };

@@ -115,7 +115,7 @@ private:
 		Name, Id, ParentId, ParentName, Status, CPU, CpuTime, KernelTime, UserTime, CpuCycles, ContextSwitches, ContextSwitchDelta,
 		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults, PagedPool, NonPagedPool,
 		Threads, PeakThreads, Handles, GdiObjects, PeakGdiObjects, UserObjects, PeakUserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
-		Architecture, IntegrityLevel, Elevation, Protection, Critical, Cfg, Mitigations, DpiAwareness, Virtualization, JobId,
+		Architecture, IntegrityLevel, Elevation, Protection, Critical, Cfg, Mitigations, DpiAwareness, Virtualization, JobId, Silo,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
 		PackageName, WindowTitle, VirusTotal, Description, ImagePath, CommandLine,

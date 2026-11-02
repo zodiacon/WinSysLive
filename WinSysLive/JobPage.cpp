@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "JobPage.h"
+#include "Interfaces.h"
 #include <ListViewhelper.h>
 #include "FormatHelper.h"
 #include <WinSys/Handles.h>
@@ -320,8 +321,10 @@ void CProcJobPage::ShowStatistics(HANDLE hJob) {
 	};
 
 	// a silo's first: what kind, its ID and namespace, and a container's state and builds (WinSys JobInfo::GetSiloInfo)
+	m_SiloRoot.clear();
 	if (auto silo = WinSys::JobInfo::GetSiloInfo(hJob)) {
-		add(L"Silo", silo->ServerSilo ? L"Server silo (a container)" : L"App silo");
+		m_SiloRoot = silo->RootDirectory;
+		add(L"Silo", silo->ServerSilo ? L"Server silo" : L"App silo");
 		add(L"Silo ID", std::to_wstring(silo->Id));
 		if (silo->ParentId)
 			add(L"Parent silo", std::to_wstring(silo->ParentId));
@@ -425,4 +428,38 @@ void CProcJobPage::ShowProcesses(HANDLE hJob, ProcessSnapshot const& snapshot) {
 				break;
 			}
 	}
+}
+
+void CProcJobPage::OpenSiloRoot() {
+	if (m_SiloRoot.empty() || !::IsWindow(m_Props.Frame))
+		return;
+	// the main window's thread owns the tabs; it deletes the string
+	auto path = new std::wstring(m_SiloRoot);
+	if (!::PostMessage(m_Props.Frame, WM_SHOW_OBJECT_PATH, 0, reinterpret_cast<LPARAM>(path)))
+		delete path;
+}
+
+LRESULT CProcJobPage::OnStatsRightClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/) {
+	if (m_SiloRoot.empty())
+		return 0;
+	CMenu menu;
+	menu.CreatePopupMenu();
+	const UINT OpenRoot = 1;
+	menu.AppendMenu(MF_STRING | (::IsWindow(m_Props.Frame) ? 0 : MF_GRAYED), OpenRoot, L"&Open Root Directory in Object Manager");
+	POINT pt;
+	::GetCursorPos(&pt);
+	if (::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr) == OpenRoot)
+		OpenSiloRoot();
+	return 0;
+}
+
+LRESULT CProcJobPage::OnStatsDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	auto item = reinterpret_cast<NMITEMACTIVATE*>(hdr);
+	if (item->iItem < 0 || m_SiloRoot.empty())
+		return 0;
+	CString name;
+	m_Stats.GetItemText(item->iItem, 0, name);
+	if (name == L"Root directory")
+		OpenSiloRoot();
+	return 0;
 }

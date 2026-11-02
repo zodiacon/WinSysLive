@@ -39,6 +39,9 @@
     <ClCompile Include="UnloadedModuleTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="SiloTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="WinSysTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>

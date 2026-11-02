@@ -117,6 +117,7 @@ public:
 		COMMAND_ID_HANDLER(ID_FILE_SNAPSHOTS, OnSnapshots)
 		COMMAND_ID_HANDLER(ID_FILE_OPENPE, OnOpenPEFile)
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
+		MESSAGE_HANDLER(WM_SHOW_OBJECT_PATH, OnShowObjectPath)
 		COMMAND_ID_HANDLER(ID_SYSTEM_SHARES, OnShares)
 		COMMAND_ID_HANDLER(ID_SYSTEM_NETWORKINFO, OnNetworkInfo)
 		COMMAND_ID_HANDLER(ID_SYSTEM_ETWSESSIONS, OnEtwSessions)
@@ -193,6 +194,8 @@ public:
 	LRESULT OnSnapshots(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnOpenPEFile(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDropFiles(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// a process sheet's request (the Job page's silo root directory)
+	LRESULT OnShowObjectPath(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShares(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnNetworkInfo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

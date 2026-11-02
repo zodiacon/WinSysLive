@@ -111,11 +111,12 @@ each kind on or off and sets its light and dark mode colors.
 | Network | Network Send Bytes, Network Recv Bytes, Network History |
 | GPU and NPU | GPU (%), Dedicated GPU Memory, Shared GPU Memory, NPU (%), NPU Memory |
 | Handles and Objects | Handles, GDI Objects, Peak GDI Objects, User Objects, Peak User Objects |
-| Security | Integrity, Elevated, Protection, Critical, CFG, Mitigations, UAC Virtualization, Job ID, VirusTotal |
+| Security | Integrity, Elevated, Protection, Critical, CFG, Mitigations, UAC Virtualization, Job ID, Silo, VirusTotal |
 
 Notes:
 
 - **Status** is Task Manager's: Running, Suspended or Not responding.
+- **Silo** is the server silo (a Windows container's) the process runs in; empty for the host's processes.
 - The **History** columns draw a small graph per process; hover over one for its last, minimum, maximum and average.
 - The **Network** columns need elevation (they come from an ETW trace).
 - Columns that need the process opened are empty for processes WinSysLive can't open (other users' and protected
@@ -196,7 +197,7 @@ separate window with its own taskbar button and stays open while you keep workin
 | Windows | The process's windows and child windows with their styles, rectangles and DPI; Show, Hide, Bring to Front, Close Window |
 | TCP/IP | The process's connections and endpoints, highlighted as they come and go; Close Connection |
 | Security | The process's permissions (the system's editor) |
-| Job | For a process in a job: the job (and the jobs it's nested in), its limits, accounting and processes; for a silo (an app silo or a container), its ID, parent, root directory and, for a container, its state |
+| Job | For a process in a job: the job (and the jobs it's nested in), its limits, accounting and processes; for a silo (an app silo or a container), its ID, parent, root directory and, for a container, its state; right-click the statistics (or double-click Root directory) to open the silo's root directory in the Object Manager tab |
 | Services | For a service host: its services with their configuration, DLL and triggers; Start and Stop |
 
 ![The Memory page with the hex view](images/process-memory.png)

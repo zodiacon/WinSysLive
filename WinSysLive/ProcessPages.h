@@ -29,6 +29,7 @@ struct ProcessProperties {
 	std::wstring ThreadColumns, ModuleColumns, HandleColumns;
 	bool ShowUnnamedHandles{ true };
 	int UpdateInterval{ 1000 };
+	HWND Frame{ nullptr };	// the main window, for the pages' requests (WM_SHOW_OBJECT_PATH); may be gone
 };
 
 // the process, if it's still the one the sheet is for (its ID may have been reused): null otherwise, with the last

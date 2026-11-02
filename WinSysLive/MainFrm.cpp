@@ -1921,6 +1921,19 @@ LRESULT CMainFrame::OnOpenPEFile(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	return 0;
 }
 
+LRESULT CMainFrame::OnShowObjectPath(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	std::unique_ptr<std::wstring> path(reinterpret_cast<std::wstring*>(lParam));
+	if (!path)
+		return 0;
+	// from a property sheet, which has the foreground: the frame comes up over it
+	if (IsIconic())
+		ShowWindow(SW_RESTORE);
+	SetForegroundWindow(m_hWnd);
+	if (auto view = ActivateTab(TabType::ObjectManager))
+		view->ShowObjectPath(*path);
+	return 0;
+}
+
 LRESULT CMainFrame::OnDropFiles(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	// each file in Image Details, one after the other
 	auto drop = reinterpret_cast<HDROP>(wParam);

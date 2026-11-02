@@ -509,6 +509,12 @@ LRESULT CObjectManagerView::OnGoToTarget(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	return 0;
 }
 
+bool CObjectManagerView::ShowObjectPath(std::wstring const& path) {
+	// as a symbolic link's target: the deepest directory on the path, and the object in it
+	GoToTarget(path);
+	return true;
+}
+
 void CObjectManagerView::GoToTarget(std::wstring const& target) {
 	// the deepest directory on the target's path, then the next component in it (\Device\HarddiskVolume3\Windows goes
 	// to HarddiskVolume3 in \Device: a device's own namespace isn't the object manager's)

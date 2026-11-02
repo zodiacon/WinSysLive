@@ -72,6 +72,7 @@ namespace {
 		{ L"DPI Awareness", L"DpiAwareness", 120, LVCFMT_LEFT, false, false, L"General" },
 		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false, false, L"Security" },
 		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false, false, L"Security" },
+		{ L"Silo", L"Silo", 60, LVCFMT_RIGHT, false, false, L"Security" },
 		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false, false, L"I/O" },
 		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false, false, L"I/O" },
 		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false, false, L"I/O" },
@@ -1270,6 +1271,11 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 				case VirtualizationState::Disabled: return L"Disabled";
 			}
 			return L"";
+		case Column::Silo: {
+			// the server silo's ID: a container's process; empty for the host's (and when it can't be queried)
+			auto silo = p.GetServerSiloId();
+			return silo && *silo ? std::to_wstring(*silo) : L"";
+		}
 		case Column::JobId: {
 			auto job = GetJobId(p);
 			// without the snapshot's job ID, only membership is known
@@ -1431,6 +1437,7 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::Architecture: return ::_wcsicmp(p1.GetArchitecture(), p2.GetArchitecture());
 		case Column::Virtualization: return compare(p1.GetVirtualization(), p2.GetVirtualization());
 		case Column::JobId: return compare(GetJobId(p1), GetJobId(p2));
+		case Column::Silo: return compare(p1.GetServerSiloId().value_or(0), p2.GetServerSiloId().value_or(0));
 		case Column::IoRead: return compare(i1->ReadTransferCount.QuadPart, i2->ReadTransferCount.QuadPart);
 		case Column::IoWrite: return compare(i1->WriteTransferCount.QuadPart, i2->WriteTransferCount.QuadPart);
 		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);
@@ -2119,6 +2126,7 @@ LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	props.HandleColumns = AppSettings::Get().HandleColumns();
 	props.ShowUnnamedHandles = AppSettings::Get().ShowUnnamedHandles();
 	props.UpdateInterval = AppSettings::Get().UpdateInterval();
+	props.Frame = Frame()->GetHwnd();
 	// the parent, if it's still the process that created this one
 	if (auto parent = Frame()->GetProcessManager().GetProcessById(p.ParentId); parent && parent->Key.Created <= p.Key.Created)
 		props.ParentName = parent->GetImageName();
