@@ -5,6 +5,10 @@
 #include "../WinSysLive/ColumnLayout.h"
 #include "../WinSysLive/XmlText.h"
 #include "../WinSysLive/Snapshot.h"
+#include "../WinSysLive/DeviceTree.h"
+#include "../WinSysLive/DeviceResourceOrder.h"
+#include "../WinSysLive/PaletteSearch.h"
+#include <cfgmgr32.h>
 
 // the AlertRules setting's text, the descriptions, the patterns and the threshold conditions (WinSysLive\AlertRules.h)
 
@@ -560,4 +564,118 @@ TEST(Snapshot_Compare) {
 	auto contents = SnapshotCompare::Contents(after);
 	CHECK(contents.size() >= 4);
 	CHECK(std::ranges::all_of(contents, [](auto& r) { return r.Diff == SnapshotRow::Change::None; }));
+}
+
+TEST(Devices_TreeRows) {
+	using WinSys::DeviceInfo;
+	// the computer (0), a bus (1) under it, two devices under the bus (2, 3), a device under the computer (4)
+	auto device = [](PCWSTR name, PCWSTR className, int parent, int depth, uint32_t problem = 0) {
+		DeviceInfo d;
+		d.Name = name;
+		d.ClassName = className;
+		d.Parent = parent;
+		d.Depth = depth;
+		if (problem) {
+			d.Status = DN_HAS_PROBLEM;
+			d.Problem = problem;
+		}
+		return d;
+	};
+	std::vector<DeviceInfo> devices = {
+		device(L"ZODIAC", L"Computer", -1, 0), device(L"PCI bus", L"System devices", 0, 1),
+		device(L"zeta disk", L"Disk drives", 1, 2), device(L"Alpha disk", L"disk drives", 1, 2, CM_PROB_FAILED_START),
+		device(L"Mystery", L"", 0, 1),
+	};
+	// a match deep in the tree keeps its ancestors, not its siblings
+	auto keep = DeviceTree::KeepWithAncestors(devices, { 0, 0, 1, 0, 0 });
+	CHECK(keep == std::vector<char>({ 1, 1, 1, 0, 0 }));
+	CHECK(DeviceTree::KeepWithAncestors(devices, { 0, 0, 0, 0, 0 }) == std::vector<char>(5, 0));
+	CHECK(DeviceTree::KeepWithAncestors(devices, { 1, 1, 1, 1, 1 }) == std::vector<char>(5, 1));
+
+	// by class: the computer left out, the classes by name ignoring case (one class for "Disk drives" and "disk
+	// drives"), their devices by name, "Other devices" for none, the problems counted
+	auto groups = DeviceTree::GroupByClass(devices, { 1, 1, 1, 1, 1 });
+	CHECK_EQ(groups.size(), (size_t)3);
+	if (groups.size() == 3) {
+		CHECK(::_wcsicmp(groups[0].Name.c_str(), L"Disk drives") == 0);
+		CHECK(groups[0].Devices == std::vector<int>({ 3, 2 }));	// Alpha before zeta
+		CHECK_EQ(groups[0].Problems, 1);
+		CHECK_EQ(groups[1].Name, std::wstring(L"Other devices"));
+		CHECK_EQ(groups[2].Name, std::wstring(L"System devices"));
+		CHECK_EQ(groups[2].Problems, 0);
+	}
+	// only the shown ones
+	groups = DeviceTree::GroupByClass(devices, { 1, 0, 1, 0, 0 });
+	CHECK(groups.size() == 1 && groups[0].Devices == std::vector<int>({ 2 }));
+}
+
+TEST(Devices_ResourceOrder) {
+	using WinSys::DeviceResource;
+	using WinSys::DeviceResourceType;
+	auto range = [](DeviceResourceType type, uint64_t start, uint64_t end) {
+		DeviceResource r;
+		r.Type = type;
+		r.Start = start;
+		r.End = end;
+		return r;
+	};
+	auto irq = [](int32_t value) {
+		DeviceResource r;
+		r.Type = DeviceResourceType::Interrupt;
+		r.Value = (uint32_t)value;
+		return r;
+	};
+	std::vector<DeviceResource> resources = {
+		irq(-139), range(DeviceResourceType::Io, 0xF000, 0xFFFF), irq(25), range(DeviceResourceType::Memory, 0xD8000000, 0xDBFFFFFF),
+		range(DeviceResourceType::LargeMemory, 0xF800000000, 0xFBFFFFFFFF), irq(-11), range(DeviceResourceType::Memory, 0xD8000000, 0xDC0FFFFF),
+		irq(4),
+	};
+	std::ranges::stable_sort(resources, DeviceResourceOrder::Before);
+	// memory and large memory together by address, the bridge window (wider) before the device's range at its start;
+	// then I/O; then the line-based interrupts by number, then the message-signaled ones by magnitude
+	CHECK(resources[0].Type == DeviceResourceType::Memory && resources[0].End == 0xDC0FFFFF);
+	CHECK(resources[1].Type == DeviceResourceType::Memory && resources[1].End == 0xDBFFFFFF);
+	CHECK(resources[2].Type == DeviceResourceType::LargeMemory);
+	CHECK(resources[3].Type == DeviceResourceType::Io);
+	CHECK((int32_t)resources[4].Value == 4);
+	CHECK((int32_t)resources[5].Value == 25);
+	CHECK((int32_t)resources[6].Value == -11);
+	CHECK((int32_t)resources[7].Value == -139);
+}
+
+TEST(Palette_Search) {
+	struct Entry {
+		std::wstring Name, Kind, Detail;
+	};
+	std::vector<Entry> entries;
+	for (int i = 0; i < 40; i++)
+		entries.push_back({ L"svchost.exe", L"Process", std::format(L"PID {}", 1000 + i) });
+	entries.push_back({ L"Print Spooler", L"Service", L"Spooler" });
+	entries.push_back({ L"spoolsv.exe", L"Process", L"PID 6060" });
+	entries.push_back({ L"Windows Update", L"Service", L"wuauserv" });
+	entries.push_back({ L"SvcHelper", L"Service", L"svchelp" });
+	std::vector<PaletteSearch::Item> items;
+	for (auto& e : entries)
+		items.push_back({ &e.Name, &e.Kind, &e.Detail });
+
+	// under two characters: nothing
+	CHECK(PaletteSearch::Find(items, L"s", 100, 25).empty());
+	// a name starting with the text first, then the others in order; every word somewhere in the name, kind or detail
+	auto found = PaletteSearch::Find(items, L"spool", 100, 25);
+	CHECK(found.size() == 2 && *items[found[0]].Name == L"spoolsv.exe" && *items[found[1]].Name == L"Print Spooler");
+	found = PaletteSearch::Find(items, L"spooler service", 100, 25);
+	CHECK(found.size() == 1 && *items[found[0]].Name == L"Print Spooler");
+	found = PaletteSearch::Find(items, L"pid 6060", 100, 25);
+	CHECK(found.size() == 1 && *items[found[0]].Name == L"spoolsv.exe");
+	// the per-kind cap: 40 svchost.exe processes give 25, and the service still shows
+	found = PaletteSearch::Find(items, L"svc", 100, 25);
+	auto processes = std::ranges::count_if(found, [&](int i) { return *items[i].Kind == L"Process"; });
+	CHECK_EQ(processes, (ptrdiff_t)25);
+	CHECK(std::ranges::any_of(found, [&](int i) { return *items[i].Name == L"SvcHelper"; }));
+	// the total cap
+	CHECK_EQ(PaletteSearch::Find(items, L"svc", 10, 25).size(), (size_t)10);
+	// words and matching
+	CHECK(PaletteSearch::Words(L"  a  bc ") == std::vector<std::wstring>({ L"a", L"bc" }));
+	CHECK(PaletteSearch::MatchesAll({ L"pri", L"spo" }, L"print spooler service"));
+	CHECK(!PaletteSearch::MatchesAll({ L"pri", L"xyz" }, L"print spooler service"));
 }

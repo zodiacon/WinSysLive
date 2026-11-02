@@ -78,7 +78,7 @@ namespace {
 	}
 }
 
-CProcWindowsPage::CProcWindowsPage(ProcessProperties const& props) : m_Props(props) {
+CProcWindowsPage::CProcWindowsPage(ProcessProperties const& props, HWND root) : m_Props(props), m_Root(root) {
 	m_psp.dwFlags |= PSP_USEICONID;
 	m_psp.pszIcon = MAKEINTRESOURCE(IDI_DESKTOP);
 }
@@ -172,7 +172,13 @@ void CProcWindowsPage::Load() {
 	};
 	collect(collect, TLV_ROOT);
 
-	m_Windows = WinSys::ProcessWindows::Enum(m_Props.Id);
+	// the first time with a root: the root expanded and selected
+	if (m_Root && !m_RootSelected) {
+		selected = m_Root;
+		expanded.insert(m_Root);
+	}
+	m_RootSelected = true;
+	m_Windows = m_Root ? WinSys::ProcessWindows::EnumTree(m_Root) : WinSys::ProcessWindows::Enum(m_Props.Id);
 	m_Tree.BeginUpdate();
 	m_Tree.DeleteAllItems();
 	// in tree order: a parent comes before its children
@@ -199,9 +205,14 @@ void CProcWindowsPage::Load() {
 	auto topLevel = std::ranges::count_if(m_Windows, [](auto& w) { return w.Parent < 0 && !w.MessageOnly; });
 	auto visible = std::ranges::count_if(m_Windows, [](auto& w) { return w.Parent < 0 && !w.MessageOnly && w.Visible; });
 	auto messageOnly = std::ranges::count_if(m_Windows, [](auto& w) { return w.MessageOnly; });
-	SetDlgItemText(IDC_WIN_STATUS, m_Windows.empty() ? L"The process has no windows on this desktop"
-		: std::format(L"{} windows: {} top-level ({} visible), {} message-only, {} children", m_Windows.size(), topLevel, visible,
-			messageOnly, m_Windows.size() - topLevel - messageOnly).c_str());
+	if (m_Root)
+		SetDlgItemText(IDC_WIN_STATUS, m_Windows.empty() ? L"The window is gone"
+			: std::format(L"The window and {} descendants", m_Windows.size() - 1).c_str());
+	else {
+		SetDlgItemText(IDC_WIN_STATUS, m_Windows.empty() ? L"The process has no windows on this desktop"
+			: std::format(L"{} windows: {} top-level ({} visible), {} message-only, {} children", m_Windows.size(), topLevel, visible,
+				messageOnly, m_Windows.size() - topLevel - messageOnly).c_str());
+	}
 	ShowDetails();
 }
 

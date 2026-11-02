@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "resource.h"
 #include "DevicesView.h"
+#include "DeviceTree.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include "DeviceResourcesDlg.h"
@@ -65,11 +66,6 @@ namespace {
 			return L"";
 		WCHAR text[64]{};
 		::GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_SHORTDATE, &st, nullptr, text, _countof(text), nullptr);
-		return text;
-	}
-
-	std::wstring Lower(std::wstring text) {
-		::CharLowerBuff(text.data(), (DWORD)text.size());
 		return text;
 	}
 }
@@ -374,12 +370,8 @@ void CDevicesView::Build() {
 		shown[i] = IsShown(m_Devices[i]);
 
 	if (m_ByConnection) {
-		// a shown device's ancestors stay, so that it has its place in the tree
-		std::vector<char> keep(count);
-		for (int i = 0; i < count; i++)
-			if (shown[i])
-				for (int p = i; p >= 0 && !keep[p]; p = m_Devices[p].Parent)
-					keep[p] = 1;
+		// a shown device's ancestors stay, so that it has its place in the tree (DeviceTree.h)
+		auto keep = DeviceTree::KeepWithAncestors(m_Devices, shown);
 		std::vector<HTLITEM> items(count);
 		HTLITEM group = nullptr;
 		for (int i = 0; i < count; i++) {
@@ -408,26 +400,15 @@ void CDevicesView::Build() {
 					r.Count = (int)std::ranges::count_if(m_Devices, [](auto& d) { return !d.Present; });
 	}
 	else {
-		// by class, the classes and their devices by name (the computer itself isn't a device of a class)
-		std::map<std::wstring, std::pair<std::wstring, std::vector<int>>> classes;
-		for (int i = 0; i < count; i++) {
-			if (!shown[i] || m_Devices[i].Depth == 0)
-				continue;
-			auto name = m_Devices[i].ClassName.empty() ? std::wstring(L"Other devices") : m_Devices[i].ClassName;
-			auto& entry = classes[Lower(name)];
-			entry.first = name;
-			entry.second.push_back(i);
-		}
-		for (auto& [key, entry] : classes) {
-			auto& [name, devices] = entry;
-			std::ranges::sort(devices, [&](int a, int b) { return ::_wcsicmp(m_Devices[a].Name.c_str(), m_Devices[b].Name.c_str()) < 0; });
+		// by class, the classes and their devices by name (the computer itself isn't a device of a class; DeviceTree.h)
+		for (auto& group : DeviceTree::GroupByClass(m_Devices, shown)) {
 			auto& c = m_Rows.emplace_back();
 			c.Kind = RowKind::Class;
-			c.Name = name;
-			c.Count = (int)devices.size();
-			c.Problems = (int)std::ranges::count_if(devices, [&](int i) { return m_Devices[i].HasProblem(); });
-			c.Item = m_Tree.InsertItem(TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, imageOf(m_Devices[devices.front()]), reinterpret_cast<LPARAM>(&c));
-			for (int i : devices) {
+			c.Name = group.Name;
+			c.Count = (int)group.Devices.size();
+			c.Problems = group.Problems;
+			c.Item = m_Tree.InsertItem(TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, imageOf(m_Devices[group.Devices.front()]), reinterpret_cast<LPARAM>(&c));
+			for (int i : group.Devices) {
 				auto& row = m_Rows.emplace_back();
 				row.Device = i;
 				row.Item = m_Tree.InsertItem(c.Item, TLV_LAST, LPSTR_TEXTCALLBACK, imageOf(m_Devices[i]), reinterpret_cast<LPARAM>(&row));

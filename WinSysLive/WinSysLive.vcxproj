@@ -603,6 +603,9 @@
     <ClInclude Include="ImagePage.h" />
     <ClInclude Include="PEView.h" />
     <ClInclude Include="XmlText.h" />
+    <ClInclude Include="DeviceTree.h" />
+    <ClInclude Include="DeviceResourceOrder.h" />
+    <ClInclude Include="PaletteSearch.h" />
     <ClInclude Include="PEFileDlg.h" />
     <ClInclude Include="EventFilter.h" />
     <ClInclude Include="DeviceResourcesDlg.h" />

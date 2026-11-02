@@ -12,12 +12,14 @@
 // which keeps the selection and the expanded windows; again shortly after an action, as the windows change
 // asynchronously. Show, Hide and Bring to Front act on the selected window at once, Close Window (WM_CLOSE: the window
 // decides) after a confirmation. The page lays itself out (WM_SIZE): the panes above the status line, the buttons below.
+// With a root window (the Window Stations dialog's Child Windows and Properties, in a sheet of its own) it shows that
+// window and its descendants only (ProcessWindows::EnumTree), the root expanded and selected at first.
 //
 class CProcWindowsPage : public CPropertyPageImpl<CProcWindowsPage> {
 public:
 	enum { IDD = IDD_PROC_WINDOWS };
 
-	explicit CProcWindowsPage(ProcessProperties const& props);
+	explicit CProcWindowsPage(ProcessProperties const& props, HWND root = nullptr);
 
 	// CPropertyPageImpl (_WTL_NEW_PAGE_NOTIFY_HANDLERS, WTL's default): 0 allows the activation
 	int OnSetActive();
@@ -56,6 +58,8 @@ private:
 	void Layout(int cx, int cy);
 	// the windows read again into the tree, keeping the selection and the expanded windows (by handle)
 	void Load();
+	HWND m_Root{ nullptr };	// the window whose tree is shown; none: the process's windows
+	bool m_RootSelected{ false };	// the root expanded and selected once (the first Load)
 	WinSys::WindowInfo const* GetSelected() const;
 	// the selected window's properties into the list below, and the buttons for it
 	void ShowDetails();

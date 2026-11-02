@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "CommandPaletteDlg.h"
+#include "PaletteSearch.h"
 #include <DpiHelper.h>
 
 namespace {
@@ -78,16 +79,8 @@ void CCommandPaletteDlg::ShowCommands() {
 	CString text;
 	m_Filter.GetWindowText(text);
 	auto filter = Lowercase((PCWSTR)text);
-	// the words typed, each to be found
-	std::vector<std::wstring> words;
-	for (size_t start = 0; start < filter.size(); ) {
-		auto end = filter.find(L' ', start);
-		if (end == std::wstring::npos)
-			end = filter.size();
-		if (end > start)
-			words.push_back(filter.substr(start, end - start));
-		start = end + 1;
-	}
+	// the words typed, each to be found (PaletteSearch.h)
+	auto words = PaletteSearch::Words(filter);
 	std::vector<int> first, rest;	// names starting with the text, then the others, each in menu order
 	// with nothing typed, the recent commands first, newest first
 	if (filter.empty() && !m_SearchOnly)
@@ -101,7 +94,7 @@ void CCommandPaletteDlg::ShowCommands() {
 		auto& c = m_Commands[i];
 		auto name = Lowercase(c.Name);
 		auto haystack = name + L" " + Lowercase(c.Path);
-		if (!std::ranges::all_of(words, [&](auto& w) { return haystack.find(w) != std::wstring::npos; }))
+		if (!PaletteSearch::MatchesAll(words, haystack))
 			continue;
 		if (filter.empty() ? std::ranges::find(first, i) == first.end() : true)
 			(!filter.empty() && name.starts_with(filter) ? first : rest).push_back(i);
@@ -110,24 +103,12 @@ void CCommandPaletteDlg::ShowCommands() {
 	for (auto i : rest)
 		first.push_back(i);
 
-	// the search's results, from two characters: names starting with the text first, each kind in the order given
-	std::vector<int> found, foundRest;
-	if (filter.size() >= 2) {
-		for (int i = 0; i < (int)m_Search.size() && found.size() + foundRest.size() < MaxResults * 4; i++) {
-			auto& item = m_Search[i];
-			auto name = Lowercase(item.Name);
-			auto haystack = name + L" " + Lowercase(item.Kind) + L" " + Lowercase(item.Detail);
-			if (std::ranges::all_of(words, [&](auto& w) { return haystack.find(w) != std::wstring::npos; }))
-				(name.starts_with(filter) ? found : foundRest).push_back(i);
-		}
-		for (auto i : foundRest)
-			found.push_back(i);
-		// at most MaxPerKind of a kind (thirty svchost.exe processes mustn't hide the services), MaxResults in all
-		std::unordered_map<std::wstring, size_t> perKind;
-		std::erase_if(found, [&](int i) { return ++perKind[m_Search[i].Kind] > MaxPerKind; });
-		if (found.size() > MaxResults)
-			found.resize(MaxResults);
-	}
+	// the search's results (PaletteSearch::Find: from two characters, names starting with the text first, the caps)
+	std::vector<PaletteSearch::Item> items;
+	items.reserve(m_Search.size());
+	for (auto& item : m_Search)
+		items.push_back({ &item.Name, &item.Kind, &item.Detail });
+	auto found = PaletteSearch::Find(items, filter, MaxResults, MaxPerKind);
 
 	// no SetRedraw: the first fill happens before the dialog is shown, and a list whose redraw was turned off and on
 	// then stayed unpainted until its contents changed (a hundred or so rows fill quickly anyway)

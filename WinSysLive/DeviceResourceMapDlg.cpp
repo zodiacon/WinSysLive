@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "DeviceResourceMapDlg.h"
 #include "DeviceResourcesDlg.h"
+#include "DeviceResourceOrder.h"
 #include "FilterBox.h"
 #include <ListViewhelper.h>
 #include <ClipboardHelper.h>
@@ -38,16 +39,7 @@ LRESULT CDeviceResourceMapDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LP
 }
 
 std::pair<int, int64_t> CDeviceResourceMapDlg::OrderKey(DeviceResource const& r) {
-	// memory and large memory together: they're the same address space
-	int type = r.Type == DeviceResourceType::LargeMemory ? (int)DeviceResourceType::Memory : (int)r.Type;
-	if (r.Type == DeviceResourceType::Interrupt) {
-		// line-based by number, then the message-signaled ones (negative) by their magnitude
-		auto value = (int32_t)r.Value;
-		return { type, value >= 0 ? (int64_t)value : 0x100000000LL - value };
-	}
-	if (r.Type == DeviceResourceType::Dma)
-		return { type, (int64_t)r.Value };
-	return { type, (int64_t)r.Start };
+	return DeviceResourceOrder::Key(r);
 }
 
 void CDeviceResourceMapDlg::Load() {
@@ -71,13 +63,7 @@ void CDeviceResourceMapDlg::Load() {
 		}
 	}
 	// the default order, the rows' order in m_All; a device's own order kept within the same key
-	std::ranges::stable_sort(m_All, [](auto& a, auto& b) {
-		auto ka = OrderKey(a.Resource), kb = OrderKey(b.Resource);
-		if (ka != kb)
-			return ka < kb;
-		// a range before the narrower ones in it (a bridge window before its devices')
-		return a.Resource.End > b.Resource.End;
-		});
+	std::ranges::stable_sort(m_All, [](auto& a, auto& b) { return DeviceResourceOrder::Before(a.Resource, b.Resource); });
 	m_LoadMs = (DWORD)(::GetTickCount64() - start);
 }
 

@@ -461,6 +461,15 @@
     <ClInclude Include="ImagePage.h">
       <Filter>Pages</Filter>
     </ClInclude>
+    <ClInclude Include="DeviceTree.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceResourceOrder.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="PaletteSearch.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="XmlText.h">
       <Filter>Helpers</Filter>
     </ClInclude>
