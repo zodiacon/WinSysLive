@@ -20,7 +20,8 @@
 // first) shows the 32-bit view's; Suspicious Only the red, orange and yellow ones and the unsigned. The filter matches
 // the name, CLSID, ProgID, server, app ID and package; any column sorts by its text. The context menu: Open File
 // Location, Open in Registry Editor, Launch Permissions and Access Permissions (the app ID's or the machine's
-// defaults, read-only in the ACL editor), Copy (the selected rows, or all shown) and Copy CLSID.
+// defaults, read-only in the ACL editor), Copy (the selected rows, or all shown) and Copy CLSID. Save... writes the
+// rows shown as CSV or tab-separated text (ListExport); Ctrl+F from any control goes to the filter box.
 //
 class CComRegistrationDlg :
 	public CDialogImpl<CComRegistrationDlg>,
@@ -37,6 +38,7 @@ public:
 		DLGRESIZE_CONTROL(IDC_CR_SUSPICIOUS, DLSZ_MOVE_X)
 		DLGRESIZE_CONTROL(IDC_CR_LIST, DLSZ_SIZE_X | DLSZ_SIZE_Y)
 		DLGRESIZE_CONTROL(IDC_CR_STATUS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_CR_SAVE, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_CR_REFRESH, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_CR_COPY, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDCANCEL, DLSZ_MOVE_X | DLSZ_MOVE_Y)
@@ -44,6 +46,7 @@ public:
 
 	BEGIN_MSG_MAP(CComRegistrationDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_COMREG_READ, OnRead)
 		MESSAGE_HANDLER(WM_COMREG_SIGNED, OnSigned)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
@@ -57,6 +60,7 @@ public:
 		NOTIFY_HANDLER(IDC_CR_LIST, NM_DBLCLK, OnDoubleClick)
 		COMMAND_ID_HANDLER(IDC_CR_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(IDC_CR_COPY, OnCopy)
+		COMMAND_ID_HANDLER(IDC_CR_SAVE, OnSave)
 		COMMAND_ID_HANDLER(ID_COMREG_OPENLOCATION, OnOpenLocation)
 		COMMAND_ID_HANDLER(ID_COMREG_OPENKEY, OnOpenKey)
 		COMMAND_ID_HANDLER(ID_COMREG_LAUNCHPERMISSIONS, OnPermissions)
@@ -86,6 +90,9 @@ private:
 	enum class Concern { None, PerUser, Override, Broken };
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// the modal loop's messages (WH_MSGFILTER, MSGF_DIALOGBOX): Ctrl+F from any control goes to the filter box
+	static LRESULT CALLBACK MessageFilter(int code, WPARAM wParam, LPARAM lParam);
 	LRESULT OnRead(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -97,6 +104,7 @@ private:
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnOpenLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnOpenKey(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPermissions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -112,6 +120,9 @@ private:
 	// the rows: the classes the filter and the check boxes allow, sorted
 	void ShowRows();
 	void Sort();
+	// the column names, then the rows shown (selectedOnly: the selected ones), each in the header's order; the
+	// signatures as known (none are queued for it)
+	std::vector<std::vector<std::wstring>> GetExportRows(bool selectedOnly);
 	// verify: queue the server's signature check if it isn't known (as a row is shown; not while sorting or copying)
 	std::wstring GetText(WinSys::ComClassRegistration const& c, Column column, bool verify = false);
 	Concern GetConcern(WinSys::ComClassRegistration const& c) const;
@@ -128,6 +139,8 @@ private:
 	std::shared_ptr<LoadState> m_Load;	// while reading
 	SignatureVerifier m_Signatures;
 	CAclDialogTheming m_AclTheming;
+	HHOOK m_FilterHook{ nullptr };	// MessageFilter, while the dialog is up
+	inline static thread_local CComRegistrationDlg* s_Current{ nullptr };
 	std::wstring m_Filter;	// lowercase
 	int m_SortColumn{ (int)Column::Name };
 	bool m_SortAscending{ true };

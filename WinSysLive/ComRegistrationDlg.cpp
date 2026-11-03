@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ComRegistrationDlg.h"
 #include "RegistryEditor.h"
+#include "ListExport.h"
 #include <WinSys/Helpers.h>
 #include <WTLHelper.h>
 #include <ListViewhelper.h>
@@ -126,12 +127,41 @@ LRESULT CComRegistrationDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPAR
 	CheckDlgButton(IDC_CR_32BIT, BST_CHECKED);
 	m_Signatures.Init(m_hWnd, WM_COMREG_SIGNED);
 	m_AclTheming.Install(m_hWnd);
+	s_Current = this;
+	m_FilterHook = ::SetWindowsHookEx(WH_MSGFILTER, MessageFilter, nullptr, ::GetCurrentThreadId());
 
 	DlgResize_Init(true, true);
 	InitDpi();
 	CenterWindow(GetParent());
 	Load();
 	return TRUE;
+}
+
+LRESULT CComRegistrationDlg::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (m_FilterHook)
+		::UnhookWindowsHookEx(m_FilterHook);
+	m_FilterHook = nullptr;
+	if (s_Current == this)
+		s_Current = nullptr;
+	bHandled = FALSE;
+	return 0;
+}
+
+LRESULT CALLBACK CComRegistrationDlg::MessageFilter(int code, WPARAM wParam, LPARAM lParam) {
+	auto self = s_Current;
+	if (code == MSGF_DIALOGBOX && self) {
+		auto msg = reinterpret_cast<MSG*>(lParam);
+		// Ctrl+F (not with Alt or Shift) in any of the dialog's controls; the ACL editor's dialogs have their own loops
+		if (msg->message == WM_KEYDOWN && msg->wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000)
+			&& !(::GetKeyState(VK_MENU) & 0x8000) && !(::GetKeyState(VK_SHIFT) & 0x8000)
+			&& (msg->hwnd == self->m_hWnd || self->IsChild(msg->hwnd))) {
+			CEdit filter(self->GetDlgItem(IDC_CR_FILTER));
+			filter.SetFocus();
+			filter.SetSelAll();
+			return TRUE;	// handled: the dialog doesn't see it
+		}
+	}
+	return ::CallNextHookEx(nullptr, code, wParam, lParam);
 }
 
 void CComRegistrationDlg::CreateImages() {
@@ -520,27 +550,53 @@ LRESULT CComRegistrationDlg::OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 	return 0;
 }
 
-LRESULT CComRegistrationDlg::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// the selected rows, else every row shown; the column names first
-	bool selected = m_List.GetSelectedCount() > 0;
-	std::wstring text;
-	for (int c = 0; c < (int)Column::_Count; c++) {
+std::vector<std::vector<std::wstring>> CComRegistrationDlg::GetExportRows(bool selectedOnly) {
+	// the header's order (the user may have dragged columns)
+	int count = (int)Column::_Count;
+	std::vector<int> order(count);
+	m_List.GetHeader().GetOrderArray(count, order.data());
+	std::vector<std::vector<std::wstring>> rows;
+	auto& header = rows.emplace_back();
+	for (auto c : order) {
 		WCHAR name[64]{};
 		LVCOLUMN column{ LVCF_TEXT };
 		column.pszText = name;
 		column.cchTextMax = _countof(name);
 		m_List.GetColumn(c, &column);
-		text += (c ? L"\t" : L"") + std::wstring(name);
+		header.push_back(name);
 	}
-	text += L"\r\n";
 	for (int r = 0; r < (int)m_Rows.size(); r++) {
-		if (selected && !(m_List.GetItemState(r, LVIS_SELECTED) & LVIS_SELECTED))
+		if (selectedOnly && !(m_List.GetItemState(r, LVIS_SELECTED) & LVIS_SELECTED))
 			continue;
-		for (int c = 0; c < (int)Column::_Count; c++)
-			text += (c ? L"\t" : L"") + GetText(m_Classes[m_Rows[r]], (Column)c);
-		text += L"\r\n";
+		auto& row = rows.emplace_back();
+		for (auto c : order)
+			row.push_back(GetText(m_Classes[m_Rows[r]], (Column)c));
 	}
-	ClipboardHelper::CopyText(m_hWnd, text.c_str());
+	return rows;
+}
+
+LRESULT CComRegistrationDlg::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the selected rows, else every row shown; the column names first
+	ClipboardHelper::CopyText(m_hWnd, ListExport::ToText(GetExportRows(m_List.GetSelectedCount() > 0)).c_str());
+	return 0;
+}
+
+LRESULT CComRegistrationDlg::OnSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// every row shown (as filtered and sorted), as File > Export List saves a tab's
+	auto rows = GetExportRows(false);
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(FALSE, L"csv", L"COM Registration.csv", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
+		L"CSV Files (*.csv)\0*.csv\0Text Files, Tab Separated (*.txt)\0*.txt\0", m_hWnd);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	std::wstring path = dlg.m_szFileName;
+	bool tabs = dlg.m_ofn.nFilterIndex == 2;
+	if (!ListExport::Save(path, tabs ? ListExport::ToText(rows) : ListExport::ToCsv(rows))) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to write {}: {}", path, Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	SetDlgItemText(IDC_CR_STATUS, std::format(L"{} rows saved to {}", rows.size() - 1, path).c_str());
 	return 0;
 }
 
