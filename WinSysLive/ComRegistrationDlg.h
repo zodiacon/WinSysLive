@@ -15,7 +15,9 @@
 // a service's or an object's for the others), the server as registered, threading
 // model, app ID and its name, service, Run As, where it's registered (the machine, the user, the user's over the
 // machine's), the view, the server's signature (verified as the rows are shown, on SignatureVerifier's thread) and
-// the package; the Concern column says why a row stands out. Red: a machine-wide class's server a standard user can
+// the package, the key's last write (Last Changed, sorted by time), TreatAs and Elevation (auto-approved: without a
+// prompt); the Concern column says why a row stands out (also a TreatAs to a per-user class or one users can
+// replace, red, and the user's ProgIDs pointing at the class instead of the machine's choice, orange). Red: a machine-wide class's server a standard user can
 // replace, or (missing) create; a scriptlet (scrobj.dll's ScriptletURL); a local server that runs an interpreter
 // (rundll32 of a DLL outside Windows, powershell, cmd, mshta...); a signature that doesn't verify. Orange: a user's
 // class over the machine's; yellow: another of the user's (per-user classes are a known way to hijack a class); gray
@@ -87,7 +89,7 @@ public:
 
 private:
 	enum class Column { Name, Clsid, ProgId, Type, Concern, Server, Threading, AppId, AppName, Service, RunAs, Registered, View,
-		Signature, Package, _Count };
+		Signature, Package, LastChanged, TreatAs, Elevation, _Count };
 
 	struct LoadState {
 		std::mutex Lock;
@@ -148,11 +150,14 @@ private:
 	// the class's key as the Registry Editor shows it
 	static std::wstring EditorPath(WinSys::ComClassRegistration const& c);
 	WinSys::ComClassRegistration const* GetSelected() const;
+	// the class a TreatAs names, as HKCR has it in the same view; null if it isn't registered
+	WinSys::ComClassRegistration const* FindClass(std::wstring const& clsid, bool wow64) const;
 
 	CListViewCtrl m_List;
 	CImageListManaged m_Images;	// the list's, shared (destroyed with the dialog, or when replaced)
 	std::vector<WinSys::ComClassRegistration> m_Classes;
 	std::vector<int> m_Rows;	// indexes into m_Classes, as shown
+	std::unordered_map<std::wstring, int> m_ByClsid;	// HKCR's classes by CLSID and view ("{...}|32"), for TreatAs
 	std::shared_ptr<LoadState> m_Load;	// while reading
 	SignatureVerifier m_Signatures;
 	CAclDialogTheming m_AclTheming;

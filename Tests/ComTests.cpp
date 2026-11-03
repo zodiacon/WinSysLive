@@ -200,6 +200,30 @@ TEST(Com_LiveRegistry) {
 			wow64 ? "32-bit" : "64-bit", classes.size(), elapsed, named, types[1], types[2], types[3], types[4], types[5], types[0],
 			perUser, overrides, packaged, missing);
 		CHECK(classes.size() > 500);
+		// the keys' times, TreatAs, elevation (auto-approved only if enabled), the user's ProgIDs pointing elsewhere
+		int treatAs = 0, elevation = 0, approved = 0, redirected = 0, timed = 0;
+		for (auto& c : classes) {
+			treatAs += !c.TreatAs.empty();
+			elevation += c.ElevationEnabled;
+			approved += c.AutoApproved;
+			redirected += !c.RedirectedProgIds.empty();
+			if (c.Package.empty()) {
+				timed += c.LastWrite != 0;
+				// not in the future, nor before 1995 (FILETIME 125,000,000,000,000,000 is 1997)
+				CHECK(c.LastWrite == 0 || (c.LastWrite > 120'000'000'000'000'000LL && c.LastWrite < 140'000'000'000'000'000LL));
+			}
+			if (c.AutoApproved)
+				CHECK(c.ElevationEnabled && !c.PerUser);
+			if (!c.TreatAs.empty())
+				CHECK(c.TreatAs[0] == L'{');
+		}
+		printf("  %d TreatAs, %d elevation enabled (%d without a prompt), %d with the user's ProgIDs pointing at them, %d with a time\n",
+			treatAs, elevation, approved, redirected, timed);
+		CHECK(timed > (int)classes.size() / 2);
+		shown = 0;
+		for (auto& c : classes)
+			if (!c.RedirectedProgIds.empty() && shown++ < 5)
+				printf("    redirected: %ls %ls: %ls\n", c.Clsid.c_str(), c.Name.c_str(), c.RedirectedProgIds.c_str());
 		shown = 0;
 		for (auto& c : classes)
 			if (c.ServerMissing && shown++ < 5)
@@ -214,6 +238,35 @@ TEST(Com_LiveRegistry) {
 		CHECK(shell->Type == ComServerType::InProc || shell->Type == ComServerType::LocalServer);
 		CHECK_EQ(shell->ProgId, std::wstring(L"Shell.Application.1"));
 		CHECK(!shell->ServerMissing);
+	}
+	// a ProgID the user remaps (as a hijack would): a rarely used one of WMI's, pointed at Shell.Application's class
+	// for the moment of the read, if the user has no key of that name (and the machine has the ProgID)
+	{
+		PCWSTR progId = L"WbemScripting.SWbemDateTime";
+		auto userKey = std::wstring(L"Software\\Classes\\") + progId;
+		HKEY key;
+		bool machine = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, (userKey + L"\\CLSID").c_str(), 0, KEY_READ, &key) == ERROR_SUCCESS;
+		if (machine)
+			::RegCloseKey(key);
+		bool userHas = ::RegOpenKeyEx(HKEY_CURRENT_USER, userKey.c_str(), 0, KEY_READ, &key) == ERROR_SUCCESS;
+		if (userHas)
+			::RegCloseKey(key);
+		if (!machine || userHas)
+			printf("  ProgID redirect: skipped\n");
+		else {
+			PCWSTR target = L"{13709620-C279-11CE-A49E-444553540000}";
+			if (::RegCreateKeyEx(HKEY_CURRENT_USER, (userKey + L"\\CLSID").c_str(), 0, nullptr, REG_OPTION_VOLATILE, KEY_WRITE, nullptr, &key, nullptr) == ERROR_SUCCESS) {
+				::RegSetValueEx(key, nullptr, 0, REG_SZ, (BYTE const*)target, DWORD((wcslen(target) + 1) * sizeof(WCHAR)));
+				::RegCloseKey(key);
+				auto redirected = ComRegistry::EnumClasses(false);
+				::RegDeleteTree(HKEY_CURRENT_USER, userKey.c_str());
+				::RegDeleteKey(HKEY_CURRENT_USER, userKey.c_str());
+				auto it = std::ranges::find_if(redirected, [&](auto& c) { return c.Clsid == target && !c.OverriddenByUser; });
+				CHECK(it != redirected.end() && it->RedirectedProgIds.find(progId) != std::wstring::npos);
+				if (it != redirected.end())
+					printf("  ProgID redirect: %ls\n", it->RedirectedProgIds.c_str());
+			}
+		}
 	}
 	bool isDefault = false;
 	auto sd = ComRegistry::GetPermission(L"", true, false, isDefault);

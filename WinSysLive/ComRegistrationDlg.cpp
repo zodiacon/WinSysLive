@@ -2,6 +2,7 @@
 #include "ComRegistrationDlg.h"
 #include "RegistryEditor.h"
 #include "ListExport.h"
+#include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <WTLHelper.h>
 #include <ListViewhelper.h>
@@ -116,7 +117,8 @@ LRESULT CComRegistrationDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPAR
 	} columns[] = {
 		{ L"Name", 220 }, { L"CLSID", 270 }, { L"ProgID", 180 }, { L"Type", 120 }, { L"Concern", 260 }, { L"Server", 330 }, { L"Threading", 80 },
 		{ L"App ID", 270 }, { L"App Name", 160 }, { L"Service", 110 }, { L"Run As", 110 }, { L"Registered", 130 },
-		{ L"View", 55 }, { L"Signature", 200 }, { L"Package", 250 },
+		{ L"View", 55 }, { L"Signature", 200 }, { L"Package", 250 }, { L"Last Changed", 140 }, { L"Treat As", 300 },
+		{ L"Elevation", 120 },
 	};
 	static_assert(_countof(columns) == (int)Column::_Count);
 	for (int i = 0; i < _countof(columns); i++)
@@ -232,6 +234,10 @@ LRESULT CComRegistrationDlg::OnRead(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 		std::lock_guard lock(m_Load->Lock);
 		m_Classes = std::move(m_Load->Classes);
 	}
+	m_ByClsid.clear();
+	for (int i = 0; i < (int)m_Classes.size(); i++)
+		if (!m_Classes[i].OverriddenByUser)
+			m_ByClsid[m_Classes[i].Clsid + (m_Classes[i].Wow64 ? L"|32" : L"|64")] = i;
 	m_Load.reset();
 	GetDlgItem(IDC_CR_REFRESH).EnableWindow(TRUE);
 	ShowRows();
@@ -267,9 +273,20 @@ std::wstring CComRegistrationDlg::FileOf(ComClassRegistration const& c) {
 	return file;
 }
 
+ComClassRegistration const* CComRegistrationDlg::FindClass(std::wstring const& clsid, bool wow64) const {
+	auto it = m_ByClsid.find(clsid + (wow64 ? L"|32" : L"|64"));
+	return it == m_ByClsid.end() ? nullptr : &m_Classes[it->second];
+}
+
 CComRegistrationDlg::Concern CComRegistrationDlg::GetConcern(ComClassRegistration const& c) const {
 	if (c.ServerWritable || !c.ScriptletUrl.empty() || (!c.Interpreter.empty() && !c.InterpreterRunsSystemDll))
 		return Concern::Danger;
+	// treated as a class the user registered, or whose server a user can replace
+	if (!c.TreatAs.empty())
+		if (auto target = FindClass(c.TreatAs, c.Wow64); target && (target->PerUser || target->ServerWritable))
+			return Concern::Danger;
+	if (!c.RedirectedProgIds.empty())
+		return Concern::Override;
 	if (auto file = c.ServerMissing ? L"" : FileOf(c); !file.empty())
 		if (auto info = m_Signatures.GetResult(file); info && info->Status == SignatureStatus::Invalid)
 			return Concern::Danger;
@@ -298,6 +315,19 @@ std::wstring CComRegistrationDlg::GetConcernText(ComClassRegistration const& c) 
 	if (auto file = c.ServerMissing ? L"" : FileOf(c); !file.empty())
 		if (auto info = m_Signatures.GetResult(file); info && info->Status == SignatureStatus::Invalid)
 			add(L"Invalid signature");
+	if (!c.TreatAs.empty()) {
+		auto target = FindClass(c.TreatAs, c.Wow64);
+		if (!target)
+			add(L"Treated as an unregistered class");
+		else if (target->PerUser)
+			add(L"Treated as a per-user class");
+		else if (target->ServerWritable)
+			add(L"Treated as a class whose server a standard user can replace");
+	}
+	if (c.ElevationEnabled && (c.ServerWritable || c.ServerMissing))
+		add(c.AutoApproved ? L"Elevates without a prompt" : L"Can be elevated");
+	if (!c.RedirectedProgIds.empty())
+		add(L"User's ProgID points here: " + c.RedirectedProgIds);
 	if (c.OverridesMachine)
 		add(L"User's class over the machine's");
 	else if (c.PerUser)
@@ -331,6 +361,18 @@ std::wstring CComRegistrationDlg::GetText(ComClassRegistration const& c, Column 
 			return c.OverriddenByUser ? L"Machine (under user's)" : L"Machine";
 		case Column::Concern: return GetConcernText(c);
 		case Column::View: return c.Wow64 ? L"32-bit" : L"64-bit";
+		case Column::LastChanged: return c.LastWrite ? FormatHelper::FormatDateTime(c.LastWrite) : L"";
+		case Column::TreatAs:
+		{
+			if (c.TreatAs.empty())
+				return L"";
+			auto target = FindClass(c.TreatAs, c.Wow64);
+			return target && !target->Name.empty() ? c.TreatAs + L" (" + target->Name + L")" : c.TreatAs;
+		}
+		case Column::Elevation:
+			if (!c.ElevationEnabled)
+				return L"";
+			return c.AutoApproved ? L"Yes, without a prompt" : L"Yes";
 		case Column::Signature:
 		{
 			auto file = c.ServerMissing ? L"" : FileOf(c);
@@ -387,7 +429,7 @@ void CComRegistrationDlg::ShowRows() {
 		}
 		if (!m_Filter.empty()) {
 			auto text = Lower(c.Name + L"\n" + c.Clsid + L"\n" + c.ProgId + L"\n" + c.Server + L"\n" + c.AppId + L"\n" + c.AppIdName + L"\n" + c.Package
-				+ L"\n" + c.ScriptletUrl);
+				+ L"\n" + c.ScriptletUrl + L"\n" + c.TreatAs + L"\n" + c.RedirectedProgIds);
 			if (text.find(m_Filter) == std::wstring::npos)
 				continue;
 		}
@@ -414,8 +456,18 @@ void CComRegistrationDlg::ShowRows() {
 }
 
 void CComRegistrationDlg::Sort() {
-	// each row's text once (not twice per comparison)
 	auto column = (Column)m_SortColumn;
+	if (column == Column::LastChanged) {
+		// by time; the packaged classes (no time) last
+		std::ranges::stable_sort(m_Rows, [&](int a, int b) {
+			auto ta = m_Classes[a].LastWrite, tb = m_Classes[b].LastWrite;
+			if ((ta == 0) != (tb == 0))
+				return tb == 0;
+			return m_SortAscending ? ta < tb : ta > tb;
+			});
+		return;
+	}
+	// each row's text once (not twice per comparison)
 	std::vector<std::pair<std::wstring, int>> texts;
 	texts.reserve(m_Rows.size());
 	for (auto i : m_Rows)
@@ -454,7 +506,8 @@ LRESULT CComRegistrationDlg::OnColumnClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*
 		m_SortAscending = !m_SortAscending;
 	else {
 		m_SortColumn = lv->iSubItem;
-		m_SortAscending = true;
+		// the newest first
+		m_SortAscending = (Column)m_SortColumn != Column::LastChanged;
 	}
 	ShowRows();
 	return 0;

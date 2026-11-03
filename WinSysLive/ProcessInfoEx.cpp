@@ -49,18 +49,25 @@ const std::wstring& ProcessInfoEx::GetDescription() {
 	return m_Description;
 }
 
-WinSys::ComServerInfo const* ProcessInfoEx::GetComServer() {
-	if (!m_ComServerDone) {
-		m_ComServerDone = true;
-		// the command line says whether it's a server at all, at once; what it serves needs the registry
+std::shared_ptr<ComServerLookup::Result> const& ProcessInfoEx::GetComServerLookup() {
+	if (!m_ComServer) {
+		// the command line says whether it's a server at all, at once (a result that's done, Kind None); what it
+		// serves needs the registry
 		auto& commandLine = GetCommandLine();
 		std::wstring id;
 		if (WinSys::ComServers::ParseCommandLine(commandLine, id) != WinSys::ComServerKind::None)
 			m_ComServer = ComServerLookup::Request(commandLine, GetImagePath(), wcscmp(GetArchitecture(), L"32-bit") == 0, GetPackageName());
+		else {
+			m_ComServer = std::make_shared<ComServerLookup::Result>();
+			m_ComServer->Done = true;
+		}
 	}
-	if (!m_ComServer)
-		return &m_NotComServer;
-	return m_ComServer->Done.load(std::memory_order_acquire) ? &m_ComServer->Info : nullptr;
+	return m_ComServer;
+}
+
+WinSys::ComServerInfo const* ProcessInfoEx::GetComServer() {
+	auto& lookup = GetComServerLookup();
+	return lookup->Done.load(std::memory_order_acquire) ? &lookup->Info : nullptr;
 }
 
 std::wstring ProcessInfoEx::GetDescriptionOrSurrogate() {

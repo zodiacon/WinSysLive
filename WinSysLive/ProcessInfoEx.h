@@ -40,6 +40,9 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	// what it serves as a COM server (WinSys ComServers, by its command line): Kind None at once for a process whose
 	// command line isn't a server's; else looked up on ComServerLookup's thread, nullptr until it's known
 	WinSys::ComServerInfo const* GetComServer();
+	// the lookup itself (done at once for a process that isn't a server), to share with another thread (the
+	// property sheet's), which checks Done
+	std::shared_ptr<ComServerLookup::Result> const& GetComServerLookup();
 	// the COM surrogate's identity ("COM Surrogate: Plan9FileSystem") once it's known, else the image's description
 	std::wstring GetDescriptionOrSurrogate();
 
@@ -81,9 +84,7 @@ private:
 	bool m_MitigationsDone{ false };
 	std::optional<uint32_t> m_ServerSiloId;
 	bool m_ServerSiloDone{ false };
-	std::shared_ptr<ComServerLookup::Result> m_ComServer;	// nullptr: not a COM server's command line (m_NotComServer)
-	WinSys::ComServerInfo m_NotComServer;
-	bool m_ComServerDone{ false };
+	std::shared_ptr<ComServerLookup::Result> m_ComServer;	// null until asked for
 	ProcessHistory m_History;
 
 	std::wstring m_ImagePath, m_User, m_CommandLine, m_Description;

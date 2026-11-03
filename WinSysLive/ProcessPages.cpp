@@ -15,6 +15,9 @@
 #include <IconHelper.h>
 
 namespace {
+	// the General page asks again for the COM server's lookup until it's done
+	const UINT_PTR ComServerTimer = 1;
+
 	void SetIconId(PROPSHEETPAGE& psp, UINT icon) {
 		psp.dwFlags |= PSP_USEICONID;
 		psp.pszIcon = MAKEINTRESOURCE(icon);
@@ -80,6 +83,8 @@ LRESULT CProcGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 	SetDlgItemText(IDC_PROC_USER, p.User.c_str());
 	SetDlgItemText(IDC_PROC_SESSION, std::to_wstring(p.SessionId).c_str());
 	SetDlgItemText(IDC_PROC_STARTED, p.CreateTime ? FormatHelper::FormatDateTime(p.CreateTime).c_str() : L"");
+	if (!ShowComServer())
+		SetTimer(ComServerTimer, 200);
 	ShowMitigations();
 	GetDlgItem(IDC_PROC_VERIFY).EnableWindow(!p.ImagePath.empty());
 	// not Idle and System
@@ -91,6 +96,36 @@ LRESULT CProcGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 	// repaints in turn (not for a page with a list view, which composited painting slows down)
 	ModifyStyleEx(0, WS_EX_COMPOSITED);
 	return TRUE;
+}
+
+bool CProcGeneralPage::ShowComServer() {
+	auto& lookup = m_Props.ComServer;
+	if (lookup && !lookup->Done.load(std::memory_order_acquire)) {
+		SetDlgItemText(IDC_PROC_COMSERVER, L"Looking up...");
+		return false;
+	}
+	std::wstring text;
+	if (!lookup)
+		text = L"";
+	else if (lookup->Info.Kind == WinSys::ComServerKind::None)
+		text = L"No";
+	else {
+		text = lookup->Info.Describe();
+		if (!lookup->Info.ServerDll.empty())
+			text += L" (" + lookup->Info.ServerDll + L")";
+	}
+	SetDlgItemText(IDC_PROC_COMSERVER, text.c_str());
+	return true;
+}
+
+LRESULT CProcGeneralPage::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (id != ComServerTimer) {
+		bHandled = FALSE;
+		return 0;
+	}
+	if (ShowComServer())
+		KillTimer(ComServerTimer);
+	return 0;
 }
 
 void CProcGeneralPage::ShowMitigations() {

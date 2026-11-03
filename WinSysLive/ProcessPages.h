@@ -10,6 +10,7 @@
 #include "DpiLayout.h"
 #include <WinSys/Token.h>
 #include "ProcessHistory.h"
+#include "ComServerLookup.h"
 
 namespace WinSys {
 	class ProcessNetworkTracker;
@@ -34,6 +35,8 @@ struct ProcessProperties {
 	std::vector<ProcessHistorySample> History;
 	std::optional<ProcessCounters> HistoryLast;
 	HWND Frame{ nullptr };	// the main window, for the pages' requests (WM_SHOW_OBJECT_PATH); may be gone
+	// what it serves as a COM server, shared with the UI thread's lookup (Done once it's known); null: not asked
+	std::shared_ptr<ComServerLookup::Result> ComServer;
 };
 
 // the process, if it's still the one the sheet is for (its ID may have been reused): null otherwise, with the last
@@ -54,6 +57,7 @@ public:
 
 	BEGIN_MSG_MAP(CProcGeneralPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_ID_HANDLER(IDC_PROC_VERIFY, OnVerify)
 		COMMAND_ID_HANDLER(IDC_PROC_KILL, OnKill)
 		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcGeneralPage>)
@@ -67,11 +71,14 @@ public:
 
 private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnVerify(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// ASLR, CFG, CET and DEP, from the process's mitigation policies (and the image's header, for ASLR)
 	void ShowMitigations();
+	// what it serves as a COM server; false while it's looked up (a timer asks again)
+	bool ShowComServer();
 
 	ProcessProperties const& m_Props;
 	HICON m_hIcon;	// the sheet's

@@ -833,6 +833,7 @@
 #define IDC_CR_SAVE                     1502
 #define IDC_CR_MACHINE                  1503
 #define IDC_CR_USER                     1504
+#define IDC_PROC_COMSERVER              1505
 #define ID_SYSTEM_COMREGISTRATION       33040
 #define ID_COMREG_OPENLOCATION          33041
 #define ID_COMREG_OPENKEY               33042
@@ -896,7 +897,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        355
 #define _APS_NEXT_COMMAND_VALUE         33046
-#define _APS_NEXT_CONTROL_VALUE         1505
+#define _APS_NEXT_CONTROL_VALUE         1506
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

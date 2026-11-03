@@ -2134,7 +2134,8 @@ LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	props.ImagePath = p.GetImagePath();
 	props.CommandLine = p.GetCommandLine();
 	props.User = p.GetUser();
-	props.Description = p.GetDescription();
+	props.Description = p.GetDescriptionOrSurrogate();
+	props.ComServer = p.GetComServerLookup();
 	props.ThreadColumns = AppSettings::Get().ThreadColumns();
 	props.ModuleColumns = AppSettings::Get().ModuleColumns();
 	props.HandleColumns = AppSettings::Get().HandleColumns();
