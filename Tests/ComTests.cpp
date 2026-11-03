@@ -103,7 +103,7 @@ TEST(Com_LiveServers) {
 		if (!process)
 			continue;
 		auto commandLine = process->GetCommandLine();
-		auto info = ComServers::Identify(commandLine, process->GetFullImageName(), process->IsWow64Process());
+		auto info = ComServers::Identify(commandLine, process->GetFullImageName(), process->IsWow64Process(), process->GetPackageFullName());
 		if (info.Kind == ComServerKind::None)
 			continue;
 		servers++;
@@ -114,7 +114,58 @@ TEST(Com_LiveServers) {
 		// every dllhost has a surrogate's command line
 		if (_wcsicmp(p->GetImageName().c_str(), L"dllhost.exe") == 0)
 			CHECK(info.Kind == ComServerKind::Surrogate);
+		// a packaged app registered as a server (CrossDeviceService, WidgetService, PowerToys' CmdPal extensions) is
+		// found in its package's servers
+		if (commandLine.find(L"-RegisterProcessAsComServer") != std::wstring::npos && !process->GetPackageFullName().empty())
+			CHECK(info.Registration == ComRegistration::Packaged && !info.Name.empty() && info.Classes > 0);
 	}
 	printf("  %d COM servers, %d named, in %llu ms\n", servers, named, ::GetTickCount64() - start);
 	::CoUninitialize();
+}
+
+TEST(Com_LiveRegistry) {
+	for (bool wow64 : { false, true }) {
+		auto start = ::GetTickCount64();
+		auto classes = ComRegistry::EnumClasses(wow64);
+		auto elapsed = ::GetTickCount64() - start;
+		int types[6]{}, missing = 0, perUser = 0, overrides = 0, packaged = 0, named = 0;
+		for (auto& c : classes) {
+			types[(int)c.Type]++;
+			missing += c.ServerMissing;
+			perUser += c.PerUser;
+			overrides += c.OverridesMachine;
+			packaged += !c.Package.empty();
+			named += !c.Name.empty();
+			// a few keys aren't GUIDs (malformed registrations): listed as they are
+			CHECK(c.Clsid[0] == L'{');
+			if (c.Clsid.size() != 38)
+				printf("    not a GUID: %ls (%ls)\n", c.Clsid.c_str(), c.Name.c_str());
+			CHECK(c.Wow64 == wow64);
+			// only the user's can override the machine's
+			if (c.OverridesMachine)
+				CHECK(c.PerUser);
+		}
+		printf("  %s: %zu classes in %llu ms (%d named): %d in-process, %d handlers, %d local servers, %d surrogates, %d services, %d other; %d per user (%d over the machine's), %d packaged, %d missing servers\n",
+			wow64 ? "32-bit" : "64-bit", classes.size(), elapsed, named, types[1], types[2], types[3], types[4], types[5], types[0],
+			perUser, overrides, packaged, missing);
+		CHECK(classes.size() > 500);
+		int shown = 0;
+		for (auto& c : classes)
+			if (c.ServerMissing && shown++ < 5)
+				printf("    missing: %ls %ls %ls\n", c.Clsid.c_str(), c.Name.c_str(), c.ServerFile.c_str());
+	}
+	// a well-known one: the shell's
+	auto classes = ComRegistry::EnumClasses(false);
+	auto find = [&](PCWSTR clsid) { return std::ranges::find(classes, std::wstring(clsid), &ComClassRegistration::Clsid); };
+	auto shell = find(L"{13709620-C279-11CE-A49E-444553540000}");	// Shell.Application
+	CHECK(shell != classes.end());
+	if (shell != classes.end()) {
+		CHECK(shell->Type == ComServerType::InProc || shell->Type == ComServerType::LocalServer);
+		CHECK_EQ(shell->ProgId, std::wstring(L"Shell.Application.1"));
+		CHECK(!shell->ServerMissing);
+	}
+	bool isDefault = false;
+	auto sd = ComRegistry::GetPermission(L"", true, false, isDefault);
+	printf("  default launch permission: %zu bytes\n", sd.size());
+	CHECK(isDefault);
 }

@@ -819,6 +819,23 @@
 #define IDC_FWR_STATUS                  1492
 #define IDC_FWR_REFRESH                 1493
 #define IDC_FWR_COPY                    1494
+#define IDD_COMREGISTRATION             351
+#define IDI_COM                         352
+#define IDI_COM_SERVER                  353
+#define IDI_COM_SERVICE                 354
+#define IDC_CR_FILTER                   1495
+#define IDC_CR_32BIT                    1496
+#define IDC_CR_SUSPICIOUS               1497
+#define IDC_CR_LIST                     1498
+#define IDC_CR_STATUS                   1499
+#define IDC_CR_REFRESH                  1500
+#define IDC_CR_COPY                     1501
+#define ID_SYSTEM_COMREGISTRATION       33040
+#define ID_COMREG_OPENLOCATION          33041
+#define ID_COMREG_OPENKEY               33042
+#define ID_COMREG_LAUNCHPERMISSIONS     33043
+#define ID_COMREG_ACCESSPERMISSIONS     33044
+#define ID_COMREG_COPYCLSID             33045
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -874,9 +891,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        351
-#define _APS_NEXT_COMMAND_VALUE         33040
-#define _APS_NEXT_CONTROL_VALUE         1495
+#define _APS_NEXT_RESOURCE_VALUE        355
+#define _APS_NEXT_COMMAND_VALUE         33046
+#define _APS_NEXT_CONTROL_VALUE         1502
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

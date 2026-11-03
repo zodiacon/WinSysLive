@@ -196,6 +196,7 @@ BEGIN
         MENUITEM "P&ipes and Mailslots...",     ID_SYSTEM_PIPES
         MENUITEM "Installed P&ackages...",      ID_SYSTEM_PACKAGES
         MENUITEM "Firewall R&ules...",          ID_SYSTEM_FIREWALL
+        MENUITEM "&COM Registration...",        ID_SYSTEM_COMREGISTRATION
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
@@ -517,6 +518,12 @@ IDI_WSL                 ICON                    "res\\wsl.ico"
 
 IDI_REGISTRY            ICON                    "res\\Registry.ico"
 
+IDI_COM                 ICON                    "res\\COM.ico"
+
+IDI_COM_SERVER          ICON                    "res\\Server.ico"
+
+IDI_COM_SERVICE         ICON                    "res\\service.ico"
+
 IDI_DELETE              ICON                    "res\\delete.ico"
 
 IDI_COPY                ICON                    "res\\copy.ico"
@@ -742,6 +749,21 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_PK_REFRESH,453,319,50,14
     PUSHBUTTON      "&Copy",IDC_PK_COPY,508,319,50,14
     PUSHBUTTON      "Close",IDCANCEL,563,319,50,14
+END
+
+IDD_COMREGISTRATION DIALOGEX 0, 0, 660, 360
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "COM Registration"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_CR_FILTER,7,7,460,13,ES_AUTOHSCROLL
+    CONTROL         "&32-bit Classes",IDC_CR_32BIT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,475,9,70,10
+    CONTROL         "&Suspicious Only",IDC_CR_SUSPICIOUS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,550,9,103,10
+    CONTROL         "",IDC_CR_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,25,646,308
+    LTEXT           "",IDC_CR_STATUS,7,342,470,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_CR_REFRESH,493,339,50,14
+    PUSHBUTTON      "&Copy",IDC_CR_COPY,548,339,50,14
+    PUSHBUTTON      "Close",IDCANCEL,603,339,50,14
 END
 
 IDD_FIREWALL DIALOGEX 0, 0, 640, 350
@@ -2141,6 +2163,7 @@ BEGIN
     ID_OPTIONS_RECORDFROMSTARTUP 
                             "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
     ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"
+    ID_SYSTEM_COMREGISTRATION "The registered COM classes: where they run, their servers and signatures, and the per-user ones\nCOM Registration"
     ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
     ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
 END

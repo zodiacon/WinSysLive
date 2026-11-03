@@ -56,7 +56,7 @@ WinSys::ComServerInfo const* ProcessInfoEx::GetComServer() {
 		auto& commandLine = GetCommandLine();
 		std::wstring id;
 		if (WinSys::ComServers::ParseCommandLine(commandLine, id) != WinSys::ComServerKind::None)
-			m_ComServer = ComServerLookup::Request(commandLine, GetImagePath(), wcscmp(GetArchitecture(), L"32-bit") == 0);
+			m_ComServer = ComServerLookup::Request(commandLine, GetImagePath(), wcscmp(GetArchitecture(), L"32-bit") == 0, GetPackageName());
 	}
 	if (!m_ComServer)
 		return &m_NotComServer;

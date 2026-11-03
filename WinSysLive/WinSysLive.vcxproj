@@ -459,6 +459,8 @@
     <ClCompile Include="PipesDlg.cpp" />
     <ClCompile Include="PackagesDlg.cpp" />
     <ClCompile Include="FirewallDlg.cpp" />
+    <ClCompile Include="RegistryEditor.cpp" />
+    <ClCompile Include="ComRegistrationDlg.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
@@ -583,6 +585,8 @@
     <ClInclude Include="PipesDlg.h" />
     <ClInclude Include="PackagesDlg.h" />
     <ClInclude Include="FirewallDlg.h" />
+    <ClInclude Include="RegistryEditor.h" />
+    <ClInclude Include="ComRegistrationDlg.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
@@ -707,6 +711,9 @@
     <Image Include="res\package.ico" />
     <Image Include="res\wsl.ico" />
     <Image Include="res\Registry.ico" />
+    <Image Include="res\COM.ico" />
+    <Image Include="res\Server.ico" />
+    <Image Include="res\service.ico" />
     <Image Include="res\thread.ico" />
     <Image Include="res\timer.ico" />
     <Image Include="res\token.ico" />

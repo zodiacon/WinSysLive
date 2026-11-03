@@ -360,6 +360,12 @@
     <ClCompile Include="FirewallDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="RegistryEditor.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="ComRegistrationDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="RamDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -731,6 +737,12 @@
     <ClInclude Include="FirewallDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="RegistryEditor.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ComRegistrationDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
     <ClInclude Include="RamDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
@@ -903,6 +915,15 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\Registry.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\COM.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Server.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\service.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\package.ico">

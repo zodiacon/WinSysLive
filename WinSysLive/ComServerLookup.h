@@ -16,5 +16,5 @@ struct ComServerLookup final {
 		WinSys::ComServerInfo Info;
 	};
 
-	static std::shared_ptr<Result> Request(std::wstring commandLine, std::wstring imagePath, bool wow64);
+	static std::shared_ptr<Result> Request(std::wstring commandLine, std::wstring imagePath, bool wow64, std::wstring packageFullName);
 };

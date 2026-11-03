@@ -33,6 +33,7 @@
 #include "PipesDlg.h"
 #include "PackagesDlg.h"
 #include "FirewallDlg.h"
+#include "ComRegistrationDlg.h"
 #include "ServiceInstallDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
@@ -942,6 +943,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_PACKAGES, IDI_PACKAGE },
 		{ ID_SYSTEM_FIREWALL, IDI_FIREWALL },
+		{ ID_SYSTEM_COMREGISTRATION, IDI_COM },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
 		{ ID_FILE_SNAPSHOTS, IDI_SNAPSHOT },
@@ -1543,6 +1545,12 @@ LRESULT CMainFrame::OnComputerCommand(WORD /*wNotifyCode*/, WORD id, HWND /*hWnd
 
 LRESULT CMainFrame::OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CPipesDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnComRegistration(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CComRegistrationDlg dlg;
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

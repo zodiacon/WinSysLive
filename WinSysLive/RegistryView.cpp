@@ -6,6 +6,7 @@
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
+#include "RegistryEditor.h"
 
 using WinSys::RegistryIoParser;
 
@@ -404,12 +405,7 @@ LRESULT CRegistryView::OnOpenKey(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	auto path = GetEditorPath(row->Counters.Key);
 	if (path.empty())
 		return 0;
-	// Regedit opens the key it was last on (as the Autoruns tab's Jump)
-	CRegKey key;
-	if (key.Create(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Applets\\Regedit") == ERROR_SUCCESS)
-		key.SetStringValue(L"LastKey", path.c_str());
-	// -m: another instance, as a running one ignores LastKey
-	::ShellExecute(m_hWnd, nullptr, L"regedit.exe", L"-m", nullptr, SW_SHOWNORMAL);
+	OpenRegistryEditor(m_hWnd, path);
 	return 0;
 }
 

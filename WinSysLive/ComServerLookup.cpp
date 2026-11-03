@@ -7,7 +7,7 @@
 
 namespace {
 	struct Request {
-		std::wstring CommandLine, ImagePath;
+		std::wstring CommandLine, ImagePath, Package;
 		bool Wow64;
 		std::shared_ptr<ComServerLookup::Result> Result;
 	};
@@ -37,7 +37,7 @@ namespace {
 					request = std::move(m_Queue.front());
 					m_Queue.pop_front();
 				}
-				request.Result->Info = WinSys::ComServers::Identify(request.CommandLine, request.ImagePath, request.Wow64);
+				request.Result->Info = WinSys::ComServers::Identify(request.CommandLine, request.ImagePath, request.Wow64, request.Package);
 				request.Result->Done.store(true, std::memory_order_release);
 			}
 			::CoUninitialize();
@@ -52,8 +52,8 @@ namespace {
 	Worker s_Worker;
 }
 
-std::shared_ptr<ComServerLookup::Result> ComServerLookup::Request(std::wstring commandLine, std::wstring imagePath, bool wow64) {
+std::shared_ptr<ComServerLookup::Result> ComServerLookup::Request(std::wstring commandLine, std::wstring imagePath, bool wow64, std::wstring packageFullName) {
 	auto result = std::make_shared<Result>();
-	s_Worker.Add({ std::move(commandLine), std::move(imagePath), wow64, result });
+	s_Worker.Add({ std::move(commandLine), std::move(imagePath), std::move(packageFullName), wow64, result });
 	return result;
 }
