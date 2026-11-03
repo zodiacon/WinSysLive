@@ -825,6 +825,7 @@
 #define ID_REGISTRY_GOTOPROCESS         33036
 #define ID_REGISTRY_OPENKEY             33037
 #define ID_REGISTRY_COPYKEY             33038
+#define ID_WSL_SHOWTHREADS              33039
 #define ID_MODULE_TOTALPE               33015
 #define IDD_PEFILE                      340
 #define ID_MODULE_IMAGE                 33016
@@ -874,7 +875,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        351
-#define _APS_NEXT_COMMAND_VALUE         33039
+#define _APS_NEXT_COMMAND_VALUE         33040
 #define _APS_NEXT_CONTROL_VALUE         1495
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -370,7 +370,7 @@ The context menu:
 
 ## WSL
 
-The installed WSL distributions (docker-desktop's too) and, under each running WSL 2 one, its Linux processes as a tree by parent: PID, parent, user, state, CPU, CPU time, threads, memory, start time and command line. WinSysLive runs a small helper in each running distribution while the tab is open (it never starts a distribution, but keeps a running one from stopping while the tab is open). **Terminate** (SIGTERM) and **Kill** (SIGKILL) in the context menu end a process, as root in the distribution, after a confirmation. WSL 1 distributions' processes are Windows processes, in the Processes tab.
+The installed WSL distributions (docker-desktop's too) and, under each running WSL 2 one, its Linux processes as a tree by parent: PID, parent, user, state, CPU, CPU time, threads, memory, start time and command line. WinSysLive runs a small helper in each running distribution while the tab is open (it never starts a distribution, but keeps a running one from stopping while the tab is open). **Terminate** (SIGTERM) and **Kill** (SIGKILL) in the context menu end a process, as root in the distribution, after a confirmation. The toolbar's **Show Threads** button lists each process's threads under it (each with its thread ID, state, CPU and CPU time), and a distribution's row has its thread total. WSL 1 distributions' processes are Windows processes, in the Processes tab.
 
 ## Event Log
 

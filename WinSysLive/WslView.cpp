@@ -8,6 +8,7 @@
 #include "AppSettings.h"
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
+#include <ToolbarHelper.h>
 #include <WTLHelper.h>
 #include <unordered_set>
 
@@ -32,6 +33,12 @@ namespace {
 	};
 
 	const auto PollInterval = std::chrono::seconds(5);
+
+	// the toolbar right of the filter box
+	const ToolBarButtonInfo s_BarButtons[] = {
+		{ ID_WSL_SHOWTHREADS, IDI_THREADS, BTNS_CHECK | BTNS_AUTOSIZE, L"Show Threads" },
+	};
+	const int BarImageSize = 16;	// at 96 DPI
 }
 
 CString CWslView::GetTitle() const {
@@ -55,6 +62,26 @@ LRESULT CWslView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, 
 			UpdateStatus();
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
+	m_ShowThreads = AppSettings::Get().WslShowThreads() != 0;
+	m_Bar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
+	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
+	m_Bar.SetFont(m_BarFont);
+	m_Bar.AutoSize();
+	AddSimpleReBarBand(m_Bar, nullptr, FALSE);
+	// two bands would get grippers; the filter keeps its width, the bar's band takes the rest of the row
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_STYLE | RBBIM_CHILD };
+		rebar.GetBandInfo(i, &band);
+		band.fStyle |= RBBS_NOGRIPPER;
+		band.fMask = RBBIM_STYLE;
+		if (band.hwndChild == m_Filter.GetHwnd()) {
+			band.fMask |= RBBIM_CHILDSIZE;
+			band.cxMinChild = m_Filter.GetWidth();
+		}
+		rebar.SetBandInfo(i, &band);
+	}
+	m_Bar.CheckButton(ID_WSL_SHOWTHREADS, m_ShowThreads);
 
 	// which distributions run: wsl.exe takes about 0.1 s, so on a thread, every few seconds
 	m_Poller = std::jthread([this, hWnd = m_hWnd](std::stop_token stop) {
@@ -94,6 +121,68 @@ LRESULT CWslView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	return 0;
 }
 
+void CWslView::UpdateLayout(BOOL resizeBars) {
+	CViewBase::UpdateLayout(resizeBars);
+	if (m_Bar) {
+		CReBarCtrl rebar(m_hWndToolBar);
+		rebar.MaximizeBand(rebar.GetBandCount() - 1, FALSE);
+	}
+}
+
+void CWslView::LayoutBar() {
+	if (!m_Bar)
+		return;
+	ToolbarHelper::UpdateToolBarImages(m_Bar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
+	m_BarFont.DeleteObject();
+	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
+	m_Bar.SetFont(m_BarFont);
+	m_Bar.AutoSize();
+	// its band, as AddSimpleReBarBand set it, for the buttons' new size
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_Bar) {
+			SIZE size{};
+			m_Bar.GetMaxSize(&size);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = size.cx;
+			band.cyMinChild = size.cy;
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+	UpdateLayout();
+}
+
+LRESULT CWslView::OnShowThreads(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	m_ShowThreads = !m_ShowThreads;
+	m_Bar.CheckButton(ID_WSL_SHOWTHREADS, m_ShowThreads);
+	auto& settings = AppSettings::Get();
+	settings.WslShowThreads(m_ShowThreads);
+	settings.Save();
+	if (m_ShowThreads) {
+		// a frame with them now, rather than after the request already made
+		for (auto& [name, monitor] : m_Monitors)
+			if (monitor.Helper->IsRunning() && monitor.Helper->GetSystem())
+				monitor.Helper->Request(true);
+	}
+	else {
+		m_Tree.BeginUpdate();
+		RemoveThreads();
+		m_Tree.EndUpdate();
+	}
+	UpdateStatus();
+	return 0;
+}
+
+void CWslView::RemoveThreads() {
+	for (auto& [key, row] : m_Threads)
+		DeleteItem(row);
+	m_Threads.clear();
+	for (auto& [name, monitor] : m_Monitors)
+		monitor.ThreadsLoaded = false;
+}
+
 void CWslView::OnActivate(bool active) {
 	m_Active = active;
 	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
@@ -130,12 +219,13 @@ LRESULT CWslView::OnRunning(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOO
 			++it;
 			continue;
 		}
-		// stopped: its processes are gone
-		for (auto& [key, row] : m_Processes)
-			if (row.Distro == it->first && !row.Exited) {
-				row.Exited = true;
-				row.ExitTicks = Highlight::ExitedTicks();
-			}
+		// stopped: its processes and threads are gone
+		for (auto rows : { &m_Processes, &m_Threads })
+			for (auto& [key, row] : *rows)
+				if (row.Distro == it->first && !row.Exited) {
+					row.Exited = true;
+					row.ExitTicks = Highlight::ExitedTicks();
+				}
 		it = m_Monitors.erase(it);
 	}
 	for (auto& name : running) {
@@ -166,6 +256,7 @@ void CWslView::SyncDistros(RunningState const& state) {
 			continue;
 		}
 		std::erase_if(m_Processes, [&](auto& pair) { return pair.second.Distro == name; });
+		std::erase_if(m_Threads, [&](auto& pair) { return pair.second.Distro == name; });
 		if (it->second.Item)
 			m_Tree.DeleteItem(it->second.Item);
 		m_Monitors.erase(name);
@@ -187,27 +278,30 @@ void CWslView::SyncDistros(RunningState const& state) {
 
 void CWslView::OnRefresh(bool /*active*/) {
 	auto selected = GetSelectedRow();
-	std::optional<Key> selectedProcess;
+	std::optional<Key> selectedProcess, selectedThread;
 	std::wstring selectedDistro;
 	if (selected) {
 		if (selected->IsDistro)
 			selectedDistro = selected->Distro;
+		else if (selected->IsThread)
+			selectedThread = Key{ selected->Distro, selected->Thread.Tid, selected->Thread.StartTicks };
 		else
 			selectedProcess = Key{ selected->Distro, selected->Process.Pid, selected->Process.StartTicks };
 	}
 
 	// the exited ones count down, and go
-	for (auto it = m_Processes.begin(); it != m_Processes.end(); ) {
-		auto& row = it->second;
-		if (row.NewTicks > 0)
-			row.NewTicks--;
-		if (row.Exited && --row.ExitTicks <= 0) {
-			DeleteItem(row);
-			it = m_Processes.erase(it);
-			continue;
+	for (auto rows : { &m_Processes, &m_Threads })
+		for (auto it = rows->begin(); it != rows->end(); ) {
+			auto& row = it->second;
+			if (row.NewTicks > 0)
+				row.NewTicks--;
+			if (row.Exited && --row.ExitTicks <= 0) {
+				DeleteItem(row);
+				it = rows->erase(it);
+				continue;
+			}
+			++it;
 		}
-		++it;
-	}
 	// each helper's frame (from the previous refresh's request), and the next request
 	for (auto& [name, monitor] : m_Monitors) {
 		if (!monitor.Helper->IsRunning())
@@ -217,7 +311,7 @@ void CWslView::OnRefresh(bool /*active*/) {
 			SyncProcesses(name, monitor);
 		}
 		if (monitor.Helper->GetSystem())
-			monitor.Helper->Request();
+			monitor.Helper->Request(m_ShowThreads);
 	}
 
 	m_Tree.BeginUpdate();
@@ -229,6 +323,10 @@ void CWslView::OnRefresh(bool /*active*/) {
 	HTLITEM hSelect = nullptr;
 	if (selectedProcess) {
 		if (auto it = m_Processes.find(*selectedProcess); it != m_Processes.end())
+			hSelect = it->second.Item;
+	}
+	else if (selectedThread) {
+		if (auto it = m_Threads.find(*selectedThread); it != m_Threads.end())
 			hSelect = it->second.Item;
 	}
 	else if (!selectedDistro.empty()) {
@@ -254,6 +352,7 @@ void CWslView::SyncProcesses(std::wstring const& distro, Monitor& monitor) {
 
 	auto& distroRow = m_Distros[distro];
 	distroRow.Processes = 0;
+	distroRow.Threads = 0;
 	distroRow.Cpu = 0;
 	distroRow.Resident = 0;
 	std::unordered_set<Key, KeyHash> live;
@@ -277,6 +376,7 @@ void CWslView::SyncProcesses(std::wstring const& distro, Monitor& monitor) {
 		else
 			row.Parent.reset();
 		distroRow.Processes++;
+		distroRow.Threads += p.Threads;
 		distroRow.Cpu += row.Cpu;
 		distroRow.Resident += p.ResidentBytes;
 	}
@@ -287,6 +387,48 @@ void CWslView::SyncProcesses(std::wstring const& distro, Monitor& monitor) {
 			row.NewTicks = 0;
 		}
 	monitor.Loaded = true;
+	// a frame asked for before Show Threads was turned on has none: the threads stay as they were
+	if (m_ShowThreads && frame.HasThreads)
+		SyncThreads(distro, monitor, starts, totalDelta);
+}
+
+void CWslView::SyncThreads(std::wstring const& distro, Monitor& monitor, std::unordered_map<uint32_t, uint64_t> const& starts, uint64_t totalDelta) {
+	auto& frame = monitor.Last;
+	// CPU: the same share of the VM's processors as the processes'
+	std::unordered_set<Key, KeyHash> live;
+	for (auto& t : frame.Threads) {
+		auto start = starts.find(t.Pid);
+		if (start == starts.end())
+			continue;	// its process isn't in the frame (it started between the helper's reads)
+		Key key{ distro, t.Tid, t.StartTicks };
+		live.insert(key);
+		auto [it, inserted] = m_Threads.try_emplace(key);
+		auto& row = it->second;
+		if (inserted) {
+			row.IsThread = true;
+			row.Distro = distro;
+			row.NewTicks = monitor.ThreadsLoaded ? Highlight::NewTicks() : 0;
+			WslProcess p;
+			p.StartTicks = t.StartTicks;
+			row.StartTime = p.StartTime(frame.UptimeSeconds, frame.ReadTime, monitor.System.ClockTicks);
+		}
+		Key parent{ distro, t.Pid, start->second };
+		auto ticks = t.UserTicks + t.SystemTicks;
+		row.Cpu = row.HasPrev && totalDelta && ticks >= row.PrevTicks ? 100.0f * float(ticks - row.PrevTicks) / totalDelta : 0;
+		row.PrevTicks = ticks;
+		row.HasPrev = true;
+		row.Thread = t;
+		row.Parent = parent;
+		if (auto process = m_Processes.find(parent); process != m_Processes.end())
+			row.User = process->second.Process.User;
+	}
+	for (auto& [key, row] : m_Threads)
+		if (row.Distro == distro && !row.Exited && !live.contains(key)) {
+			row.Exited = true;
+			row.ExitTicks = Highlight::ExitedTicks();
+			row.NewTicks = 0;
+		}
+	monitor.ThreadsLoaded = true;
 }
 
 bool CWslView::Matches(Row const& row) const {
@@ -304,12 +446,13 @@ void CWslView::DeleteItem(Row& row) {
 	// the subtree goes with the item: its rows' items are gone too
 	std::vector<HTLITEM> gone{ row.Item };
 	for (size_t i = 0; i < gone.size(); i++)
-		for (auto& [key, child] : m_Processes)
-			if (child.Item && child.ParentItem == gone[i]) {
-				gone.push_back(child.Item);
-				child.Item = nullptr;
-				child.ParentItem = nullptr;
-			}
+		for (auto rows : { &m_Processes, &m_Threads })
+			for (auto& [key, child] : *rows)
+				if (child.Item && child.ParentItem == gone[i]) {
+					gone.push_back(child.Item);
+					child.Item = nullptr;
+					child.ParentItem = nullptr;
+				}
 	m_Tree.DeleteItem(row.Item);
 	row.Item = nullptr;
 	row.ParentItem = nullptr;
@@ -350,6 +493,28 @@ void CWslView::ArrangeTree() {
 			added = true;
 		}
 	}
+	// threads under their processes (first, before the child processes), while their processes are in the tree
+	auto processOf = [&](Row const& thread) -> Row* {
+		if (!m_ShowThreads || !thread.Parent)
+			return nullptr;
+		auto process = m_Processes.find(*thread.Parent);
+		return process != m_Processes.end() && process->second.Item ? &process->second : nullptr;
+	};
+	std::vector<std::pair<Row*, Row*>> added;	// thread, process
+	for (auto& [key, row] : m_Threads) {
+		auto process = processOf(row);
+		if (row.Item && (!process || process->Item != row.ParentItem))
+			DeleteItem(row);
+		if (!row.Item && process)
+			added.emplace_back(&row, process);
+	}
+	// each one first: the highest TIDs first, so a process's threads are in TID order (unless sorted)
+	std::ranges::sort(added, [](auto& a, auto& b) { return a.first->Thread.Tid > b.first->Thread.Tid; });
+	for (auto& [row, process] : added) {
+		row->Item = m_Tree.InsertItem(process->Item, TLV_FIRST, LPSTR_TEXTCALLBACK, Frame()->GetIconIndex(IDI_THREADS),
+			reinterpret_cast<LPARAM>(row));
+		row->ParentItem = process->Item;
+	}
 }
 
 void CWslView::UpdateStatus() {
@@ -360,12 +525,14 @@ void CWslView::UpdateStatus() {
 		text = m_Distros.empty() ? L"WSL isn't installed (wsl.exe didn't run)" : L"wsl.exe didn't run";
 	else {
 		int running = 0, processes = 0;
+		uint32_t threads = 0;
 		for (auto& [name, row] : m_Distros)
 			if (row.Running) {
 				running++;
 				processes += row.Processes;
+				threads += row.Threads;
 			}
-		text = std::format(L"{} distributions, {} running; {} processes", m_Distros.size(), running, processes);
+		text = std::format(L"{} distributions, {} running; {} processes, {} threads", m_Distros.size(), running, processes, threads);
 		// the VM's memory, shared by its distributions
 		for (auto& [name, monitor] : m_Monitors)
 			if (monitor.Last.MemTotal) {
@@ -406,13 +573,29 @@ std::wstring CWslView::GetColumnText(Row const& row, Column column) const {
 			case Column::Cpu: return row.Running ? std::format(L"{:.2f}", row.Cpu) : L"";
 			case Column::Resident: return row.Running ? FormatHelper::FormatSize(row.Resident) : L"";
 			case Column::Processes: return row.Running ? std::to_wstring(row.Processes) : L"";
+			case Column::Threads: return row.Running ? std::to_wstring(row.Threads) : L"";
 			case Column::CommandLine: return row.Info.BasePath;
 		}
 		return L"";
 	}
-	auto& p = row.Process;
 	auto monitor = m_Monitors.find(row.Distro);
 	uint32_t clock = monitor != m_Monitors.end() ? monitor->second.System.ClockTicks : 100;
+	if (row.IsThread) {
+		// its TID in the PID column (a Linux thread's ID is in the PIDs' space), its process's in Parent PID
+		auto& t = row.Thread;
+		switch (column) {
+			case Column::Name: return t.Name;
+			case Column::Pid: return std::to_wstring(t.Tid);
+			case Column::ParentPid: return std::to_wstring(t.Pid);
+			case Column::User: return row.User;
+			case Column::State: return row.Exited ? L"Exited" : WslProtocol::StateName(t.State);
+			case Column::Cpu: return row.Cpu >= 0.005f ? std::format(L"{:.2f}", row.Cpu) : L"";
+			case Column::CpuTime: return FormatHelper::FormatTimeSpan(int64_t((t.UserTicks + t.SystemTicks) * 10'000'000 / std::max(1u, clock)));
+			case Column::StartTime: return row.StartTime ? FormatHelper::FormatDateTime(row.StartTime) : L"";
+		}
+		return L"";
+	}
+	auto& p = row.Process;
 	switch (column) {
 		case Column::Name: return p.Name;
 		case Column::Pid: return std::to_wstring(p.Pid);
@@ -477,6 +660,9 @@ int CALLBACK CWslView::CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam) {
 	auto view = reinterpret_cast<CWslView*>(lParam);
 	auto& r1 = *reinterpret_cast<Row*>(view->m_Tree.GetItemData(h1));
 	auto& r2 = *reinterpret_cast<Row*>(view->m_Tree.GetItemData(h2));
+	// a process's threads before its child processes, whichever the direction
+	if (r1.IsThread != r2.IsThread)
+		return r1.IsThread ? -1 : 1;
 	auto result = view->CompareRows(r1, r2);
 	return view->m_SortAscending ? result : -result;
 }
@@ -489,6 +675,17 @@ int CWslView::CompareRows(Row& r1, Row& r2) const {
 			case Column::Cpu: return compare(r1.Cpu, r2.Cpu);
 			case Column::Resident: return compare(r1.Resident, r2.Resident);
 			case Column::Processes: return compare(r1.Processes, r2.Processes);
+			case Column::Threads: return compare(r1.Threads, r2.Threads);
+		}
+	}
+	else if (r1.IsThread && r2.IsThread) {
+		auto& t1 = r1.Thread;
+		auto& t2 = r2.Thread;
+		switch (column) {
+			case Column::Pid: return compare(t1.Tid, t2.Tid);
+			case Column::Cpu: return compare(r1.Cpu, r2.Cpu);
+			case Column::CpuTime: return compare(t1.UserTicks + t1.SystemTicks, t2.UserTicks + t2.SystemTicks);
+			case Column::StartTime: return compare(r1.StartTime, r2.StartTime);
 		}
 	}
 	else if (!r1.IsDistro && !r2.IsDistro) {
@@ -554,7 +751,8 @@ LRESULT CWslView::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 }
 
 void CWslView::ShowContextMenu(Row const& row, POINT pt) {
-	bool process = !row.IsDistro && !row.Exited;
+	// a signal goes to a thread's whole process (kill): offered for processes only
+	bool process = !row.IsDistro && !row.IsThread && !row.Exited;
 	enum { Terminate = 1, Kill, Copy, CopyCommandLine };
 	CMenu menu;
 	menu.CreatePopupMenu();
@@ -562,7 +760,7 @@ void CWslView::ShowContextMenu(Row const& row, POINT pt) {
 	menu.AppendMenu(MF_STRING | (process ? 0 : MF_GRAYED), Kill, L"&Kill (SIGKILL)");
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, Copy, L"&Copy\tCtrl+C");
-	menu.AppendMenu(MF_STRING | (!row.IsDistro && !row.Process.CommandLine.empty() ? 0 : MF_GRAYED), CopyCommandLine, L"Copy Command &Line");
+	menu.AppendMenu(MF_STRING | (!row.IsDistro && !row.IsThread && !row.Process.CommandLine.empty() ? 0 : MF_GRAYED), CopyCommandLine, L"Copy Command &Line");
 	// the row may be gone after the menu (refreshes go on): copied first
 	Row copy = row;
 	switch (::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr)) {

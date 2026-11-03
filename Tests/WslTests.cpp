@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "TestFramework.h"
 #include <WinSys/Wsl.h>
+#include <unordered_set>
 
 using namespace WinSys;
 
@@ -124,6 +125,49 @@ TEST(Wsl_ParseFrame) {
 	CHECK(!WslProtocol::ParseFrame(cut, system).has_value());
 }
 
+TEST(Wsl_ParseFrameThreads) {
+	WslSystem system;
+	WslProtocol::ParseHeader(Header, system);
+	// a frame asked for without threads has none
+	auto frame = WslProtocol::ParseFrame(Frame, system);
+	CHECK(frame && !frame->HasThreads && frame->Threads.empty());
+	// with "#T" (head -n 1's headers and blank lines, as wsl-pro-service's printed them): the helper's (7698) left out
+	std::string text(Frame);
+	text.resize(text.find("#E"));
+	text +=
+		"#T\n"
+		"==> /proc/1/task/1/stat <==\n"
+		"1 (systemd) S 0 1 1 0 -1 4194560 59980 2374886 13 1007 104 122 41255 18173 20 0 1 0 158 25309184 3707 18446744073709551615 1 1 0 0\n"
+		"\n"
+		"==> /proc/1816/task/1816/stat <==\n"
+		"1816 (polkitd) S 1 1816 1816 0 -1 4194560 1138 0 2 0 146 41 0 0 20 0 4 0 1412900 313802752 2041 18446744073709551615 1 1 0 0\n"
+		"\n"
+		"==> /proc/1816/task/1820/stat <==\n"
+		"1820 (gdbus) S 1 1816 1816 0 -1 4194368 1 0 0 0 12 3 0 0 20 0 4 0 1412950 313802752 2041 18446744073709551615 1 1 0 0\n"
+		"\n"
+		"==> /proc/7698/task/7698/stat <==\n"
+		"7698 (sh) S 7693 7698 7692 0 -1 4194560 10 0 0 0 0 0 0 0 20 0 1 0 900002 2957312 300 18446744073709551615 1 1 0 0\n"
+		"#E\n";
+	frame = WslProtocol::ParseFrame(text, system);
+	CHECK(frame && frame->HasThreads);
+	if (!frame)
+		return;
+	CHECK_EQ(frame->Threads.size(), size_t(3));
+	auto find = [&](uint32_t tid) { return std::ranges::find(frame->Threads, tid, &WslThread::Tid); };
+	CHECK(find(7698) == frame->Threads.end());
+	auto gdbus = find(1820);
+	CHECK(gdbus != frame->Threads.end());
+	if (gdbus != frame->Threads.end()) {
+		CHECK_EQ(gdbus->Pid, 1816u);
+		CHECK_EQ(gdbus->Name, std::wstring(L"gdbus"));
+		CHECK_EQ(gdbus->State, L'S');
+		CHECK_EQ(gdbus->UserTicks, uint64_t(12));
+		CHECK_EQ(gdbus->SystemTicks, uint64_t(3));
+		CHECK_EQ(gdbus->StartTicks, uint64_t(1412950));
+	}
+	CHECK(find(1816) != frame->Threads.end() && find(1816)->Pid == 1816);
+}
+
 TEST(Wsl_StateNamesAndStartTime) {
 	CHECK_EQ(std::wstring(WslProtocol::StateName(L'S')), std::wstring(L"Sleeping"));
 	CHECK_EQ(std::wstring(WslProtocol::StateName(L'Z')), std::wstring(L"Zombie"));
@@ -161,6 +205,31 @@ TEST(Wsl_LiveHelper) {
 		CHECK(std::ranges::any_of(frame->Processes, [](auto& p) { return p.Pid == 1; }));
 		// the helper isn't among them
 		CHECK(system && std::ranges::none_of(frame->Processes, [&](auto& p) { return p.Pid == system->HelperPid || p.ParentPid == system->HelperPid; }));
+		CHECK(!frame->HasThreads);
+	}
+	// with the threads: every process has its main thread, every thread a process in the frame
+	frame.reset();
+	for (int i = 0; i < 50 && !(frame && frame->HasThreads); i++) {
+		monitor.Request(true);
+		::Sleep(200);
+		frame = monitor.TakeFrame();
+	}
+	CHECK(frame && frame->HasThreads);
+	if (frame && frame->HasThreads) {
+		printf("  %zu threads\n", frame->Threads.size());
+		std::unordered_set<uint32_t> pids;
+		for (auto& p : frame->Processes)
+			pids.insert(p.Pid);
+		std::unordered_set<uint32_t> mains;
+		for (auto& t : frame->Threads)
+			if (t.Tid == t.Pid)
+				mains.insert(t.Pid);
+		CHECK(frame->Threads.size() >= frame->Processes.size());
+		// a process may start or end between the helper's reads: most, not all
+		size_t withMain = std::ranges::count_if(frame->Processes, [&](auto& p) { return mains.contains(p.Pid); });
+		CHECK(withMain + 3 >= frame->Processes.size());
+		size_t orphans = std::ranges::count_if(frame->Threads, [&](auto& t) { return !pids.contains(t.Pid); });
+		CHECK(orphans <= 3);
 	}
 	monitor.Stop();
 	CHECK(!monitor.IsRunning());

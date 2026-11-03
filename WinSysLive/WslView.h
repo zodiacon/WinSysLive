@@ -18,7 +18,9 @@
 // starts one); a helper starts for each running one and stops when the distribution does or the tab closes (it keeps
 // the distribution running meanwhile, as any process in it does). WSL 1 distributions' processes are Windows pico
 // processes, in the Processes tab. CPU is a share of all of the VM's processors; memory is the resident set. New
-// processes are green and exited ones red for a while. The context menu: Terminate (SIGTERM) and Kill (SIGKILL), as
+// processes are green and exited ones red for a while. Show Threads (the toolbar's, the WslShowThreads setting) has the
+// helper read every thread's stat too, and puts a process's threads under it, before its child processes (a thread's
+// TID in the PID column, its process's PID in Parent PID). The context menu: Terminate (SIGTERM) and Kill (SIGKILL), as
 // root in the distribution, after a confirmation; Copy, Copy Command Line.
 //
 class CWslView :
@@ -48,7 +50,10 @@ public:
 	}
 	void OnDpiChanged(UINT /*dpi*/) override {
 		m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+		LayoutBar();
 	}
+	// the toolbar's band takes the rest of the row (the rebar gives a row's extra width to its first band, the filter's)
+	void UpdateLayout(BOOL resizeBars = TRUE);
 
 	static constexpr UINT WM_WSL_RUNNING = WM_APP + 0x1E3;	// lParam: a new RunningState, the receiver's to delete
 
@@ -58,6 +63,8 @@ public:
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_WSL_RUNNING, OnRunning)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
+		// the toolbar's, which comes to the view itself (through the rebar), not routed by the frame
+		COMMAND_ID_HANDLER(ID_WSL_SHOWTHREADS, OnShowThreads)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SORT, OnSort)
 		NOTIFY_CODE_HANDLER(NM_RCLICK, OnRightClick)
@@ -88,7 +95,7 @@ private:
 		_Count
 	};
 
-	// a process: its distribution, PID and start (an ID is reused)
+	// a process (or a thread): its distribution, PID (TID) and start (an ID is reused)
 	struct Key {
 		std::wstring Distro;
 		uint32_t Pid;
@@ -101,9 +108,10 @@ private:
 		}
 	};
 
-	// a distribution, or a process under it
+	// a distribution, a process under it, or a thread under its process
 	struct Row {
 		bool IsDistro{ false };
+		bool IsThread{ false };
 		HTLITEM Item{ nullptr };
 		HTLITEM ParentItem{ nullptr };	// the item it's under now (TLV_ROOT for a distribution)
 		std::wstring Distro;
@@ -111,11 +119,16 @@ private:
 		WinSys::WslDistro Info;
 		bool Running{ false };
 		int Processes{ 0 };
+		uint32_t Threads{ 0 };
 		float Cpu{ 0 };
 		uint64_t Resident{ 0 };
 		// process rows
 		WinSys::WslProcess Process;
-		std::optional<Key> Parent;	// the row it's under; nothing: the distribution's
+		// thread rows (and the process's User)
+		WinSys::WslThread Thread;
+		std::wstring User;
+		// process and thread rows
+		std::optional<Key> Parent;	// the row it's under (a thread's: its process); nothing: the distribution's
 		int64_t StartTime{ 0 };		// FILETIME
 		uint64_t PrevTicks{ 0 };	// user and system ticks at the previous frame, for the CPU rate
 		bool HasPrev{ false };
@@ -128,6 +141,7 @@ private:
 		std::unique_ptr<WinSys::WslProcessMonitor> Helper;
 		uint64_t PrevTotalTicks{ 0 };
 		bool Loaded{ false };	// a frame came: later processes are new
+		bool ThreadsLoaded{ false };	// a frame with threads came: later threads are new
 		WinSys::WslSystem System;
 		WinSys::WslFrame Last;
 	};
@@ -146,6 +160,14 @@ private:
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowThreads(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+
+	// the toolbar's images, font and band for the DPI
+	void LayoutBar();
+	// the frame's threads into their rows (only while they're shown)
+	void SyncThreads(std::wstring const& distro, Monitor& monitor, std::unordered_map<uint32_t, uint64_t> const& starts, uint64_t totalDelta);
+	// the thread rows go (Show Threads off)
+	void RemoveThreads();
 
 	// the distribution rows from the installed ones (a stopped one stays, with no processes)
 	void SyncDistros(RunningState const& state);
@@ -174,6 +196,10 @@ private:
 	// node-based maps: Row* (the items' data) stays valid
 	std::unordered_map<std::wstring, Row> m_Distros;
 	std::unordered_map<Key, Row, KeyHash> m_Processes;
+	std::unordered_map<Key, Row, KeyHash> m_Threads;	// apart: a main thread's ID and start are its process's
+	bool m_ShowThreads{ false };
+	CToolBarCtrl m_Bar;	// right of the filter: Show Threads
+	CFont m_BarFont;
 	std::unordered_map<std::wstring, Monitor> m_Monitors;	// by distribution
 	std::optional<std::vector<std::wstring>> m_Running;	// the last answer; nothing: wsl.exe didn't run
 	std::vector<Column> m_Columns;
