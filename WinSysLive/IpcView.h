@@ -73,13 +73,14 @@ public:
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
 private:
-	enum class Column { Client, ClientPid, Server, ServerPid, Kind, Interface, Endpoint, Protocol, Count, Rate,
+	enum class Column { Client, ClientPid, Server, ServerPid, ComServer, Kind, Interface, Endpoint, Protocol, Count, Rate,
 		FirstSeen, LastSeen, _Count };
 
 	struct Row {
 		WinSys::IpcLink Link;
 		std::wstring Key;	// the kind, the client and (ALPC) the server or (RPC) what was called: the server may come later
 		double Rate{ 0 };	// per second, over the last refresh
+		bool Com{ false };	// an RPC call to a COM object or COM's activation (IpcTracker::IsComCall): Kind "COM"
 		int NewTicks{ 0 };	// > 0: still highlighted as new
 	};
 
@@ -110,6 +111,9 @@ private:
 	static std::wstring KeyOf(WinSys::IpcLink const& link);
 	std::wstring GetText(Row const& row, Column column) const;
 	std::wstring GetProcessName(uint32_t pid) const;
+	// what the server process serves as a COM server (ProcessInfoEx::GetComServer); empty if it isn't one, or until
+	// it's known
+	std::wstring GetComServerText(uint32_t pid) const;
 	std::wstring const& GetInterfaceName(GUID const& iface) const;
 	bool Matches(Row const& row) const;
 	// the list's rows: the ones that match the filter, sorted as the list is; selected: the key of the row to select

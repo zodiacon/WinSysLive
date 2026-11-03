@@ -4,6 +4,7 @@
 #include <WinSys/Enums.h>
 #include <WinSys/Processes.h>
 #include "ProcessHistory.h"
+#include "ComServerLookup.h"
 
 // Per-process data the views need beyond what WinSys provides. Most values are computed on first use and cached,
 // as getting them means opening the process (and for the user name, an account lookup). Values that change
@@ -36,6 +37,11 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	std::optional<WinSys::ProcessMitigations> const& GetMitigations();
 	// "Yes" or "No", with "(full)" or "(limited)" for a split (UAC) token; empty if the token can't be opened
 	const std::wstring& GetElevation();
+	// what it serves as a COM server (WinSys ComServers, by its command line): Kind None at once for a process whose
+	// command line isn't a server's; else looked up on ComServerLookup's thread, nullptr until it's known
+	WinSys::ComServerInfo const* GetComServer();
+	// the COM surrogate's identity ("COM Surrogate: Plan9FileSystem") once it's known, else the image's description
+	std::wstring GetDescriptionOrSurrogate();
 
 	// current values; -1 (IoPriority::Unknown) if the process can't be opened
 	int GetMemoryPriority();
@@ -75,6 +81,9 @@ private:
 	bool m_MitigationsDone{ false };
 	std::optional<uint32_t> m_ServerSiloId;
 	bool m_ServerSiloDone{ false };
+	std::shared_ptr<ComServerLookup::Result> m_ComServer;	// nullptr: not a COM server's command line (m_NotComServer)
+	WinSys::ComServerInfo m_NotComServer;
+	bool m_ComServerDone{ false };
 	ProcessHistory m_History;
 
 	std::wstring m_ImagePath, m_User, m_CommandLine, m_Description;

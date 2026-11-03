@@ -118,7 +118,7 @@ private:
 		Architecture, IntegrityLevel, Elevation, Protection, Critical, Cfg, Mitigations, DpiAwareness, Virtualization, JobId, Silo,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
-		PackageName, WindowTitle, VirusTotal, Description, ImagePath, CommandLine,
+		PackageName, WindowTitle, VirusTotal, Description, ComServer, ImagePath, CommandLine,
 		CpuHistory, MemoryHistory, IoHistory, NetworkHistory,
 		_Count
 	};
@@ -295,6 +295,8 @@ private:
 	void SaveSort() const;
 	// columns whose values are queried (or summed) rather than read from the snapshot (see ProcessItem::SortValue)
 	static bool IsQueriedColumn(Column column);
+	// the COM Server column: what the process serves, with a surrogate's DLL; empty while it's looked up
+	static std::wstring ComServerText(ProcessInfoEx& p);
 	int64_t GetQueriedValue(ProcessItem& item, Column column) const;
 	static int CALLBACK CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam);
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;

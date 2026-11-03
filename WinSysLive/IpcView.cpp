@@ -14,6 +14,7 @@ namespace {
 		{ L"Client PID", L"ClientPid", 75, LVCFMT_RIGHT, true },
 		{ L"Server", L"Server", 180, LVCFMT_LEFT, true },
 		{ L"Server PID", L"ServerPid", 75, LVCFMT_RIGHT, true },
+		{ L"COM Server", L"ComServer", 220, LVCFMT_LEFT, true },
 		{ L"Kind", L"Kind", 55, LVCFMT_LEFT, true },
 		{ L"Interface", L"Interface", 280, LVCFMT_LEFT, true },
 		{ L"Endpoint", L"Endpoint", 200, LVCFMT_LEFT, true },
@@ -128,6 +129,7 @@ void CIpcView::Merge(std::vector<WinSys::IpcLink> links, double elapsed) {
 	for (auto& link : links) {
 		Row row{ std::move(link) };
 		row.Key = KeyOf(row.Link);
+		row.Com = WinSys::IpcTracker::IsComCall(row.Link);
 		uint64_t before = 0;
 		if (auto it = previous.find(row.Key); it != previous.end()) {
 			row.NewTicks = (std::max)(it->second->NewTicks - 1, 0);
@@ -145,6 +147,14 @@ void CIpcView::Merge(std::vector<WinSys::IpcLink> links, double elapsed) {
 
 std::wstring CIpcView::GetProcessName(uint32_t pid) const {
 	return pid == 0 ? L"" : Frame()->GetProcessManager().GetProcessNameById(pid);
+}
+
+std::wstring CIpcView::GetComServerText(uint32_t pid) const {
+	if (pid == 0)
+		return L"";
+	auto process = Frame()->GetProcessManager().GetProcessById(pid);
+	auto com = process ? process->GetComServer() : nullptr;
+	return com ? com->Describe() : L"";
 }
 
 std::wstring const& CIpcView::GetInterfaceName(GUID const& iface) const {
@@ -167,7 +177,8 @@ std::wstring CIpcView::GetText(Row const& row, Column column) const {
 		// a call to another machine: its address
 		case Column::Server: return link.ServerPid ? GetProcessName(link.ServerPid) : link.NetworkAddress;
 		case Column::ServerPid: return link.ServerPid ? std::to_wstring(link.ServerPid) : L"";
-		case Column::Kind: return rpc ? L"RPC" : L"ALPC";
+		case Column::ComServer: return GetComServerText(link.ServerPid);
+		case Column::Kind: return row.Com ? L"COM" : rpc ? L"RPC" : L"ALPC";
 		case Column::Interface: return rpc ? GetInterfaceName(link.Interface) : L"";
 		case Column::Endpoint: return link.Endpoint;
 		case Column::Protocol: return rpc ? WinSys::IpcTracker::ProtocolName(link.Protocol) : L"";
@@ -183,7 +194,7 @@ bool CIpcView::Matches(Row const& row) const {
 	auto& filter = m_Filter.GetText();
 	if (filter.empty())
 		return true;
-	for (auto column : { Column::Client, Column::ClientPid, Column::Server, Column::ServerPid, Column::Kind,
+	for (auto column : { Column::Client, Column::ClientPid, Column::Server, Column::ServerPid, Column::ComServer, Column::Kind,
 		Column::Interface, Column::Endpoint, Column::Protocol })
 		if (CFilterBox::Contains(GetText(row, column), filter))
 			return true;
@@ -233,7 +244,8 @@ void CIpcView::UpdateStatus() {
 			: std::format(L"Starting RPC/ALPC monitoring failed: {}", WinSys::Helpers::GetErrorText(m_TrackerError));
 	else {
 		auto alpc = std::ranges::count_if(m_All, [](auto& r) { return r.Link.Kind == WinSys::IpcKind::Alpc; });
-		text = std::format(L"{} ALPC pairs, {} RPC links", alpc, m_All.size() - alpc);
+		auto com = std::ranges::count_if(m_All, [](auto& r) { return r.Com; });
+		text = std::format(L"{} ALPC pairs, {} RPC links ({} COM)", alpc, m_All.size() - alpc, com);
 		if (!m_Filter.GetText().empty())
 			text += std::format(L"; {} match the filter", m_Rows.size());
 		text += L"; since " + FormatHelper::FormatDateTime(m_Tracker->GetStartTime());

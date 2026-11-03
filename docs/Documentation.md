@@ -106,7 +106,7 @@ each kind on or off and sets its light and dark mode colors.
 
 | Category | Columns |
 |---|---|
-| General | Name, PID, Parent PID, Parent Name, Status, Session, User Name, Start Time, Architecture, DPI Awareness, Package Name, Window Title, Description, Image Path, Command Line |
+| General | Name, PID, Parent PID, Parent Name, Status, Session, User Name, Start Time, Architecture, DPI Awareness, Package Name, Window Title, Description, COM Server, Image Path, Command Line |
 | CPU | CPU (%), CPU Time, Kernel Time, User Time, CPU Cycles, Ctx Switches, Ctx Switch Delta, Threads, Peak Threads, Priority, CPU History |
 | Memory | Private Bytes, Private Bytes Delta, Peak Private Bytes, Working Set, Peak Working Set, Virtual Size, Page Faults, Paged Pool, Non-Paged Pool, Memory Priority, Private Bytes History |
 | I/O | I/O Pri, I/O Read Bytes, I/O Write Bytes, I/O Other Bytes, I/O History |
@@ -278,7 +278,9 @@ Boot and System, and **Go to Kernel Module** for a running driver.
 
 Which processes talk to which (elevated): ALPC messages between client and server processes, and RPC calls by
 interface (named where known), endpoint and protocol, with their counts and rates. Only traffic seen since the tab
-opened shows (since WinSysLive started, with **Options > Record from Startup**). Double-click goes to the server or the client.
+opened shows (since WinSysLive started, with **Options > Record from Startup**). Calls to COM objects and to COM's
+activation have **COM** as their kind, and the **COM Server** column says what the server process serves. Double-click
+goes to the server or the client.
 
 ![The RPC/ALPC tab, filtered to RPC calls](images/rpc-alpc.png)
 

@@ -87,6 +87,7 @@ namespace {
 		{ L"Window Title", L"WindowTitle", 250, LVCFMT_LEFT, false, false, L"General" },
 		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false, false, L"Security" },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true, false, L"General" },
+		{ L"COM Server", L"ComServer", 260, LVCFMT_LEFT, false, false, L"General" },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true, false, L"General" },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true, false, L"General" },
 		{ L"CPU History", L"CpuHistory", 90, LVCFMT_LEFT, false, false, L"CPU" },
@@ -123,6 +124,16 @@ namespace {
 		float v = s.Last();
 		return v == v ? v : 0;	// not NaN
 	}
+}
+
+std::wstring CProcessesView::ComServerText(ProcessInfoEx& p) {
+	auto com = p.GetComServer();
+	if (!com || com->Kind == WinSys::ComServerKind::None)
+		return L"";
+	auto text = com->Describe();
+	if (!com->ServerDll.empty())
+		text += L" (" + com->ServerDll + L")";
+	return text;
 }
 
 CString CProcessesView::GetTitle() const {
@@ -855,7 +866,7 @@ bool CProcessesView::Matches(ProcessItem& item) {
 	auto contains = [&](std::wstring const& text) { return CFilterBox::Contains(text, filter); };
 	// the cheap ones first; the others are cached in ProcessInfoEx once queried
 	return contains(p.GetImageName()) || contains(std::to_wstring(p.Id)) || contains(p.GetUser())
-		|| contains(p.GetDescription()) || contains(p.GetCommandLine());
+		|| contains(p.GetDescriptionOrSurrogate()) || contains(p.GetCommandLine()) || contains(ComServerText(p));
 }
 
 void CProcessesView::UpdateFilterStatus() {
@@ -1303,7 +1314,9 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		// the image's hash, looked up as it's shown (queued at the front)
 		case Column::VirusTotal:
 			return p.GetImagePath().empty() ? L"" : VirusTotalChecker::Text(VirusTotalChecker::Get().Query(p.GetImagePath()));
-		case Column::Description: return p.GetDescription();
+		case Column::Description: return p.GetDescriptionOrSurrogate();
+		// looked up on a thread: shown from the refresh after it's known
+		case Column::ComServer: return ComServerText(p);
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
 	}
@@ -1456,7 +1469,8 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 			};
 			return compare(key(p1), key(p2));
 		}
-		case Column::Description: return compareText(p1.GetDescription(), p2.GetDescription());
+		case Column::Description: return compareText(p1.GetDescriptionOrSurrogate(), p2.GetDescriptionOrSurrogate());
+		case Column::ComServer: return compareText(ComServerText(p1), ComServerText(p2));
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
 	}

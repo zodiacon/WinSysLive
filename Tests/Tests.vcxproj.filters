@@ -54,6 +54,9 @@
     <ClCompile Include="WslTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="ComTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="RegistryIoTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
@@ -73,6 +76,9 @@
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\VersionInfo.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinSysLive\ComServerLookup.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\ProcessHistory.cpp">

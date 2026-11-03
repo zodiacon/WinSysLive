@@ -177,6 +177,9 @@
     <ClCompile Include="VersionInfo.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="ComServerLookup.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="ViewFactory.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -540,6 +543,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="VersionInfo.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ComServerLookup.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ViewBase.h">

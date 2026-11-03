@@ -70,8 +70,8 @@ BEGIN
     END
     POPUP "&View"
     BEGIN
-        MENUITEM "Command &Palette...\tCtrl+Q",  ID_VIEW_COMMANDPALETTE
-        MENUITEM "&Search...\tCtrl+Shift+Q",     ID_VIEW_SEARCH
+        MENUITEM "Command &Palette...\tCtrl+Q", ID_VIEW_COMMANDPALETTE
+        MENUITEM "&Search...\tCtrl+Shift+Q",    ID_VIEW_SEARCH
         MENUITEM SEPARATOR
         MENUITEM "&Processes\tCtrl+1",          ID_VIEW_PROCESSES
         MENUITEM "&Services\tCtrl+2",           ID_VIEW_SERVICES
@@ -237,7 +237,7 @@ BEGIN
         MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
         MENUITEM "&VirusTotal...",              ID_OPTIONS_VIRUSTOTAL
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
-        MENUITEM "Record from Startu&p",         ID_OPTIONS_RECORDFROMSTARTUP
+        MENUITEM "Record from Startu&p",        ID_OPTIONS_RECORDFROMSTARTUP
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
         MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
@@ -490,7 +490,9 @@ IDI_SESSION             ICON                    "res\\session.ico"
 IDI_TOKEN               ICON                    "res\\token.ico"
 
 IDI_WINSTA              ICON                    "res\\windowstation.ico"
+
 IDI_DOTNET              ICON                    "res\\dotnet.ico"
+
 IDI_ALERT               ICON                    "res\\Alert.ico"
 
 IDI_MEMORY              ICON                    "res\\Memory.ico"
@@ -502,10 +504,15 @@ IDI_JOB                 ICON                    "res\\job.ico"
 IDI_NETWORK             ICON                    "res\\network.ico"
 
 IDI_STACK               ICON                    "res\\stack.ico"
+
 IDI_HEAP                ICON                    "res\\heap.ico"
+
 IDI_DLL_UNLOADED        ICON                    "res\\DLL-unloaded.ico"
+
 IDI_FIREWALL            ICON                    "res\\Firewall.ico"
+
 IDI_PACKAGE             ICON                    "res\\package.ico"
+
 IDI_WSL                 ICON                    "res\\wsl.ico"
 
 IDI_REGISTRY            ICON                    "res\\Registry.ico"
@@ -712,7 +719,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICK
 CAPTION "Firmware and TPM"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_FW_TABS,"SysTabControl32",WS_TABSTOP | WS_CLIPSIBLINGS,7,7,446,262
+    CONTROL         "",IDC_FW_TABS,"SysTabControl32",WS_CLIPSIBLINGS | WS_TABSTOP,7,7,446,262
     CONTROL         "",IDC_FW_SUMMARY,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,13,25,434,238
     CONTROL         "",IDC_FW_VARS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,25,434,158
     EDITTEXT        IDC_FW_VALUE,13,187,434,76,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL | WS_HSCROLL
@@ -854,7 +861,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICK
 CAPTION "Network Information"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_NI_TABS,"SysTabControl32",WS_TABSTOP | WS_CLIPSIBLINGS,7,7,526,306
+    CONTROL         "",IDC_NI_TABS,"SysTabControl32",WS_CLIPSIBLINGS | WS_TABSTOP,7,7,526,306
     EDITTEXT        IDC_NI_FILTER,13,25,514,14,ES_AUTOHSCROLL
     CONTROL         "",IDC_NI_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,43,514,264
     LTEXT           "",IDC_NI_STATUS,7,322,250,9,SS_NOPREFIX | SS_ENDELLIPSIS
@@ -869,7 +876,7 @@ STYLE DS_SETFONT | WS_POPUP | WS_BORDER
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     EDITTEXT        IDC_CP_FILTER,4,4,412,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_CP_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | LVS_SHAREIMAGELISTS | WS_TABSTOP,4,22,412,194
+    CONTROL         "",IDC_CP_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_NOCOLUMNHEADER | WS_TABSTOP,4,22,412,194
 END
 
 IDD_DEVICERESOURCEMAP DIALOGEX 0, 0, 560, 340
@@ -932,7 +939,7 @@ BEGIN
     EDITTEXT        IDC_ED_KEYWORDS,273,92,160,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT           "&Message:",IDC_STATIC,7,113,60,9
     CONTROL         "Show &XML",IDC_ED_XML,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,370,112,63,10
-    EDITTEXT        IDC_ED_MESSAGE,7,124,426,148,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL | WS_TABSTOP
+    EDITTEXT        IDC_ED_MESSAGE,7,124,426,148,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
     PUSHBUTTON      "< &Previous",IDC_ED_PREVIOUS,7,279,60,14
     PUSHBUTTON      "&Next >",IDC_ED_NEXT,71,279,60,14
     PUSHBUTTON      "&Go to Process",IDC_ED_GOTOPROCESS,263,279,60,14
@@ -1741,8 +1748,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,5,0,0
- PRODUCTVERSION 1,5,0,0
+ FILEVERSION 1,6,0,0
+ PRODUCTVERSION 1,6,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1759,12 +1766,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WinSysLive - Windows Live System Explorer"
-            VALUE "FileVersion", "1.5.0.0"
+            VALUE "FileVersion", "1.6.0.0"
             VALUE "InternalName", "WinSysLive"
             VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
             VALUE "ProductName", "WinSysLive"
-            VALUE "ProductVersion", "1.5.0.0"
+            VALUE "ProductVersion", "1.6.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -2103,23 +2110,39 @@ BEGIN
     ID_VIEW_SHOWUNNAMEDHANDLES 
                             "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
+    ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
+    ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
+END
+
+STRINGTABLE
+BEGIN
     ID_VIEW_EVENTS          "Show the recent errors and warnings of the System and Application logs, and new ones as they're written\nEvent Log (Ctrl+Shift+L)"
-    ID_EVENTS_WARNINGS      "Show the warnings too\nWarnings"
-    ID_EVENTS_INFORMATION   "Show the information events too\nInformation"
     ID_EVENTS_LOGS          "Choose the logs: System, Application, Security (audit failures with the warnings, successes with the information; needs administrator rights) and others\nLogs"
     ID_EVENTS_SPAN          "Choose how far back to read: the last hour, 24 hours, 7 days or 30 days\nTime Span"
-    ID_EVENTS_REFRESH       "Read the logs again\nRefresh"
-    ID_VIEW_DEVICES         "Show the devices by type or by connection, their drivers and problems\nDevices (Ctrl+Shift+E)"
-    ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
-    ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
+    ID_FILE_OPENPE          "Show a PE file's headers, sections, imports, exports, resources and more (or drop files on the window)\nOpen PE File"
+    ID_VIEW_SEARCH          "Find a process, service, driver, connection, device or event by typing part of its name\nSearch (Ctrl+Shift+Q)"
+END
+
+STRINGTABLE
+BEGIN
     ID_DEVICES_BYCONNECTION "Show the devices as connected, from the computer down, instead of by type\nBy Connection"
     ID_DEVICES_PROBLEMS     "Show only the devices with a problem, and the disabled ones\nProblem Devices"
     ID_DEVICES_HIDDEN       "Show the devices Device Manager hides\nHidden Devices"
     ID_DEVICES_DISCONNECTED "Show the devices installed but not connected\nDisconnected Devices"
     ID_DEVICES_RESCAN       "Read the devices again\nScan Again"
-    ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
-    ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
-    ID_FILE_OPENPE          "Show a PE file's headers, sections, imports, exports, resources and more (or drop files on the window)\nOpen PE File"
+    ID_VIEW_DEVICES         "Show the devices by type or by connection, their drivers and problems\nDevices (Ctrl+Shift+E)"
+    ID_EVENTS_WARNINGS      "Show the warnings too\nWarnings"
+    ID_EVENTS_INFORMATION   "Show the information events too\nInformation"
+    ID_EVENTS_REFRESH       "Read the logs again\nRefresh"
+END
+
+STRINGTABLE
+BEGIN
+    ID_OPTIONS_RECORDFROMSTARTUP 
+                            "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
+    ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"
+    ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
+    ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
 END
 
 STRINGTABLE
@@ -2133,12 +2156,6 @@ BEGIN
                             "Free the priority 0 standby pages (needs elevation)\nPurge Low-Priority Standby List"
     ID_SYSTEM_PAGEFILES     "Show the page files, their use and configuration\nPage Files"
     ID_SYSTEM_SHARES        "Show the local network shares\nNetwork Shares"
-    ID_VIEW_COMMANDPALETTE  "Find a command or a tab by typing part of its name\nCommand Palette (Ctrl+Q)"
-    ID_VIEW_SEARCH          "Find a process, service, driver, connection, device or event by typing part of its name\nSearch (Ctrl+Shift+Q)"
-    ID_SYSTEM_POWERREQUESTS "What keeps the system or the display awake, what will wake it, and the timer resolution\nPower Requests"
-    ID_SYSTEM_WINSTATIONS   "Show the window stations, their desktops and each desktop's windows\nWindow Stations and Desktops"
-    ID_SYSTEM_ETWSESSIONS   "Show the running ETW sessions and the providers enabled in them\nETW Sessions"
-    ID_SYSTEM_NETWORKINFO   "Show the listening ports, the DNS cache, the ARP cache and the routes\nNetwork Information"
     ID_SYSTEM_PIPES         "Show the named pipes and mailslots\nPipes and Mailslots"
     ID_COMPUTER_LOCK        "Lock the computer\nLock"
     ID_COMPUTER_LOGOFF      "Sign out of Windows\nLog Off"
@@ -2148,6 +2165,17 @@ BEGIN
     ID_COMPUTER_SHUTDOWN    "Shut down the computer\nShut Down"
     ID_COMPUTER_BOOTOPTIONS "Restart into the boot options (advanced startup)\nRestart to Boot Options"
     ID_COMPUTER_FIRMWARE    "Restart into the UEFI firmware setup (needs elevation)\nRestart to Firmware"
+END
+
+STRINGTABLE
+BEGIN
+    ID_SYSTEM_NETWORKINFO   "Show the listening ports, the DNS cache, the ARP cache and the routes\nNetwork Information"
+    ID_VIEW_COMMANDPALETTE  "Find a command or a tab by typing part of its name\nCommand Palette (Ctrl+Q)"
+    ID_COLUMN_RESET         "Show the list's default columns, in their order and widths\nReset Columns"
+    ID_SYSTEM_ETWSESSIONS   "Show the running ETW sessions and the providers enabled in them\nETW Sessions"
+    ID_SYSTEM_WINSTATIONS   "Show the window stations, their desktops and each desktop's windows\nWindow Stations and Desktops"
+    ID_OPTIONS_ALERTS       "Notifications when processes start or exit, or CPU, memory or a process's use stays above a threshold\nAlerts"
+    ID_SYSTEM_POWERREQUESTS "What keeps the system or the display awake, what will wake it, and the timer resolution\nPower Requests"
 END
 
 STRINGTABLE
@@ -2198,7 +2226,6 @@ END
 STRINGTABLE
 BEGIN
     ID_VIEW_SELECTCOLUMNS   "Choose the columns of the list and their order\nSelect Columns"
-    ID_COLUMN_RESET         "Show the list's default columns, in their order and widths\nReset Columns"
     ID_COLUMN_HIDE          "Hide the column that was right-clicked\nHide Column"
     ID_VIEW_LOWERPANE       "Show or hide the handles, modules and threads of the selected process\nLower Pane (Ctrl+L)"
     ID_PANE_THREADS         "Threads: 000,000"
@@ -2215,13 +2242,9 @@ BEGIN
     ID_KMODULE_PROPERTIES   "Show the properties of the selected driver's file\nProperties"
     ID_KMODULE_GOTOFILELOCATION 
                             "Open the folder of the selected driver's file\nOpen File Location"
-    ID_OPTIONS_ALERTS       "Notifications when processes start or exit, or CPU, memory or a process's use stays above a threshold\nAlerts"
     ID_OPTIONS_TRAYICON     "Choose the icons in the notification area: CPU, I/O, commit charge, physical memory, network\nTray Icons"
     ID_OPTIONS_MINIMIZETOTRAY 
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
-    ID_OPTIONS_RECORDFROMSTARTUP 
-                            "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
-    ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"
     ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
 END
 

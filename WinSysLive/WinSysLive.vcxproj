@@ -510,6 +510,7 @@
     <ClCompile Include="ThreadsPage.cpp" />
     <ClCompile Include="UsersView.cpp" />
     <ClCompile Include="VersionInfo.cpp" />
+    <ClCompile Include="ComServerLookup.cpp" />
     <ClCompile Include="ViewFactory.cpp" />
     <ClCompile Include="ProcessInfoEx.cpp" />
     <ClCompile Include="FormatHelper.cpp" />
@@ -634,6 +635,7 @@
     <ClInclude Include="ThreadsPage.h" />
     <ClInclude Include="UsersView.h" />
     <ClInclude Include="VersionInfo.h" />
+    <ClInclude Include="ComServerLookup.h" />
     <ClInclude Include="ViewBase.h" />
     <ClInclude Include="Interfaces.h" />
     <ClInclude Include="ProcessInfoEx.h" />
