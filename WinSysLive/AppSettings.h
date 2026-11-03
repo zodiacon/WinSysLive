@@ -48,6 +48,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(KernelModuleColumns, L"");	// the Kernel Modules tab
 		SETTING_STRING(AutorunsColumns, L"");	// the Autoruns tab
 		SETTING_STRING(DeviceColumns, L"");	// the Devices tab
+		SETTING_STRING(WslColumns, L"");	// the WSL tab
 		SETTING_STRING(EventColumns, L"");	// the Events tab
 		SETTING(EventsWarnings, 1, SettingType::Bool);
 		SETTING(EventsInformation, 0, SettingType::Bool);
@@ -128,6 +129,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(KernelModuleColumns)
 	DEF_SETTING_STRING(AutorunsColumns)
 	DEF_SETTING_STRING(DeviceColumns)
+	DEF_SETTING_STRING(WslColumns)
 	DEF_SETTING_STRING(EventColumns)
 	DEF_SETTING(EventsWarnings, int)
 	DEF_SETTING(EventsInformation, int)

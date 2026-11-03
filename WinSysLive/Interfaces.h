@@ -22,6 +22,7 @@ enum class TabType {
 	Autoruns,	// what starts by itself
 	Devices,	// the device tree
 	Events,		// the System and Application event logs
+	Wsl,		// the WSL distributions and their Linux processes
 };
 
 struct AlertRule;

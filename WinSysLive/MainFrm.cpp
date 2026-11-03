@@ -95,6 +95,8 @@ namespace {
 		IDI_HISTORY,
 		// the Autoruns tab, and its entries without an icon of their own
 		IDI_AUTORUNS, IDI_RUN_COMMAND,
+		// the WSL tab
+		IDI_WSL,
 	};
 
 	// the system's stock icons in the image list too (GetIconIndex(SystemIconId(IDI_WARNING)))
@@ -130,6 +132,7 @@ namespace {
 		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
 		{ ID_VIEW_AUTORUNS, IDI_AUTORUNS, BTNS_CHECK },
 		{ ID_VIEW_DEVICES, IDI_DEVICE, BTNS_CHECK },
+		{ ID_VIEW_WSL, IDI_WSL, BTNS_CHECK },
 		{ ID_VIEW_EVENTS, IDI_EVENT, BTNS_CHECK },
 	};
 	const int ToolBarIconSize = 24;	// at 96 DPI

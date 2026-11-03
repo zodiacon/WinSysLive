@@ -28,6 +28,7 @@ This document describes every tab, dialog and option. For installation, see the 
 - [Autoruns](#autoruns)
 - [Devices](#devices)
 - [Event Log](#event-log)
+- [WSL](#wsl)
 - [Command palette and Search](#command-palette-and-search)
 - [Find Handle or DLL](#find-handle-or-dll)
 - [File menu](#file-menu)
@@ -362,6 +363,10 @@ The context menu:
   > Resources by type.
 - **Scan for Hardware Changes** (elevated).
 
+## WSL
+
+The installed WSL distributions (docker-desktop's too) and, under each running WSL 2 one, its Linux processes as a tree by parent: PID, parent, user, state, CPU, CPU time, threads, memory, start time and command line. WinSysLive runs a small helper in each running distribution while the tab is open (it never starts a distribution, but keeps a running one from stopping while the tab is open). **Terminate** (SIGTERM) and **Kill** (SIGKILL) in the context menu end a process, as root in the distribution, after a confirmation. WSL 1 distributions' processes are Windows processes, in the Processes tab.
+
 ## Event Log
 
 The newest events of the chosen logs (System and Application by default; also Security, Setup, PowerShell, Defender,
@@ -545,7 +550,7 @@ When installed with WinGet, update with `winget upgrade ScorpioSoftware.WinSysLi
 |---|---|
 | Ctrl+1 ... Ctrl+9, Ctrl+0 | Processes, Services, Performance, Users, Network, Kernel Modules, Drivers, RPC/ALPC, Zombie Processes, Object Types |
 | Ctrl+Shift+O / P / D / H | Object Manager, Pool Tags, Disk, History |
-| Ctrl+Shift+A / E / L | Autoruns, Devices, Event Log |
+| Ctrl+Shift+A / E / L / W | Autoruns, Devices, Event Log, WSL |
 | Ctrl+Q | Command palette |
 | Ctrl+Shift+Q | Search |
 | Ctrl+Shift+N | Snapshots |
