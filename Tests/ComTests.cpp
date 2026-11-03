@@ -88,6 +88,38 @@ TEST(Com_IsComCall) {
 	CHECK(!IpcTracker::IsComCall(link));
 }
 
+TEST(Com_InterpreterOf) {
+	CHECK_EQ(ComRegistry::InterpreterOf(L"C:\\Windows\\System32\\rundll32.exe"), std::wstring(L"rundll32.exe"));
+	CHECK_EQ(ComRegistry::InterpreterOf(L"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\PowerShell.exe"), std::wstring(L"powershell.exe"));
+	CHECK_EQ(ComRegistry::InterpreterOf(L"mshta.exe"), std::wstring(L"mshta.exe"));
+	CHECK(ComRegistry::InterpreterOf(L"C:\\Program Files\\Oracle\\VirtualBox\\VBoxSVC.exe").empty());
+	CHECK(ComRegistry::InterpreterOf(L"C:\\Tools\\notrundll32.exe").empty());
+	CHECK(ComRegistry::InterpreterOf(L"").empty());
+}
+
+TEST(Com_IsWritableByUsersLive) {
+	// the user's own temp folder: yes (a file that isn't there can be created); System32: no, even elevated (the
+	// check is a standard user's, without Administrators); ProgramData: users may create folders there
+	WCHAR temp[MAX_PATH];
+	::GetTempPath(_countof(temp), temp);
+	CHECK(ComRegistry::IsWritableByUsers(std::wstring(temp) + L"WinSysLiveNoSuch.dll"));
+	CHECK(ComRegistry::IsWritableByUsers(std::wstring(temp) + L"WinSysLiveNoSuch\\Deeper\\x.dll"));
+	WCHAR system[MAX_PATH];
+	::GetSystemDirectory(system, _countof(system));
+	CHECK(!ComRegistry::IsWritableByUsers(std::wstring(system) + L"\\kernel32.dll"));
+	CHECK(!ComRegistry::IsWritableByUsers(std::wstring(system) + L"\\WinSysLiveNoSuch.dll"));
+	CHECK(!ComRegistry::IsWritableByUsers(std::wstring(system) + L"\\WinSysLiveNoSuch\\x.dll"));
+	WCHAR programData[MAX_PATH];
+	::GetEnvironmentVariable(L"ProgramData", programData, _countof(programData));
+	CHECK(ComRegistry::IsWritableByUsers(std::wstring(programData) + L"\\WinSysLiveNoSuch\\x.dll"));
+	// a file the user made: they can write it
+	auto file = std::wstring(temp) + L"WinSysLiveWritable.tmp";
+	wil::unique_hfile h(::CreateFile(file.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr));
+	h.reset();
+	CHECK(ComRegistry::IsWritableByUsers(file));
+	::DeleteFile(file.c_str());
+}
+
 TEST(Com_LiveServers) {
 	::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 	auto start = ::GetTickCount64();
@@ -128,7 +160,7 @@ TEST(Com_LiveRegistry) {
 		auto start = ::GetTickCount64();
 		auto classes = ComRegistry::EnumClasses(wow64);
 		auto elapsed = ::GetTickCount64() - start;
-		int types[6]{}, missing = 0, perUser = 0, overrides = 0, packaged = 0, named = 0;
+		int types[6]{}, missing = 0, perUser = 0, overrides = 0, packaged = 0, named = 0, writable = 0, scriptlets = 0, interpreters = 0;
 		for (auto& c : classes) {
 			types[(int)c.Type]++;
 			missing += c.ServerMissing;
@@ -141,15 +173,34 @@ TEST(Com_LiveRegistry) {
 			if (c.Clsid.size() != 38)
 				printf("    not a GUID: %ls (%ls)\n", c.Clsid.c_str(), c.Name.c_str());
 			CHECK(c.Wow64 == wow64);
-			// only the user's can override the machine's
-			if (c.OverridesMachine)
+			// only the user's can override the machine's, and the machine's it hides is there too
+			if (c.OverridesMachine) {
 				CHECK(c.PerUser);
+				CHECK(std::ranges::any_of(classes, [&](auto& m) { return !m.PerUser && m.OverriddenByUser && m.Clsid == c.Clsid; }));
+			}
+			if (c.OverriddenByUser)
+				CHECK(!c.PerUser);
+			// only machine-wide classes are checked
+			if (c.ServerWritable)
+				CHECK(!c.PerUser && c.Package.empty());
+			writable += c.ServerWritable;
+			scriptlets += !c.ScriptletUrl.empty();
+			interpreters += !c.Interpreter.empty() && !c.InterpreterRunsSystemDll;
+			if (c.InterpreterRunsSystemDll)
+				CHECK_EQ(c.Interpreter, std::wstring(L"rundll32.exe"));
 		}
+		printf("  %d machine-wide servers writable by users, %d scriptlets, %d interpreters\n", writable, scriptlets, interpreters);
+		int shown = 0;
+		for (auto& c : classes)
+			if ((c.ServerWritable || !c.ScriptletUrl.empty() || (!c.Interpreter.empty() && !c.InterpreterRunsSystemDll)) && shown++ < 8)
+				printf("    %ls %ls: %ls%ls%ls%ls\n", c.Clsid.c_str(), c.Name.c_str(), c.Server.c_str(),
+					c.ServerWritable ? L" [writable]" : L"", c.ScriptletUrl.empty() ? L"" : (L" [scriptlet " + c.ScriptletUrl + L"]").c_str(),
+					c.Interpreter.empty() ? L"" : L" [interpreter]");
 		printf("  %s: %zu classes in %llu ms (%d named): %d in-process, %d handlers, %d local servers, %d surrogates, %d services, %d other; %d per user (%d over the machine's), %d packaged, %d missing servers\n",
 			wow64 ? "32-bit" : "64-bit", classes.size(), elapsed, named, types[1], types[2], types[3], types[4], types[5], types[0],
 			perUser, overrides, packaged, missing);
 		CHECK(classes.size() > 500);
-		int shown = 0;
+		shown = 0;
 		for (auto& c : classes)
 			if (c.ServerMissing && shown++ < 5)
 				printf("    missing: %ls %ls %ls\n", c.Clsid.c_str(), c.Name.c_str(), c.ServerFile.c_str());

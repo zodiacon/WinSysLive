@@ -114,7 +114,7 @@ LRESULT CComRegistrationDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPAR
 		PCWSTR Name;
 		int Width;
 	} columns[] = {
-		{ L"Name", 220 }, { L"CLSID", 270 }, { L"ProgID", 180 }, { L"Type", 120 }, { L"Server", 330 }, { L"Threading", 80 },
+		{ L"Name", 220 }, { L"CLSID", 270 }, { L"ProgID", 180 }, { L"Type", 120 }, { L"Concern", 260 }, { L"Server", 330 }, { L"Threading", 80 },
 		{ L"App ID", 270 }, { L"App Name", 160 }, { L"Service", 110 }, { L"Run As", 110 }, { L"Registered", 130 },
 		{ L"View", 55 }, { L"Signature", 200 }, { L"Package", 250 },
 	};
@@ -124,6 +124,8 @@ LRESULT CComRegistrationDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPAR
 	ListViewHelper::EnableColumnDpiScaling(m_List);
 	CreateImages();
 	::SendDlgItemMessage(m_hWnd, IDC_CR_FILTER, EM_SETCUEBANNER, TRUE, (LPARAM)L"Filter by name, CLSID, ProgID, server, app ID or package");
+	CheckDlgButton(IDC_CR_MACHINE, BST_CHECKED);
+	CheckDlgButton(IDC_CR_USER, BST_CHECKED);
 	CheckDlgButton(IDC_CR_32BIT, BST_CHECKED);
 	m_Signatures.Init(m_hWnd, WM_COMREG_SIGNED);
 	m_AclTheming.Install(m_hWnd);
@@ -266,16 +268,47 @@ std::wstring CComRegistrationDlg::FileOf(ComClassRegistration const& c) {
 }
 
 CComRegistrationDlg::Concern CComRegistrationDlg::GetConcern(ComClassRegistration const& c) const {
-	if (c.ServerMissing)
-		return Concern::Broken;
-	if (auto file = FileOf(c); !file.empty())
+	if (c.ServerWritable || !c.ScriptletUrl.empty() || (!c.Interpreter.empty() && !c.InterpreterRunsSystemDll))
+		return Concern::Danger;
+	if (auto file = c.ServerMissing ? L"" : FileOf(c); !file.empty())
 		if (auto info = m_Signatures.GetResult(file); info && info->Status == SignatureStatus::Invalid)
-			return Concern::Broken;
+			return Concern::Danger;
 	if (c.OverridesMachine)
 		return Concern::Override;
 	if (c.PerUser)
 		return Concern::PerUser;
+	if (c.ServerMissing)
+		return Concern::Stale;
 	return Concern::None;
+}
+
+std::wstring CComRegistrationDlg::GetConcernText(ComClassRegistration const& c) const {
+	std::wstring text;
+	auto add = [&](std::wstring const& reason) {
+		text += (text.empty() ? L"" : L"; ") + reason;
+	};
+	if (c.ServerWritable)
+		add(c.ServerMissing ? L"Missing server a standard user can create" : L"Server a standard user can replace");
+	else if (c.ServerMissing)
+		add(L"Missing server");
+	if (!c.ScriptletUrl.empty())
+		add(L"Scriptlet: " + c.ScriptletUrl);
+	if (!c.Interpreter.empty() && !c.InterpreterRunsSystemDll)
+		add(L"Runs " + c.Interpreter);
+	if (auto file = c.ServerMissing ? L"" : FileOf(c); !file.empty())
+		if (auto info = m_Signatures.GetResult(file); info && info->Status == SignatureStatus::Invalid)
+			add(L"Invalid signature");
+	if (c.OverridesMachine)
+		add(L"User's class over the machine's");
+	else if (c.PerUser)
+		add(L"Per-user class");
+	return text;
+}
+
+bool CComRegistrationDlg::InScope(ComClassRegistration const& c, bool machine, bool user) const {
+	if (machine && user)
+		return !c.OverriddenByUser;	// HKCR: the user's in its place
+	return c.PerUser ? user : machine;	// a package's classes are the machine's
 }
 
 std::wstring CComRegistrationDlg::GetText(ComClassRegistration const& c, Column column, bool verify) {
@@ -293,7 +326,10 @@ std::wstring CComRegistrationDlg::GetText(ComClassRegistration const& c, Column 
 		case Column::Registered:
 			if (!c.Package.empty())
 				return L"Package";
-			return c.OverridesMachine ? L"User (over machine)" : c.PerUser ? L"User" : L"Machine";
+			if (c.PerUser)
+				return c.OverridesMachine ? L"User (over machine)" : L"User";
+			return c.OverriddenByUser ? L"Machine (under user's)" : L"Machine";
+		case Column::Concern: return GetConcernText(c);
 		case Column::View: return c.Wow64 ? L"32-bit" : L"64-bit";
 		case Column::Signature:
 		{
@@ -321,18 +357,26 @@ std::wstring CComRegistrationDlg::GetText(ComClassRegistration const& c, Column 
 
 void CComRegistrationDlg::ShowRows() {
 	bool wow64 = IsDlgButtonChecked(IDC_CR_32BIT) == BST_CHECKED;
+	bool machine = IsDlgButtonChecked(IDC_CR_MACHINE) == BST_CHECKED;
+	bool user = IsDlgButtonChecked(IDC_CR_USER) == BST_CHECKED;
 	bool suspicious = IsDlgButtonChecked(IDC_CR_SUSPICIOUS) == BST_CHECKED;
 	auto selected = GetSelected();
 	auto selectedKey = selected ? selected->Clsid + (selected->Wow64 ? L"32" : L"64") + selected->Package : L"";
 	m_Rows.clear();
-	int missing = 0, perUser = 0, overrides = 0, packaged = 0;
+	int total = 0, missing = 0, perUser = 0, overrides = 0, packaged = 0, writable = 0, code = 0;
 	for (int i = 0; i < (int)m_Classes.size(); i++) {
 		auto& c = m_Classes[i];
-		missing += c.ServerMissing;
-		perUser += c.PerUser;
-		overrides += c.OverridesMachine;
-		packaged += !c.Package.empty();
-		if (c.Wow64 && !wow64)
+		// the counts are HKCR's (each class once)
+		if (!c.OverriddenByUser) {
+			total++;
+			missing += c.ServerMissing;
+			perUser += c.PerUser;
+			overrides += c.OverridesMachine;
+			packaged += !c.Package.empty();
+			writable += c.ServerWritable;
+			code += !c.ScriptletUrl.empty() || (!c.Interpreter.empty() && !c.InterpreterRunsSystemDll);
+		}
+		if ((c.Wow64 && !wow64) || !InScope(c, machine, user))
 			continue;
 		if (suspicious && GetConcern(c) == Concern::None) {
 			// the unsigned too, once known
@@ -342,7 +386,8 @@ void CComRegistrationDlg::ShowRows() {
 				continue;
 		}
 		if (!m_Filter.empty()) {
-			auto text = Lower(c.Name + L"\n" + c.Clsid + L"\n" + c.ProgId + L"\n" + c.Server + L"\n" + c.AppId + L"\n" + c.AppIdName + L"\n" + c.Package);
+			auto text = Lower(c.Name + L"\n" + c.Clsid + L"\n" + c.ProgId + L"\n" + c.Server + L"\n" + c.AppId + L"\n" + c.AppIdName + L"\n" + c.Package
+				+ L"\n" + c.ScriptletUrl);
 			if (text.find(m_Filter) == std::wstring::npos)
 				continue;
 		}
@@ -361,9 +406,9 @@ void CComRegistrationDlg::ShowRows() {
 	}
 	m_List.Invalidate();
 
-	auto status = std::format(L"{} classes ({} packaged); {} per user, {} of them over the machine's; {} with a missing server",
-		m_Classes.size(), packaged, perUser, overrides, missing);
-	if (m_Rows.size() != m_Classes.size())
+	auto status = std::format(L"{} classes ({} packaged): {} replaceable by users, {} scripts or interpreters, {} per user ({} over machine), {} missing",
+		total, packaged, writable, code, perUser, overrides, missing);
+	if ((int)m_Rows.size() != total)
 		status += std::format(L"; {} shown", m_Rows.size());
 	SetDlgItemText(IDC_CR_STATUS, status.c_str());
 }
@@ -427,7 +472,11 @@ LRESULT CComRegistrationDlg::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*b
 				break;
 			bool dark = WTLHelper::IsDarkMode();
 			switch (GetConcern(m_Classes[m_Rows[row]])) {
-				case Concern::Broken: cd->clrTextBk = dark ? RGB(128, 0, 0) : RGB(255, 160, 160); break;
+				case Concern::Danger: cd->clrTextBk = dark ? RGB(128, 0, 0) : RGB(255, 160, 160); break;
+				case Concern::Stale:
+					// a leftover: gray text on the list's own background
+					cd->clrText = dark ? RGB(128, 128, 128) : RGB(128, 128, 128);
+					return CDRF_NEWFONT;
 				case Concern::Override: cd->clrTextBk = dark ? RGB(140, 70, 0) : RGB(255, 200, 120); break;
 				case Concern::PerUser: cd->clrTextBk = dark ? RGB(100, 90, 0) : RGB(255, 255, 160); break;
 				default: return CDRF_DODEFAULT;

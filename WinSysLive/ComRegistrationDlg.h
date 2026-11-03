@@ -15,10 +15,15 @@
 // a service's or an object's for the others), the server as registered, threading
 // model, app ID and its name, service, Run As, where it's registered (the machine, the user, the user's over the
 // machine's), the view, the server's signature (verified as the rows are shown, on SignatureVerifier's thread) and
-// the package. A missing server file or a signature that doesn't verify is red, a user's class over the machine's
-// orange, another of the user's yellow: per-user classes are a known way to hijack a class. 32-bit Classes (on at
-// first) shows the 32-bit view's; Suspicious Only the red, orange and yellow ones and the unsigned. The filter matches
-// the name, CLSID, ProgID, server, app ID and package; any column sorts by its text. The context menu: Open File
+// the package; the Concern column says why a row stands out. Red: a machine-wide class's server a standard user can
+// replace, or (missing) create; a scriptlet (scrobj.dll's ScriptletURL); a local server that runs an interpreter
+// (rundll32 of a DLL outside Windows, powershell, cmd, mshta...); a signature that doesn't verify. Orange: a user's
+// class over the machine's; yellow: another of the user's (per-user classes are a known way to hijack a class); gray
+// text: a missing server nobody but an administrator could put back (a leftover). Local Machine and Current User (both
+// on at first: HKCR, the user's over the machine's) choose the hives, one alone showing its own registrations (the
+// machine's that a user's hides too); 32-bit Classes (on at first) the 32-bit view's; Suspicious Only the colored rows
+// and the unsigned. The filter matches the name, CLSID, ProgID, server, app ID, package and scriptlet; any column sorts
+// by its text. The context menu: Open File
 // Location, Open in Registry Editor, Launch Permissions and Access Permissions (the app ID's or the machine's
 // defaults, read-only in the ACL editor), Copy (the selected rows, or all shown) and Copy CLSID. Save... writes the
 // rows shown as CSV or tab-separated text (ListExport); Ctrl+F from any control goes to the filter box.
@@ -34,6 +39,8 @@ public:
 
 	BEGIN_DLGRESIZE_MAP(CComRegistrationDlg)
 		DLGRESIZE_CONTROL(IDC_CR_FILTER, DLSZ_SIZE_X)
+		DLGRESIZE_CONTROL(IDC_CR_MACHINE, DLSZ_MOVE_X)
+		DLGRESIZE_CONTROL(IDC_CR_USER, DLSZ_MOVE_X)
 		DLGRESIZE_CONTROL(IDC_CR_32BIT, DLSZ_MOVE_X)
 		DLGRESIZE_CONTROL(IDC_CR_SUSPICIOUS, DLSZ_MOVE_X)
 		DLGRESIZE_CONTROL(IDC_CR_LIST, DLSZ_SIZE_X | DLSZ_SIZE_Y)
@@ -52,6 +59,8 @@ public:
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		COMMAND_HANDLER(IDC_CR_FILTER, EN_CHANGE, OnFilterChanged)
+		COMMAND_ID_HANDLER(IDC_CR_MACHINE, OnFilterChanged)
+		COMMAND_ID_HANDLER(IDC_CR_USER, OnFilterChanged)
 		COMMAND_ID_HANDLER(IDC_CR_32BIT, OnFilterChanged)
 		COMMAND_ID_HANDLER(IDC_CR_SUSPICIOUS, OnFilterChanged)
 		NOTIFY_HANDLER(IDC_CR_LIST, LVN_GETDISPINFO, OnGetDispInfo)
@@ -77,7 +86,7 @@ public:
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
 
 private:
-	enum class Column { Name, Clsid, ProgId, Type, Server, Threading, AppId, AppName, Service, RunAs, Registered, View,
+	enum class Column { Name, Clsid, ProgId, Type, Concern, Server, Threading, AppId, AppName, Service, RunAs, Registered, View,
 		Signature, Package, _Count };
 
 	struct LoadState {
@@ -86,8 +95,11 @@ private:
 		bool Done{ false };
 	};
 
-	// what makes a row stand out (its color, and Suspicious Only)
-	enum class Concern { None, PerUser, Override, Broken };
+	// what makes a row stand out (its color, and Suspicious Only): a user's class (yellow), one over the machine's
+	// (orange), a missing server no standard user can create (a leftover: gray text), and red for what someone
+	// could exploit or that runs other code: a server a standard user can replace or plant, a signature that doesn't
+	// verify, a scriptlet, an interpreter (but rundll32 of a Windows DLL)
+	enum class Concern { None, PerUser, Override, Stale, Danger };
 
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -126,6 +138,11 @@ private:
 	// verify: queue the server's signature check if it isn't known (as a row is shown; not while sorting or copying)
 	std::wstring GetText(WinSys::ComClassRegistration const& c, Column column, bool verify = false);
 	Concern GetConcern(WinSys::ComClassRegistration const& c) const;
+	// the Concern column: why the row stands out, the reasons joined with "; "
+	std::wstring GetConcernText(WinSys::ComClassRegistration const& c) const;
+	// the Local Machine and Current User check boxes allow it: both, the merged view (HKCR: the user's over the
+	// machine's, which is left out); one, that hive's own (a machine's class the user's hides included)
+	bool InScope(WinSys::ComClassRegistration const& c, bool machine, bool user) const;
 	// the server file to verify and to open: a bare DLL name in the view's system folder; empty if there's none
 	static std::wstring FileOf(WinSys::ComClassRegistration const& c);
 	// the class's key as the Registry Editor shows it
