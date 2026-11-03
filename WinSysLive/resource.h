@@ -706,6 +706,7 @@
 #define IDI_FIREWALL                    347
 #define IDI_PACKAGE                     348
 #define IDI_WSL                         349
+#define IDI_REGISTRY                    350
 #define IDD_POWERREQUESTS               335
 #define IDC_PR_RESOLUTION               1418
 #define IDC_PR_INACTIVE                 1419
@@ -820,6 +821,10 @@
 #define IDC_FWR_COPY                    1494
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
+#define ID_VIEW_REGISTRY                33035
+#define ID_REGISTRY_GOTOPROCESS         33036
+#define ID_REGISTRY_OPENKEY             33037
+#define ID_REGISTRY_COPYKEY             33038
 #define ID_MODULE_TOTALPE               33015
 #define IDD_PEFILE                      340
 #define ID_MODULE_IMAGE                 33016
@@ -868,8 +873,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        350
-#define _APS_NEXT_COMMAND_VALUE         33035
+#define _APS_NEXT_RESOURCE_VALUE        351
+#define _APS_NEXT_COMMAND_VALUE         33039
 #define _APS_NEXT_CONTROL_VALUE         1495
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

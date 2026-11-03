@@ -86,6 +86,7 @@ BEGIN
         MENUITEM "Object &Manager\tCtrl+Shift+O", ID_VIEW_OBJECTMANAGER
         MENUITEM "Poo&l Tags\tCtrl+Shift+P",    ID_VIEW_POOLTAGS
         MENUITEM "&Disk\tCtrl+Shift+D",         ID_VIEW_DISK
+        MENUITEM "&Registry\tCtrl+Shift+R",     ID_VIEW_REGISTRY
         MENUITEM "&History\tCtrl+Shift+H",      ID_VIEW_HISTORY
         MENUITEM "&Autoruns\tCtrl+Shift+A",     ID_VIEW_AUTORUNS
         MENUITEM "D&evices\tCtrl+Shift+E",      ID_VIEW_DEVICES
@@ -506,6 +507,8 @@ IDI_DLL_UNLOADED        ICON                    "res\\DLL-unloaded.ico"
 IDI_FIREWALL            ICON                    "res\\Firewall.ico"
 IDI_PACKAGE             ICON                    "res\\package.ico"
 IDI_WSL                 ICON                    "res\\wsl.ico"
+
+IDI_REGISTRY            ICON                    "res\\Registry.ico"
 
 IDI_DELETE              ICON                    "res\\delete.ico"
 
@@ -1716,6 +1719,7 @@ BEGIN
     "E",            ID_VIEW_DEVICES,        VIRTKEY, SHIFT, CONTROL
     "L",            ID_VIEW_EVENTS,         VIRTKEY, SHIFT, CONTROL
     "W",            ID_VIEW_WSL,            VIRTKEY, SHIFT, CONTROL
+    "R",            ID_VIEW_REGISTRY,       VIRTKEY, SHIFT, CONTROL
     "Q",            ID_VIEW_COMMANDPALETTE, VIRTKEY, CONTROL
     "Q",            ID_VIEW_SEARCH,         VIRTKEY, SHIFT, CONTROL
     "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
@@ -2107,6 +2111,7 @@ BEGIN
     ID_EVENTS_REFRESH       "Read the logs again\nRefresh"
     ID_VIEW_DEVICES         "Show the devices by type or by connection, their drivers and problems\nDevices (Ctrl+Shift+E)"
     ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
+    ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
     ID_DEVICES_BYCONNECTION "Show the devices as connected, from the computer down, instead of by type\nBy Connection"
     ID_DEVICES_PROBLEMS     "Show only the devices with a problem, and the disabled ones\nProblem Devices"
     ID_DEVICES_HIDDEN       "Show the devices Device Manager hides\nHidden Devices"

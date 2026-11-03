@@ -138,6 +138,9 @@
     <ClCompile Include="WslView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="RegistryView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="EventsView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -477,6 +480,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="WslView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="RegistryView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="EventsView.h">
@@ -888,6 +894,9 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\wsl.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Registry.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\package.ico">

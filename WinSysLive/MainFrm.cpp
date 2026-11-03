@@ -97,6 +97,8 @@ namespace {
 		IDI_AUTORUNS, IDI_RUN_COMMAND,
 		// the WSL tab
 		IDI_WSL,
+		// the Registry tab
+		IDI_REGISTRY,
 	};
 
 	// the system's stock icons in the image list too (GetIconIndex(SystemIconId(IDI_WARNING)))
@@ -129,6 +131,7 @@ namespace {
 		{ ID_VIEW_OBJECTMANAGER, IDI_OBJECTS, BTNS_CHECK },
 		{ ID_VIEW_POOLTAGS, IDI_POOLTAGS, BTNS_CHECK },
 		{ ID_VIEW_DISK, IDI_HARDDISK, BTNS_CHECK },
+		{ ID_VIEW_REGISTRY, IDI_REGISTRY, BTNS_CHECK },
 		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
 		{ ID_VIEW_AUTORUNS, IDI_AUTORUNS, BTNS_CHECK },
 		{ ID_VIEW_DEVICES, IDI_DEVICE, BTNS_CHECK },

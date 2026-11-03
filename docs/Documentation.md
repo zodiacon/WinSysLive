@@ -24,6 +24,7 @@ This document describes every tab, dialog and option. For installation, see the 
 - [Object Manager](#object-manager)
 - [Pool Tags](#pool-tags)
 - [Disk](#disk)
+- [Registry](#registry)
 - [History](#history)
 - [Autoruns](#autoruns)
 - [Devices](#devices)
@@ -320,6 +321,10 @@ minute drop off. **Go to Process**, **File Properties** and **Open File Location
 
 ![The Disk tab, filtered to files under C:\Windows](images/disk.png)
 
+## Registry
+
+Registry operations per process and key (elevated): opens, reads, writes and failures, the operations a second, and the last operation, value and result. Keys idle for a minute drop off. A key opened before the tab started watching is named from the handle that opened it; one only the kernel or a protected process has open can't be, and shows as **(kernel key 0x...)** or **(key 0x... of a protected process)**. **Go to Process**, **Open in Registry Editor**, **Copy** and **Copy Key** in the context menu.
+
 ## History
 
 A log of events while the tab is open (or since WinSysLive started, with **Options > Record from Startup**): processes started (with parent, user and command line) and exited (with how
@@ -491,7 +496,7 @@ control, account and dependencies, and optionally starts it.
 | Resolve Symbols / Symbol Settings... | See [Symbols](#symbols) |
 | VirusTotal... | See [VirusTotal](#virustotal) |
 | Resolve Addresses | Show network addresses as DNS names |
-| Record from Startup | Records History, RPC/ALPC, Disk and per-connection network traffic from WinSysLive's start, so their tabs show what happened before they were opened (all but History need elevation; it costs a little all the time) |
+| Record from Startup | Records History, RPC/ALPC, Disk, Registry and per-connection network traffic from WinSysLive's start, so their tabs show what happened before they were opened (all but History need elevation; it costs a little all the time) |
 | Tray Icons... | Up to five notification area icons with small graphs: CPU, I/O, commit charge, physical memory, network. Click one to bring the window back; right-click for a menu |
 | Alerts... | See [Alerts](#alerts) |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |
@@ -550,7 +555,7 @@ When installed with WinGet, update with `winget upgrade ScorpioSoftware.WinSysLi
 |---|---|
 | Ctrl+1 ... Ctrl+9, Ctrl+0 | Processes, Services, Performance, Users, Network, Kernel Modules, Drivers, RPC/ALPC, Zombie Processes, Object Types |
 | Ctrl+Shift+O / P / D / H | Object Manager, Pool Tags, Disk, History |
-| Ctrl+Shift+A / E / L / W | Autoruns, Devices, Event Log, WSL |
+| Ctrl+Shift+A / E / L / W / R | Autoruns, Devices, Event Log, WSL, Registry |
 | Ctrl+Q | Command palette |
 | Ctrl+Shift+Q | Search |
 | Ctrl+Shift+N | Snapshots |

@@ -103,6 +103,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_AUTORUNS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_DEVICES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_WSL, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_REGISTRY, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_EVENTS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnDarkMode)
@@ -306,6 +307,7 @@ private:
 		{ TabType::Devices, ID_VIEW_DEVICES, IDI_DEVICE, L"Devices" },
 		{ TabType::Events, ID_VIEW_EVENTS, IDI_EVENT, L"Events" },
 		{ TabType::Wsl, ID_VIEW_WSL, IDI_WSL, L"Wsl" },
+		{ TabType::Registry, ID_VIEW_REGISTRY, IDI_REGISTRY, L"Registry" },
 	};
 	static TabInfo const* FindTab(TabType type);
 

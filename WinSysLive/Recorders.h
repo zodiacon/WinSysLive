@@ -4,11 +4,12 @@
 #include "HistoryRecorder.h"
 #include <WinSys/Ipc.h>
 #include <WinSys/FileIo.h>
+#include <WinSys/RegistryIo.h>
 #include <WinSys/ProcessNetwork.h>
 
 //
 // What records over time, shared by whoever needs it: the History tab's HistoryRecorder, the RPC/ALPC tab's IpcTracker
-// and the Disk tab's FileIoTracker (ETW sessions named after the app's process, so a second one would take the first's
+// the Disk tab's FileIoTracker and the Registry tab's RegistryIoTracker (ETW sessions named after the app's process, so a second one would take the first's
 // session over). Each starts when first acquired and stops when its last owner lets it go. The tabs acquire theirs
 // when first shown; with Options > Record from Startup the frame holds them all (and the network tracker,
 // NetworkTracking) from its start (Holder), so a tab opened later shows what happened since. UI thread only (the
@@ -18,6 +19,7 @@ namespace Recorders {
 	// nullptr if it can't start, with the error from GetLastError() (ERROR_ACCESS_DENIED when not elevated)
 	std::shared_ptr<WinSys::IpcTracker> AcquireIpc();
 	std::shared_ptr<WinSys::FileIoTracker> AcquireFileIo();
+	std::shared_ptr<WinSys::RegistryIoTracker> AcquireRegistryIo();
 	// takes its baseline from the snapshot when it starts
 	std::shared_ptr<HistoryRecorder> AcquireHistory(ProcessManager& pm);
 
@@ -42,6 +44,7 @@ namespace Recorders {
 		std::shared_ptr<HistoryRecorder> m_History;
 		std::shared_ptr<WinSys::IpcTracker> m_Ipc;
 		std::shared_ptr<WinSys::FileIoTracker> m_FileIo;
+		std::shared_ptr<WinSys::RegistryIoTracker> m_RegistryIo;
 		std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;
 		DWORD m_TrackerError{ 0 };
 	};

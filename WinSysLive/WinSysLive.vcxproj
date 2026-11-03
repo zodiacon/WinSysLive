@@ -497,6 +497,7 @@
     <ClCompile Include="AutorunsView.cpp" />
     <ClCompile Include="DevicesView.cpp" />
     <ClCompile Include="WslView.cpp" />
+    <ClCompile Include="RegistryView.cpp" />
     <ClCompile Include="EventsView.cpp" />
     <ClCompile Include="EventDetailsDlg.cpp" />
     <ClCompile Include="TotalPE.cpp" />
@@ -613,6 +614,7 @@
     <ClInclude Include="AutorunsView.h" />
     <ClInclude Include="DevicesView.h" />
     <ClInclude Include="WslView.h" />
+    <ClInclude Include="RegistryView.h" />
     <ClInclude Include="EventsView.h" />
     <ClInclude Include="EventDetailsDlg.h" />
     <ClInclude Include="TotalPE.h" />
@@ -702,6 +704,7 @@
     <Image Include="res\Firewall.ico" />
     <Image Include="res\package.ico" />
     <Image Include="res\wsl.ico" />
+    <Image Include="res\Registry.ico" />
     <Image Include="res\thread.ico" />
     <Image Include="res\timer.ico" />
     <Image Include="res\token.ico" />

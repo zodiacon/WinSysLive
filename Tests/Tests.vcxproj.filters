@@ -54,6 +54,9 @@
     <ClCompile Include="WslTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="RegistryIoTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="WinSysTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
