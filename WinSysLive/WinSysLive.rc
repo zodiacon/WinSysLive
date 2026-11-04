@@ -924,7 +924,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICK
 CAPTION "Resources and Drivers"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_DR_ICON,"Static",SS_ICON | 0x40,7,7,20,20
+    CONTROL         "", IDC_DR_ICON, "Static", SS_ICON | 0x40, 7, 7, 20, 20
     LTEXT           "",IDC_DR_TITLE,34,7,439,12,SS_NOPREFIX | SS_ENDELLIPSIS
     LTEXT           "",IDC_DR_ID,34,20,439,9,SS_NOPREFIX | SS_ENDELLIPSIS
     LTEXT           "&Resources:",IDC_STATIC,7,37,200,9
@@ -1180,7 +1180,7 @@ BEGIN
     LTEXT           "Virtualization:",IDC_STATIC,144,267,50,9
     LTEXT           "",IDC_TOKEN_VIRTUALIZATION,199,267,71,9,SS_NOPREFIX | SS_ENDELLIPSIS
     LTEXT           "Integrity level:",IDC_STATIC,14,281,58,9
-    LTEXT           "",IDC_TOKEN_INTEGRITY,77,281,147,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "",IDC_TOKEN_INTEGRITY,77,281,65,9,SS_NOPREFIX | SS_ENDELLIPSIS
     PUSHBUTTON      "&Lower...",IDC_TOKEN_LOWERINTEGRITY,141,278,42,14
     LTEXT           "Elevation type:",IDC_STATIC,14,295,58,9
     LTEXT           "",IDC_TOKEN_ELEVATIONTYPE,77,295,193,9,SS_NOPREFIX | SS_ENDELLIPSIS
@@ -1776,8 +1776,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,6,0,0
- PRODUCTVERSION 1,6,0,0
+ FILEVERSION 1,7,0
+ PRODUCTVERSION 1,7,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1794,12 +1794,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WinSysLive - Windows Live System Explorer"
-            VALUE "FileVersion", "1.6.0.0"
+            VALUE "FileVersion", "1.7.0"
             VALUE "InternalName", "WinSysLive"
             VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
             VALUE "ProductName", "WinSysLive"
-            VALUE "ProductVersion", "1.6.0.0"
+            VALUE "ProductVersion", "1.7.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -1943,7 +1943,7 @@ BEGIN
     12, 0, 13, 0,
     0, 0, 0, 0,
     0, 0, 25, 0,
-    25, 0, 0, 0,
+    10, 0, 0, 0,
     0, 0, 0, 0,
     0, 0, 25, 0,
     0, 0, 0, 0,
@@ -2172,9 +2172,14 @@ BEGIN
     ID_OPTIONS_RECORDFROMSTARTUP 
                             "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
     ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"
-    ID_SYSTEM_COMREGISTRATION "The registered COM classes: where they run, their servers and signatures, and the per-user ones\nCOM Registration"
     ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
     ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
+END
+
+STRINGTABLE
+BEGIN
+    ID_SYSTEM_COMREGISTRATION 
+                            "The registered COM classes: where they run, their servers and signatures, and the per-user ones\nCOM Registration"
 END
 
 STRINGTABLE
