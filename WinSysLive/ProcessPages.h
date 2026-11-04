@@ -60,6 +60,7 @@ public:
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_ID_HANDLER(IDC_PROC_VERIFY, OnVerify)
 		COMMAND_ID_HANDLER(IDC_PROC_KILL, OnKill)
+		COMMAND_ID_HANDLER(IDC_PROC_SECURITY, OnSecurity)
 		CHAIN_MSG_MAP(CDpiDynamicDialogLayout<CProcGeneralPage>)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcGeneralPage>)
 	END_MSG_MAP()
@@ -74,6 +75,9 @@ private:
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnVerify(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the process object's security in the ACL editor (EditSecurity: a dialog of its own, not resizable, which a page in
+	// the resizable sheet would be), opened with the most of READ_CONTROL, WRITE_DAC and WRITE_OWNER it allows
+	LRESULT OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// ASLR, CFG, CET and DEP, from the process's mitigation policies (and the image's header, for ASLR)
 	void ShowMitigations();

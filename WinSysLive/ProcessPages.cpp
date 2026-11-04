@@ -214,6 +214,15 @@ LRESULT CProcGeneralPage::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	return 0;
 }
 
+LRESULT CProcGeneralPage::OnSecurity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto info = CObjectSecurityInfo::Open([&](DWORD access) { return OpenSheetProcess(m_Props, access).release(); }, L"Process",
+		std::format(L"{} ({})", m_Props.ImageName, m_Props.Id));
+	// its dialogs are owned by the sheet, which themes them (CAclDialogTheming)
+	::EditSecurity(m_hWnd, info);
+	info->Release();
+	return 0;
+}
+
 CProcEnvironmentPage::CProcEnvironmentPage(ProcessProperties const& props) : m_Props(props) {
 	SetIconId(m_psp, IDI_ENVIRONMENT);
 }

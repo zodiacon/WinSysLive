@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WinSys/PEFile.h>
+#include <functional>
 
 //
 // A PE file shown in a dialog's controls (IDC_PE_VIEW, a combo box of the views; IDC_PE_SUMMARY; IDC_PE_LIST, a report
@@ -26,6 +27,10 @@ public:
 	void OnTotalPE();
 	void OnCopy();
 
+	// called when the list is replaced (leaving the Icons view), for a host whose layout holds the list's window
+	// (AFX_DIALOG_LAYOUT's CDynamicDialogLayout; CDialogResize finds it by its ID, which the new one keeps)
+	std::function<void(HWND oldList, HWND newList)> ListReplaced;
+
 private:
 	enum class View { Headers, Sections, Imports, Exports, Debug, Resources, Icons, Version, Manifest, DotNet, _Count };
 
@@ -42,6 +47,11 @@ private:
 	// Resources, Version, Manifest and .NET
 	void BuildMoreTables();
 	void ShowView();
+	// extended styles and column DPI scaling, on the dialog's list and on each new one
+	void SetupList();
+	// a new list in the old one's place: a list view that had an image list keeps its rows' height and the first
+	// column's indent with none (comctl32: neither LVM_SETIMAGELIST nor WM_SETFONT shrinks them back)
+	void RecreateList();
 
 	CWindow m_Dlg;
 	std::wstring m_Path;
@@ -50,6 +60,7 @@ private:
 	Table m_Tables[(int)View::_Count];
 	CListViewCtrl m_List;
 	CImageListManaged m_IconImages;	// the icons at the preview size (the list shares it: LVS_SHAREIMAGELISTS)
+	bool m_ListHasImages{ false };	// the list was given m_IconImages (it's replaced for a view without them)
 	int m_SortColumn{ -1 };
 	bool m_SortAscending{ true };
 };

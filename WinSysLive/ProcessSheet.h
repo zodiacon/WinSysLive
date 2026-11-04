@@ -27,7 +27,6 @@ class CProcessSheet :
 	using BaseSheet = CIconPropertySheetImpl<CProcessSheet, CResizablePropertySheetImpl<CProcessSheet>>;
 public:
 	explicit CProcessSheet(ProcessProperties props);
-	~CProcessSheet();
 
 	void OnSheetInitialized();
 
@@ -65,12 +64,8 @@ private:
 	std::unique_ptr<CProcJobPage> m_Job;	// only for a process in a job
 	std::unique_ptr<CProcDotNetPage> m_DotNet;	// only for a process running .NET
 	std::unique_ptr<CProcServicesPage> m_Services;	// only for a process hosting services
-	// the Security page: the ACL editor's (CreateSecurityPage), on the process opened with the most of READ_CONTROL,
-	// WRITE_DAC and WRITE_OWNER it allows
-	CObjectSecurityInfo* m_Security{ nullptr };
-	int m_SecurityTab{ -1 };
-	int m_ImageTab{ -1 };	// its tab has the executable's icon, set after the sheet is up (as the Security tab's)
-	CAclDialogTheming m_AclTheming;	// the ACL editor's dialogs (also the Token page's)
+	int m_ImageTab{ -1 };	// its tab has the executable's icon, set after the sheet is up
+	CAclDialogTheming m_AclTheming;	// the ACL editor's dialogs (the General and Token pages' Security...)
 };
 
 // opens the sheet on a new thread, which ends when the sheet is closed

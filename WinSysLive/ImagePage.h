@@ -36,6 +36,12 @@ private:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		m_View.Init(m_hWnd, m_Props.ImagePath);
 		InitDynamicLayout(false, false);
+		// the layout holds the list's window, which the view replaces leaving the Icons view
+		m_View.ListReplaced = [this](HWND oldList, HWND newList) {
+			for (int i = 0; i < m_arrLayoutData.GetSize(); i++)
+				if (m_arrLayoutData[i].m_hWnd == oldList)
+					m_arrLayoutData[i].m_hWnd = newList;
+			};
 		return TRUE;
 	}
 	LRESULT OnViewChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

@@ -50,10 +50,9 @@ void CPEView::Init(HWND hDlg, std::wstring path) {
 	m_Dlg = hDlg;
 	m_Path = std::move(path);
 	m_List.Attach(m_Dlg.GetDlgItem(IDC_PE_LIST));
-	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
 	// the Icons view's image list is ours
 	m_List.ModifyStyle(0, LVS_SHAREIMAGELISTS);
-	ListViewHelper::EnableColumnDpiScaling(m_List);
+	SetupList();
 	CComboBox view(m_Dlg.GetDlgItem(IDC_PE_VIEW));
 	for (auto name : { L"Headers", L"Sections", L"Imports", L"Exports", L"Debug", L"Resources", L"Icons", L"Version", L"Manifest", L".NET" })
 		view.AddString(name);
@@ -271,9 +270,36 @@ void CPEView::BuildMoreTables() {
 	}
 }
 
+void CPEView::SetupList() {
+	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_LABELTIP);
+	ListViewHelper::EnableColumnDpiScaling(m_List);
+}
+
+void CPEView::RecreateList() {
+	CListViewCtrl old(m_List.Detach());
+	CRect rc;
+	old.GetWindowRect(&rc);
+	m_Dlg.ScreenToClient(&rc);
+	// the same style (LVS_SHAREIMAGELISTS with it), ID and place in the tab order; the dark mode hook themes it
+	m_List.Create(m_Dlg, rc, nullptr, old.GetStyle(), old.GetExStyle(), old.GetDlgCtrlID());
+	m_List.SetFont(old.GetFont());
+	m_List.SetWindowPos(old, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	SetupList();
+	bool focus = ::GetFocus() == old;
+	if (ListReplaced)
+		ListReplaced(old, m_List);
+	old.DestroyWindow();
+	if (focus)
+		m_List.SetFocus();
+}
+
 void CPEView::ShowView() {
 	auto view = CComboBox(m_Dlg.GetDlgItem(IDC_PE_VIEW)).GetCurSel();
 	auto& table = m_Tables[(std::max)(view, 0)];
+	bool images = !table.Images.empty();
+	if (m_ListHasImages && !images)
+		RecreateList();
+	m_ListHasImages = images;
 	m_List.SetRedraw(FALSE);
 	m_List.DeleteAllItems();
 	while (m_List.GetHeader().GetItemCount() > 0)
@@ -297,7 +323,6 @@ void CPEView::ShowView() {
 			});
 	}
 	// the Icons view's previews, as the rows' images; none for the other views
-	bool images = !table.Images.empty();
 	m_List.SetImageList(images ? m_IconImages.m_hImageList : nullptr, LVSIL_SMALL);
 	for (int row = 0; row < (int)order.size(); row++) {
 		auto& cells = table.Rows[order[row]];

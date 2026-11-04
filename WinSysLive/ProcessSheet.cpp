@@ -35,8 +35,9 @@ namespace {
 CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)) {
 	m_Title = std::format(L"{} ({}) Properties", m_Props.ImageName, m_Props.Id);
 	SetTitle(m_Title.c_str());
-	// Apply stays for the Security page's changes (disabled until there are some; Close applies them too, as OK does)
-	m_psh.dwFlags |= PSH_NOCONTEXTHELP;
+	// no Apply: nothing on the pages waits to be applied (the process's permissions are edited in the ACL editor's own
+	// dialog, the General page's Security...)
+	m_psh.dwFlags |= PSH_NOCONTEXTHELP | PSH_NOAPPLYNOW;
 
 	if (!m_Props.ImagePath.empty())
 		::ExtractIconEx(m_Props.ImagePath.c_str(), 0, &m_Icon.m_hIcon, &m_SmallIcon.m_hIcon, 1);
@@ -68,12 +69,6 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	AddPage(*m_Token);
 	m_Windows = std::make_unique<CProcWindowsPage>(m_Props);
 	AddPage(*m_Windows);
-	m_Security = CObjectSecurityInfo::Open([&](DWORD access) { return OpenSheetProcess(m_Props, access).release(); }, L"Process",
-		std::format(L"{} ({})", m_Props.ImageName, m_Props.Id));
-	if (auto page = ::CreateSecurityPage(m_Security)) {
-		m_SecurityTab = GetPageCount();
-		AddPage(page);
-	}
 	m_Threads = std::make_unique<CProcThreadsPage>(m_Props, m_Snapshot);
 	AddPage(*m_Threads);
 	m_Modules = std::make_unique<CProcModulesPage>(m_Props, L"Modules", IDI_MODULES);
@@ -101,15 +96,8 @@ CProcessSheet::CProcessSheet(ProcessProperties props) : m_Props(std::move(props)
 	}
 }
 
-CProcessSheet::~CProcessSheet() {
-	if (m_Security)
-		m_Security->Release();
-}
-
 void CProcessSheet::OnSheetInitialized() {
 	BaseSheet::OnSheetInitialized();
-	if (m_SecurityTab >= 0)
-		SetSecurityTabIcon(m_hWnd, m_SecurityTab);
 	if (m_ImageTab >= 0) {
 		// the executable's icon at the tab's size (the sheet's small one, the application icon, for a file without any);
 		// added to the tab's image list, which the sheet makes again in a new size on a DPI change
