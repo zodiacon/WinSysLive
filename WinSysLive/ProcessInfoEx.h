@@ -37,6 +37,9 @@ struct ProcessInfoEx : WinSys::ProcessInfo {
 	std::optional<WinSys::ProcessMitigations> const& GetMitigations();
 	// "Yes" or "No", with "(full)" or "(limited)" for a split (UAC) token; empty if the token can't be opened
 	const std::wstring& GetElevation();
+	// the logon session its token belongs to (TOKEN_STATISTICS' AuthenticationId), queried once; nothing if the token
+	// can't be opened (another user's, without elevation)
+	std::optional<LUID> GetLogonId();
 	// what it serves as a COM server (WinSys ComServers, by its command line): Kind None at once for a process whose
 	// command line isn't a server's; else looked up on ComServerLookup's thread, nullptr until it's known
 	WinSys::ComServerInfo const* GetComServer();
@@ -78,6 +81,8 @@ private:
 	bool m_ImmersiveDone{ false }, m_Immersive{ false };
 	std::wstring m_PackageName, m_Elevation;
 	bool m_PackageNameDone{ false }, m_ElevationDone{ false };
+	std::optional<LUID> m_LogonId;
+	bool m_LogonIdDone{ false };
 	WinSys::DpiAwareness m_DpiAwareness{ WinSys::DpiAwareness::Unknown };
 	bool m_DpiAwarenessDone{ false };
 	std::optional<WinSys::ProcessMitigations> m_Mitigations;

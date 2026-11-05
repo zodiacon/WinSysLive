@@ -28,7 +28,32 @@ namespace {
 		{ L"CPU (%)", L"CPU", 70, LVCFMT_RIGHT, true },
 		{ L"Private Bytes", L"PrivateBytes", 110, LVCFMT_RIGHT, true },
 		{ L"Working Set", L"WorkingSet", 110, LVCFMT_RIGHT, true },
+		// version 1
+		{ L"User", L"User", 160, LVCFMT_LEFT, true, false, nullptr, 1 },
+		{ L"Logon ID", L"LogonId", 100, LVCFMT_LEFT, false, false, nullptr, 1 },
+		{ L"Logon Type", L"LogonType", 110, LVCFMT_LEFT, false, false, nullptr, 1 },
 	};
+
+	std::wstring FormatLogonId(int64_t id) {
+		auto high = (ULONG)(id >> 32), low = (ULONG)id;
+		return high ? std::format(L"0x{:X}:{:08X}", high, low) : std::format(L"0x{:X}", low);
+	}
+
+	// LSA's FILETIME: none, never (the largest value), else the local time
+	std::wstring FormatLogonTime(LARGE_INTEGER const& time) {
+		if (time.QuadPart == 0 || time.QuadPart == MAXLONGLONG)
+			return L"";
+		return FormatHelper::FormatDateTime(time.QuadPart);
+	}
+
+	// accounts of Windows itself and of services, which run in users' sessions too (csrss, dwm, fontdrvhost...)
+	bool IsSystemAccount(std::wstring const& account) {
+		static const std::wstring_view domains[] = { L"NT AUTHORITY\\", L"NT SERVICE\\", L"Window Manager\\",
+			L"Font Driver Host\\", L"IIS APPPOOL\\", L"NT VIRTUAL MACHINE\\" };
+		return std::ranges::any_of(domains, [&](auto d) {
+			return account.size() > d.size() && ::_wcsnicmp(account.c_str(), d.data(), d.size()) == 0;
+		});
+	}
 
 	PCWSTR SessionStateToString(SessionState state) {
 		using enum SessionState;
@@ -170,6 +195,7 @@ void CUsersView::Rebuild() {
 		row.Item = nullptr;
 	m_Processes.clear();
 	m_Accounts.clear();
+	m_Logons.clear();
 	m_AddedGroups.clear();
 	SyncSessions();
 	SyncProcesses();
@@ -182,11 +208,14 @@ void CUsersView::Rebuild() {
 void CUsersView::ExpandOwnGroup() {
 	HTLITEM hItem = nullptr;
 	if (m_ByAccount) {
-		// this process's account
+		// this process's account (and its logon, in case the user collapsed it)
 		auto self = std::ranges::find_if(m_Processes, [](auto& pair) { return pair.second.Process->Id == ::GetCurrentProcessId(); });
-		if (self != m_Processes.end())
+		if (self != m_Processes.end()) {
+			if (auto it = m_Logons.find({ self->second.Account, self->second.LogonId }); it != m_Logons.end())
+				m_Tree.Expand(it->second.Item);
 			if (auto it = m_Accounts.find(self->second.Account); it != m_Accounts.end())
 				hItem = it->second.Item;
+		}
 	}
 	else {
 		DWORD session;
@@ -251,12 +280,15 @@ void CUsersView::OnRefresh(bool /*active*/) {
 	auto selected = GetSelectedRow();
 	std::optional<uint32_t> selectedSession;
 	std::optional<std::wstring> selectedAccount;
+	std::optional<std::pair<std::wstring, int64_t>> selectedLogon;
 	std::optional<ProcessOrThreadKey> selectedProcess;
 	if (selected) {
 		if (selected->IsSession)
 			selectedSession = selected->SessionId;
 		else if (selected->IsAccount)
 			selectedAccount = selected->Account;
+		else if (selected->IsLogon)
+			selectedLogon = std::pair{ selected->Account, selected->LogonId };
 		else
 			selectedProcess = selected->Process->Key;
 	}
@@ -275,6 +307,10 @@ void CUsersView::OnRefresh(bool /*active*/) {
 	}
 	else if (selectedAccount) {
 		if (auto it = m_Accounts.find(*selectedAccount); it != m_Accounts.end())
+			hSelect = it->second.Item;
+	}
+	else if (selectedLogon) {
+		if (auto it = m_Logons.find(*selectedLogon); it != m_Logons.end())
 			hSelect = it->second.Item;
 	}
 	else if (selectedProcess) {
@@ -337,6 +373,54 @@ std::wstring CUsersView::GetAccountTitle(std::wstring const& account) {
 	return account.empty() ? L"(Unknown)" : account;
 }
 
+WinSys::LogonSessionData const* CUsersView::GetLogon(int64_t logonId) const {
+	if (logonId == 0)
+		return nullptr;
+	auto [it, added] = m_LogonDetails.try_emplace(logonId);
+	if (added) {
+		LUID luid{ (DWORD)logonId, (LONG)(logonId >> 32) };
+		it->second = LsaSecurity::GetLogonSessionData(luid);
+	}
+	return it->second ? &*it->second : nullptr;
+}
+
+std::wstring CUsersView::GetLogonTitle(Row const& logon) const {
+	// the token couldn't be opened
+	if (logon.LogonId == 0)
+		return L"(Unknown logon)";
+	auto details = GetLogon(logon.LogonId);
+	auto id = FormatLogonId(logon.LogonId);
+	return details ? std::format(L"{} logon ({})", LsaSecurity::LogonTypeName(details->LogonType), id) : std::format(L"Logon {}", id);
+}
+
+bool CUsersView::IsOtherUser(Row const& process) const {
+	if (process.Account.empty() || IsSystemAccount(process.Account))
+		return false;
+	auto session = m_Sessions.find(process.SessionId);
+	if (session == m_Sessions.end() || session->second.Session.UserName.empty())
+		return false;
+	return ::_wcsicmp(GetSessionTitle(session->second.Session).c_str(), process.Account.c_str()) != 0;
+}
+
+LRESULT CUsersView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_Tree) {
+		bHandled = FALSE;
+		return 0;
+	}
+	auto cd = reinterpret_cast<NMTLVCUSTOMDRAW*>(hdr);
+	if (cd->nmcd.dwDrawStage == CDDS_PREPAINT)
+		return CDRF_NOTIFYITEMDRAW;
+	if ((cd->nmcd.dwDrawStage & CDDS_ITEMPREPAINT) == CDDS_ITEMPREPAINT && cd->hItem) {
+		// another user's process in a session (Run As)
+		auto& row = *reinterpret_cast<Row*>(m_Tree.GetItemData(cd->hItem));
+		if (!row.IsGroup() && IsOtherUser(row)) {
+			cd->clrText = WTLHelper::IsDarkMode() ? RGB(255, 190, 110) : RGB(170, 80, 0);
+			return CDRF_NEWFONT;
+		}
+	}
+	return CDRF_DODEFAULT;
+}
+
 void CUsersView::SyncProcesses() {
 	auto reset = [](Row& group) {
 		group.Processes = 0;
@@ -347,11 +431,15 @@ void CUsersView::SyncProcesses() {
 		reset(session);
 	for (auto& [name, account] : m_Accounts)
 		reset(account);
-	// the account rows' sessions, collected as their processes are counted
-	std::unordered_map<std::wstring, std::set<uint32_t>> accountSessions;
+	for (auto& [key, logon] : m_Logons)
+		reset(logon);
+	// the account and logon rows' sessions, collected as their processes are counted
+	std::unordered_map<Row*, std::set<uint32_t>> groupSessions;
+	std::unordered_set<int64_t> liveLogons;
 
 	auto& pm = Frame()->GetProcessManager();
 	auto accountImage = Frame()->GetIconIndex(IDI_USER);
+	auto logonImage = Frame()->GetIconIndex(IDI_SESSION);
 	std::unordered_set<ProcessOrThreadKey> live;
 	live.reserve(m_Processes.size() + 64);
 	for (auto& p : pm.GetProcesses()) {
@@ -371,20 +459,38 @@ void CUsersView::SyncProcesses() {
 			row.Process = p;
 			// once: it opens the process (unelevated) and looks up the SID, and ProcessInfoEx keeps it
 			row.Account = p->GetUser();
+			if (auto luid = p->GetLogonId())
+				row.LogonId = ((int64_t)luid->HighPart << 32) | luid->LowPart;
 		}
+		if (row.LogonId)
+			liveLogons.insert(row.LogonId);
 
-		// the group: the session's row, or the account's (added as its first process comes)
+		// the group: the session's row, or the account's logon's (added, with the account, as its first process comes)
 		Row* group = &session->second;
 		if (m_ByAccount) {
 			auto [account, added] = m_Accounts.try_emplace(row.Account);
-			group = &account->second;
+			auto& a = account->second;
 			if (added) {
-				group->IsAccount = true;
-				group->Account = row.Account;
-				group->Item = m_Tree.InsertItem(TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, accountImage, reinterpret_cast<LPARAM>(group));
-				m_AddedGroups.push_back(group->Item);
+				a.IsAccount = true;
+				a.Account = row.Account;
+				a.Item = m_Tree.InsertItem(TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, accountImage, reinterpret_cast<LPARAM>(&a));
+				m_AddedGroups.push_back(a.Item);
 			}
-			accountSessions[row.Account].insert(row.SessionId);
+			auto [logon, logonAdded] = m_Logons.try_emplace({ row.Account, row.LogonId });
+			group = &logon->second;
+			if (logonAdded) {
+				// expanded: an account's row is what's collapsed
+				group->IsLogon = true;
+				group->Account = row.Account;
+				group->LogonId = row.LogonId;
+				group->Item = m_Tree.InsertItem(a.Item, TLV_LAST, LPSTR_TEXTCALLBACK, logonImage, reinterpret_cast<LPARAM>(group));
+			}
+			a.Processes++;
+			a.CPU += p->CPU;
+			a.PrivateBytes += info->PrivatePageCount;
+			a.WorkingSet += info->WorkingSetSize;
+			groupSessions[&a].insert(row.SessionId);
+			groupSessions[group].insert(row.SessionId);
 		}
 
 		// in the tree only while it matches the filter
@@ -411,18 +517,20 @@ void CUsersView::SyncProcesses() {
 		return true;
 		});
 
-	// accounts go with their last process (its row is gone already)
-	std::erase_if(m_Accounts, [&](auto& pair) {
-		auto& account = pair.second;
-		if (account.Processes > 0) {
-			account.Sessions.clear();
-			for (auto id : accountSessions[pair.first])
-				account.Sessions += (account.Sessions.empty() ? L"" : L", ") + std::to_wstring(id);
-			return false;
+	// logons, then accounts, go with their last process (its row is gone already)
+	auto keep = [&](Row& group) {
+		if (group.Processes > 0) {
+			group.Sessions.clear();
+			for (auto id : groupSessions[&group])
+				group.Sessions += (group.Sessions.empty() ? L"" : L", ") + std::to_wstring(id);
+			return true;
 		}
-		m_Tree.DeleteItem(account.Item);
-		return true;
-		});
+		m_Tree.DeleteItem(group.Item);
+		return false;
+	};
+	std::erase_if(m_Logons, [&](auto& pair) { return !keep(pair.second); });
+	std::erase_if(m_Accounts, [&](auto& pair) { return !keep(pair.second); });
+	std::erase_if(m_LogonDetails, [&](auto& pair) { return !liveLogons.contains(pair.first); });
 
 	// the TreeListView expands a new parent; new groups start collapsed
 	for (auto hItem : m_AddedGroups)
@@ -462,10 +570,27 @@ std::wstring CUsersView::GetColumnText(Row& row, Column column) const {
 		}
 		return L"";
 	}
+	if (row.IsLogon) {
+		auto logon = GetLogon(row.LogonId);
+		switch (column) {
+			case Column::Name: return GetLogonTitle(row);
+			case Column::SessionId: return row.Sessions;
+			case Column::User: return row.Account;
+			case Column::LogonId: return row.LogonId ? FormatLogonId(row.LogonId) : L"";
+			case Column::LogonType: return logon ? LsaSecurity::LogonTypeName(logon->LogonType) : L"";
+			case Column::LogonTime: return logon ? FormatLogonTime(logon->LogonTime) : L"";
+			case Column::Processes: return std::to_wstring(row.Processes);
+			case Column::CPU: return FormatHelper::FormatCpu(row.CPU);
+			case Column::PrivateBytes: return FormatHelper::FormatSize(row.PrivateBytes);
+			case Column::WorkingSet: return FormatHelper::FormatSize(row.WorkingSet);
+		}
+		return L"";
+	}
 	if (row.IsAccount) {
 		switch (column) {
 			case Column::Name: return GetAccountTitle(row.Account);
 			case Column::SessionId: return row.Sessions;
+			case Column::User: return row.Account;
 			case Column::Processes: return std::to_wstring(row.Processes);
 			case Column::CPU: return FormatHelper::FormatCpu(row.CPU);
 			case Column::PrivateBytes: return FormatHelper::FormatSize(row.PrivateBytes);
@@ -481,6 +606,12 @@ std::wstring CUsersView::GetColumnText(Row& row, Column column) const {
 		case Column::ProcessId: return std::to_wstring(p.Id);
 		// by session, the parent has it
 		case Column::SessionId: return m_ByAccount ? std::to_wstring(row.SessionId) : L"";
+		case Column::User: return row.Account;
+		case Column::LogonId: return row.LogonId ? FormatLogonId(row.LogonId) : L"";
+		case Column::LogonType:
+			if (auto logon = GetLogon(row.LogonId))
+				return LsaSecurity::LogonTypeName(logon->LogonType);
+			return L"";
 		case Column::CPU: return FormatHelper::FormatCpu(p.CPU);
 		case Column::PrivateBytes: return FormatHelper::FormatSize(info->PrivatePageCount);
 		case Column::WorkingSet: return FormatHelper::FormatSize(info->WorkingSetSize);
@@ -516,12 +647,21 @@ int CALLBACK CUsersView::CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam) {
 int CUsersView::CompareRows(Row& r1, Row& r2) const {
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
 	auto column = (Column)m_SortColumn;
-	// siblings are all sessions, all accounts or all processes
+	// siblings are all sessions, all accounts, all logons or all processes
 	if (r1.IsSession) {
 		switch (column) {
 			case Column::SessionId: return compare(r1.SessionId, r2.SessionId);
 			case Column::State: return compare(r1.Session.State, r2.Session.State);
 			case Column::LogonTime: return compare(r1.Session.LogonTime, r2.Session.LogonTime);
+		}
+	}
+	if (r1.IsLogon) {
+		switch (column) {
+			case Column::LogonId: return compare(r1.LogonId, r2.LogonId);
+			case Column::LogonTime: {
+				auto l1 = GetLogon(r1.LogonId), l2 = GetLogon(r2.LogonId);
+				return compare(l1 ? l1->LogonTime.QuadPart : 0, l2 ? l2->LogonTime.QuadPart : 0);
+			}
 		}
 	}
 	if (r1.IsGroup()) {
@@ -537,6 +677,7 @@ int CUsersView::CompareRows(Row& r1, Row& r2) const {
 		switch (column) {
 			case Column::ProcessId: return compare(r1.Process->Id, r2.Process->Id);
 			case Column::SessionId: return compare(r1.SessionId, r2.SessionId);
+			case Column::LogonId: return compare(r1.LogonId, r2.LogonId);
 			case Column::CPU: return compare(r1.Process->CPU, r2.Process->CPU);
 			case Column::PrivateBytes: return compare(i1->PrivatePageCount, i2->PrivatePageCount);
 			case Column::WorkingSet: return compare(i1->WorkingSetSize, i2->WorkingSetSize);

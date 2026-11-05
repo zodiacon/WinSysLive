@@ -222,6 +222,16 @@ const std::wstring& ProcessInfoEx::GetElevation() {
 	return m_Elevation;
 }
 
+std::optional<LUID> ProcessInfoEx::GetLogonId() {
+	if (!m_LogonIdDone) {
+		m_LogonIdDone = true;
+		if (auto process = GetProcess())
+			if (Token token(process->Handle(), TokenAccessMask::Query); token)
+				m_LogonId = token.GetStats().AuthenticationId;
+	}
+	return m_LogonId;
+}
+
 int ProcessInfoEx::GetMemoryPriority() {
 	auto process = GetProcess();
 	return process ? process->GetMemoryPriority() : -1;
