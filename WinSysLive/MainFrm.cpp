@@ -29,6 +29,7 @@
 #include <WinSys/Connections.h>
 #include "EtwSessionsDlg.h"
 #include "KernelCallbacksDlg.h"
+#include "CertificatesDlg.h"
 #include "WindowStationsDlg.h"
 #include "PowerRequestsDlg.h"
 #include "RamDlg.h"
@@ -103,6 +104,8 @@ namespace {
 		IDI_WSL,
 		// the Registry tab
 		IDI_REGISTRY,
+		// the Certificate Stores dialog's Local Machine
+		IDI_SYSINFO,
 	};
 
 	// the system's stock icons in the image list too (GetIconIndex(SystemIconId(IDI_WARNING)))
@@ -954,6 +957,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_COMREGISTRATION, IDI_COM },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_KERNELCALLBACKS, IDI_SYSTEM_DRIVER },
+		{ ID_SYSTEM_CERTIFICATES, IDI_CERTIFICATES },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
 		{ ID_FILE_SNAPSHOTS, IDI_SNAPSHOT },
 		{ ID_EDIT_COPY, IDI_COPY },
@@ -1760,6 +1764,12 @@ LRESULT CMainFrame::OnWindowStations(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 
 LRESULT CMainFrame::OnEtwSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CEtwSessionsDlg dlg([this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); });
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnCertificates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CCertificatesDlg dlg(m_Images, [this](UINT id) { return GetIconIndex(id); });
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

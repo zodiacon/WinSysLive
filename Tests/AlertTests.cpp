@@ -93,6 +93,16 @@ TEST(Alerts_Describe) {
 	CHECK_EQ(r.Describe(), std::wstring(L"Any process starts"));
 	r.Kind = AlertKind::ServiceFailed;
 	CHECK_EQ(r.Describe(), std::wstring(L"Any service fails (service)"));
+	r.Kind = AlertKind::ProcessTampered;
+	r.Threshold = 0;
+	CHECK_EQ(r.Describe(), std::wstring(L"Any process is tampered with"));
+	r.Pattern = L"svchost.exe";
+	CHECK_EQ(r.Describe(), std::wstring(L"svchost.exe is tampered with"));
+	// its stored key, which must not change; a process kind: by image name, no threshold
+	CHECK_EQ(AlertRule::FormatRules({ r }), std::wstring(L"ProcessTampered|1|0|0|svchost.exe"));
+	CHECK(AlertRule::HasPattern(AlertKind::ProcessTampered));
+	CHECK(!AlertRule::HasThreshold(AlertKind::ProcessTampered));
+	CHECK(!AlertRule::IsServiceKind(AlertKind::ProcessTampered));
 }
 
 TEST(Alerts_KindProperties) {

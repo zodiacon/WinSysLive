@@ -5,6 +5,9 @@
 #include <WinSys/ServiceInfo.h>
 #include "ProcessInfoEx.h"
 #include "AlertRules.h"
+#include "IntegrityChecker.h"
+#include <WinSys/ProcessCreation.h>
+#include <unordered_set>
 #include <deque>
 #include <mutex>
 #include <WinSys/EventLog.h>
@@ -62,7 +65,15 @@ private:
 		AlertCondition System;
 		std::unordered_map<WinSys::ProcessOrThreadKey, AlertCondition> Processes;
 		AlertThrottle Throttle;	// the rule's alerts grouped and held back (its quiet period)
+		// ProcessTampered: the running processes it reported, an image and a parent apart (each once)
+		std::unordered_set<WinSys::ProcessOrThreadKey> ImageReported, ParentReported;
 	};
+	// while a ProcessTampered rule is on: the images checked (once a process is two seconds old: a hollowing is done
+	// while it's suspended) and who created each process (elevated only)
+	void UpdateTampering(WinSys::ProcessManager<ProcessInfoEx>& pm);
+	IntegrityChecker m_Integrity;
+	std::shared_ptr<WinSys::ProcessCreationTracker> m_Creations;
+	bool m_CreationsTried{ false };
 
 	// a service as last seen: its state (not a pending one) and process
 	struct KnownService {

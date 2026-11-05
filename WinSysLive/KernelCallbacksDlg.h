@@ -24,6 +24,11 @@ class CKernelCallbacksDlg :
 public:
 	enum { IDD = IDD_KERNELCALLBACKS };
 
+	~CKernelCallbacksDlg() {
+		if (m_TabImages)
+			m_TabImages.Destroy();
+	}
+
 	// after DoModal returned IDC_KC_GOTO: the driver to go to
 	std::wstring const& GetDriverPath() const {
 		return m_GoTo;
@@ -115,6 +120,7 @@ private:
 	void UpdateStatus();
 
 	CTabCtrl m_Tabs;
+	CImageList m_TabImages;	// the tabs' icons, destroyed with the dialog (a tab control doesn't destroy its image list)
 	CListViewCtrl m_List, m_Details;
 	Table m_Tables[(int)Tab::_Count];			// the upper list's, by tab
 	Table m_DetailTables[(int)Tab::_Count];		// the lower list's (its rows: the selected row's)

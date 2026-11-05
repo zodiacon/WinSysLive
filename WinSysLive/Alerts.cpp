@@ -3,6 +3,8 @@
 #include "resource.h"
 #include "AppSettings.h"
 #include "FormatHelper.h"
+#include "Recorders.h"
+#include <WinSys/SecurityHelper.h>
 #include <WinSys/SystemInfo.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Helpers.h>
@@ -116,6 +118,34 @@ void CAlerts::ClearRecent() {
 	m_Recent.clear();
 }
 
+void CAlerts::UpdateTampering(WinSys::ProcessManager<ProcessInfoEx>& pm) {
+	for (auto& p : pm.GetTerminatedProcesses()) {
+		m_Integrity.Forget(p->Key);
+		for (auto& state : m_States) {
+			state.ImageReported.erase(p->Key);
+			state.ParentReported.erase(p->Key);
+		}
+	}
+	if (std::ranges::none_of(m_Rules, [](auto& r) { return r.Enabled && r.Kind == AlertKind::ProcessTampered; })) {
+		m_Creations.reset();
+		m_CreationsTried = false;
+		return;
+	}
+	// the kernel provider's session needs administrator rights; tried once while the rule stays on
+	if (!m_Creations && !m_CreationsTried) {
+		m_CreationsTried = true;
+		if (WinSys::SecurityHelper::IsRunningElevated())
+			m_Creations = Recorders::AcquireProcessCreation();
+	}
+	FILETIME ft;
+	::GetSystemTimeAsFileTime(&ft);
+	auto now = (int64_t)ULARGE_INTEGER{ ft.dwLowDateTime, ft.dwHighDateTime }.QuadPart;
+	// as the Processes view does: not Idle and System, and a new process once it's two seconds old
+	for (auto& p : pm.GetProcesses())
+		if (p->Id > 4 && now - p->Key.Created >= 2 * 10000000LL)
+			m_Integrity.CheckImage(p->Key);
+}
+
 std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu) {
 	std::vector<AlertEvent> events;
 	bool baseline = !m_Baseline;
@@ -180,6 +210,7 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 			: std::format(L"{} event {}{}: {}", e.Channel, e.EventId, auditing ? L"" : L" from " + e.Provider, line), e.ProcessId, running);
 	}
 
+	UpdateTampering(pm);
 	auto processes = pm.GetProcesses();
 	for (size_t i = 0; i < m_Rules.size(); i++) {
 		auto& rule = m_Rules[i];
@@ -239,6 +270,19 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 				state.Processes = std::move(current);
 				break;
 			}
+
+			case AlertKind::ProcessTampered:
+				// the processes already tampered with when the rule comes on too: each once
+				for (auto& p : processes) {
+					if (!AlertRule::Matches(rule.Pattern, p->GetImageName()))
+						continue;
+					if (auto image = m_Integrity.GetImage(p->Key); image && IntegrityChecker::IsTampered(*image) && state.ImageReported.insert(p->Key).second)
+						add(i, std::format(L"{} ({}): {}: {}", p->GetImageName(), p->Id, WinSys::ProcessIntegrity::StatusText(image->Status), image->Detail), p->Id, true);
+					if (m_Creations)
+						if (auto c = m_Creations->Get(p->Key); c && c->Creator == WinSys::ProcessCreator::Other && state.ParentReported.insert(p->Key).second)
+							add(i, std::format(L"{} ({}): {}", p->GetImageName(), p->Id, WinSys::ProcessCreationParser::Describe(*c)), p->Id, true);
+				}
+				break;
 
 			case AlertKind::ServiceStarted:
 			case AlertKind::ServiceStopped:

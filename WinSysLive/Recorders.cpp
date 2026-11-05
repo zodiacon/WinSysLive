@@ -7,6 +7,7 @@ namespace {
 	std::weak_ptr<WinSys::IpcTracker> s_Ipc;
 	std::weak_ptr<WinSys::FileIoTracker> s_FileIo;
 	std::weak_ptr<WinSys::RegistryIoTracker> s_RegistryIo;
+	std::weak_ptr<WinSys::ProcessCreationTracker> s_Creation;
 	std::weak_ptr<HistoryRecorder> s_History;
 
 	// the current tracker, or a new one started with the session prefix
@@ -39,6 +40,10 @@ std::shared_ptr<WinSys::RegistryIoTracker> Recorders::AcquireRegistryIo() {
 	return Acquire(s_RegistryIo, L"WinSysLive Registry");
 }
 
+std::shared_ptr<WinSys::ProcessCreationTracker> Recorders::AcquireProcessCreation() {
+	return Acquire(s_Creation, L"WinSysLive Processes");
+}
+
 std::shared_ptr<HistoryRecorder> Recorders::AcquireHistory(ProcessManager& pm) {
 	if (auto history = s_History.lock())
 		return history;
@@ -53,8 +58,11 @@ void Recorders::OnRefresh(ProcessManager& pm) {
 	auto ipc = s_Ipc.lock();
 	auto fileIo = s_FileIo.lock();
 	auto registryIo = s_RegistryIo.lock();
-	if (ipc || fileIo || registryIo)
+	auto creation = s_Creation.lock();
+	if (ipc || fileIo || registryIo || creation)
 		for (auto& p : pm.GetTerminatedProcesses()) {
+			if (creation)
+				creation->Remove(p->Key);
 			if (ipc)
 				ipc->RemoveProcess(p->Id);
 			if (fileIo)
@@ -76,6 +84,8 @@ void Recorders::Holder::Start(ProcessManager& pm) {
 		m_TrackerError = ::GetLastError();
 	if (!m_Network && !(m_Network = NetworkTracking::Acquire()))
 		m_TrackerError = ::GetLastError();
+	if (!m_Creation && !(m_Creation = AcquireProcessCreation()))
+		m_TrackerError = ::GetLastError();
 }
 
 void Recorders::Holder::Stop() {
@@ -84,5 +94,6 @@ void Recorders::Holder::Stop() {
 	m_FileIo.reset();
 	m_RegistryIo.reset();
 	m_Network.reset();
+	m_Creation.reset();
 	m_TrackerError = 0;
 }

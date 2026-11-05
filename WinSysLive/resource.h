@@ -831,6 +831,9 @@
 #define IDI_COM                         352
 #define IDI_COM_SERVER                  353
 #define IDI_COM_SERVICE                 354
+#define IDI_CALLBACK                    357
+#define IDI_FILTER                      358
+#define IDI_CERTIFICATES                359
 #define IDC_CR_FILTER                   1495
 #define IDC_CR_32BIT                    1496
 #define IDC_CR_SUSPICIOUS               1497
@@ -863,6 +866,18 @@
 #define IDC_KC_GOTO                     1561
 #define IDC_KC_REFRESH                  1562
 #define IDC_KC_COPY                     1563
+#define IDD_CERTIFICATES                356
+#define ID_SYSTEM_CERTIFICATES          33050
+#define IDC_CE_TREE                     1564
+#define IDC_CE_FILTER                   1565
+#define IDC_CE_CONCERNS                 1566
+#define IDC_CE_LIST                     1567
+#define IDC_CE_STATUS                   1568
+#define IDC_CE_VIEW                     1569
+#define IDC_CE_MANAGER                  1570
+#define IDC_CE_REFRESH                  1571
+#define IDC_CE_COPY                     1572
+#define IDC_CE_COPYTHUMBPRINT           1573
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -918,9 +933,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        356
-#define _APS_NEXT_COMMAND_VALUE         33050
-#define _APS_NEXT_CONTROL_VALUE         1564
+#define _APS_NEXT_RESOURCE_VALUE        360
+#define _APS_NEXT_COMMAND_VALUE         33051
+#define _APS_NEXT_CONTROL_VALUE         1574
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

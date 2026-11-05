@@ -451,6 +451,7 @@
     <ClCompile Include="CommandPaletteDlg.cpp" />
     <ClCompile Include="EtwSessionsDlg.cpp" />
     <ClCompile Include="KernelCallbacksDlg.cpp" />
+    <ClCompile Include="CertificatesDlg.cpp" />
     <ClCompile Include="AlertsDlg.cpp" />
     <ClCompile Include="PowerRequestsDlg.cpp" />
     <ClCompile Include="Alerts.cpp" />
@@ -581,6 +582,7 @@
     <ClInclude Include="CommandPaletteDlg.h" />
     <ClInclude Include="EtwSessionsDlg.h" />
     <ClInclude Include="KernelCallbacksDlg.h" />
+    <ClInclude Include="CertificatesDlg.h" />
     <ClInclude Include="AlertsDlg.h" />
     <ClInclude Include="PowerRequestsDlg.h" />
     <ClInclude Include="Alerts.h" />

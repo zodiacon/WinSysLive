@@ -200,6 +200,7 @@ BEGIN
         MENUITEM "Firewall R&ules...",          ID_SYSTEM_FIREWALL
         MENUITEM "&COM Registration...",        ID_SYSTEM_COMREGISTRATION
         MENUITEM "&Kernel Callbacks and Minifilters...", ID_SYSTEM_KERNELCALLBACKS
+        MENUITEM "Certificate &Stores...",      ID_SYSTEM_CERTIFICATES
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
@@ -431,6 +432,9 @@ IDI_DEVICE              ICON                    "res\\device.ico"
 IDI_EVENT               ICON                    "res\\event.ico"
 
 IDI_KEY                 ICON                    "res\\key.ico"
+IDI_CALLBACK            ICON                    "res\\callback.ico"
+IDI_FILTER              ICON                    "res\\Filter.ico"
+IDI_CERTIFICATES        ICON                    "res\\Certificates.ico"
 
 IDI_ALPC                ICON                    "res\\message.ico"
 
@@ -1034,6 +1038,23 @@ BEGIN
     LTEXT           "seconds after an alert (0: none)",IDC_AR_QUIET_HINT,126,123,147,9
     DEFPUSHBUTTON   "OK",IDOK,169,148,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,223,148,50,14
+END
+
+IDD_CERTIFICATES DIALOGEX 0, 0, 740, 400
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Certificate Stores"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_CE_TREE,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,240,366
+    EDITTEXT        IDC_CE_FILTER,253,7,410,14,ES_AUTOHSCROLL
+    CONTROL         "C&oncerns only",IDC_CE_CONCERNS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,670,9,63,10
+    CONTROL         "",IDC_CE_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,253,26,480,347
+    LTEXT           "",IDC_CE_STATUS,7,382,430,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&View...",IDC_CE_VIEW,443,379,50,14
+    PUSHBUTTON      "&Manager",IDC_CE_MANAGER,498,379,55,14
+    PUSHBUTTON      "&Refresh",IDC_CE_REFRESH,558,379,55,14
+    PUSHBUTTON      "&Copy",IDC_CE_COPY,618,379,55,14
+    PUSHBUTTON      "Close",IDCANCEL,683,379,50,14
 END
 
 IDD_KERNELCALLBACKS DIALOGEX 0, 0, 600, 380
@@ -2172,6 +2193,7 @@ BEGIN
                             "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
     ID_SYSTEM_KERNELCALLBACKS "Show the file system minifilters and the drivers that register kernel callbacks (process, thread, image, registry, object...)\nKernel Callbacks and Minifilters"
+    ID_SYSTEM_CERTIFICATES  "Show the machine's and the user's certificate stores, with the roots Microsoft doesn't vouch for\nCertificate Stores"
     ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
     ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
 END

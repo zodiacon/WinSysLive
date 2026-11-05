@@ -28,8 +28,14 @@ LRESULT CKernelCallbacksDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPAR
 	SetIcon(AtlLoadIconImage(IDI_SYSTEM_DRIVER, LR_SHARED, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON)), FALSE);
 
 	m_Tabs.Attach(GetDlgItem(IDC_KC_TABS));
-	m_Tabs.InsertItem(0, L"Minifilters");
-	m_Tabs.InsertItem(1, L"Callback Registrations");
+	// the tabs' icons, in the window's small icon size
+	int size = ::GetSystemMetricsForDpi(SM_CXSMICON, ::GetDpiForWindow(m_hWnd));
+	m_TabImages.Create(size, size, ILC_COLOR32 | ILC_MASK, 2, 0);
+	for (auto id : { IDI_FILTER, IDI_CALLBACK })
+		m_TabImages.AddIcon((HICON)::LoadImage(_Module.GetResourceInstance(), MAKEINTRESOURCE(id), IMAGE_ICON, size, size, LR_SHARED));
+	m_Tabs.SetImageList(m_TabImages);
+	m_Tabs.InsertItem(0, TCIF_TEXT | TCIF_IMAGE, L"Minifilters", 0, 0);
+	m_Tabs.InsertItem(1, TCIF_TEXT | TCIF_IMAGE, L"Callback Registrations", 1, 0);
 	m_List.Attach(GetDlgItem(IDC_KC_LIST));
 	m_Details.Attach(GetDlgItem(IDC_KC_DETAILS));
 	// above the tab control, which would otherwise paint over them (see the Network Information dialog)

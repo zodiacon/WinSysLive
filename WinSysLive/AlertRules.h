@@ -11,7 +11,7 @@
 //
 enum class AlertKind {
 	ProcessStarted, ProcessExited, SystemCpu, CommitCharge, PhysicalMemory, ProcessCpu, ProcessPrivateBytes,
-	ServiceStarted, ServiceStopped, ServiceFailed, EventLogged, AuditFailure, _Count
+	ServiceStarted, ServiceStopped, ServiceFailed, EventLogged, AuditFailure, ProcessTampered, _Count
 };
 
 struct AlertRule {

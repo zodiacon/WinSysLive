@@ -6,6 +6,7 @@
 #include <WinSys/FileIo.h>
 #include <WinSys/RegistryIo.h>
 #include <WinSys/ProcessNetwork.h>
+#include <WinSys/ProcessCreation.h>
 
 //
 // What records over time, shared by whoever needs it: the History tab's HistoryRecorder, the RPC/ALPC tab's IpcTracker
@@ -20,6 +21,8 @@ namespace Recorders {
 	std::shared_ptr<WinSys::IpcTracker> AcquireIpc();
 	std::shared_ptr<WinSys::FileIoTracker> AcquireFileIo();
 	std::shared_ptr<WinSys::RegistryIoTracker> AcquireRegistryIo();
+	// who created each process (a spoofed parent: the Processes view's Tampered color, the Alerts' tampering rule)
+	std::shared_ptr<WinSys::ProcessCreationTracker> AcquireProcessCreation();
 	// takes its baseline from the snapshot when it starts
 	std::shared_ptr<HistoryRecorder> AcquireHistory(ProcessManager& pm);
 
@@ -46,6 +49,7 @@ namespace Recorders {
 		std::shared_ptr<WinSys::FileIoTracker> m_FileIo;
 		std::shared_ptr<WinSys::RegistryIoTracker> m_RegistryIo;
 		std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;
+		std::shared_ptr<WinSys::ProcessCreationTracker> m_Creation;
 		DWORD m_TrackerError{ 0 };
 	};
 }

@@ -63,6 +63,11 @@ void IntegrityChecker::Forget(ProcessOrThreadKey const& key) {
 		m_State->Forgotten.insert(key);
 }
 
+bool IntegrityChecker::IsTampered(ImageIntegrity const& image) {
+	using enum ImageIntegrityStatus;
+	return image.Status == ImagePrivate || image.Status == DifferentFile || image.Status == HeadersDiffer;
+}
+
 void IntegrityChecker::Run(std::stop_token stop, std::shared_ptr<State> state) {
 	for (;;) {
 		Request request;
@@ -104,6 +109,8 @@ void IntegrityChecker::Run(std::stop_token stop, std::shared_ptr<State> state) {
 				result.MemoryTime = ::GetTickCount64();
 			}
 		}
-		::PostMessage(state->Notify, state->Message, 0, 0);
+		// no window: the owner polls (Alerts)
+		if (state->Notify)
+			::PostMessage(state->Notify, state->Message, 0, 0);
 	}
 }

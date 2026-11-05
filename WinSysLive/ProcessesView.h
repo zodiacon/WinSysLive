@@ -12,6 +12,7 @@
 #include "Symbols.h"
 #include "SignatureVerifier.h"
 #include "IntegrityChecker.h"
+#include <WinSys/ProcessCreation.h>
 #include "VirusTotalChecker.h"
 #include <WinSys/Gpu.h>
 #include <CustomSplitterWindow.h>
@@ -208,6 +209,10 @@ private:
 	// queues the checks the shown columns and the Tampered color need (now: FILETIME)
 	void UpdateIntegrity(ProcessItem& item, int64_t now, bool image, bool memory);
 	bool IsTamperedColored() const;
+	// its image is tampered with, or its parent spoofed
+	bool IsTampered(WinSys::ProcessOrThreadKey const& key) const;
+	// the creation tracker held while it's wanted (elevated only), and the spoofed parents it saw
+	void UpdateCreations(bool wanted);
 	std::wstring ImageIntegrityText(ProcessInfoEx const& p) const;
 	std::wstring ExecutableMemoryText(ProcessInfoEx const& p) const;
 	LRESULT OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -369,5 +374,8 @@ private:
 	std::wstring m_WindowsDirectory;	// with a backslash at the end
 	SignatureVerifier m_Signatures;	// the images', while signed processes are hidden
 	IntegrityChecker m_Integrity;	// while Image Integrity or Executable Memory is shown, or Tampered colored
+	std::shared_ptr<WinSys::ProcessCreationTracker> m_Creations;	// while Image Integrity is shown or Tampered colored
+	bool m_CreationsTried{ false };	// it couldn't start: not again until it's no longer wanted
+	std::unordered_map<WinSys::ProcessOrThreadKey, WinSys::ProcessCreation> m_Spoofed;	// as of the last refresh
 	bool m_Active{ false };
 };

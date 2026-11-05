@@ -330,6 +330,9 @@
     <ClCompile Include="KernelCallbacksDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="CertificatesDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="AlertsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -720,6 +723,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="KernelCallbacksDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="CertificatesDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="AlertsDlg.h">

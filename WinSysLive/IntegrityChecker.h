@@ -36,6 +36,8 @@ public:
 	[[nodiscard]] std::optional<WinSys::ExecutableMemory> GetMemory(WinSys::ProcessOrThreadKey const& key) const;
 	// the process exited: its results go
 	void Forget(WinSys::ProcessOrThreadKey const& key);
+	// replaced, another file's or rewritten (not a file that's gone, nor one that couldn't be checked)
+	[[nodiscard]] static bool IsTampered(WinSys::ImageIntegrity const& image);
 
 private:
 	struct Request {

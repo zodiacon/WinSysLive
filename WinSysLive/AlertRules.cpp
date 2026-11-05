@@ -26,6 +26,7 @@ namespace {
 		{ L"ServiceFailed", L"A service fails (stops with an error)", true, false, L"" },
 		{ L"EventLogged", L"An event is logged", true, false, L"" },
 		{ L"AuditFailure", L"A Security audit failure is logged", true, false, L"" },
+		{ L"ProcessTampered", L"A process is tampered with (image or parent)", true, false, L"" },
 	};
 
 	const uint64_t AuditFailureKeyword = 0x10000000000000;
@@ -155,6 +156,7 @@ std::wstring AlertRule::DescribeCondition() const {
 		case AlertKind::AuditFailure:
 			return L"Security audit failure" + (EventId ? std::format(L" {}", EventId) : std::wstring())
 				+ (Pattern.empty() ? L"" : L" from " + Pattern);
+		case AlertKind::ProcessTampered: return who + L" is tampered with";
 	}
 	return L"";
 }

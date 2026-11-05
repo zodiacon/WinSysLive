@@ -5,6 +5,7 @@
 #include "FormatHelper.h"
 #include "AppSettings.h"
 #include "NetworkTracking.h"
+#include "Recorders.h"
 #include <WinSys/Processes.h>
 #include <WinSys/SystemInfo.h>
 #include <WinSys/Helpers.h>
@@ -851,6 +852,38 @@ void CProcessesView::UpdateIntegrity(ProcessItem& item, int64_t now, bool image,
 		m_Integrity.CheckImage(p.Key);
 	if (memory)
 		m_Integrity.CountMemory(p.Key);
+	// a spoofed parent is known from the creation's event, without a check
+	if (IsTampered(p.Key))
+		item.Kinds |= ProcessKind::Tampered;
+	else
+		item.Kinds &= ~ProcessKind::Tampered;
+}
+
+bool CProcessesView::IsTampered(WinSys::ProcessOrThreadKey const& key) const {
+	if (m_Spoofed.contains(key))
+		return true;
+	auto image = m_Integrity.GetImage(key);
+	return image && IntegrityChecker::IsTampered(*image);
+}
+
+void CProcessesView::UpdateCreations(bool wanted) {
+	if (!wanted) {
+		m_Creations.reset();
+		m_CreationsTried = false;
+		m_Spoofed.clear();
+		return;
+	}
+	// the kernel provider's session needs administrator rights
+	if (!m_Creations && !m_CreationsTried) {
+		m_CreationsTried = true;
+		if (WinSys::SecurityHelper::IsRunningElevated())
+			m_Creations = Recorders::AcquireProcessCreation();
+	}
+	m_Spoofed.clear();
+	if (m_Creations)
+		for (auto& c : m_Creations->GetMismatches())
+			if (c.Creator == WinSys::ProcessCreator::Other)
+				m_Spoofed[c.Key()] = c;
 }
 
 LRESULT CProcessesView::OnIntegrity(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -858,11 +891,8 @@ LRESULT CProcessesView::OnIntegrity(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	MSG msg;
 	while (::PeekMessage(&msg, m_hWnd, WM_PROCESS_INTEGRITY, WM_PROCESS_INTEGRITY, PM_REMOVE))
 		;
-	using enum WinSys::ImageIntegrityStatus;
 	for (auto& [key, item] : m_Items) {
-		auto result = m_Integrity.GetImage(key);
-		bool tampered = result && (result->Status == ImagePrivate || result->Status == DifferentFile || result->Status == HeadersDiffer);
-		if (tampered)
+		if (IsTampered(key))
 			item.Kinds |= ProcessKind::Tampered;
 		else
 			item.Kinds &= ~ProcessKind::Tampered;
@@ -872,12 +902,16 @@ LRESULT CProcessesView::OnIntegrity(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 }
 
 std::wstring CProcessesView::ImageIntegrityText(ProcessInfoEx const& p) const {
+	std::wstring text;
 	auto result = m_Integrity.GetImage(p.Key);
-	if (!result || result->Status == WinSys::ImageIntegrityStatus::Unknown)
-		return L"";
-	if (result->Status == WinSys::ImageIntegrityStatus::Ok)
-		return result->Detail.empty() ? L"OK" : L"OK (" + result->Detail + L")";
-	return std::wstring(WinSys::ProcessIntegrity::StatusText(result->Status)) + L": " + result->Detail;
+	if (result && result->Status == WinSys::ImageIntegrityStatus::Ok)
+		text = result->Detail.empty() ? L"OK" : L"OK (" + result->Detail + L")";
+	else if (result && result->Status != WinSys::ImageIntegrityStatus::Unknown)
+		text = std::wstring(WinSys::ProcessIntegrity::StatusText(result->Status)) + L": " + result->Detail;
+	// a spoofed parent first: it's why the row is colored when the image is fine
+	if (auto it = m_Spoofed.find(p.Key); it != m_Spoofed.end())
+		text = WinSys::ProcessCreationParser::Describe(it->second) + (text.empty() ? L"" : L"; image " + text);
+	return text;
 }
 
 std::wstring CProcessesView::ExecutableMemoryText(ProcessInfoEx const& p) const {
@@ -1122,6 +1156,7 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	bool histNet = std::ranges::contains(m_Columns, Column::NetworkHistory);
 	bool image = std::ranges::contains(m_Columns, Column::ImageIntegrity) || IsTamperedColored();
 	bool memory = std::ranges::contains(m_Columns, Column::ExecutableMemory);
+	UpdateCreations(image);
 	FILETIME ftNow;
 	::GetSystemTimeAsFileTime(&ftNow);
 	auto now = (int64_t)ULARGE_INTEGER{ ftNow.dwLowDateTime, ftNow.dwHighDateTime }.QuadPart;
