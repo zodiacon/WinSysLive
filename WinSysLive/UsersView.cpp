@@ -178,8 +178,10 @@ void CUsersView::SetModeButtonWidth() {
 }
 
 LRESULT CUsersView::OnGroupByAccount(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// the button checks itself
-	m_ByAccount = m_ModeBar.IsButtonChecked(ID_USERS_GROUPBYACCOUNT);
+	// from the button (which checks itself) or the View menu
+	m_ByAccount = !m_ByAccount;
+	m_ModeBar.CheckButton(ID_USERS_GROUPBYACCOUNT, m_ByAccount);
+	Frame()->GetUI().UISetCheck(ID_USERS_GROUPBYACCOUNT, m_ByAccount);
 	auto& settings = AppSettings::Get();
 	settings.UsersGroupByAccount(m_ByAccount);
 	settings.Save();
@@ -229,7 +231,11 @@ void CUsersView::ExpandOwnGroup() {
 
 void CUsersView::OnActivate(bool active) {
 	// the Processes and Services views handle it too
-	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	auto& ui = Frame()->GetUI();
+	ui.UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	// View > Group Users by Account
+	ui.UIEnable(ID_USERS_GROUPBYACCOUNT, active);
+	ui.UISetCheck(ID_USERS_GROUPBYACCOUNT, m_ByAccount);
 	if (active)
 		m_Tree.SetFocus();
 }

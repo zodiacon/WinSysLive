@@ -285,6 +285,10 @@
 #define IDC_HANDLEPROPS_REFRESH         1189
 #define IDC_HANDLEPROPS_COPY            1190
 #define IDC_FIND_PROPERTIES             1191
+#define IDC_FIND_MAPPED                 1507
+#define IDC_FIND_EXACT                  1508
+#define IDC_FIND_CLOSEHANDLE            1509
+#define IDC_FIND_KILL                   1510
 #define IDC_TOKEN_SECURITY              1192
 #define IDC_SVC_NAME                    1193
 #define IDC_SVC_DISPLAYNAME             1194
@@ -842,6 +846,8 @@
 #define ID_COMREG_ACCESSPERMISSIONS     33044
 #define ID_COMREG_COPYCLSID             33045
 #define ID_USERS_GROUPBYACCOUNT         33046
+#define ID_FIND_LOCKS                   33047
+#define ID_OPTIONS_EXPLORERLOCKS        33048
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -898,8 +904,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        355
-#define _APS_NEXT_COMMAND_VALUE         33047
-#define _APS_NEXT_CONTROL_VALUE         1507
+#define _APS_NEXT_COMMAND_VALUE         33049
+#define _APS_NEXT_CONTROL_VALUE         1511
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

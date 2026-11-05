@@ -11,6 +11,7 @@
 #include <DpiHelper.h>
 #include "SettingsTransfer.h"
 #include "UpdateInstaller.h"
+#include "ExplorerMenu.h"
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/LogonTask.h>
 #include <WinSys/Token.h>
@@ -52,6 +53,9 @@ int Run(LPTSTR lpstrCmdLine = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 	// started with Windows (Options > Run at Windows Startup): minimized, or to the tray with Minimize to Tray
 	if (lpstrCmdLine && std::wstring_view(lpstrCmdLine).find(L"/minimized") != std::wstring_view::npos)
 		wndMain.ShowWindow(SW_SHOWMINNOACTIVE);
+	// Explorer's Who's Locking This? with no instance running (ActivateRunningInstance hands it to one)
+	if (auto path = ExplorerMenu::GetLocksArgument(lpstrCmdLine))
+		wndMain.ShowLocks(*path);
 
 	int nRet = theLoop.Run();
 
@@ -72,7 +76,9 @@ static bool ActivateRunningInstance(PCWSTR cmdLine, bool single) {
 	::CharLowerBuff(args.data(), (DWORD)args.size());
 	if (args.find(L"/restart") != std::wstring::npos)
 		return false;
-	if (!single && args.find(L"taskmgr.exe") == std::wstring::npos)
+	// Explorer's Who's Locking This? goes to a running instance, Single Instance or not: it has the processes already
+	auto locks = ExplorerMenu::GetLocksArgument(cmdLine);
+	if (!single && !locks && args.find(L"taskmgr.exe") == std::wstring::npos)
 		return false;
 	auto hWnd = ::FindWindow(CMainFrame::WindowClassName, nullptr);
 	if (!hWnd)
@@ -81,6 +87,15 @@ static bool ActivateRunningInstance(PCWSTR cmdLine, bool single) {
 	DWORD pid = 0;
 	::GetWindowThreadProcessId(hWnd, &pid);
 	::AllowSetForegroundWindow(pid);
+	if (locks) {
+		// the path with its null; the running instance posts itself the search, so this returns at once
+		COPYDATASTRUCT cds{ ExplorerMenu::CopyDataLocks, DWORD((locks->size() + 1) * sizeof(WCHAR)), locks->data() };
+		DWORD_PTR result = 0;
+		if (::SendMessageTimeout(hWnd, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cds), SMTO_ABORTIFHUNG, 5000, &result) && result)
+			return true;
+		// a hung instance (or an older one, without the handler): this one searches
+		return false;
+	}
 	::PostMessage(hWnd, CMainFrame::ActivateMessage, 0, 0);
 	return true;
 }

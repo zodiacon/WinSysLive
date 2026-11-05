@@ -53,10 +53,15 @@ public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	virtual BOOL OnIdle();
 
+	// who's locking the file or folder: Find Handle or DLL on its whole path (the menu, a drop, Explorer's menu)
+	void ShowLocks(std::wstring const& path);
+
 	// posted by another instance to bring this one's window back (from the tray too)
 	static inline UINT const ActivateMessage = ::RegisterWindowMessage(L"WinSysLive.Activate");
 	// the notification icon's mouse messages
 	static constexpr UINT WM_TRAYICON = WM_APP + 0x130;
+	// OnCopyData's path (lParam: a std::wstring* the handler deletes), once the sending instance has its answer
+	static constexpr UINT WM_SHOW_LOCKS = WM_APP + 0x131;
 
 	BEGIN_MSG_MAP(CMainFrame)
 		// an edit box with the focus (a filter) copies its text; anything else goes to the active view
@@ -119,6 +124,9 @@ public:
 		COMMAND_ID_HANDLER(ID_FILE_SNAPSHOTS, OnSnapshots)
 		COMMAND_ID_HANDLER(ID_FILE_OPENPE, OnOpenPEFile)
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
+		// Explorer's Who's Locking This? through another instance (ExplorerMenu)
+		MESSAGE_HANDLER(WM_COPYDATA, OnCopyData)
+		MESSAGE_HANDLER(WM_SHOW_LOCKS, OnShowLocks)
 		MESSAGE_HANDLER(WM_SHOW_OBJECT_PATH, OnShowObjectPath)
 		COMMAND_ID_HANDLER(ID_SYSTEM_SHARES, OnShares)
 		COMMAND_ID_HANDLER(ID_SYSTEM_NETWORKINFO, OnNetworkInfo)
@@ -138,6 +146,8 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_ID_HANDLER(ID_OPTIONS_HIGHLIGHTING, OnHighlighting)
 		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
+		COMMAND_ID_HANDLER(ID_FIND_LOCKS, OnFindLocks)
+		COMMAND_ID_HANDLER(ID_OPTIONS_EXPLORERLOCKS, OnExplorerLocks)
 		COMMAND_ID_HANDLER(ID_FILE_EXPORT, OnExportList)
 		COMMAND_ID_HANDLER(ID_EDIT_COPYALL, OnCopyAllRows)
 		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
@@ -220,6 +230,12 @@ public:
 	LRESULT OnVirusTotal(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHighlighting(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFindLocks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnExplorerLocks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCopyData(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnShowLocks(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// Find Handle or DLL, created if it isn't open, shown and active
+	CFindHandleDlg& ShowFindDialog();
 	LRESULT OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopyAllRows(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);

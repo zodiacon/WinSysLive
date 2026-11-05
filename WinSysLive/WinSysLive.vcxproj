@@ -431,6 +431,7 @@
     <ClCompile Include="AddressResolver.cpp" />
     <ClCompile Include="AffinityDlg.cpp" />
     <ClCompile Include="FindHandleDlg.cpp" />
+    <ClCompile Include="ExplorerMenu.cpp" />
     <ClCompile Include="SymbolSettingsDlg.cpp" />
     <ClCompile Include="TcpIpPage.cpp" />
     <ClCompile Include="HeapsPage.cpp" />
@@ -558,6 +559,8 @@
     <ClInclude Include="AddressResolver.h" />
     <ClInclude Include="AffinityDlg.h" />
     <ClInclude Include="FindHandleDlg.h" />
+    <ClInclude Include="ExplorerMenu.h" />
+    <ClInclude Include="LockPath.h" />
     <ClInclude Include="SymbolSettingsDlg.h" />
     <ClInclude Include="TcpIpPage.h" />
     <ClInclude Include="HeapsPage.h" />

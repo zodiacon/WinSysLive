@@ -246,6 +246,9 @@
     <ClCompile Include="AffinityDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="ExplorerMenu.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="FindHandleDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -624,6 +627,12 @@
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="AffinityDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ExplorerMenu.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="LockPath.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="FindHandleDlg.h">

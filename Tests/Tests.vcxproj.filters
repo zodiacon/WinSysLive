@@ -63,6 +63,9 @@
     <ClCompile Include="WinSysTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="FindTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
@@ -82,6 +85,9 @@
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\ProcessHistory.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinSysLive\ExplorerMenu.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp">

@@ -9,6 +9,7 @@
 #include "MainFrm.h"
 #include "AppSettings.h"
 #include "ProcessSheet.h"
+#include "ExplorerMenu.h"
 #include "ProcessColorsDlg.h"
 #include "SymbolSettingsDlg.h"
 #include "FirmwareDlg.h"
@@ -259,6 +260,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	}
 
 	UIAddMenu(GetMenu());
+	// the Users tab's, enabled while it's active (it may not be open)
+	UIEnable(ID_USERS_GROUPBYACCOUNT, false);
 
 	// register object for message filtering and idle updates
 	CMessageLoop* pLoop = _Module.GetMessageLoop();
@@ -314,6 +317,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
 	UISetCheck(ID_OPTIONS_SINGLEINSTANCE, settings.SingleInstance());
+	// the registry is the state: another copy of the exe may have set it
+	UISetCheck(ID_OPTIONS_EXPLORERLOCKS, ExplorerMenu::IsRegistered());
 	// changing it writes to HKLM
 	bool replaced = IsTaskManagerReplaced();
 	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, replaced);
@@ -1862,14 +1867,69 @@ LRESULT CMainFrame::OnCopyAllRows(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	return 0;
 }
 
-LRESULT CMainFrame::OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+CFindHandleDlg& CMainFrame::ShowFindDialog() {
 	if (!m_FindDlg || !m_FindDlg->IsWindow()) {
 		m_FindDlg = std::make_unique<CFindHandleDlg>(this);
 		m_FindDlg->Create(m_hWnd);
 	}
 	m_FindDlg->ShowWindow(SW_SHOW);
 	m_FindDlg->SetActiveWindow();
-	m_FindDlg->GotoDlgCtrl(m_FindDlg->GetDlgItem(IDC_FIND_TEXT));
+	return *m_FindDlg;
+}
+
+LRESULT CMainFrame::OnFindHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& dlg = ShowFindDialog();
+	dlg.GotoDlgCtrl(dlg.GetDlgItem(IDC_FIND_TEXT));
+	return 0;
+}
+
+void CMainFrame::ShowLocks(std::wstring const& path) {
+	ShowFindDialog().FindLocks(path);
+}
+
+LRESULT CMainFrame::OnFindLocks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// a file; a folder is typed in the dialog, dropped on the window, or chosen from Explorer's menu
+	SuspendResumeHook sr;
+	CShellFileOpenDialog dlg(nullptr, FOS_FILEMUSTEXIST | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	CString path;
+	if (SUCCEEDED(dlg.GetFilePath(path)))
+		ShowLocks((PCWSTR)path);
+	return 0;
+}
+
+LRESULT CMainFrame::OnExplorerLocks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	bool on = !ExplorerMenu::IsRegistered();
+	if (!(on ? ExplorerMenu::Register() : ExplorerMenu::Unregister()))
+		AtlMessageBox(m_hWnd, std::format(L"Failed to change Explorer's menu: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+	UISetCheck(ID_OPTIONS_EXPLORERLOCKS, ExplorerMenu::IsRegistered());
+	return 0;
+}
+
+LRESULT CMainFrame::OnCopyData(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	auto cds = reinterpret_cast<COPYDATASTRUCT const*>(lParam);
+	if (!cds || cds->dwData != ExplorerMenu::CopyDataLocks || cds->cbData < sizeof(WCHAR) * 2 || cds->cbData % sizeof(WCHAR)) {
+		bHandled = FALSE;
+		return FALSE;
+	}
+	// the data needn't end with a null: the length is the size
+	std::wstring path(static_cast<PCWSTR>(cds->lpData), cds->cbData / sizeof(WCHAR));
+	if (auto end = path.find(L'\0'); end != std::wstring::npos)
+		path.resize(end);
+	RestoreWindow();
+	// after the sender's SendMessage returns: it waits for this, and the search shouldn't make it
+	auto copy = new std::wstring(std::move(path));
+	if (!PostMessage(WM_SHOW_LOCKS, 0, reinterpret_cast<LPARAM>(copy)))
+		delete copy;
+	return TRUE;
+}
+
+LRESULT CMainFrame::OnShowLocks(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+	std::unique_ptr<std::wstring> path(reinterpret_cast<std::wstring*>(lParam));
+	if (path)
+		ShowLocks(*path);
 	return 0;
 }
 
@@ -2012,9 +2072,16 @@ LRESULT CMainFrame::OnDropFiles(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/,
 	}
 	::DragFinish(drop);
 	::SetForegroundWindow(m_hWnd);
+	// a folder (or with Shift, a file): who's locking it, the first one; files: their image details
+	bool shift = ::GetKeyState(VK_SHIFT) < 0;
 	for (auto& file : files) {
-		if (::GetFileAttributes(file.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
-			continue;
+		auto attributes = ::GetFileAttributes(file.c_str());
+		if (attributes != INVALID_FILE_ATTRIBUTES && ((attributes & FILE_ATTRIBUTE_DIRECTORY) || shift)) {
+			ShowLocks(file);
+			return 0;
+		}
+	}
+	for (auto& file : files) {
 		CPEFileDlg details(file);
 		details.DoModal(m_hWnd);
 	}

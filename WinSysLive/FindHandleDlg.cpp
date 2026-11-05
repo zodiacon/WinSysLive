@@ -8,6 +8,8 @@
 #include "FilterBox.h"
 #include "ColumnLayout.h"
 #include <WinSys/Handles.h>
+#include <WinSys/ProcessModuleTracker.h>
+#include "LockPath.h"
 #include <TlHelp32.h>
 #include <Psapi.h>
 
@@ -41,7 +43,8 @@ LRESULT CFindHandleDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*
 	CheckDlgButton(IDC_FIND_DLLS, BST_CHECKED);
 	GetDlgItem(IDC_FIND_SEARCH).EnableWindow(FALSE);
 	UpdateButtons();
-	CEdit(GetDlgItem(IDC_FIND_TEXT)).SetCueBannerText(L"Part of a handle's name or a DLL's path", TRUE);
+	// Mapped Files is a VirtualQueryEx walk of every process: off until asked for (Who's Locking checks it)
+	CEdit(GetDlgItem(IDC_FIND_TEXT)).SetCueBannerText(L"Part of a handle's name or a DLL's path, or a file's or folder's path", TRUE);
 
 	DlgResize_Init(true, true);
 	InitDpi();
@@ -80,12 +83,18 @@ void CFindHandleDlg::StartSearch() {
 	CString text;
 	GetDlgItemText(IDC_FIND_TEXT, text);
 	text.Trim();
-	bool handles = IsDlgButtonChecked(IDC_FIND_HANDLES) == BST_CHECKED;
-	bool dlls = IsDlgButtonChecked(IDC_FIND_DLLS) == BST_CHECKED;
-	if (text.IsEmpty() || (!handles && !dlls))
+	SearchOptions options{
+		IsDlgButtonChecked(IDC_FIND_HANDLES) == BST_CHECKED,
+		IsDlgButtonChecked(IDC_FIND_DLLS) == BST_CHECKED,
+		IsDlgButtonChecked(IDC_FIND_MAPPED) == BST_CHECKED,
+		IsDlgButtonChecked(IDC_FIND_EXACT) == BST_CHECKED,
+	};
+	if (text.IsEmpty() || (!options.Handles && !options.Dlls && !options.Mapped))
 		return;
 	std::wstring filter(text);
-	::CharLowerBuff(filter.data(), (DWORD)filter.size());
+	// CFilterBox::Contains takes the text lowercased; LockPath compares without case
+	if (!options.WholePath)
+		::CharLowerBuff(filter.data(), (DWORD)filter.size());
 
 	m_Results.clear();
 	m_List.SetItemCount(0);
@@ -95,7 +104,7 @@ void CFindHandleDlg::StartSearch() {
 	m_Searching = true;
 	SetDlgItemText(IDC_FIND_SEARCH, L"&Stop");
 	UpdateButtons();
-	m_Worker = std::jthread(Search, m_State, m_hWnd, std::move(filter), handles, dlls);
+	m_Worker = std::jthread(Search, m_State, m_hWnd, std::move(filter), options);
 	UpdateStatus(false);
 }
 
@@ -109,8 +118,19 @@ void CFindHandleDlg::StopSearch() {
 	OnProgress(WM_FIND_PROGRESS, TRUE, m_State->Id, handled);
 }
 
-void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> state, HWND hWnd, std::wstring text, bool handles, bool dlls) {
+void CFindHandleDlg::FindLocks(std::wstring const& path) {
+	StopSearch();
+	SetDlgItemText(IDC_FIND_TEXT, path.c_str());
+	for (int id : { IDC_FIND_HANDLES, IDC_FIND_DLLS, IDC_FIND_MAPPED, IDC_FIND_EXACT })
+		CheckDlgButton(id, BST_CHECKED);
+	StartSearch();
+}
+
+void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> state, HWND hWnd, std::wstring text, SearchOptions options) {
 	auto post = [&](bool done) { ::PostMessage(hWnd, WM_FIND_PROGRESS, done, state->Id); };
+	auto matches = [&](std::wstring const& name) {
+		return options.WholePath ? LockPath::Matches(name, text) : CFilterBox::Contains(name, text);
+	};
 
 	// the processes and their image names (for the results, and the names of process and thread handles)
 	auto processes = Process::EnumProcessNames();
@@ -150,16 +170,26 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 		post(false);
 		bool opened = false;
 
-		if (dlls) {
+		if (options.Dlls || options.Mapped) {
 			if (auto process = Process::OpenById(pid, ProcessAccessMask::QueryInformation | ProcessAccessMask::VmRead)) {
 				opened = true;
-				for (auto& module : Process::EnumLoadedModules(process->Handle()))
-					if (CFilterBox::Contains(module.Path, text))
-						add({ pid, name, L"DLL", module.Base, module.Path });
+				auto created = process->GetCreateTime();
+				if (options.Dlls)
+					for (auto& module : Process::EnumLoadedModules(process->Handle()))
+						if (matches(module.Path))
+							add({ pid, name, L"DLL", module.Base, module.Path, std::nullopt, created });
+				// the views of data files (the images are the DLLs)
+				if (options.Mapped && !stop.stop_requested()) {
+					ProcessModuleTracker tracker(process->Handle());
+					tracker.EnumModules();
+					for (auto& m : tracker.GetModules())
+						if (m->Type == MapType::Data && !m->Path.empty() && matches(m->Path))
+							add({ pid, name, L"Mapped File", (uint64_t)m->Base, m->Path, std::nullopt, created });
+				}
 			}
 		}
 
-		if (handles) {
+		if (options.Handles) {
 			auto entries = HandleEnumerator::EnumProcessHandles(pid);
 			auto process = entries ? Process::OpenById(pid, ProcessAccessMask::DuplicateHandle | ProcessAccessMask::QueryLimitedInformation) : nullptr;
 			if (entries && process) {
@@ -181,7 +211,7 @@ void CFindHandleDlg::Search(std::stop_token stop, std::shared_ptr<SearchState> s
 					auto handleName = HandleNames::QueryName(hProcess, entry, nameQuery, dosNames, processName);
 					if (file && nameQuery.GetAbandonedCount() > hung)
 						files = false;
-					if (!handleName.empty() && CFilterBox::Contains(handleName, text)
+					if (!handleName.empty() && matches(handleName)
 						&& !add({ pid, name, ObjectTypes::GetName(entry.TypeIndex), entry.Value, std::move(handleName), entry, created }))
 						break;
 				}
@@ -265,7 +295,11 @@ int CFindHandleDlg::GetRowImage(HWND, int row, int col) const {
 	if (row >= (int)m_Results.size() || !ColumnLayout::IsLeftmostColumn(m_List, col))
 		return -1;
 	auto& r = m_Results[row];
-	return m_Frame->GetIconIndex(r.Type == L"DLL" ? IDI_MODULES : GetHandleIcon(r.Type, r.Name));
+	if (r.Type == L"DLL")
+		return m_Frame->GetIconIndex(IDI_MODULES);
+	if (r.Type == L"Mapped File")
+		return m_Frame->GetIconIndex(IDI_MODULE_DATA);
+	return m_Frame->GetIconIndex(GetHandleIcon(r.Type, r.Name));
 }
 
 void CFindHandleDlg::DoSort(SortInfo const* si) {
@@ -295,6 +329,10 @@ void CFindHandleDlg::UpdateButtons() {
 	auto result = GetSelected();
 	GetDlgItem(IDC_FIND_GOTO).EnableWindow(result != nullptr);
 	GetDlgItem(IDC_FIND_PROPERTIES).EnableWindow(result && result->Handle);
+	// not this process's own (closing them could break it), nor Idle's and System's
+	bool own = result && result->Pid == ::GetCurrentProcessId();
+	GetDlgItem(IDC_FIND_CLOSEHANDLE).EnableWindow(result && result->Handle && !own);
+	GetDlgItem(IDC_FIND_KILL).EnableWindow(result && !own && result->Pid > 4);
 }
 
 LRESULT CFindHandleDlg::OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& bHandled) {
@@ -330,6 +368,10 @@ LRESULT CFindHandleDlg::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lPara
 	menu.CreatePopupMenu();
 	menu.AppendMenu(MF_STRING, IDC_FIND_GOTO, L"&Go to Process");
 	menu.AppendMenu(result->Handle ? MF_STRING : MF_STRING | MF_GRAYED, IDC_FIND_PROPERTIES, L"&Properties...");
+	menu.AppendMenu(MF_SEPARATOR);
+	auto state = [&](int id) { return GetDlgItem(id).IsWindowEnabled() ? MF_STRING : MF_STRING | MF_GRAYED; };
+	menu.AppendMenu(state(IDC_FIND_CLOSEHANDLE), IDC_FIND_CLOSEHANDLE, L"Close &Handle");
+	menu.AppendMenu(state(IDC_FIND_KILL), IDC_FIND_KILL, L"&Kill Process");
 	menu.SetMenuDefaultItem(IDC_FIND_GOTO);
 	::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 	return 0;
@@ -344,17 +386,83 @@ LRESULT CFindHandleDlg::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	// not another process that got its ID since the search
 	auto process = Process::OpenById(r.Pid, r.Created, ProcessAccessMask::DuplicateHandle);
 	if (!process) {
-		// ERROR_NOT_FOUND: another process has the ID now; ERROR_INVALID_PARAMETER: none has
-		auto error = ::GetLastError();
-		auto text = error == ERROR_NOT_FOUND || error == ERROR_INVALID_PARAMETER
-			? std::format(L"{} ({}) has exited since the search.", r.ProcessName, r.Pid)
-			: std::format(L"Failed to open the process: {}", WinSys::Helpers::GetErrorText(error));
-		AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+		ShowOpenError(r);
 		return 0;
 	}
 	CHandleSheet sheet(process->Handle(), r.Pid, r.ProcessName, *r.Handle, r.Name,
 		[this](DWORD pid) { return m_Frame->GetProcessManager().GetProcessNameById(pid); });
 	sheet.DoModal(m_hWnd);
+	return 0;
+}
+
+void CFindHandleDlg::ShowOpenError(Result const& r) const {
+	// ERROR_NOT_FOUND: another process has the ID now; ERROR_INVALID_PARAMETER: none has
+	auto error = ::GetLastError();
+	auto text = error == ERROR_NOT_FOUND || error == ERROR_INVALID_PARAMETER
+		? std::format(L"{} ({}) has exited since the search.", r.ProcessName, r.Pid)
+		: std::format(L"Failed to open the process: {}", WinSys::Helpers::GetErrorText(error));
+	AtlMessageBox(m_hWnd, text.c_str(), IDR_MAINFRAME, MB_ICONERROR);
+}
+
+void CFindHandleDlg::RemoveResults(std::function<bool(Result const&)> which) {
+	std::erase_if(m_Results, which);
+	m_List.SetItemState(-1, 0, LVIS_SELECTED);
+	m_List.SetItemCountEx((int)m_Results.size(), LVSICF_NOSCROLL);
+	m_List.Invalidate();
+	UpdateButtons();
+	if (!m_Searching)
+		UpdateStatus(true);
+}
+
+LRESULT CFindHandleDlg::OnCloseHandle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto result = GetSelected();
+	if (!result || !result->Handle || result->Pid == ::GetCurrentProcessId())
+		return 0;
+	// a copy: the search may add results while the message box is up
+	auto r = *result;
+	auto question = std::format(L"Close handle 0x{:X} ({}: {}) in {} ({})?\n\nThe process may fail when it uses the handle.",
+		r.Value, r.Type, r.Name, r.ProcessName, r.Pid);
+	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	auto process = Process::OpenById(r.Pid, r.Created, ProcessAccessMask::DuplicateHandle);
+	if (!process) {
+		ShowOpenError(r);
+		return 0;
+	}
+	// the handle may have been closed and its value reused since the search: checked against the type
+	if (!HandleNames::CloseInProcess(process->Handle(), r.Value, r.Type)) {
+		auto error = ::GetLastError();
+		if (error != ERROR_INVALID_HANDLE) {
+			AtlMessageBox(m_hWnd, std::format(L"Failed to close the handle: {}", WinSys::Helpers::GetErrorText(error)).c_str(),
+				IDR_MAINFRAME, MB_ICONERROR);
+			return 0;
+		}
+		AtlMessageBox(m_hWnd, L"The handle isn't there anymore (or is another object's now).", IDR_MAINFRAME, MB_ICONWARNING);
+	}
+	RemoveResults([&](auto& x) { return x.Pid == r.Pid && x.Created == r.Created && x.Handle && x.Value == r.Value; });
+	return 0;
+}
+
+LRESULT CFindHandleDlg::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto result = GetSelected();
+	if (!result || result->Pid == ::GetCurrentProcessId() || result->Pid <= 4)
+		return 0;
+	auto r = *result;
+	auto question = std::format(L"Kill {} ({})? Unsaved work in it will be lost.", r.ProcessName, r.Pid);
+	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return 0;
+	auto process = Process::OpenById(r.Pid, r.Created, ProcessAccessMask::Terminate);
+	if (!process) {
+		ShowOpenError(r);
+		return 0;
+	}
+	if (!process->Terminate()) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to kill the process: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	// all its results go with it
+	RemoveResults([&](auto& x) { return x.Pid == r.Pid && x.Created == r.Created; });
 	return 0;
 }
 

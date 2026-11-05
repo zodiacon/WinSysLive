@@ -97,6 +97,7 @@ BEGIN
         MENUITEM "&Lower Pane\tCtrl+L",         ID_VIEW_LOWERPANE
         MENUITEM "&Keep Selection Visible",     ID_VIEW_KEEPSELECTIONVISIBLE
         MENUITEM "Show &Unnamed Handles",       ID_VIEW_SHOWUNNAMEDHANDLES
+        MENUITEM "Group Users by &Account",     ID_USERS_GROUPBYACCOUNT
         POPUP "&Hide Processes"
         BEGIN
             MENUITEM "Other &Users' Processes",     ID_VIEW_HIDEOTHERUSERS
@@ -180,6 +181,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "&Find Handle or DLL...\tCtrl+Shift+F", ID_FIND_HANDLE
+        MENUITEM "Who's &Locking a File...",    ID_FIND_LOCKS
     END
     POPUP "&System"
     BEGIN
@@ -249,6 +251,7 @@ BEGIN
         MENUITEM "Run at Windows Start&up",     ID_OPTIONS_RUNATSTARTUP
         MENUITEM "Run at Windows Startup (&Elevated)", ID_OPTIONS_RUNELEVATED
         MENUITEM "Check for Updates at Start&up", ID_OPTIONS_CHECKUPDATES
+        MENUITEM "&Who's Locking in Explorer's Menu", ID_OPTIONS_EXPLORERLOCKS
         MENUITEM SEPARATOR
         MENUITEM "E&xport Settings...",         ID_OPTIONS_EXPORTSETTINGS
         MENUITEM "&Import Settings...",         ID_OPTIONS_IMPORTSETTINGS
@@ -1315,8 +1318,12 @@ BEGIN
     DEFPUSHBUTTON   "&Search",IDC_FIND_SEARCH,423,7,50,14
     CONTROL         "&Handles",IDC_FIND_HANDLES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,25,50,10
     CONTROL         "&DLLs",IDC_FIND_DLLS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,104,25,50,10
+    CONTROL         "&Mapped Files",IDC_FIND_MAPPED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,160,25,60,10
+    CONTROL         "&Whole path (a file, or a folder and what's in it)",IDC_FIND_EXACT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,226,25,190,10
     CONTROL         "",IDC_FIND_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,40,466,213
-    LTEXT           "",IDC_FIND_STATUS,7,262,276,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    LTEXT           "",IDC_FIND_STATUS,7,262,148,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "Close &Handle",IDC_FIND_CLOSEHANDLE,160,259,60,14
+    PUSHBUTTON      "&Kill Process",IDC_FIND_KILL,224,259,60,14
     PUSHBUTTON      "&Properties...",IDC_FIND_PROPERTIES,288,259,56,14
     PUSHBUTTON      "&Go to Process",IDC_FIND_GOTO,350,259,64,14
     PUSHBUTTON      "Close",IDCANCEL,423,259,50,14
@@ -2259,6 +2266,8 @@ BEGIN
     ID_PROCESS_MINIDUMP     "Write a minidump of the selected process (threads, modules, handles)\nMinidump"
     ID_PROCESS_FULLDUMP     "Write a dump of the selected process with all its memory\nFull Dump"
     ID_FIND_HANDLE          "Find the processes with a handle or a DLL whose name contains a text\nFind Handle or DLL"
+    ID_FIND_LOCKS           "Find the processes that have a file, or a folder's files, open, loaded or mapped\nWho's Locking a File"
+    ID_OPTIONS_EXPLORERLOCKS "Add Who's Locking to Explorer's menu for files and folders (for this user)\nWho's Locking in Explorer"
 END
 
 STRINGTABLE
