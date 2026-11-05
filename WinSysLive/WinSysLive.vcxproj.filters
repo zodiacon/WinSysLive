@@ -327,6 +327,9 @@
     <ClCompile Include="EtwSessionsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="KernelCallbacksDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="AlertsDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -714,6 +717,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="EtwSessionsDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="KernelCallbacksDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="AlertsDlg.h">

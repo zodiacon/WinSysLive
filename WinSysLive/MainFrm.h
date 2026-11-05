@@ -140,6 +140,7 @@ public:
 		COMMAND_ID_HANDLER(ID_SYSTEM_FIREWALL, OnFirewall)
 		COMMAND_ID_HANDLER(ID_SYSTEM_COMREGISTRATION, OnComRegistration)
 		COMMAND_ID_HANDLER(ID_SYSTEM_RAM, OnRam)
+		COMMAND_ID_HANDLER(ID_SYSTEM_KERNELCALLBACKS, OnKernelCallbacks)
 		COMMAND_ID_HANDLER(ID_TOOLS_INSTALLSERVICE, OnInstallService)
 		COMMAND_RANGE_HANDLER(ID_COMPUTER_LOCK, ID_COMPUTER_FIRMWARE, OnComputerCommand)
 		COMMAND_RANGE_HANDLER(ID_MEMORY_EMPTYWORKINGSETS, ID_MEMORY_PURGELOWSTANDBY, OnMemoryListCommand)
@@ -222,6 +223,7 @@ public:
 	LRESULT OnFirewall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnComRegistration(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnKernelCallbacks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the Computer menu: lock, log off, sleep, hibernate, restart, shut down, restart to the boot options or the firmware
 	LRESULT OnComputerCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

@@ -199,6 +199,7 @@ BEGIN
         MENUITEM "Installed P&ackages...",      ID_SYSTEM_PACKAGES
         MENUITEM "Firewall R&ules...",          ID_SYSTEM_FIREWALL
         MENUITEM "&COM Registration...",        ID_SYSTEM_COMREGISTRATION
+        MENUITEM "&Kernel Callbacks and Minifilters...", ID_SYSTEM_KERNELCALLBACKS
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
@@ -1033,6 +1034,23 @@ BEGIN
     LTEXT           "seconds after an alert (0: none)",IDC_AR_QUIET_HINT,126,123,147,9
     DEFPUSHBUTTON   "OK",IDOK,169,148,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,223,148,50,14
+END
+
+IDD_KERNELCALLBACKS DIALOGEX 0, 0, 600, 380
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Kernel Callbacks and Minifilters"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_KC_TABS,"SysTabControl32",WS_CLIPSIBLINGS | WS_TABSTOP,7,7,586,346
+    EDITTEXT        IDC_KC_FILTER,13,25,474,14,ES_AUTOHSCROLL
+    CONTROL         "&Security-relevant only",IDC_KC_RELEVANT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,494,27,93,10
+    CONTROL         "",IDC_KC_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,43,574,190
+    CONTROL         "",IDC_KC_DETAILS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,238,574,109
+    LTEXT           "",IDC_KC_STATUS,7,362,330,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Go to Driver",IDC_KC_GOTO,343,359,60,14
+    PUSHBUTTON      "&Refresh",IDC_KC_REFRESH,408,359,55,14
+    PUSHBUTTON      "&Copy",IDC_KC_COPY,468,359,55,14
+    PUSHBUTTON      "Close",IDCANCEL,543,359,50,14
 END
 
 IDD_ETWSESSIONS DIALOGEX 0, 0, 560, 360
@@ -2153,6 +2171,7 @@ BEGIN
     ID_VIEW_SHOWUNNAMEDHANDLES 
                             "Show the handles without a name in the Handles pages, or only the named ones\nShow Unnamed Handles"
     ID_SYSTEM_RAM           "Show physical memory by use and list, from every page (needs elevation)\nRAM"
+    ID_SYSTEM_KERNELCALLBACKS "Show the file system minifilters and the drivers that register kernel callbacks (process, thread, image, registry, object...)\nKernel Callbacks and Minifilters"
     ID_VIEW_AUTORUNS        "Show what starts by itself: Run keys, startup folders, scheduled tasks, services, drivers and more\nAutoruns (Ctrl+Shift+A)"
     ID_FILE_SNAPSHOTS       "Save the system's processes, modules, services, drivers and autoruns to a file, and compare snapshots\nSnapshots (Ctrl+Shift+N)"
 END

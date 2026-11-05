@@ -852,6 +852,17 @@
 #define ID_USERS_GROUPBYACCOUNT         33046
 #define ID_FIND_LOCKS                   33047
 #define ID_OPTIONS_EXPLORERLOCKS        33048
+#define IDD_KERNELCALLBACKS             355
+#define ID_SYSTEM_KERNELCALLBACKS       33049
+#define IDC_KC_TABS                     1555
+#define IDC_KC_FILTER                   1556
+#define IDC_KC_RELEVANT                 1557
+#define IDC_KC_LIST                     1558
+#define IDC_KC_DETAILS                  1559
+#define IDC_KC_STATUS                   1560
+#define IDC_KC_GOTO                     1561
+#define IDC_KC_REFRESH                  1562
+#define IDC_KC_COPY                     1563
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -907,9 +918,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        355
-#define _APS_NEXT_COMMAND_VALUE         33049
-#define _APS_NEXT_CONTROL_VALUE         1555
+#define _APS_NEXT_RESOURCE_VALUE        356
+#define _APS_NEXT_COMMAND_VALUE         33050
+#define _APS_NEXT_CONTROL_VALUE         1564
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

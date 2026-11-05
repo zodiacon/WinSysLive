@@ -28,6 +28,7 @@
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Connections.h>
 #include "EtwSessionsDlg.h"
+#include "KernelCallbacksDlg.h"
 #include "WindowStationsDlg.h"
 #include "PowerRequestsDlg.h"
 #include "RamDlg.h"
@@ -952,6 +953,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_FIREWALL, IDI_FIREWALL },
 		{ ID_SYSTEM_COMREGISTRATION, IDI_COM },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
+		{ ID_SYSTEM_KERNELCALLBACKS, IDI_SYSTEM_DRIVER },
 		{ ID_SYSTEM_INFORMATION, IDI_SYSINFO },
 		{ ID_FILE_SNAPSHOTS, IDI_SNAPSHOT },
 		{ ID_EDIT_COPY, IDI_COPY },
@@ -1759,6 +1761,14 @@ LRESULT CMainFrame::OnWindowStations(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 LRESULT CMainFrame::OnEtwSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CEtwSessionsDlg dlg([this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); });
 	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnKernelCallbacks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CKernelCallbacksDlg dlg;
+	// Go to Driver closes the dialog first: the Kernel Modules tab is behind it
+	if (dlg.DoModal(m_hWnd) == IDC_KC_GOTO)
+		GoToKernelModule(dlg.GetDriverPath());
 	return 0;
 }
 
