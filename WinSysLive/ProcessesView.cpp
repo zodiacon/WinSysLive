@@ -73,6 +73,9 @@ namespace {
 		{ L"UAC Virtualization", L"Virtualization", 110, LVCFMT_LEFT, false, false, L"Security" },
 		{ L"Job ID", L"JobId", 60, LVCFMT_RIGHT, false, false, L"Security" },
 		{ L"Silo", L"Silo", 60, LVCFMT_RIGHT, false, false, L"Security" },
+		// version 1: shown, so a tampered image says why it's colored
+		{ L"Image Integrity", L"ImageIntegrity", 150, LVCFMT_LEFT, true, false, L"Security", 1 },
+		{ L"Executable Memory", L"ExecutableMemory", 170, LVCFMT_LEFT, false, false, L"Security" },
 		{ L"I/O Read Bytes", L"IoRead", 100, LVCFMT_RIGHT, false, false, L"I/O" },
 		{ L"I/O Write Bytes", L"IoWrite", 100, LVCFMT_RIGHT, false, false, L"I/O" },
 		{ L"I/O Other Bytes", L"IoOther", 100, LVCFMT_RIGHT, false, false, L"I/O" },
@@ -224,6 +227,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	m_HideWindows = settings.ProcessHideWindows();
 	m_HideSigned = settings.ProcessHideSigned();
 	m_Signatures.Init(m_hWnd, WM_PROCESS_SIGNED);
+	m_Integrity.Init(m_hWnd, WM_PROCESS_INTEGRITY);
 	WCHAR windows[MAX_PATH];
 	if (auto len = ::GetWindowsDirectory(windows, _countof(windows)); len && len < _countof(windows)) {
 		m_WindowsDirectory = windows;
@@ -662,7 +666,7 @@ void CProcessesView::ShowProcess(uint32_t pid) {
 void CProcessesView::SetFixedKinds(ProcessItem& item) const {
 	auto& p = *item.Process;
 	// the kinds that are checked on refreshes, not only here
-	auto kinds = item.Kinds & (ProcessKind::Service | ProcessKind::DotNet | ProcessKind::Suspended);
+	auto kinds = item.Kinds & (ProcessKind::Service | ProcessKind::DotNet | ProcessKind::Suspended | ProcessKind::Tampered);
 	if (p.IsSecure())
 		kinds |= ProcessKind::Secure;
 	if (p.IsProtected())
@@ -830,6 +834,67 @@ void CProcessesView::UpdateHidden() {
 			// stays, gray, while it has children in the tree
 			RemoveUnneededAncestors(item.Item);
 	}
+}
+
+bool CProcessesView::IsTamperedColored() const {
+	auto it = std::ranges::find_if(m_Colors, [](auto& e) { return e.Kind == ProcessKind::Tampered; });
+	return it != m_Colors.end() && it->Enabled;
+}
+
+void CProcessesView::UpdateIntegrity(ProcessItem& item, int64_t now, bool image, bool memory) {
+	auto& p = *item.Process;
+	// not Idle and System (no image); a new process once it's two seconds old, as a hollowing is done while it's
+	// still suspended, and a check in between would see the image it's about to lose
+	if (p.Id <= 4 || now - p.Key.Created < 2 * 10000000LL)
+		return;
+	if (image)
+		m_Integrity.CheckImage(p.Key);
+	if (memory)
+		m_Integrity.CountMemory(p.Key);
+}
+
+LRESULT CProcessesView::OnIntegrity(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	// several may have arrived: the kinds are set again once
+	MSG msg;
+	while (::PeekMessage(&msg, m_hWnd, WM_PROCESS_INTEGRITY, WM_PROCESS_INTEGRITY, PM_REMOVE))
+		;
+	using enum WinSys::ImageIntegrityStatus;
+	for (auto& [key, item] : m_Items) {
+		auto result = m_Integrity.GetImage(key);
+		bool tampered = result && (result->Status == ImagePrivate || result->Status == DifferentFile || result->Status == HeadersDiffer);
+		if (tampered)
+			item.Kinds |= ProcessKind::Tampered;
+		else
+			item.Kinds &= ~ProcessKind::Tampered;
+	}
+	m_Tree.Invalidate();
+	return 0;
+}
+
+std::wstring CProcessesView::ImageIntegrityText(ProcessInfoEx const& p) const {
+	auto result = m_Integrity.GetImage(p.Key);
+	if (!result || result->Status == WinSys::ImageIntegrityStatus::Unknown)
+		return L"";
+	if (result->Status == WinSys::ImageIntegrityStatus::Ok)
+		return result->Detail.empty() ? L"OK" : L"OK (" + result->Detail + L")";
+	return std::wstring(WinSys::ProcessIntegrity::StatusText(result->Status)) + L": " + result->Detail;
+}
+
+std::wstring CProcessesView::ExecutableMemoryText(ProcessInfoEx const& p) const {
+	auto memory = m_Integrity.GetMemory(p.Key);
+	if (!memory)
+		return L"";
+	if (memory->PrivateRegions == 0 && memory->MappedRegions == 0)
+		return L"None";
+	std::wstring text;
+	if (memory->PrivateRegions) {
+		text = std::format(L"{} in {} private", FormatHelper::FormatSize(memory->PrivateBytes), memory->PrivateRegions);
+		if (memory->WritableRegions)
+			text += std::format(L" ({} writable)", memory->WritableRegions);
+	}
+	if (memory->MappedRegions)
+		text += std::format(L"{}{} in {} mapped", text.empty() ? L"" : L", ", FormatHelper::FormatSize(memory->MappedBytes), memory->MappedRegions);
+	return text;
 }
 
 LRESULT CProcessesView::OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -1055,12 +1120,18 @@ void CProcessesView::OnRefresh(bool /*active*/) {
 	bool histMem = std::ranges::contains(m_Columns, Column::MemoryHistory);
 	bool histIo = std::ranges::contains(m_Columns, Column::IoHistory);
 	bool histNet = std::ranges::contains(m_Columns, Column::NetworkHistory);
+	bool image = std::ranges::contains(m_Columns, Column::ImageIntegrity) || IsTamperedColored();
+	bool memory = std::ranges::contains(m_Columns, Column::ExecutableMemory);
+	FILETIME ftNow;
+	::GetSystemTimeAsFileTime(&ftNow);
+	auto now = (int64_t)ULARGE_INTEGER{ ftNow.dwLowDateTime, ftNow.dwHighDateTime }.QuadPart;
 	double histSeconds = (std::max)(0.001, AppSettings::Get().UpdateInterval() / 1000.0);
 	for (auto& [key, item] : m_Items)
 		if (!item.Terminated) {
 			UpdateDeltas(item);
 			UpdateHistory(item, histSeconds, histCpu, histMem, histIo, histNet);
 			UpdateSuspended(item);
+			UpdateIntegrity(item, now, image, memory);
 			if (gpu)
 				item.Gpu = WinSys::GpuInfo::QueryProcess(item.Process->GetQueryInformationHandle(), item.GpuState);
 			if (npu)
@@ -1114,6 +1185,7 @@ CProcessesView::ProcessItem* CProcessesView::FindParent(ProcessItem const& item)
 }
 
 void CProcessesView::RemoveItem(ProcessItem& item) {
+	m_Integrity.Forget(item.Process->Key);
 	if (!item.Item) {
 		// filtered out: not in the tree
 		if (m_Network)
@@ -1197,6 +1269,8 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::PagedPool: return FormatHelper::FormatSize(info->QuotaPagedPoolUsage);
 		case Column::NonPagedPool: return FormatHelper::FormatSize(info->QuotaNonPagedPoolUsage);
 		case Column::Elevation: return p.GetElevation();
+		case Column::ImageIntegrity: return ImageIntegrityText(p);
+		case Column::ExecutableMemory: return ExecutableMemoryText(p);
 		case Column::Critical: return !item.Terminated && p.IsCritical().value_or(false) ? L"Yes" : L"";
 		case Column::Cfg: {
 			auto& m = p.GetMitigations();
@@ -1451,6 +1525,12 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::Virtualization: return compare(p1.GetVirtualization(), p2.GetVirtualization());
 		case Column::JobId: return compare(GetJobId(p1), GetJobId(p2));
 		case Column::Silo: return compare(p1.GetServerSiloId().value_or(0), p2.GetServerSiloId().value_or(0));
+		case Column::ImageIntegrity: return compareText(ImageIntegrityText(p1), ImageIntegrityText(p2));
+		case Column::ExecutableMemory: {
+			auto m1 = m_Integrity.GetMemory(p1.Key), m2 = m_Integrity.GetMemory(p2.Key);
+			auto bytes = [](auto& m) { return m ? (int64_t)(m->PrivateBytes + m->MappedBytes) : -1LL; };
+			return compare(bytes(m1), bytes(m2));
+		}
 		case Column::IoRead: return compare(i1->ReadTransferCount.QuadPart, i2->ReadTransferCount.QuadPart);
 		case Column::IoWrite: return compare(i1->WriteTransferCount.QuadPart, i2->WriteTransferCount.QuadPart);
 		case Column::IoOther: return compare(i1->OtherTransferCount.QuadPart, i2->OtherTransferCount.QuadPart);

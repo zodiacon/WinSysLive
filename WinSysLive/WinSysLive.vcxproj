@@ -465,6 +465,7 @@
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
+    <ClCompile Include="IntegrityChecker.cpp" />
     <ClCompile Include="VirusTotalDlg.cpp" />
     <ClCompile Include="VirusTotalChecker.cpp" />
     <ClCompile Include="MainFrm.cpp" />
@@ -593,6 +594,7 @@
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />
+    <ClInclude Include="IntegrityChecker.h" />
     <ClInclude Include="VirusTotalDlg.h" />
     <ClInclude Include="VirusTotalChecker.h" />
     <ClInclude Include="AppSettings.h" />

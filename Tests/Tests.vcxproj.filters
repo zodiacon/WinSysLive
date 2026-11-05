@@ -66,6 +66,9 @@
     <ClCompile Include="FindTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="IntegrityTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>

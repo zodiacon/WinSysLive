@@ -11,6 +11,7 @@
 #include "FilterBox.h"
 #include "Symbols.h"
 #include "SignatureVerifier.h"
+#include "IntegrityChecker.h"
 #include "VirusTotalChecker.h"
 #include <WinSys/Gpu.h>
 #include <CustomSplitterWindow.h>
@@ -53,6 +54,8 @@ public:
 	static constexpr UINT WM_PROCESS_SIGNED = WM_APP + 0x160;
 	// posted by the .NET module scan (UpdateDotNet with all) when it's done
 	static constexpr UINT WM_DOTNET_SCANNED = WM_APP + 0x161;
+	// IntegrityChecker has a process's image check or executable memory count
+	static constexpr UINT WM_PROCESS_INTEGRITY = WM_APP + 0x162;
 
 	BEGIN_MSG_MAP(CProcessesView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -61,6 +64,7 @@ public:
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_DUMP_WRITTEN, OnDumpWritten)
 		MESSAGE_HANDLER(WM_PROCESS_SIGNED, OnSigned)
+		MESSAGE_HANDLER(WM_PROCESS_INTEGRITY, OnIntegrity)
 		MESSAGE_HANDLER(WM_DOTNET_SCANNED, OnDotNetScanned)
 		MESSAGE_HANDLER(VirusTotalChecker::WM_VIRUSTOTAL, OnVirusTotal)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
@@ -116,6 +120,7 @@ private:
 		PrivateBytes, PrivateBytesDelta, PeakPrivateBytes, WorkingSet, PeakWorkingSet, VirtualSize, PageFaults, PagedPool, NonPagedPool,
 		Threads, PeakThreads, Handles, GdiObjects, PeakGdiObjects, UserObjects, PeakUserObjects, Session, User, Priority, MemoryPriority, IoPriority, StartTime,
 		Architecture, IntegrityLevel, Elevation, Protection, Critical, Cfg, Mitigations, DpiAwareness, Virtualization, JobId, Silo,
+		ImageIntegrity, ExecutableMemory,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
 		PackageName, WindowTitle, VirusTotal, Description, ComServer, ImagePath, CommandLine,
@@ -199,6 +204,12 @@ private:
 	LRESULT OnToggleUnnamedHandles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnToggleHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSigned(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnIntegrity(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	// queues the checks the shown columns and the Tampered color need (now: FILETIME)
+	void UpdateIntegrity(ProcessItem& item, int64_t now, bool image, bool memory);
+	bool IsTamperedColored() const;
+	std::wstring ImageIntegrityText(ProcessInfoEx const& p) const;
+	std::wstring ExecutableMemoryText(ProcessInfoEx const& p) const;
 	LRESULT OnVirusTotal(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	// the Hide button's menu: View > Hide Processes
 	LRESULT OnHideDropDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
@@ -357,5 +368,6 @@ private:
 	bool m_HideOtherUsers{ false }, m_HideServices{ false }, m_HideWindows{ false }, m_HideSigned{ false };
 	std::wstring m_WindowsDirectory;	// with a backslash at the end
 	SignatureVerifier m_Signatures;	// the images', while signed processes are hidden
+	IntegrityChecker m_Integrity;	// while Image Integrity or Executable Memory is shown, or Tampered colored
 	bool m_Active{ false };
 };

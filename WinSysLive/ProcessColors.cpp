@@ -8,6 +8,8 @@ namespace ProcessColors {
 		return {
 			{ ProcessKind::Exited, L"Exited", true, RGB(255, 160, 160), RGB(128, 0, 0) },
 			{ ProcessKind::New, L"New", true, RGB(160, 255, 160), RGB(0, 96, 0) },
+			// before what a process is: a hollowed service is still a service
+			{ ProcessKind::Tampered, L"Tampered", true, RGB(255, 176, 64), RGB(150, 72, 0) },
 			{ ProcessKind::Suspended, L"Suspended", true, RGB(192, 192, 192), RGB(80, 80, 80) },
 			{ ProcessKind::Secure, L"Secure", true, RGB(200, 180, 255), RGB(62, 50, 112) },
 			{ ProcessKind::Protected, L"Protected", true, RGB(255, 128, 255), RGB(106, 42, 106) },

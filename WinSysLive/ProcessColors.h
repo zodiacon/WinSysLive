@@ -14,6 +14,7 @@ enum class ProcessKind : uint16_t {
 	Exited = 128,
 	Suspended = 256,	// every thread suspended (checked on every refresh)
 	Own = 512,			// running as the app's user
+	Tampered = 1024,	// its image isn't its file's (IntegrityChecker: replaced, another file's, rewritten headers)
 };
 DEFINE_ENUM_FLAG_OPERATORS(ProcessKind);
 

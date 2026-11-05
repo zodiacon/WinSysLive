@@ -378,6 +378,9 @@
     <ClCompile Include="SignatureVerifier.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="IntegrityChecker.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="VirusTotalDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -759,6 +762,9 @@
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="SignatureVerifier.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IntegrityChecker.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="VirusTotalDlg.h">
