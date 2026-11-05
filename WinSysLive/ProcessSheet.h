@@ -70,6 +70,8 @@ private:
 
 // opens the sheet on a new thread, which ends when the sheet is closed
 void ShowProcessProperties(ProcessProperties props);
+// makes the open sheets topmost or not, as the main window (Always on Top); a sheet opened later reads the setting
+void SetProcessPropertiesTopmost(bool topmost);
 // closes the open sheets and waits (a while) for their threads, before the app exits: a sheet left open while the
 // app shut down lost its window under its message loop
 void CloseProcessProperties();

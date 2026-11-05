@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ProcessSheet.h"
+#include "AppSettings.h"
 #include <WTLHelper.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/DotNet.h>
@@ -173,6 +174,7 @@ namespace {
 	struct SheetThread {
 		std::thread Thread;
 		std::shared_ptr<std::atomic<DWORD>> ThreadId;	// 0 once the thread is done
+		std::shared_ptr<std::atomic<HWND>> Window;		// the sheet, while it's open
 	};
 	std::mutex s_Lock;
 	std::vector<SheetThread> s_Threads;
@@ -192,7 +194,8 @@ void ShowProcessProperties(ProcessProperties props) {
 	});
 
 	auto id = std::make_shared<std::atomic<DWORD>>(0);
-	std::thread thread([props = std::move(props), id]() mutable {
+	auto window = std::make_shared<std::atomic<HWND>>(nullptr);
+	std::thread thread([props = std::move(props), id, window]() mutable {
 		{
 			// a message queue, before CloseProcessProperties can post to it
 			MSG msg;
@@ -204,6 +207,11 @@ void ShowProcessProperties(ProcessProperties props) {
 			auto com = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			CProcessSheet sheet(std::move(props));
 			if (!s_Closing && sheet.Create(nullptr)) {
+				// the sheet has no owner, so it's topmost as the main window is (Always on Top), or the main window
+				// covers it. Known before the setting is read, so a change in between reaches it either way
+				*window = sheet.m_hWnd;
+				if (AppSettings::Get().AlwaysOnTop())
+					sheet.SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 				sheet.ShowWindow(SW_SHOW);
 				// a modeless sheet stays open until its active page is gone (Close, Escape, the close box);
 				// CloseProcessProperties ends the loop with WM_QUIT
@@ -215,6 +223,7 @@ void ShowProcessProperties(ProcessProperties props) {
 					if (!sheet.IsWindow() || !sheet.GetActivePage())
 						break;
 				}
+				*window = nullptr;
 				if (sheet.IsWindow())
 					sheet.DestroyWindow();
 			}
@@ -227,7 +236,19 @@ void ShowProcessProperties(ProcessProperties props) {
 	// the thread sets its ID once it has a message queue
 	while (*id == 0 && ::WaitForSingleObject(thread.native_handle(), 0) == WAIT_TIMEOUT)
 		::Sleep(1);
-	s_Threads.push_back({ std::move(thread), id });
+	s_Threads.push_back({ std::move(thread), id, window });
+}
+
+void SetProcessPropertiesTopmost(bool topmost) {
+	std::lock_guard lock(s_Lock);
+	for (auto& t : s_Threads) {
+		HWND hWnd = *t.Window;
+		DWORD tid = *t.ThreadId;
+		if (hWnd && tid && ::GetWindowThreadProcessId(hWnd, nullptr) == tid)
+			// asynchronous: the sheet's thread may be busy in a page's query
+			::SetWindowPos(hWnd, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+				SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+	}
 }
 
 void CloseProcessProperties() {

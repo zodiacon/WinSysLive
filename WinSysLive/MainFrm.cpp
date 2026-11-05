@@ -8,6 +8,7 @@
 #include "aboutdlg.h"
 #include "MainFrm.h"
 #include "AppSettings.h"
+#include "ProcessSheet.h"
 #include "ProcessColorsDlg.h"
 #include "SymbolSettingsDlg.h"
 #include "FirmwareDlg.h"
@@ -542,6 +543,7 @@ LRESULT CMainFrame::OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	settings.AlwaysOnTop(top);
 	settings.Save();
 	SetWindowPos(top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	SetProcessPropertiesTopmost(top);
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, top);
 	return 0;
 }
