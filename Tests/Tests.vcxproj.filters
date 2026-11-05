@@ -78,6 +78,9 @@
     <ClCompile Include="CertificateTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="ComApartmentTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>

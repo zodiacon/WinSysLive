@@ -105,7 +105,7 @@ public:
 private:
 	enum class Column {
 		Id, CPU, CpuTime, KernelTime, UserTime, Cycles, CyclesDelta, State, WaitReason, Priority, BasePriority, IdealCpu,
-		IoPriority, MemoryPriority, ContextSwitches, ContextSwitchDelta, Service, StartAddress, Created,
+		IoPriority, MemoryPriority, ContextSwitches, ContextSwitchDelta, Service, StartAddress, Created, ComApartment,
 		_Count
 	};
 
@@ -127,6 +127,7 @@ private:
 		uint64_t Cycles{ 0 };
 		int64_t CyclesDelta{ -1 };	// -1: not known yet
 		std::wstring const* Service{ nullptr };	// in the thread's ThreadState
+		WinSys::ComFlags Com{ WinSys::ComFlags::Error };	// read while COM Apartment is shown; Error: not known
 		bool New{ false };		// highlighted as created
 		bool Exited{ false };	// highlighted as exited, for Highlight::ExitedTicks refreshes
 	};
@@ -138,6 +139,7 @@ private:
 		bool Known{ false };	// the values above are from a previous refresh
 		std::unique_ptr<WinSys::Thread> Handle;
 		std::wstring Service;	// queried once: a thread's service doesn't change
+		uint64_t Teb{ 0 };		// queried once, for its COM flags
 		int NewTicks{ 0 };	// refreshes left to highlight it as created
 		// queried from the thread once, when the snapshot has none (it hasn't when not elevated)
 		std::optional<void*> StartAddress;
@@ -215,5 +217,10 @@ private:
 	// the threads that exited, still shown: their rows point to their ThreadState's Service
 	std::unordered_map<WinSys::ProcessOrThreadKey, ThreadState> m_Exited;
 	LARGE_INTEGER m_PrevTime{};	// of the previous refresh (QPC), 0 if none
+	// the process, opened (PROCESS_VM_READ) while COM Apartment is shown, to read its threads' COM flags
+	wil::unique_handle m_hProcess;
+	WinSys::ProcessOrThreadKey m_ProcessKey{};	// the process m_hProcess is (ID and creation time)
+	bool m_Wow64{ false };	// its COM is in its threads' 32-bit TEBs
+	bool m_HasMta{ false };	// a thread of it is in the MTA: those that didn't initialize COM are in it implicitly
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
 };

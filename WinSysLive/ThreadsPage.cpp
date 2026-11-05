@@ -65,6 +65,8 @@ namespace {
 		{ L"Service", L"Service", 140, LVCFMT_LEFT, true },
 		{ L"Start Address", L"StartAddress", 260, LVCFMT_LEFT, true },	// its symbol, once resolved
 		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
+		// version 1: shown in saved layouts too
+		{ L"COM Apartment", L"ComApartment", 110, LVCFMT_LEFT, true, false, nullptr, 1 },
 	};
 
 
@@ -531,6 +533,17 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 
 		// the snapshot is SystemExtendedProcessInformation (or Full): the threads follow the process entry
 		auto pid = HandleToULong(info->UniqueProcessId);
+		// COM's flags are in the threads' TEBs: the process opened once (again for another process), while the column is shown
+		bool com = pid > 4 && std::ranges::any_of(GetShownColumns(), [](auto& c) { return (Column)c.Id == Column::ComApartment; });
+		WinSys::ProcessOrThreadKey processKey{ info->CreateTime.QuadPart, pid };
+		if (!com)
+			m_hProcess.reset();
+		else if (!m_hProcess || !(m_ProcessKey == processKey)) {
+			m_hProcess.reset(::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid));
+			m_ProcessKey = processKey;
+			m_Wow64 = m_hProcess && Thread::IsWow64(m_hProcess.get());
+		}
+		bool hasMta = false;
 		auto threads = reinterpret_cast<SYSTEM_EXTENDED_THREAD_INFORMATION const*>(info->Threads);
 		decltype(m_Threads) current;
 		current.reserve(info->NumberOfThreads);
@@ -582,6 +595,14 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 				row.IoPriority = thread.GetIoPriority();
 				row.MemoryPriority = thread.GetMemoryPriority();
 				row.Cycles = thread.GetCycleTime();
+				if (m_hProcess) {
+					if (!state.Teb)
+						state.Teb = Thread::GetTebAddress(thread.Handle());
+					// read every refresh: a thread may initialize COM, or leave it, any time
+					row.Com = Thread::GetComFlags(m_hProcess.get(), state.Teb, m_Wow64);
+					if (row.Com != WinSys::ComFlags::Error && (row.Com & WinSys::ComFlags::MTA) == WinSys::ComFlags::MTA)
+						hasMta = true;
+				}
 			}
 			if (state.Known && elapsed > 0) {
 				row.CPU = (int32_t)((cpuTime - state.CpuTime) * 1000000 / elapsed / processors);
@@ -616,6 +637,7 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 			state.ExitedTicks--;
 		}
 		m_Threads = std::move(current);
+		m_HasMta = hasMta;
 	}
 	m_PrevTime = now;
 
@@ -671,6 +693,7 @@ std::wstring CThreadsPage::GetText(ThreadRow const& row, Column column) const {
 			return symbol && !symbol->empty() ? *symbol : FormatAddress(address);
 		}
 		case Column::Created: return FormatHelper::FormatDateTime(row.Key.Created);
+		case Column::ComApartment: return Thread::ComApartmentText(row.Com, m_HasMta);
 	}
 	return L"";
 }

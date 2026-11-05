@@ -91,6 +91,7 @@
     <ClCompile Include="KernelCallbackTests.cpp" />
     <ClCompile Include="ProcessCreationTests.cpp" />
     <ClCompile Include="CertificateTests.cpp" />
+    <ClCompile Include="ComApartmentTests.cpp" />
     <!-- the app's (its #include "pch.h" takes this project's precompiled header, which is the app's pch) -->
     <ClCompile Include="..\WinSysLive\AlertRules.cpp" />
     <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp" />
