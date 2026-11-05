@@ -841,6 +841,7 @@
 #define ID_COMREG_LAUNCHPERMISSIONS     33043
 #define ID_COMREG_ACCESSPERMISSIONS     33044
 #define ID_COMREG_COPYCLSID             33045
+#define ID_USERS_GROUPBYACCOUNT         33046
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -897,7 +898,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        355
-#define _APS_NEXT_COMMAND_VALUE         33046
+#define _APS_NEXT_COMMAND_VALUE         33047
 #define _APS_NEXT_CONTROL_VALUE         1507
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

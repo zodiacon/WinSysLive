@@ -67,6 +67,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(DriverColumns, L"");	// the Kernel Modules tab's, from when it was the Drivers tab: read while KernelModuleColumns is empty
 		SETTING_STRING(DriverServiceColumns, L"");	// the Drivers tab (driver services)
 		SETTING_STRING(UserColumns, L"");
+		SETTING(UsersGroupByAccount, 0, SettingType::Bool);	// the Users tab groups the processes by account, not by session
 		SETTING_STRING(RunHistory, L"");	// File > Run and Run As: the last command lines, newest first, one a line
 		SETTING_STRING(RunAsUser, L"");	// File > Run As: the last user name (never the password)
 		SETTING(ResolveSymbols, 1, SettingType::Bool);
@@ -150,6 +151,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(DriverColumns)
 	DEF_SETTING_STRING(DriverServiceColumns)
 	DEF_SETTING_STRING(UserColumns)
+	DEF_SETTING(UsersGroupByAccount, int)
 	DEF_SETTING_STRING(RunHistory)
 	DEF_SETTING_STRING(RunAsUser)
 	DEF_SETTING_STRING(ProcessColors)

@@ -2122,6 +2122,7 @@ BEGIN
     ID_VIEW_HIDEWINDOWS     "Hide the processes whose executable is in the Windows directory, and the system's own\nHide Windows Processes"
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
+    ID_USERS_GROUPBYACCOUNT "Group the processes by the accounts they run as, instead of by session\nGroup by Account"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
     ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"

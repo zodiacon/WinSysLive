@@ -6,8 +6,10 @@
 #include "FormatHelper.h"
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
+#include <ToolbarHelper.h>
 #include <WTLHelper.h>
 #include <unordered_set>
+#include <set>
 #include "AppSettings.h"
 
 using namespace WinSys;
@@ -44,6 +46,12 @@ namespace {
 		}
 		return L"";
 	}
+
+	// the mode button beside the filter, checked while grouping by account
+	const ToolBarButtonInfo s_ModeButton[] = {
+		{ ID_USERS_GROUPBYACCOUNT, IDI_USER, BTNS_CHECK, L"Group by Account" },
+	};
+	const int ModeButtonImageSize = 16;	// at 96 DPI
 }
 
 CString CUsersView::GetTitle() const {
@@ -66,21 +74,128 @@ LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().UserColumns(), s_Columns));
 	// a change refreshes as a tick does: only the matching processes are in the tree, and the selection is kept
-	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 360, L"Filter: process, PID, user, session or client (Ctrl+F)",
+	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 280, L"Process, PID, user, session or client (Ctrl+F)",
 		m_Tree.GetListCtrl(), [this](auto&) { OnRefresh(true); });
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
+	// Group by Account, beside the filter (as the Processes view's Hide button)
+	m_ModeBar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_ModeButton, _countof(s_ModeButton), ModeButtonImageSize);
+	m_ModeBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_ModeBar)));
+	m_ModeBar.SetFont(m_ModeBarFont);
+	m_ModeBar.AutoSize();
+	CRect rcButton;
+	m_ModeBar.GetItemRect(0, &rcButton);
+	m_ModeButtonWidth = DpiHelper::Scale(rcButton.Width(), USER_DEFAULT_SCREEN_DPI, DpiHelper::GetDpi(m_ModeBar));
+	SetModeButtonWidth();
+	AddSimpleReBarBand(m_ModeBar, nullptr, FALSE);
+	// two bands would get grippers; the filter keeps its width, the button's band takes the rest of the row
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_STYLE | RBBIM_CHILD | RBBIM_CHILDSIZE };
+		rebar.GetBandInfo(i, &band);
+		band.fStyle |= RBBS_NOGRIPPER;
+		band.fMask = RBBIM_STYLE;
+		if (band.hwndChild == m_Filter.GetHwnd()) {
+			band.fMask |= RBBIM_CHILDSIZE;
+			band.cxMinChild = m_Filter.GetWidth();
+		}
+		rebar.SetBandInfo(i, &band);
+	}
 
+	m_ByAccount = AppSettings::Get().UsersGroupByAccount();
+	m_ModeBar.CheckButton(ID_USERS_GROUPBYACCOUNT, m_ByAccount);
+	Rebuild();
+	return 0;
+}
+
+void CUsersView::OnDpiChanged(UINT /*dpi*/) {
+	// the frame's image list has the new DPI's size: the rows take its height
+	m_Tree.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+	LayoutModeBar();
+}
+
+void CUsersView::UpdateLayout(BOOL resizeBars) {
+	CViewBase::UpdateLayout(resizeBars);
+	// the rebar gives a row's extra width to its first band: the button's band takes it, the filter keeps its width
+	if (m_ModeBar) {
+		CReBarCtrl rebar(m_hWndToolBar);
+		rebar.MaximizeBand(rebar.GetBandCount() - 1, FALSE);
+	}
+}
+
+void CUsersView::LayoutModeBar() {
+	// the icon in the new size
+	ToolbarHelper::UpdateToolBarImages(m_ModeBar, s_ModeButton, _countof(s_ModeButton), ModeButtonImageSize);
+	m_ModeBarFont.DeleteObject();
+	m_ModeBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_ModeBar)));
+	m_ModeBar.SetFont(m_ModeBarFont);
+	SetModeButtonWidth();
+	// its band, as AddSimpleReBarBand sets it: the button's height, the width to its end
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_ModeBar) {
+			CRect rc;
+			m_ModeBar.GetItemRect(0, &rc);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = rc.right;
+			band.cyMinChild = rc.Height();
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+}
+
+void CUsersView::SetModeButtonWidth() {
+	TBBUTTONINFO info{ sizeof(info), TBIF_SIZE };
+	info.cx = (WORD)DpiHelper::Scale(m_ModeButtonWidth, m_ModeBar.m_hWnd);
+	m_ModeBar.SetButtonInfo(ID_USERS_GROUPBYACCOUNT, &info);
+	m_ModeBar.AutoSize();
+}
+
+LRESULT CUsersView::OnGroupByAccount(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	// the button checks itself
+	m_ByAccount = m_ModeBar.IsButtonChecked(ID_USERS_GROUPBYACCOUNT);
+	auto& settings = AppSettings::Get();
+	settings.UsersGroupByAccount(m_ByAccount);
+	settings.Save();
+	Rebuild();
+	return 0;
+}
+
+void CUsersView::Rebuild() {
+	// the sessions keep their details (slow to get, see SyncSessions); the rows lose their items
 	m_Tree.BeginUpdate();
+	m_Tree.DeleteAllItems();
+	for (auto& [id, row] : m_Sessions)
+		row.Item = nullptr;
+	m_Processes.clear();
+	m_Accounts.clear();
+	m_AddedGroups.clear();
 	SyncSessions();
 	SyncProcesses();
+	if (m_SortColumn >= 0)
+		Sort();
 	m_Tree.EndUpdate();
+	ExpandOwnGroup();
+}
 
-	// the user's own session starts expanded
-	DWORD session;
-	if (::ProcessIdToSessionId(::GetCurrentProcessId(), &session))
-		if (auto it = m_Sessions.find(session); it != m_Sessions.end())
-			m_Tree.Expand(it->second.Item);
-	return 0;
+void CUsersView::ExpandOwnGroup() {
+	HTLITEM hItem = nullptr;
+	if (m_ByAccount) {
+		// this process's account
+		auto self = std::ranges::find_if(m_Processes, [](auto& pair) { return pair.second.Process->Id == ::GetCurrentProcessId(); });
+		if (self != m_Processes.end())
+			if (auto it = m_Accounts.find(self->second.Account); it != m_Accounts.end())
+				hItem = it->second.Item;
+	}
+	else {
+		DWORD session;
+		if (::ProcessIdToSessionId(::GetCurrentProcessId(), &session))
+			if (auto it = m_Sessions.find(session); it != m_Sessions.end())
+				hItem = it->second.Item;
+	}
+	if (hItem)
+		m_Tree.Expand(hItem);
 }
 
 void CUsersView::OnActivate(bool active) {
@@ -101,6 +216,9 @@ bool CUsersView::Matches(Row const& row) const {
 		return true;
 	auto& p = *row.Process;
 	if (CFilterBox::Contains(p.GetImageName(), filter) || CFilterBox::Contains(std::to_wstring(p.Id), filter))
+		return true;
+	// the account's processes, if the account matches (the account the process runs as, in either mode)
+	if (CFilterBox::Contains(row.Account, filter))
 		return true;
 	// the session's processes, if the session matches
 	auto session = m_Sessions.find(row.SessionId);
@@ -132,10 +250,13 @@ void CUsersView::OnRefresh(bool /*active*/) {
 	// the list view keeps the selection by index, which inserts, deletes and sorting shift: restore it by row
 	auto selected = GetSelectedRow();
 	std::optional<uint32_t> selectedSession;
+	std::optional<std::wstring> selectedAccount;
 	std::optional<ProcessOrThreadKey> selectedProcess;
 	if (selected) {
 		if (selected->IsSession)
 			selectedSession = selected->SessionId;
+		else if (selected->IsAccount)
+			selectedAccount = selected->Account;
 		else
 			selectedProcess = selected->Process->Key;
 	}
@@ -150,6 +271,10 @@ void CUsersView::OnRefresh(bool /*active*/) {
 	HTLITEM hSelect = nullptr;
 	if (selectedSession) {
 		if (auto it = m_Sessions.find(*selectedSession); it != m_Sessions.end())
+			hSelect = it->second.Item;
+	}
+	else if (selectedAccount) {
+		if (auto it = m_Accounts.find(*selectedAccount); it != m_Accounts.end())
 			hSelect = it->second.Item;
 	}
 	else if (selectedProcess) {
@@ -173,9 +298,12 @@ void CUsersView::SyncSessions() {
 			++it;
 			continue;
 		}
-		// the session's processes go with it (DeleteItem takes the subtree)
-		std::erase_if(m_Processes, [=](auto& pair) { return pair.second.SessionId == id; });
-		m_Tree.DeleteItem(it->second.Item);
+		// the session's processes go with it (DeleteItem takes the subtree); by account, its processes are
+		// under their accounts, and go as they exit
+		if (it->second.Item) {
+			std::erase_if(m_Processes, [=](auto& pair) { return pair.second.SessionId == id; });
+			m_Tree.DeleteItem(it->second.Item);
+		}
 		it = m_Sessions.erase(it);
 	}
 
@@ -196,21 +324,34 @@ void CUsersView::SyncSessions() {
 			session.DisconnectTime = old.DisconnectTime;
 		}
 		row.Session = std::move(session);
-		if (inserted) {
+		// in the tree only while they're the groups (kept otherwise, for the filter and their details)
+		if (!m_ByAccount && !row.Item) {
 			row.Item = m_Tree.InsertItem(TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, image, reinterpret_cast<LPARAM>(&row));
-			m_AddedSessions.push_back(row.Item);
+			m_AddedGroups.push_back(row.Item);
 		}
 	}
 }
 
+std::wstring CUsersView::GetAccountTitle(std::wstring const& account) {
+	// a process that can't be opened (another user's, without elevation)
+	return account.empty() ? L"(Unknown)" : account;
+}
+
 void CUsersView::SyncProcesses() {
-	for (auto& [id, session] : m_Sessions) {
-		session.Processes = 0;
-		session.CPU = 0;
-		session.PrivateBytes = session.WorkingSet = 0;
-	}
+	auto reset = [](Row& group) {
+		group.Processes = 0;
+		group.CPU = 0;
+		group.PrivateBytes = group.WorkingSet = 0;
+	};
+	for (auto& [id, session] : m_Sessions)
+		reset(session);
+	for (auto& [name, account] : m_Accounts)
+		reset(account);
+	// the account rows' sessions, collected as their processes are counted
+	std::unordered_map<std::wstring, std::set<uint32_t>> accountSessions;
 
 	auto& pm = Frame()->GetProcessManager();
+	auto accountImage = Frame()->GetIconIndex(IDI_USER);
 	std::unordered_set<ProcessOrThreadKey> live;
 	live.reserve(m_Processes.size() + 64);
 	for (auto& p : pm.GetProcesses()) {
@@ -228,21 +369,37 @@ void CUsersView::SyncProcesses() {
 		if (inserted) {
 			row.SessionId = info->SessionId;
 			row.Process = p;
+			// once: it opens the process (unelevated) and looks up the SID, and ProcessInfoEx keeps it
+			row.Account = p->GetUser();
 		}
+
+		// the group: the session's row, or the account's (added as its first process comes)
+		Row* group = &session->second;
+		if (m_ByAccount) {
+			auto [account, added] = m_Accounts.try_emplace(row.Account);
+			group = &account->second;
+			if (added) {
+				group->IsAccount = true;
+				group->Account = row.Account;
+				group->Item = m_Tree.InsertItem(TLV_ROOT, TLV_LAST, LPSTR_TEXTCALLBACK, accountImage, reinterpret_cast<LPARAM>(group));
+				m_AddedGroups.push_back(group->Item);
+			}
+			accountSessions[row.Account].insert(row.SessionId);
+		}
+
 		// in the tree only while it matches the filter
 		if (bool show = Matches(row); show && !row.Item)
-			row.Item = m_Tree.InsertItem(session->second.Item, TLV_LAST, LPSTR_TEXTCALLBACK, Frame()->GetProcessIcon(*p),
+			row.Item = m_Tree.InsertItem(group->Item, TLV_LAST, LPSTR_TEXTCALLBACK, Frame()->GetProcessIcon(*p),
 				reinterpret_cast<LPARAM>(&row));
 		else if (!show && row.Item) {
 			m_Tree.DeleteItem(row.Item);
 			row.Item = nullptr;
 		}
 
-		auto& totals = session->second;
-		totals.Processes++;
-		totals.CPU += p->CPU;
-		totals.PrivateBytes += info->PrivatePageCount;
-		totals.WorkingSet += info->WorkingSetSize;
+		group->Processes++;
+		group->CPU += p->CPU;
+		group->PrivateBytes += info->PrivatePageCount;
+		group->WorkingSet += info->WorkingSetSize;
 	}
 
 	// processes that exited; their NativeInfo points into the snapshot buffer this update overwrote
@@ -254,10 +411,23 @@ void CUsersView::SyncProcesses() {
 		return true;
 		});
 
-	// the TreeListView expands a new parent; new sessions start collapsed
-	for (auto hItem : m_AddedSessions)
+	// accounts go with their last process (its row is gone already)
+	std::erase_if(m_Accounts, [&](auto& pair) {
+		auto& account = pair.second;
+		if (account.Processes > 0) {
+			account.Sessions.clear();
+			for (auto id : accountSessions[pair.first])
+				account.Sessions += (account.Sessions.empty() ? L"" : L", ") + std::to_wstring(id);
+			return false;
+		}
+		m_Tree.DeleteItem(account.Item);
+		return true;
+		});
+
+	// the TreeListView expands a new parent; new groups start collapsed
+	for (auto hItem : m_AddedGroups)
 		m_Tree.Expand(hItem, false);
-	m_AddedSessions.clear();
+	m_AddedGroups.clear();
 }
 
 std::wstring CUsersView::GetSessionTitle(SessionInfo const& session) {
@@ -292,12 +462,25 @@ std::wstring CUsersView::GetColumnText(Row& row, Column column) const {
 		}
 		return L"";
 	}
+	if (row.IsAccount) {
+		switch (column) {
+			case Column::Name: return GetAccountTitle(row.Account);
+			case Column::SessionId: return row.Sessions;
+			case Column::Processes: return std::to_wstring(row.Processes);
+			case Column::CPU: return FormatHelper::FormatCpu(row.CPU);
+			case Column::PrivateBytes: return FormatHelper::FormatSize(row.PrivateBytes);
+			case Column::WorkingSet: return FormatHelper::FormatSize(row.WorkingSet);
+		}
+		return L"";
+	}
 
 	auto& p = *row.Process;
 	auto info = p.NativeInfo;
 	switch (column) {
 		case Column::Name: return p.GetImageName();
 		case Column::ProcessId: return std::to_wstring(p.Id);
+		// by session, the parent has it
+		case Column::SessionId: return m_ByAccount ? std::to_wstring(row.SessionId) : L"";
 		case Column::CPU: return FormatHelper::FormatCpu(p.CPU);
 		case Column::PrivateBytes: return FormatHelper::FormatSize(info->PrivatePageCount);
 		case Column::WorkingSet: return FormatHelper::FormatSize(info->WorkingSetSize);
@@ -333,12 +516,16 @@ int CALLBACK CUsersView::CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam) {
 int CUsersView::CompareRows(Row& r1, Row& r2) const {
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
 	auto column = (Column)m_SortColumn;
-	// siblings are all sessions or all processes
+	// siblings are all sessions, all accounts or all processes
 	if (r1.IsSession) {
 		switch (column) {
 			case Column::SessionId: return compare(r1.SessionId, r2.SessionId);
 			case Column::State: return compare(r1.Session.State, r2.Session.State);
 			case Column::LogonTime: return compare(r1.Session.LogonTime, r2.Session.LogonTime);
+		}
+	}
+	if (r1.IsGroup()) {
+		switch (column) {
 			case Column::Processes: return compare(r1.Processes, r2.Processes);
 			case Column::CPU: return compare(r1.CPU, r2.CPU);
 			case Column::PrivateBytes: return compare(r1.PrivateBytes, r2.PrivateBytes);
@@ -349,6 +536,7 @@ int CUsersView::CompareRows(Row& r1, Row& r2) const {
 		auto i1 = r1.Process->NativeInfo, i2 = r2.Process->NativeInfo;
 		switch (column) {
 			case Column::ProcessId: return compare(r1.Process->Id, r2.Process->Id);
+			case Column::SessionId: return compare(r1.SessionId, r2.SessionId);
 			case Column::CPU: return compare(r1.Process->CPU, r2.Process->CPU);
 			case Column::PrivateBytes: return compare(i1->PrivatePageCount, i2->PrivatePageCount);
 			case Column::WorkingSet: return compare(i1->WorkingSetSize, i2->WorkingSetSize);
@@ -413,14 +601,14 @@ void CUsersView::ShowContextMenu(Row const& row, POINT pt) {
 	bool loggedOn = session && !row.Session.UserName.empty();
 	popup.EnableMenuItem(ID_USER_DISCONNECT, MF_BYCOMMAND | (loggedOn && row.Session.State == SessionState::Active ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_USER_LOGOFF, MF_BYCOMMAND | (loggedOn ? MF_ENABLED : MF_GRAYED));
-	popup.EnableMenuItem(ID_USER_GOTOPROCESS, MF_BYCOMMAND | (session ? MF_GRAYED : MF_ENABLED));
+	popup.EnableMenuItem(ID_USER_GOTOPROCESS, MF_BYCOMMAND | (row.IsGroup() ? MF_GRAYED : MF_ENABLED));
 	Frame()->ShowContextMenu(popup, pt, TPM_RIGHTBUTTON);
 }
 
 LRESULT CUsersView::OnDoubleClick(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& bHandled) {
 	// a session expands (the TreeListView does that); a process is shown in the Processes tab
 	auto row = GetSelectedRow();
-	if (row && !row->IsSession)
+	if (row && !row->IsGroup())
 		Frame()->GoToProcess(row->Process->Id);
 	else
 		bHandled = FALSE;
@@ -459,7 +647,7 @@ LRESULT CUsersView::OnLogoff(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 
 LRESULT CUsersView::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	auto row = GetSelectedRow();
-	if (row && !row->IsSession)
+	if (row && !row->IsGroup())
 		Frame()->GoToProcess(row->Process->Id);
 	return 0;
 }
