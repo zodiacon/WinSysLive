@@ -4,6 +4,7 @@
 #include <WinSys/Keys.h>
 #include <WinSys/Thread.h>
 #include "ColumnLayout.h"
+#include "ThreadCommands.h"
 #include "FilterBox.h"
 #include "Symbols.h"
 #include "resource.h"
@@ -170,9 +171,8 @@ private:
 	LRESULT OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnThreadPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnThreadAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	// the row's thread, with the access (and limited query access, to tell it from a later thread with its ID by its
-	// creation time); nullptr with the last error set
-	std::unique_ptr<WinSys::Thread> OpenRowThread(ThreadRow const& row, WinSys::ThreadAccessMask access) const;
+	// the row's thread as ThreadCommands takes it
+	ThreadCommands::Target GetTarget(ThreadRow const& row) const;
 	LRESULT OnDoubleClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnGetTipText(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 

@@ -96,6 +96,9 @@
     <ClCompile Include="ZombiesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="ThreadsView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ZombieHandlesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -163,6 +166,9 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="ThreadsPage.cpp">
+      <Filter>Pages</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadCommands.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
     <ClCompile Include="ModulesPage.cpp">
@@ -461,6 +467,9 @@
     <ClInclude Include="ZombiesView.h">
       <Filter>Views</Filter>
     </ClInclude>
+    <ClInclude Include="ThreadsView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
     <ClInclude Include="ZombieHandlesDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
@@ -549,6 +558,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ThreadsPage.h">
+      <Filter>Pages</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadCommands.h">
       <Filter>Pages</Filter>
     </ClInclude>
     <ClInclude Include="ModulesPage.h">

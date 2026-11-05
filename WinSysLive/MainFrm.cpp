@@ -126,6 +126,7 @@ namespace {
 		{ 0 },
 		// the tabs, as their View menu commands (checked: open); in CMainFrame::s_Tabs order
 		{ ID_VIEW_PROCESSES, IDI_PROCESSES, BTNS_CHECK },
+		{ ID_VIEW_THREADS, IDI_THREADS, BTNS_CHECK },
 		{ ID_VIEW_SERVICES, IDI_SERVICES, BTNS_CHECK },
 		{ ID_VIEW_PERFORMANCE, IDI_PERFORMANCE, BTNS_CHECK },
 		{ ID_VIEW_USERS, IDI_USERS, BTNS_CHECK },

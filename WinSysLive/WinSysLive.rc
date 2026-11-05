@@ -74,6 +74,7 @@ BEGIN
         MENUITEM "&Search...\tCtrl+Shift+Q",    ID_VIEW_SEARCH
         MENUITEM SEPARATOR
         MENUITEM "&Processes\tCtrl+1",          ID_VIEW_PROCESSES
+        MENUITEM "&Threads\tCtrl+Shift+T",      ID_VIEW_THREADS
         MENUITEM "&Services\tCtrl+2",           ID_VIEW_SERVICES
         MENUITEM "P&erformance\tCtrl+3",        ID_VIEW_PERFORMANCE
         MENUITEM "&Users\tCtrl+4",              ID_VIEW_USERS
@@ -1805,6 +1806,7 @@ BEGIN
     "L",            ID_VIEW_EVENTS,         VIRTKEY, SHIFT, CONTROL
     "W",            ID_VIEW_WSL,            VIRTKEY, SHIFT, CONTROL
     "R",            ID_VIEW_REGISTRY,       VIRTKEY, SHIFT, CONTROL
+    "T",            ID_VIEW_THREADS,        VIRTKEY, SHIFT, CONTROL
     "Q",            ID_VIEW_COMMANDPALETTE, VIRTKEY, CONTROL
     "Q",            ID_VIEW_SEARCH,         VIRTKEY, SHIFT, CONTROL
     "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
@@ -2227,6 +2229,7 @@ BEGIN
     ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"
     ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
     ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
+    ID_VIEW_THREADS         "Show every thread of every process\nThreads (Ctrl+Shift+T)"
 END
 
 STRINGTABLE

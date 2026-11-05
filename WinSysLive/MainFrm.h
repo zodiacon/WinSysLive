@@ -92,6 +92,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_PAUSE, OnPause)
 		COMMAND_RANGE_HANDLER(ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000, OnUpdateInterval)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSES, OnViewTab)
+		COMMAND_ID_HANDLER(ID_VIEW_THREADS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_SERVICES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_PERFORMANCE, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_USERS, OnViewTab)
@@ -312,6 +313,7 @@ private:
 	// Processes is always open; the others are opened and closed (the Tabs setting has the open ones, in tab order)
 	static constexpr TabInfo s_Tabs[] = {
 		{ TabType::Processes, ID_VIEW_PROCESSES, IDI_PROCESSES, L"Processes" },
+		{ TabType::Threads, ID_VIEW_THREADS, IDI_THREADS, L"Threads" },
 		{ TabType::Services, ID_VIEW_SERVICES, IDI_SERVICES, L"Services" },
 		{ TabType::Performance, ID_VIEW_PERFORMANCE, IDI_PERFORMANCE, L"Performance" },
 		{ TabType::Users, ID_VIEW_USERS, IDI_USERS, L"Users" },

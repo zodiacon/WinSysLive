@@ -489,6 +489,7 @@
     <ClCompile Include="NetworkView.cpp" />
     <ClCompile Include="IpcView.cpp" />
     <ClCompile Include="ZombiesView.cpp" />
+    <ClCompile Include="ThreadsView.cpp" />
     <ClCompile Include="ZombieHandlesDlg.cpp" />
     <ClCompile Include="ObjectTypesView.cpp" />
     <ClCompile Include="ObjectManagerView.cpp" />
@@ -514,6 +515,7 @@
     <ClCompile Include="HandlesPage.cpp" />
     <ClCompile Include="ModulesPage.cpp" />
     <ClCompile Include="ThreadsPage.cpp" />
+    <ClCompile Include="ThreadCommands.cpp" />
     <ClCompile Include="UsersView.cpp" />
     <ClCompile Include="VersionInfo.cpp" />
     <ClCompile Include="ComServerLookup.cpp" />
@@ -614,6 +616,7 @@
     <ClInclude Include="NetworkView.h" />
     <ClInclude Include="IpcView.h" />
     <ClInclude Include="ZombiesView.h" />
+    <ClInclude Include="ThreadsView.h" />
     <ClInclude Include="ZombieHandlesDlg.h" />
     <ClInclude Include="ObjectTypesView.h" />
     <ClInclude Include="ObjectManagerView.h" />
@@ -646,6 +649,7 @@
     <ClInclude Include="HandlesPage.h" />
     <ClInclude Include="ModulesPage.h" />
     <ClInclude Include="ThreadsPage.h" />
+    <ClInclude Include="ThreadCommands.h" />
     <ClInclude Include="UsersView.h" />
     <ClInclude Include="VersionInfo.h" />
     <ClInclude Include="ComServerLookup.h" />

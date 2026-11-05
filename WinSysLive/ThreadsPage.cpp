@@ -14,6 +14,7 @@
 #include "StackDlg.h"
 #include "WaitChainDlg.h"
 #include "AffinityDlg.h"
+#include "ThreadCommands.h"
 #include <WinSys/SystemInfo.h>
 #include <WinSys/Processes.h>
 #include <WinSys/Helpers.h>
@@ -21,29 +22,6 @@
 using namespace WinSys;
 
 namespace {
-	PCWSTR ThreadStateToString(uint32_t state) {
-		static PCWSTR const names[] = {
-			L"Initialized", L"Ready", L"Running", L"Standby", L"Terminated", L"Waiting", L"Transition",
-			L"Deferred Ready", L"Gate Wait", L"Waiting for Swap",
-		};
-		return state < _countof(names) ? names[state] : L"";
-	}
-
-	PCWSTR WaitReasonToString(uint32_t reason) {
-		// KWAIT_REASON; 7 to 13 are the Wr variants of 0 to 6 (named as the kernel and Process Explorer have them, so the
-		// two can be told apart)
-		static PCWSTR const names[] = {
-			L"Executive", L"Free Page", L"Page In", L"Pool Allocation", L"Delay Execution", L"Suspended", L"User Request",
-			L"WrExecutive", L"WrFreePage", L"WrPageIn", L"WrPoolAllocation", L"WrDelayExecution", L"WrSuspended", L"WrUserRequest",
-			L"Event Pair", L"Queue", L"LPC Receive", L"LPC Reply", L"Virtual Memory", L"Page Out", L"Rendezvous",
-			L"Keyed Event", L"Terminated", L"Process In Swap", L"CPU Rate Control", L"Callout Stack", L"Kernel",
-			L"Resource", L"Push Lock", L"Mutex", L"Quantum End", L"Dispatch Int", L"Preempted", L"Yield Execution",
-			L"Fast Mutex", L"Guarded Mutex", L"Rundown", L"Alert By Thread ID", L"Deferred Preempt", L"Physical Fault",
-			L"I/O Ring", L"Mdl Cache", L"RCU",
-		};
-		return reason < _countof(names) ? names[reason] : L"";
-	}
-
 	// in CThreadsPage::Column order; the keys are stored in the ThreadColumns setting
 	const ColumnLayout::ColumnDef s_Columns[] = {
 		{ L"TID", L"Id", 70, LVCFMT_RIGHT, true, true },
@@ -182,19 +160,19 @@ CThreadsPage::ThreadRow const* CThreadsPage::GetSelectedThread() const {
 	return selected >= 0 && selected < (int)m_Rows.size() && !m_Rows[selected].Exited ? &m_Rows[selected] : nullptr;
 }
 
-LRESULT CThreadsPage::OnStack(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (auto row = GetSelectedThread()) {
-		CStackDlg dlg(m_Pid, m_Created, row->Key.Id, m_ProcessName);
-		dlg.DoModal(m_hWnd);
-	}
+ThreadCommands::Target CThreadsPage::GetTarget(ThreadRow const& row) const {
+	return { row.Key, m_Pid, m_Created, m_ProcessName, IsSuspended(row) };
+}
+
+LRESULT CThreadsPage::OnStack(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedThread())
+		ThreadCommands::Execute(m_hWnd, wID, GetTarget(*row));
 	return 0;
 }
 
-LRESULT CThreadsPage::OnWaitChain(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (auto row = GetSelectedThread()) {
-		CWaitChainDlg dlg(m_Pid, m_ProcessName, { row->Key.Id });
-		dlg.DoModal(m_hWnd);
-	}
+LRESULT CThreadsPage::OnWaitChain(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedThread())
+		ThreadCommands::Execute(m_hWnd, wID, GetTarget(*row));
 	return 0;
 }
 
@@ -207,134 +185,28 @@ void CThreadsPage::TerminateSelected() {
 }
 
 bool CThreadsPage::IsSuspended(ThreadRow const& row) {
-	return row.State == 5 && (row.WaitReason == 5 || row.WaitReason == 12);
-}
-
-namespace {
-	// in the Set Priority submenu's order (ID_THREAD_PRIORITY_TIMECRITICAL...)
-	const struct {
-		ThreadPriorityLevel Level;
-		PCWSTR Name;
-	} s_ThreadPriorities[] = {
-		{ ThreadPriorityLevel::TimeCritical, L"&Time Critical" },
-		{ ThreadPriorityLevel::Highest, L"&Highest" },
-		{ ThreadPriorityLevel::AboveNormal, L"&Above Normal" },
-		{ ThreadPriorityLevel::Normal, L"&Normal" },
-		{ ThreadPriorityLevel::BelowNormal, L"&Below Normal" },
-		{ ThreadPriorityLevel::Lowest, L"&Lowest" },
-		{ ThreadPriorityLevel::Idle, L"&Idle" },
-	};
-	static_assert(_countof(s_ThreadPriorities) == ID_THREAD_PRIORITY_IDLE - ID_THREAD_PRIORITY_TIMECRITICAL + 1);
-}
-
-std::unique_ptr<Thread> CThreadsPage::OpenRowThread(ThreadRow const& row, ThreadAccessMask access) const {
-	auto thread = Thread::OpenById(row.Key.Id, access | ThreadAccessMask::QueryLimitedInformation);
-	if (thread) {
-		// the thread ID may belong to another thread by now
-		auto created = thread->GetCreateTime();
-		if (created && created != row.Key.Created) {
-			::SetLastError(ERROR_INVALID_PARAMETER);
-			return nullptr;
-		}
-	}
-	return thread;
+	return ThreadCommands::IsSuspended(row.State, row.WaitReason);
 }
 
 LRESULT CThreadsPage::OnThreadPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto row = GetSelectedThread();
-	if (!row || !CanControl())
-		return 0;
-	auto level = s_ThreadPriorities[wID - ID_THREAD_PRIORITY_TIMECRITICAL].Level;
-	auto thread = OpenRowThread(*row, ThreadAccessMask::SetLimitedInformation);
-	if (!thread || !thread->SetPriority(level))
-		AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's priority: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-			IDR_MAINFRAME, MB_ICONERROR);
-	// the new priority shows with the next refresh
+	if (auto row = GetSelectedThread())
+		ThreadCommands::Execute(m_hWnd, wID, GetTarget(*row));
 	return 0;
 }
 
-LRESULT CThreadsPage::OnThreadAffinity(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto row = GetSelectedThread();
-	if (!row || !CanControl())
-		return 0;
-	auto thread = OpenRowThread(*row, ThreadAccessMask::SetInformation | ThreadAccessMask::QueryInformation);
-	uint16_t group = 0;
-	KAFFINITY mask = 0, allowed = 0;
-	if (!thread || !thread->GetAffinity(group, mask, allowed)) {
-		AtlMessageBox(m_hWnd, std::format(L"Failed to get the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-			IDR_MAINFRAME, MB_ICONERROR);
-		return 0;
-	}
-	auto title = std::format(L"Thread {} of {} ({})", row->Key.Id, m_ProcessName, m_Pid);
-	if (auto groups = WinSys::SystemInfo::GetProcessorGroups(); groups.size() > 1) {
-		// over 64 processors: the thread may move to another group, unless its process is held to one by a mask
-		DWORD_PTR processMask = 0, systemMask = 0;
-		auto process = WinSys::Process::OpenById(m_Pid);
-		bool held = process && process->GetAffinity(processMask, systemMask);
-		std::vector<CAffinityDlg::Group> choices;
-		int first = 0;
-		for (auto& g : groups) {
-			choices.push_back({ g.Group, g.Group == group ? allowed : g.ActiveMask, g.Group == group ? mask : 0, !held || g.Group == group, first });
-			first += g.ActiveCount;
-		}
-		auto note = held ? std::format(L"The process is held to group {} by its affinity mask; its threads stay there.", group)
-			: std::wstring(L"A thread runs in one group: choosing processors in another moves it there.");
-		CAffinityDlg dlg(title, choices, true, note);
-		if (dlg.DoModal(m_hWnd) != IDOK)
-			return 0;
-		auto& chosen = dlg.GetGroups();
-		auto it = std::ranges::find_if(chosen, [](auto& g) { return g.Selected != 0; });
-		if (it == chosen.end() || (it->Number == group && it->Selected == mask))
-			return 0;
-		if (!thread->SetGroupAffinity(it->Number, it->Selected))
-			AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-				IDR_MAINFRAME, MB_ICONERROR);
-		return 0;
-	}
-	// the processors of the thread's group
-	CAffinityDlg dlg(title, mask, allowed, true);
-	if (dlg.DoModal(m_hWnd) == IDOK && dlg.GetMask() != mask && !thread->SetAffinity(dlg.GetMask()))
-		AtlMessageBox(m_hWnd, std::format(L"Failed to set the thread's affinity: {}", WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-			IDR_MAINFRAME, MB_ICONERROR);
+LRESULT CThreadsPage::OnThreadAffinity(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelectedThread())
+		ThreadCommands::Execute(m_hWnd, wID, GetTarget(*row));
 	return 0;
 }
 
 bool CThreadsPage::CanControl() const {
-	return m_Pid > 4 && m_Pid != ::GetCurrentProcessId();
+	return ThreadCommands::CanControl(m_Pid);
 }
 
 LRESULT CThreadsPage::OnThreadControl(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	auto row = GetSelectedThread();
-	if (!row || !CanControl())
-		return 0;
-	auto tid = row->Key.Id;
-	PCWSTR verb = wID == ID_THREAD_TERMINATE ? L"Terminate" : wID == ID_THREAD_SUSPEND ? L"Suspend" : L"Resume";
-	auto question = std::format(L"{} thread {} of {} ({})?", verb, tid, m_ProcessName, m_Pid);
-	if (wID == ID_THREAD_TERMINATE)
-		question += L"\n\nTerminating a thread can leave the process in an inconsistent state.";
-	if (AtlMessageBox(m_hWnd, question.c_str(), IDR_MAINFRAME,
-		MB_OKCANCEL | (wID == ID_THREAD_RESUME ? MB_ICONQUESTION : MB_ICONWARNING | MB_DEFBUTTON2)) != IDOK)
-		return 0;
-
-	// the thread ID may belong to another thread by now: the row's creation time tells
-	auto thread = Thread::OpenById(tid, (wID == ID_THREAD_TERMINATE ? ThreadAccessMask::Terminate : ThreadAccessMask::SuspendResume)
-		| ThreadAccessMask::QueryLimitedInformation);
-	bool ok = false;
-	if (thread) {
-		auto created = thread->GetCreateTime();
-		if (created && created != row->Key.Created)
-			::SetLastError(ERROR_INVALID_PARAMETER);
-		else if (wID == ID_THREAD_TERMINATE)
-			ok = thread->Terminate(1);
-		else if (wID == ID_THREAD_SUSPEND)
-			ok = thread->Suspend();
-		else
-			ok = thread->Resume();
-	}
-	if (!ok)
-		AtlMessageBox(m_hWnd, std::format(L"Failed to {} the thread: {}", verb, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
-			IDR_MAINFRAME, MB_ICONERROR);
-	// the state shows with the next refresh
+	if (auto row = GetSelectedThread())
+		ThreadCommands::Execute(m_hWnd, wID, GetTarget(*row));
 	return 0;
 }
 
@@ -389,42 +261,12 @@ LRESULT CThreadsPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 			m_List.ClientToScreen(&rc);
 			pt = { rc.left, rc.bottom };
 		}
+		// the current priority checked, from the handle the page keeps
+		std::optional<ThreadPriorityLevel> current;
+		if (auto state = m_Threads.find(GetSelectedThread()->Key); state != m_Threads.end() && state->second.Handle)
+			current = state->second.Handle->GetPriority();
 		CMenu menu;
-		menu.CreatePopupMenu();
-		menu.AppendMenu(MF_STRING, ID_THREAD_STACK, L"&Stack...");
-		menu.AppendMenu(MF_STRING, ID_THREAD_WAITCHAIN, L"&Wait Chain...");
-		menu.AppendMenu(MF_SEPARATOR);
-		UINT control = CanControl() ? MF_STRING : MF_STRING | MF_GRAYED;
-		bool suspended = IsSuspended(*GetSelectedThread());
-		if (suspended)
-			menu.AppendMenu(control, ID_THREAD_RESUME, L"&Resume");
-		else
-			menu.AppendMenu(control, ID_THREAD_SUSPEND, L"S&uspend");
-		menu.AppendMenu(control, ID_THREAD_TERMINATE, L"&Terminate");
-		menu.AppendMenu(MF_SEPARATOR);
-		// the priority (the current one checked, from the handle the page keeps) and the affinity
-		CMenu priorities;
-		priorities.CreatePopupMenu();
-		for (int i = 0; i < _countof(s_ThreadPriorities); i++)
-			priorities.AppendMenu(MF_STRING, ID_THREAD_PRIORITY_TIMECRITICAL + i, s_ThreadPriorities[i].Name);
-		if (auto state = m_Threads.find(GetSelectedThread()->Key); state != m_Threads.end() && state->second.Handle) {
-			auto current = state->second.Handle->GetPriority();
-			for (int i = 0; i < _countof(s_ThreadPriorities); i++)
-				if (s_ThreadPriorities[i].Level == current)
-					priorities.CheckMenuRadioItem(ID_THREAD_PRIORITY_TIMECRITICAL, ID_THREAD_PRIORITY_IDLE, ID_THREAD_PRIORITY_TIMECRITICAL + i, MF_BYCOMMAND);
-		}
-		menu.AppendMenu(control | MF_POPUP, (UINT_PTR)priorities.Detach(), L"Set &Priority");
-		menu.AppendMenu(control, ID_THREAD_AFFINITY, L"&Affinity...");
-		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
-		// the icons, as the frame's menus have them
-		MenuItemData const icons[] = {
-			{ ID_THREAD_STACK, IDI_STACK },
-			{ suspended ? ID_THREAD_RESUME : ID_THREAD_SUSPEND, suspended ? IDI_RUN : IDI_PAUSE },
-			{ ID_THREAD_TERMINATE, IDI_DELETE },
-			{ ID_PAGE_COPY, IDI_COPY },
-		};
-		WTLHelper::InitMenu(menu.m_hMenu, icons, _countof(icons), DpiHelper::SmallIconSize(m_hWnd));
+		ThreadCommands::BuildMenu(menu, GetTarget(*GetSelectedThread()), current, ID_PAGE_COPY, DpiHelper::SmallIconSize(m_hWnd));
 		::TrackPopupMenuEx(menu, TPM_RIGHTBUTTON, pt.x, pt.y, m_hWnd, nullptr);
 		return 0;
 	}
@@ -671,8 +513,8 @@ std::wstring CThreadsPage::GetText(ThreadRow const& row, Column column) const {
 		case Column::UserTime: return FormatHelper::FormatTimeSpan(row.UserTime);
 		case Column::Cycles: return row.HasHandle ? FormatHelper::FormatNumber(row.Cycles) : L"";
 		case Column::CyclesDelta: return row.CyclesDelta > 0 ? FormatHelper::FormatNumber(row.CyclesDelta) : L"";
-		case Column::State: return ThreadStateToString(row.State);
-		case Column::WaitReason: return row.State == 5 ? WaitReasonToString(row.WaitReason) : L"";	// Waiting
+		case Column::State: return ThreadCommands::StateText(row.State);
+		case Column::WaitReason: return row.State == 5 ? ThreadCommands::WaitReasonText(row.WaitReason) : L"";	// Waiting
 		case Column::Priority: return std::to_wstring(row.Priority);
 		case Column::BasePriority: return std::to_wstring(row.BasePriority);
 		case Column::IdealCpu:
@@ -704,15 +546,7 @@ int CThreadsPage::GetRowImage(HWND, int row, int col) const {
 	auto& r = m_Rows[row];
 	if (r.Exited)
 		return m_IconIndices.at(IDI_KILL);
-	UINT icon;
-	switch (r.State) {
-		case 1: case 3: case 7: icon = IDI_CONTINUE; break;	// Ready, Standby, Deferred Ready
-		case 2: icon = IDI_RUN; break;	// Running
-		case 4: icon = IDI_KILL; break;	// Terminated
-		case 5: case 8: icon = IDI_PAUSE; break;	// Waiting, Gate Wait
-		case 6: case 9: icon = IDI_MEMORY; break;	// Transition, Waiting for Swap: the kernel stack isn't resident
-		default: icon = IDI_THREADS; break;	// Initialized
-	}
+	auto icon = ThreadCommands::StateIcon(r.State);
 	return m_IconIndices.at(icon);
 }
 

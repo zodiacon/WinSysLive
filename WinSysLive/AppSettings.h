@@ -34,6 +34,7 @@ struct AppSettings : Settings {
 		SETTING_STRING(NetworkColumns, L"");
 		SETTING_STRING(IpcColumns, L"");	// the RPC/ALPC tab
 		SETTING_STRING(ZombieColumns, L"");	// the Zombie Processes tab
+		SETTING_STRING(ThreadsViewColumns, L"");	// the Threads tab
 		SETTING_STRING(ObjectTypeColumns, L"");	// the Object Types tab
 		SETTING_STRING(ObjectManagerColumns, L"");	// the Object Manager tab
 		SETTING_STRING(PoolTagColumns, L"");	// the Pool Tags tab
@@ -118,6 +119,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(NetworkColumns)
 	DEF_SETTING_STRING(IpcColumns)
 	DEF_SETTING_STRING(ZombieColumns)
+	DEF_SETTING_STRING(ThreadsViewColumns)
 	DEF_SETTING_STRING(ObjectTypeColumns)
 	DEF_SETTING_STRING(ObjectManagerColumns)
 	DEF_SETTING_STRING(PoolTagColumns)

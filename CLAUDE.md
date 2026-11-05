@@ -73,7 +73,7 @@ The include order in `pch.h` matters, and the reasons are commented there:
 The parts of the app are described in detail in `docs/`. Read the file for the area you're changing first, and keep it up to date as you change the code (new features get an entry there, not here):
 
 - [docs/processes-view.md](docs/processes-view.md): the Processes tab, its lower pane (Handles, Modules, Threads) and the process property sheet.
-- [docs/views.md](docs/views.md): the other tabs (Services and Drivers, Users, Network, Kernel Modules, RPC/ALPC, Zombie Processes, Object Types, Object Manager, Pool Tags, Disk, History, Autoruns, Devices, Events, WSL, Registry, Performance).
+- [docs/views.md](docs/views.md): the other tabs (Threads, Services and Drivers, Users, Network, Kernel Modules, RPC/ALPC, Zombie Processes, Object Types, Object Manager, Pool Tags, Disk, History, Autoruns, Devices, Events, WSL, Registry, Performance).
 - [docs/dialogs.md](docs/dialogs.md): the dialogs and menus that aren't a tab's (Run, Find Handle or DLL, Snapshots, System Information, Firmware and TPM, the Computer, Tools and Memory Lists menus, Pipes and Mailslots, Installed Packages, Firewall Rules, COM Registration, Kernel Callbacks and Minifilters, Certificate Stores, Network Information, ETW Sessions, Alerts, the command palette, Window Stations and Desktops, Power Requests, Network Shares, Page Files, RAM, Logon Sessions, the window finder, VirusTotal, wait chains, About).
 - [docs/app-services.md](docs/app-services.md): Copy and Export, the ACL editor, highlighting, the tray icons and window options, startup, updates and settings files, symbols and DPI.
 

@@ -24,6 +24,7 @@ enum class TabType {
 	Events,		// the System and Application event logs
 	Wsl,		// the WSL distributions and their Linux processes
 	Registry,	// registry operations by process and key
+	Threads,	// every process's threads
 };
 
 struct AlertRule;
