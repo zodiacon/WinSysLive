@@ -89,11 +89,7 @@ LRESULT CHandlesPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 }
 
 void CHandlesPage::SetBarFont() {
-	if (m_BarFont)
-		m_BarFont.DeleteObject();
-	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_hWnd)));
-	m_Bar.SetFont(m_BarFont);
-	m_Bar.AutoSize();
+	m_BarFont.Apply(m_Bar);
 }
 
 void CHandlesPage::UpdateBar() {

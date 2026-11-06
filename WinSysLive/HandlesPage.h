@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include <VirtualListView.h>
 #include <WinSys/Handles.h>
 #include "ColumnLayout.h"
@@ -72,6 +74,10 @@ public:
 	void SetListFont(HFONT font) {
 		m_List.SetFont(font);
 		m_Filter.SetFont(font);
+		// the bar's buttons take the font's size, and the row its height
+		m_BarFont.SetUserFont(font);
+		SetBarFont();
+		Layout();
 		// a hidden page's header isn't all repainted otherwise
 		m_List.GetHeader().Invalidate();
 	}
@@ -212,7 +218,7 @@ private:
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list, at the left
 	CToolBarCtrl m_Bar;	// right of the filter: By Type and Unnamed Handles, as the context menu's
-	CFont m_BarFont;
+	CBarFont m_BarFont;
 	int m_RowHeight{ 0 };	// of the filter box and the bar, above the list
 	std::vector<HandleRow> m_AllRows;	// every row of the last refresh; m_Rows has the matching ones
 	std::shared_ptr<ProcessInfoEx> m_Process;

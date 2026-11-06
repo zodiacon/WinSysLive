@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "VirusTotalChecker.h"
 #include "ViewBase.h"
@@ -160,7 +162,7 @@ private:
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;
 	CToolBarCtrl m_Bar;	// right of the filter: Hide Microsoft Entries and Scan Again, as the context menu's
-	CFont m_BarFont;
+	CBarFont m_BarFont;
 	int m_MenuColumn{ -1 };
 	std::vector<Row> m_All;	// the last scan's
 	std::vector<Row const*> m_Rows;	// into m_All: the list's rows, in display order

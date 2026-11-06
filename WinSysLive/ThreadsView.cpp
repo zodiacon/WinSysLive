@@ -73,9 +73,7 @@ LRESULT CThreadsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 	m_HideBar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_HideButtons, _countof(s_HideButtons), HideButtonImageSize);
-	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
-	m_HideBar.SetFont(m_HideBarFont);
-	m_HideBar.AutoSize();
+	m_HideBarFont.Apply(m_HideBar);
 	AddSimpleReBarBand(m_HideBar, nullptr, FALSE);
 	// two bands would get grippers; the filter keeps its width, the buttons' band takes the rest of the row
 	CReBarCtrl rebar(m_hWndToolBar);
@@ -115,10 +113,7 @@ void CThreadsView::UpdateLayout(BOOL resizeBars) {
 
 void CThreadsView::LayoutHideBar() {
 	ToolbarHelper::UpdateToolBarImages(m_HideBar, s_HideButtons, _countof(s_HideButtons), HideButtonImageSize);
-	m_HideBarFont.DeleteObject();
-	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
-	m_HideBar.SetFont(m_HideBarFont);
-	m_HideBar.AutoSize();
+	m_HideBarFont.Apply(m_HideBar);
 	// its band: the buttons' height, the width to the last one's end
 	CReBarCtrl rebar(m_hWndToolBar);
 	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
@@ -200,6 +195,10 @@ void CThreadsView::OnRefresh(bool active) {
 void CThreadsView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
 	m_Filter.SetFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_HideBarFont.SetUserFont(font);
+	LayoutHideBar();
+	UpdateLayout();
 }
 
 void CThreadsView::OnFrameIdle() {

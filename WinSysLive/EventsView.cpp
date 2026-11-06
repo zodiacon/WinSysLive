@@ -111,9 +111,7 @@ LRESULT CEventsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	auto spanText = SpanText();
 	span.pszText = spanText.data();
 	m_Bar.SetButtonInfo(ID_EVENTS_SPAN, &span);
-	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
-	m_Bar.SetFont(m_BarFont);
-	m_Bar.AutoSize();
+	m_BarFont.Apply(m_Bar);
 	AddSimpleReBarBand(m_Bar, nullptr, FALSE);
 	CReBarCtrl rebar(m_hWndToolBar);
 	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
@@ -155,11 +153,7 @@ void CEventsView::LayoutBar() {
 	if (!m_Bar)
 		return;
 	ToolbarHelper::UpdateToolBarImages(m_Bar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
-	if (m_BarFont)
-		m_BarFont.DeleteObject();
-	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
-	m_Bar.SetFont(m_BarFont);
-	m_Bar.AutoSize();
+	m_BarFont.Apply(m_Bar);
 	CReBarCtrl rebar(m_hWndToolBar);
 	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
 		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
@@ -198,6 +192,9 @@ void CEventsView::OnActivate(bool active) {
 void CEventsView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
 	m_Filter.SetFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_BarFont.SetUserFont(font);
+	LayoutBar();
 }
 
 uint8_t CEventsView::MaxLevel() const {

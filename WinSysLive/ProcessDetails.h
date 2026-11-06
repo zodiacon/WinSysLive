@@ -26,7 +26,7 @@ public:
 	void SetProcess(std::shared_ptr<ProcessInfoEx> process);
 	[[nodiscard]] ProcessInfoEx* GetProcess() const;
 	void Refresh();
-	// the pages' lists
+	// the tabs' and the pages' lists, filter boxes and bars
 	void SetListFont(HFONT font);
 	// the frame's image list again (the tabs' and the Handles page's), after it took a new DPI's size
 	void ResetImageList();

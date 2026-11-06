@@ -104,9 +104,7 @@ LRESULT CUsersView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 	// Group by Account, beside the filter (as the Processes view's Hide button)
 	m_ModeBar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_ModeButton, _countof(s_ModeButton), ModeButtonImageSize);
-	m_ModeBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_ModeBar)));
-	m_ModeBar.SetFont(m_ModeBarFont);
-	m_ModeBar.AutoSize();
+	m_ModeBarFont.Apply(m_ModeBar);
 	CRect rcButton;
 	m_ModeBar.GetItemRect(0, &rcButton);
 	m_ModeButtonWidth = DpiHelper::Scale(rcButton.Width(), USER_DEFAULT_SCREEN_DPI, DpiHelper::GetDpi(m_ModeBar));
@@ -150,9 +148,7 @@ void CUsersView::UpdateLayout(BOOL resizeBars) {
 void CUsersView::LayoutModeBar() {
 	// the icon in the new size
 	ToolbarHelper::UpdateToolBarImages(m_ModeBar, s_ModeButton, _countof(s_ModeButton), ModeButtonImageSize);
-	m_ModeBarFont.DeleteObject();
-	m_ModeBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_ModeBar)));
-	m_ModeBar.SetFont(m_ModeBarFont);
+	m_ModeBarFont.Apply(m_ModeBar);
 	SetModeButtonWidth();
 	// its band, as AddSimpleReBarBand sets it: the button's height, the width to its end
 	CReBarCtrl rebar(m_hWndToolBar);
@@ -172,7 +168,8 @@ void CUsersView::LayoutModeBar() {
 
 void CUsersView::SetModeButtonWidth() {
 	TBBUTTONINFO info{ sizeof(info), TBIF_SIZE };
-	info.cx = (WORD)DpiHelper::Scale(m_ModeButtonWidth, m_ModeBar.m_hWnd);
+	// its width in the default font, and what the text takes more (or less) in the bar's
+	info.cx = (WORD)(DpiHelper::Scale(m_ModeButtonWidth, m_ModeBar.m_hWnd) + CBarFont::ExtraWidth(m_ModeBar, s_ModeButton[0].text));
 	m_ModeBar.SetButtonInfo(ID_USERS_GROUPBYACCOUNT, &info);
 	m_ModeBar.AutoSize();
 }
@@ -243,6 +240,10 @@ void CUsersView::OnActivate(bool active) {
 void CUsersView::OnFontChanged(HFONT font) {
 	m_Tree.SetFont(font);
 	m_Filter.SetFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_ModeBarFont.SetUserFont(font);
+	LayoutModeBar();
+	UpdateLayout();
 }
 
 bool CUsersView::Matches(Row const& row) const {

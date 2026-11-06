@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
@@ -126,6 +128,9 @@ public:
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
 	void OnFontChanged(HFONT font) override;
+	void OnDpiChanged(UINT /*dpi*/) override {
+		LayoutBar();
+	}
 	void UpdateLayout(BOOL resizeBars = TRUE);
 
 	// for the chart: the range changed by zooming or panning (following stops unless it reaches now)
@@ -167,6 +172,8 @@ private:
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
+	// the bar's icons and font for its DPI (or the user's font), its band for the buttons' size
+	void LayoutBar();
 	// the rows from the recorder's lifetimes for the range and the options
 	void Rebuild();
 	void UpdateStatus();
@@ -174,7 +181,7 @@ private:
 	CTimelineCtrl m_Chart;
 	CFilterBox m_Filter;
 	CToolBarCtrl m_Bar;	// Hide Running Throughout, Fit
-	CFont m_BarFont;
+	CBarFont m_BarFont;
 	std::shared_ptr<HistoryRecorder> m_Recorder;
 	std::shared_ptr<WinSys::ProcessCreationTracker> m_Creations;	// elevated only
 	int64_t m_From{ 0 }, m_To{ 0 };

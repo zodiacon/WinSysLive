@@ -440,6 +440,9 @@
     <ClInclude Include="FilterBox.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="BarFont.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="DpiLayout.h">
       <Filter>Helpers</Filter>
     </ClInclude>

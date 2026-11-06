@@ -493,7 +493,7 @@ control, account and dependencies, and optionally starts it.
 | Option | What it does |
 |---|---|
 | Dark Mode | Switches between dark and light |
-| Font... / Default Font | The font of the lists and trees |
+| Font... / Default Font | The font of the lists, trees, tabs, filter boxes and the views' tool bars |
 | Process Colors... | The Processes tab's row colors per kind |
 | Highlighting... | How long new and removed items stay highlighted, in seconds (0 turns it off) |
 | Resolve Symbols / Symbol Settings... | See [Symbols](#symbols) |

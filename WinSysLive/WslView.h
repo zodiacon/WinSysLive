@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "ViewBase.h"
 #include <TreeListView/include/TreeListView.h>
@@ -199,7 +201,7 @@ private:
 	std::unordered_map<Key, Row, KeyHash> m_Threads;	// apart: a main thread's ID and start are its process's
 	bool m_ShowThreads{ false };
 	CToolBarCtrl m_Bar;	// right of the filter: Show Threads
-	CFont m_BarFont;
+	CBarFont m_BarFont;
 	std::unordered_map<std::wstring, Monitor> m_Monitors;	// by distribution
 	std::optional<std::vector<std::wstring>> m_Running;	// the last answer; nothing: wsl.exe didn't run
 	std::vector<Column> m_Columns;

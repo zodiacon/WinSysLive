@@ -10,7 +10,8 @@ HWND CFilterBox::Create(HWND hRebar, UINT id, int width, PCWSTR cue, HWND hList,
 	CRect rc(0, 0, DpiHelper::Scale(width, dpi), DpiHelper::Scale(22, dpi));
 	m_Edit.Create(hRebar, rc, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, id);
 	m_Edit.SetCueBannerText(cue, TRUE);
-	SetFont(nullptr);
+	ApplyFont(nullptr);
+	m_Edit.SetWindowPos(nullptr, 0, 0, GetWidth(), GetHeight(), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	::SetWindowSubclass(m_Edit, SubclassProc, 0, (DWORD_PTR)this);
 	return m_Edit;
 }
@@ -24,10 +25,22 @@ int CFilterBox::GetWidth() const {
 }
 
 int CFilterBox::GetHeight() const {
-	return DpiHelper::Scale(22, m_Edit.m_hWnd);
+	// 22 DIPs for the default font; a larger font's height and the edit's borders and margins (6 DIPs, as at 22)
+	CClientDC dc(m_Edit);
+	auto old = dc.SelectFont(m_Edit.GetFont());
+	TEXTMETRIC tm{};
+	dc.GetTextMetrics(&tm);
+	dc.SelectFont(old);
+	return (std::max)(DpiHelper::Scale(22, m_Edit.m_hWnd), (int)tm.tmHeight + DpiHelper::Scale(6, m_Edit.m_hWnd));
 }
 
 void CFilterBox::SetFont(HFONT font) {
+	ApplyFont(font);
+	// the height follows the font
+	Resize();
+}
+
+void CFilterBox::ApplyFont(HFONT font) {
 	m_ViewFont = font;
 	if (!font) {
 		if (!m_OwnFont.IsNull())
@@ -41,7 +54,11 @@ void CFilterBox::SetFont(HFONT font) {
 void CFilterBox::OnDpiChanged() {
 	// a view's font comes again from the view, for the new DPI (IView::OnFontChanged)
 	if (!m_ViewFont)
-		SetFont(nullptr);
+		ApplyFont(nullptr);
+	Resize();
+}
+
+void CFilterBox::Resize() {
 	m_Edit.SetWindowPos(nullptr, 0, 0, GetWidth(), GetHeight(), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	CWindow parent(m_Edit.GetParent());
 	WCHAR className[32]{};
@@ -58,9 +75,14 @@ void CFilterBox::OnDpiChanged() {
 				break;
 			}
 		}
+		// the rebar's height may have changed: the view lays out its client below it
+		CWindow view(rebar.GetParent());
+		CRect rc;
+		view.GetClientRect(&rc);
+		view.SendMessage(WM_SIZE, SIZE_RESTORED, MAKELPARAM(rc.Width(), rc.Height()));
 	}
 	else {
-		// the parent laid itself out before this (its WM_DPICHANGED_AFTERPARENT comes first), with the old height
+		// the parent laid itself out with the old height (on a DPI change, its WM_DPICHANGED_AFTERPARENT comes first)
 		CRect rc;
 		parent.GetClientRect(&rc);
 		parent.SendMessage(WM_SIZE, SIZE_RESTORED, MAKELPARAM(rc.Width(), rc.Height()));

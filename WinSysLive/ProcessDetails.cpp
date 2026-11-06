@@ -42,6 +42,9 @@ ProcessInfoEx* CProcessDetails::GetProcess() const {
 }
 
 void CProcessDetails::SetListFont(HFONT font) {
+	// the tabs too (their height, and the pages' layout, follow the font); the tab view drops the font it created itself,
+	// and from then on gets one for each DPI from here (the frame's ApplyFont after a DPI change)
+	SetFont(font);
 	m_Handles.SetListFont(font);
 	m_Modules.SetListFont(font);
 	m_Threads.SetListFont(font);

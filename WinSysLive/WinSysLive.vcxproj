@@ -536,6 +536,7 @@
     <ClInclude Include="ConnectionRows.h" />
     <ClInclude Include="HandleIcons.h" />
     <ClInclude Include="FilterBox.h" />
+    <ClInclude Include="BarFont.h" />
     <ClInclude Include="DpiLayout.h" />
     <ClInclude Include="RunDlg.h" />
     <ClInclude Include="ProcessColors.h" />

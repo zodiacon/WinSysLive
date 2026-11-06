@@ -1989,6 +1989,9 @@ void CMainFrame::ApplyFont() {
 	font.CreateFontIndirect(&lf);
 	for (auto& v : m_Views)
 		v.View->OnFontChanged(font);
+	// the tabs too (the tab view recalculates their height and lays out its pages); it drops the font it created itself,
+	// and from then on gets one for each DPI from here (OnDpiChanged)
+	m_Tabs.SetFont(font);
 	m_Font.Attach(font.Detach());
 }
 

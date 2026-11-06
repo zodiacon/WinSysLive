@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
@@ -212,7 +214,7 @@ private:
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;
 	CToolBarCtrl m_HideBar;	// in the rebar after the filter: Hide Idle Threads, Hide Idle Process
-	CFont m_HideBarFont;
+	CBarFont m_HideBarFont;
 	bool m_HideIdle{ false };			// the ThreadsHideIdle setting
 	bool m_HideIdleProcess{ true };		// the ThreadsHideIdleProcess setting
 	size_t m_Hidden{ 0 };				// rows the options hide, for the status line

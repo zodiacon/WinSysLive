@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "ViewBase.h"
 #include "FilterBox.h"
@@ -180,7 +182,7 @@ private:
 	CTreeListViewCtrl m_Tree;
 	CFilterBox m_Filter;
 	CToolBarCtrl m_Bar;
-	CFont m_BarFont;
+	CBarFont m_BarFont;
 	std::vector<WinSys::DeviceInfo> m_Devices;	// the last scan's
 	std::deque<Row> m_Rows;	// the tree's (a deque: the items' data stay valid as rows are added)
 	std::unordered_set<std::wstring> m_Expanded;	// rows' keys, before a rebuild

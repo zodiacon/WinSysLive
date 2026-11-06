@@ -90,6 +90,9 @@
     <ClCompile Include="SearchOnlineTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="BarFontTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>

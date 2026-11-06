@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "ViewBase.h"
 #include <TreeListView/include/TreeListView.h>
@@ -170,7 +172,7 @@ private:
 	mutable std::unordered_map<int64_t, std::optional<WinSys::LogonSessionData>> m_LogonDetails;
 	std::vector<HTLITEM> m_AddedGroups;	// collapsed once their processes are in
 	CToolBarCtrl m_ModeBar;	// in the rebar after the filter: Group by Account
-	CFont m_ModeBarFont;	// for its DPI
+	CBarFont m_ModeBarFont;	// the user's, else for its DPI
 	int m_ModeButtonWidth{ 0 };	// at 96 DPI
 	bool m_ByAccount{ false };	// the groups are accounts, not sessions (the UsersGroupByAccount setting)
 	std::vector<Column> m_Columns;	// by list column: the Column it shows

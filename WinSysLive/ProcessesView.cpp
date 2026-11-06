@@ -199,9 +199,7 @@ LRESULT CProcessesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	// View > Hide Processes, beside the filter; its menu comes with TBN_DROPDOWN (through the rebar)
 	m_HideBar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_HideButton, _countof(s_HideButton), HideButtonImageSize);
 	m_HideBar.SetExtendedStyle(m_HideBar.GetExtendedStyle() | TBSTYLE_EX_DRAWDDARROWS);
-	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
-	m_HideBar.SetFont(m_HideBarFont);
-	m_HideBar.AutoSize();
+	m_HideBarFont.Apply(m_HideBar);
 	CRect rcButton;
 	m_HideBar.GetItemRect(0, &rcButton);
 	m_HideButtonWidth = DpiHelper::Scale(rcButton.Width(), USER_DEFAULT_SCREEN_DPI, DpiHelper::GetDpi(m_HideBar));
@@ -558,6 +556,10 @@ void CProcessesView::OnFontChanged(HFONT font) {
 	m_Tree.SetFont(font);
 	m_Filter.SetFont(font);
 	m_Details.SetListFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_HideBarFont.SetUserFont(font);
+	LayoutHideBar();
+	UpdateLayout();
 }
 
 void CProcessesView::OnDpiChanged(UINT /*dpi*/) {
@@ -579,9 +581,7 @@ void CProcessesView::UpdateLayout(BOOL resizeBars) {
 void CProcessesView::LayoutHideBar() {
 	// the icon in the new size
 	ToolbarHelper::UpdateToolBarImages(m_HideBar, s_HideButton, _countof(s_HideButton), HideButtonImageSize);
-	m_HideBarFont.DeleteObject();
-	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
-	m_HideBar.SetFont(m_HideBarFont);
+	m_HideBarFont.Apply(m_HideBar);
 	SetHideButtonWidth();
 	// its band, as AddSimpleReBarBand sets it: the button's height, the width to its end
 	CReBarCtrl rebar(m_hWndToolBar);
@@ -601,7 +601,8 @@ void CProcessesView::LayoutHideBar() {
 
 void CProcessesView::SetHideButtonWidth() {
 	TBBUTTONINFO info{ sizeof(info), TBIF_SIZE };
-	info.cx = (WORD)DpiHelper::Scale(m_HideButtonWidth, m_HideBar.m_hWnd);
+	// its width in the default font, and what the text takes more (or less) in the bar's
+	info.cx = (WORD)(DpiHelper::Scale(m_HideButtonWidth, m_HideBar.m_hWnd) + CBarFont::ExtraWidth(m_HideBar, s_HideButton[0].text));
 	m_HideBar.SetButtonInfo(ID_VIEW_HIDEMENU, &info);
 	m_HideBar.AutoSize();
 }

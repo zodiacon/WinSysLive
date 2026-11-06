@@ -104,9 +104,7 @@ LRESULT CAutorunsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 	m_Bar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
-	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
-	m_Bar.SetFont(m_BarFont);
-	m_Bar.AutoSize();
+	m_BarFont.Apply(m_Bar);
 	AddSimpleReBarBand(m_Bar, nullptr, FALSE);
 	// two bands would get grippers; the filter keeps its width, the bar's band takes the rest of the row
 	CReBarCtrl rebar(m_hWndToolBar);
@@ -137,10 +135,7 @@ void CAutorunsView::LayoutBar() {
 	if (!m_Bar)
 		return;
 	ToolbarHelper::UpdateToolBarImages(m_Bar, s_BarButtons, _countof(s_BarButtons), BarImageSize);
-	m_BarFont.DeleteObject();
-	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
-	m_Bar.SetFont(m_BarFont);
-	m_Bar.AutoSize();
+	m_BarFont.Apply(m_Bar);
 	// its band, as AddSimpleReBarBand set it, for the buttons' new size
 	CReBarCtrl rebar(m_hWndToolBar);
 	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
@@ -191,6 +186,9 @@ void CAutorunsView::OnActivate(bool active) {
 void CAutorunsView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
 	m_Filter.SetFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_BarFont.SetUserFont(font);
+	LayoutBar();
 }
 
 void CAutorunsView::StartScan() {

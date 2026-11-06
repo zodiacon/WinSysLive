@@ -425,9 +425,7 @@ LRESULT CTimelineView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
 	m_Bar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_Buttons, _countof(s_Buttons), ButtonImageSize);
-	m_BarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_Bar)));
-	m_Bar.SetFont(m_BarFont);
-	m_Bar.AutoSize();
+	m_BarFont.Apply(m_Bar);
 	AddSimpleReBarBand(m_Bar, nullptr, FALSE);
 	CReBarCtrl rebar(m_hWndToolBar);
 	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
@@ -457,6 +455,27 @@ LRESULT CTimelineView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		m_Creations = Recorders::AcquireProcessCreation();
 	Fit();
 	return 0;
+}
+
+void CTimelineView::LayoutBar() {
+	if (!m_Bar)
+		return;
+	ToolbarHelper::UpdateToolBarImages(m_Bar, s_Buttons, _countof(s_Buttons), ButtonImageSize);
+	m_BarFont.Apply(m_Bar);
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_Bar) {
+			CRect last;
+			m_Bar.GetItemRect(m_Bar.GetButtonCount() - 1, &last);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = last.right;
+			band.cyMinChild = last.Height();
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+	UpdateLayout();
 }
 
 void CTimelineView::UpdateLayout(BOOL resizeBars) {
@@ -490,6 +509,9 @@ void CTimelineView::OnRefresh(bool active) {
 void CTimelineView::OnFontChanged(HFONT font) {
 	m_Chart.SetFont(font);
 	m_Filter.SetFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_BarFont.SetUserFont(font);
+	LayoutBar();
 }
 
 void CTimelineView::Fit() {

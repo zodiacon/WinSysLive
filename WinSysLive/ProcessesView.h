@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include <WinSys/SystemInfo.h>
 
 #include "ViewBase.h"
@@ -346,7 +348,7 @@ private:
 	enum { DetailsTimerId = 1, DetailsDelay = 150 };
 	CFilterBox m_Filter;	// in the view's rebar
 	CToolBarCtrl m_HideBar;	// in the rebar after the filter: the Hide drop-down button
-	CFont m_HideBarFont;	// for its DPI
+	CBarFont m_HideBarFont;	// the user's, else for its DPI
 	int m_HideButtonWidth{ 0 };	// at 96 DPI
 	// runs while a network column is shown
 	std::shared_ptr<WinSys::ProcessNetworkTracker> m_Network;	// while a network column is shown (NetworkTracking)

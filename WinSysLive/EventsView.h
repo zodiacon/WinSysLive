@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BarFont.h"
+
 #include "resource.h"
 #include "EventFilter.h"
 #include "ViewBase.h"
@@ -156,7 +158,7 @@ private:
 	CFilterBox m_Filter;
 	EventFilter m_ParsedFilter;	// m_Filter's text, parsed by ShowRows
 	CToolBarCtrl m_Bar;
-	CFont m_BarFont;
+	CBarFont m_BarFont;
 	int m_MenuColumn{ -1 };
 	std::vector<WinSys::EventLogEntry> m_All;	// newest first
 	std::unordered_set<std::wstring> m_Keys;	// m_All's, so a live event already read isn't added again

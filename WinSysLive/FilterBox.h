@@ -8,6 +8,7 @@
 // list); Enter and Down apply it at once and go to the list. The edit's EN_CHANGE reaches the view (through the rebar),
 // which hands it to Changed. It follows its DPI (WM_DPICHANGED_AFTERPARENT): its size, its band in a rebar (or its
 // parent's layout, which gets a WM_SIZE), and its font unless the view gave it one (which it sets again for the new DPI).
+// Its height follows its font (at least 22 DIPs), so a view's larger font gets a taller box, band and rebar.
 //
 class CFilterBox {
 public:
@@ -19,7 +20,8 @@ public:
 	HWND GetHwnd() const;
 	// the box's width now, in pixels (for its rebar band)
 	int GetWidth() const;
-	// nullptr: a font of its own, the default for its DPI
+	// nullptr: a font of its own, the default for its DPI. The box takes the font's height, its band in a rebar too, and
+	// the view (or the parent laying it out) gets a WM_SIZE
 	void SetFont(HFONT font);
 
 	// the edit's EN_CHANGE: applied after the pause
@@ -40,6 +42,9 @@ private:
 	static LRESULT CALLBACK SubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR data);
 	void Apply();
 	void OnDpiChanged();
+	void ApplyFont(HFONT font);
+	// the box's size for its DPI and font, its band's, and its parent's layout
+	void Resize();
 	int GetHeight() const;
 
 	enum { TimerId = 0x4654, Delay = 250 };
