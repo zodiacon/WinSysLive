@@ -148,6 +148,7 @@ public:
 		COMMAND_RANGE_HANDLER(ID_COMPUTER_LOCK, ID_COMPUTER_FIRMWARE, OnComputerCommand)
 		COMMAND_RANGE_HANDLER(ID_MEMORY_EMPTYWORKINGSETS, ID_MEMORY_PURGELOWSTANDBY, OnMemoryListCommand)
 		COMMAND_ID_HANDLER(ID_OPTIONS_VIRUSTOTAL, OnVirusTotal)
+		COMMAND_RANGE_HANDLER(ID_SEARCHENGINE_GOOGLE, ID_SEARCHENGINE_DUCKDUCKGO, OnSearchEngine)
 		COMMAND_ID_HANDLER(ID_OPTIONS_HIGHLIGHTING, OnHighlighting)
 		COMMAND_ID_HANDLER(ID_FIND_HANDLE, OnFindHandle)
 		COMMAND_ID_HANDLER(ID_FIND_LOCKS, OnFindLocks)
@@ -228,6 +229,9 @@ public:
 	LRESULT OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKernelCallbacks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCertificates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSearchEngine(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Options > Search Engine: the chosen one checked
+	void UpdateSearchEngineChecks();
 	LRESULT OnInstallService(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// the Computer menu: lock, log off, sleep, hibernate, restart, shut down, restart to the boot options or the firmware
 	LRESULT OnComputerCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

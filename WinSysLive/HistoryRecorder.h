@@ -111,8 +111,9 @@ private:
 	void AddLife(ProcessManager& pm, ProcessInfoEx& p, bool baseline);
 	// past LifeLimit: the processes that exited first go
 	void TrimLives();
-	// the tracker's exited processes: the times of those seen, and lifetimes for those that weren't
-	void MergeExited(WinSys::ProcessCreationTracker& creations);
+	// the tracker's exited processes: the times of those seen, and lifetimes for those that weren't, with their start
+	// and exit lines (the kinds enabled), as the snapshot never had them
+	void MergeExited(WinSys::ProcessCreationTracker& creations, std::vector<Line>& lines);
 
 	uint32_t m_Events;	// the enabled kinds, 1 << Event
 	int64_t m_Since;

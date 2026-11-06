@@ -5,6 +5,7 @@
 #include "VersionInfo.h"
 #include "Signature.h"
 #include "VirusTotalDlg.h"
+#include "SearchOnline.h"
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/Helpers.h>
 #include <ClipboardHelper.h>
@@ -483,6 +484,7 @@ bool CAutorunsView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 		menu.AppendMenu(MF_STRING | (e.ImageFound ? 0 : MF_GRAYED), ID_AUTORUNS_PROPERTIES, L"&Properties...");
 		menu.AppendMenu(MF_STRING | (e.ImageFound ? 0 : MF_GRAYED), ID_AUTORUNS_OPENLOCATION, L"Open File &Location");
 		VirusTotalCommands::AppendMenu(menu, e.ImageFound);
+		SearchOnline::AppendMenu(menu, e.ImageFound);
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
 		menu.AppendMenu(MF_SEPARATOR);
@@ -616,6 +618,7 @@ LRESULT CAutorunsView::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND 
 		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
 		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
 		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+		default: SearchOnline::Execute(m_hWnd, wID, path); break;
 	}
 	return 0;
 }

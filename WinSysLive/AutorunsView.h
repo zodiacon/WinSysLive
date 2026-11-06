@@ -87,6 +87,8 @@ public:
 		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_SUBMIT, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_SEARCH_NAME, OnVirusTotalCommand)
+		COMMAND_ID_HANDLER(ID_SEARCH_HASH, OnVirusTotalCommand)
 		CHAIN_MSG_MAP_ALT(CViewBase<CAutorunsView>, 1)
 	END_MSG_MAP()
 

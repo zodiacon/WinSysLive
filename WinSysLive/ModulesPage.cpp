@@ -11,6 +11,7 @@
 #include "ViewBase.h"
 #include "ListExport.h"
 #include "VirusTotalDlg.h"
+#include "SearchOnline.h"
 #include <ClipboardHelper.h>
 #include <WTLHelper.h>
 
@@ -342,6 +343,7 @@ LRESULT CModulesPage::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPa
 		menu.AppendMenu(MF_STRING | (image ? 0 : MF_GRAYED), ID_MODULE_IMAGE, L"&Image Details...");
 		menu.AppendMenu(MF_STRING | (image ? 0 : MF_GRAYED), ID_MODULE_TOTALPE, L"Open in &TotalPE");
 		VirusTotalCommands::AppendMenu(menu, GetSelectedRow()->Module->Type == MapType::Image);
+		SearchOnline::AppendMenu(menu, GetSelectedRow()->Module->Type == MapType::Image);
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_PAGE_COPY, L"C&opy");
 		menu.SetMenuDefaultItem(ID_MODULE_PROPERTIES);
@@ -455,6 +457,7 @@ LRESULT CModulesPage::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /
 		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
 		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
 		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+		default: SearchOnline::Execute(m_hWnd, wID, path); break;
 	}
 	return 0;
 }

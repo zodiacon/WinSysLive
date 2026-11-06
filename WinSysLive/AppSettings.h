@@ -38,6 +38,7 @@ struct AppSettings : Settings {
 		SETTING(ThreadsHideIdle, 0, SettingType::Bool);
 		SETTING(ThreadsHideIdleProcess, 1, SettingType::Bool);
 		SETTING(TimelineHideThroughout, 1, SettingType::Bool);
+		SETTING(SearchEngine, 0, SettingType::Int32);	// SearchOnline::Engine
 		SETTING_STRING(ObjectTypeColumns, L"");	// the Object Types tab
 		SETTING_STRING(ObjectManagerColumns, L"");	// the Object Manager tab
 		SETTING_STRING(PoolTagColumns, L"");	// the Pool Tags tab
@@ -126,6 +127,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(ThreadsHideIdle, int)
 	DEF_SETTING(ThreadsHideIdleProcess, int)
 	DEF_SETTING(TimelineHideThroughout, int)
+	DEF_SETTING(SearchEngine, int)
 	DEF_SETTING_STRING(ObjectTypeColumns)
 	DEF_SETTING_STRING(ObjectManagerColumns)
 	DEF_SETTING_STRING(PoolTagColumns)

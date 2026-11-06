@@ -20,6 +20,7 @@
 #include "AffinityDlg.h"
 #include "WaitChainDlg.h"
 #include "VirusTotalDlg.h"
+#include "SearchOnline.h"
 #include "Highlight.h"
 #include <WinSys/DotNet.h>
 #include <ranges>
@@ -2286,6 +2287,7 @@ LRESULT CProcessesView::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND
 		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
 		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
 		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+		default: SearchOnline::Execute(m_hWnd, wID, path); break;
 	}
 	return 0;
 }

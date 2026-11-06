@@ -4,6 +4,7 @@
 #include "Highlight.h"
 #include "AppSettings.h"
 #include "VirusTotalDlg.h"
+#include "SearchOnline.h"
 
 namespace {
 	// in CKernelModulesView::Column order; the keys are stored in the KernelModuleColumns setting (widths at 96 DPI)
@@ -348,6 +349,7 @@ bool CKernelModulesView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 	menu.AppendMenu(MF_STRING, ID_KMODULE_GOTODRIVER, L"Go to &Driver");
 	menu.AppendMenu(MF_STRING | (m_Rows[row]->Module.Path.empty() ? MF_GRAYED : 0), ID_KMODULE_IMAGE, L"&Image Details...");
 	VirusTotalCommands::AppendMenu(menu, !m_Rows[row]->Module.Path.empty());
+	SearchOnline::AppendMenu(menu, !m_Rows[row]->Module.Path.empty());
 	menu.AppendMenu(MF_SEPARATOR);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
 	menu.SetMenuDefaultItem(ID_KMODULE_PROPERTIES);
@@ -407,6 +409,7 @@ LRESULT CKernelModulesView::OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, 
 		case ID_VT_REPORT: VirusTotalCommands::OpenReport(m_hWnd, path); break;
 		case ID_VT_CHECK: VirusTotalCommands::CheckAgain(m_hWnd, path); break;
 		case ID_VT_SUBMIT: VirusTotalCommands::Submit(m_hWnd, path); break;
+		default: SearchOnline::Execute(m_hWnd, wID, path); break;
 	}
 	return 0;
 }

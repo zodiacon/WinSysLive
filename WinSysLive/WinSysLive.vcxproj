@@ -520,6 +520,7 @@
     <ClCompile Include="ModulesPage.cpp" />
     <ClCompile Include="ThreadsPage.cpp" />
     <ClCompile Include="ThreadCommands.cpp" />
+    <ClCompile Include="SearchOnline.cpp" />
     <ClCompile Include="UsersView.cpp" />
     <ClCompile Include="VersionInfo.cpp" />
     <ClCompile Include="ComServerLookup.cpp" />
@@ -657,6 +658,7 @@
     <ClInclude Include="ModulesPage.h" />
     <ClInclude Include="ThreadsPage.h" />
     <ClInclude Include="ThreadCommands.h" />
+    <ClInclude Include="SearchOnline.h" />
     <ClInclude Include="UsersView.h" />
     <ClInclude Include="VersionInfo.h" />
     <ClInclude Include="ComServerLookup.h" />

@@ -92,7 +92,7 @@ void HistoryRecorder::AddLife(::ProcessManager& pm, ProcessInfoEx& p, bool basel
 	m_Lives.insert_or_assign(p.Key, std::move(life));
 }
 
-void HistoryRecorder::MergeExited(ProcessCreationTracker& creations) {
+void HistoryRecorder::MergeExited(ProcessCreationTracker& creations, std::vector<Line>& lines) {
 	for (auto& c : creations.TakeExited()) {
 		if (auto it = m_Lives.find(c.Key()); it != m_Lives.end()) {
 			// seen by a snapshot: the exit's exact time and code
@@ -117,9 +117,26 @@ void HistoryRecorder::MergeExited(ProcessCreationTracker& creations) {
 		life.Name = slash == std::wstring::npos ? life.Path : life.Path.substr(slash + 1);
 		// the parent: the latest process with its ID created before it
 		life.Parent = { 0, c.ParentPid };
+		std::wstring parent;
 		for (auto& [key, other] : m_Lives)
-			if (key.Id == c.ParentPid && other.Start <= c.CreateTime && other.Start > life.Parent.Created && (!other.End || other.End >= c.CreateTime))
+			if (key.Id == c.ParentPid && other.Start <= c.CreateTime && other.Start > life.Parent.Created && (!other.End || other.End >= c.CreateTime)) {
 				life.Parent = key;
+				parent = other.Name;
+			}
+		// the History tab's lines, as a snapshot's process has them: it lived between two refreshes
+		const PCWSTR traced = L"  (between refreshes: from the process creation trace)";
+		if (IsEnabled(Event::ProcessStarted))
+			lines.push_back({ life.Start, Event::ProcessStarted, false, life.Key.Id,
+				std::format(L"{} ({})  parent {} ({}){}", life.Name, life.Key.Id, parent.empty() ? L"?" : parent, c.ParentPid, traced), L"Process started" });
+		if (IsEnabled(Event::ProcessExited)) {
+			auto text = std::format(L"{} ({})  ran {}", life.Name, life.Key.Id, Duration(life.End - life.Start));
+			bool warning = false;
+			if (life.ExitCode) {
+				text += std::format(L"  exit code {} (0x{:X})", (int32_t)*life.ExitCode, *life.ExitCode);
+				warning = *life.ExitCode != 0;
+			}
+			lines.push_back({ life.End, Event::ProcessExited, warning, life.Key.Id, text + traced, L"Process exited" });
+		}
 		m_Lives.insert_or_assign(life.Key, std::move(life));
 	}
 }
@@ -255,7 +272,7 @@ void HistoryRecorder::Update(::ProcessManager& pm, ProcessCreationTracker* creat
 	std::vector<Line> lines;
 	CollectProcesses(pm, lines);
 	if (creations)
-		MergeExited(*creations);
+		MergeExited(*creations, lines);
 	TrimLives();
 	// services cost an SCM enumeration: only while one of their kinds is on (the baseline goes stale meanwhile)
 	if (IsEnabled(Event::ServiceStarted) || IsEnabled(Event::ServiceStopped) || IsEnabled(Event::ServicePaused) || IsEnabled(Event::ServiceInstalled))

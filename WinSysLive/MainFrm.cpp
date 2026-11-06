@@ -30,6 +30,7 @@
 #include "EtwSessionsDlg.h"
 #include "KernelCallbacksDlg.h"
 #include "CertificatesDlg.h"
+#include "SearchOnline.h"
 #include "WindowStationsDlg.h"
 #include "PowerRequestsDlg.h"
 #include "RamDlg.h"
@@ -331,6 +332,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UISetCheck(ID_OPTIONS_SINGLEINSTANCE, settings.SingleInstance());
 	// the registry is the state: another copy of the exe may have set it
 	UISetCheck(ID_OPTIONS_EXPLORERLOCKS, ExplorerMenu::IsRegistered());
+	UpdateSearchEngineChecks();
 	// changing it writes to HKLM
 	bool replaced = IsTaskManagerReplaced();
 	UISetCheck(ID_OPTIONS_REPLACETASKMANAGER, replaced);
@@ -1774,6 +1776,18 @@ LRESULT CMainFrame::OnEtwSessions(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 	CEtwSessionsDlg dlg([this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); });
 	dlg.DoModal(m_hWnd);
 	return 0;
+}
+
+LRESULT CMainFrame::OnSearchEngine(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	SearchOnline::SetEngine((SearchOnline::Engine)(wID - ID_SEARCHENGINE_GOOGLE));
+	UpdateSearchEngineChecks();
+	return 0;
+}
+
+void CMainFrame::UpdateSearchEngineChecks() {
+	auto engine = (UINT)SearchOnline::GetEngine();
+	for (UINT id = ID_SEARCHENGINE_GOOGLE; id <= ID_SEARCHENGINE_DUCKDUCKGO; id++)
+		UISetCheck(id, id - ID_SEARCHENGINE_GOOGLE == engine);
 }
 
 LRESULT CMainFrame::OnCertificates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

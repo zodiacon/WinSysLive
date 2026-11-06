@@ -185,6 +185,11 @@ BEGIN
             MENUITEM "&Check Again",                ID_VT_CHECK
             MENUITEM "&Submit File...",             ID_VT_SUBMIT
         END
+        POPUP "Search &Online"
+        BEGIN
+            MENUITEM "File &Name",                  ID_SEARCH_NAME
+            MENUITEM "File &Hash (SHA-256)",        ID_SEARCH_HASH
+        END
         MENUITEM SEPARATOR
         MENUITEM "&Find Handle or DLL...\tCtrl+Shift+F", ID_FIND_HANDLE
         MENUITEM "Who's &Locking a File...",    ID_FIND_LOCKS
@@ -247,6 +252,12 @@ BEGIN
         MENUITEM "Resolve &Symbols",            ID_OPTIONS_RESOLVESYMBOLS
         MENUITEM "Symbol S&ettings...",         ID_OPTIONS_SYMBOLSETTINGS
         MENUITEM "&VirusTotal...",              ID_OPTIONS_VIRUSTOTAL
+        POPUP "Search &Engine"
+        BEGIN
+            MENUITEM "&Google",                     ID_SEARCHENGINE_GOOGLE
+            MENUITEM "&Bing",                       ID_SEARCHENGINE_BING
+            MENUITEM "&DuckDuckGo",                 ID_SEARCHENGINE_DUCKDUCKGO
+        END
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
         MENUITEM "Record from Startu&p",        ID_OPTIONS_RECORDFROMSTARTUP
         MENUITEM SEPARATOR
@@ -330,6 +341,11 @@ BEGIN
             MENUITEM "Open &Report",                ID_VT_REPORT
             MENUITEM "&Check Again",                ID_VT_CHECK
             MENUITEM "&Submit File...",             ID_VT_SUBMIT
+        END
+        POPUP "Search &Online"
+        BEGIN
+            MENUITEM "File &Name",                  ID_SEARCH_NAME
+            MENUITEM "File &Hash (SHA-256)",        ID_SEARCH_HASH
         END
         MENUITEM SEPARATOR
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
@@ -2301,6 +2317,11 @@ BEGIN
     ID_VT_REPORT            "Open the file's VirusTotal report in the browser\nVirusTotal Report"
     ID_VT_CHECK             "Look the file's hash up on VirusTotal again\nCheck on VirusTotal"
     ID_VT_SUBMIT            "Upload the file to VirusTotal for analysis\nSubmit to VirusTotal"
+    ID_SEARCH_NAME          "Search the web for the file's name (Options > Search Engine)\nSearch for the Name"
+    ID_SEARCH_HASH          "Search the web for the file's SHA-256 hash (Options > Search Engine)\nSearch for the Hash"
+    ID_SEARCHENGINE_GOOGLE  "Search Online uses Google\nGoogle"
+    ID_SEARCHENGINE_BING    "Search Online uses Bing\nBing"
+    ID_SEARCHENGINE_DUCKDUCKGO "Search Online uses DuckDuckGo\nDuckDuckGo"
     ID_VIEW_POOLTAGS        "Show the kernel pools' usage by tag\nPool Tags (Ctrl+Shift+P)"
     ID_SYSTEM_LOGONSESSIONS "Show the system's logon sessions (other users' details need elevation)\nLogon Sessions"
     ID_VIEW_DISK            "Show the file I/O of each process (needs elevation)\nDisk (Ctrl+Shift+D)"
