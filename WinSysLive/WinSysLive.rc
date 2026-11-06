@@ -89,6 +89,7 @@ BEGIN
         MENUITEM "&Disk\tCtrl+Shift+D",         ID_VIEW_DISK
         MENUITEM "&Registry\tCtrl+Shift+R",     ID_VIEW_REGISTRY
         MENUITEM "&History\tCtrl+Shift+H",      ID_VIEW_HISTORY
+        MENUITEM "Ti&meline\tCtrl+Shift+M",     ID_VIEW_TIMELINE
         MENUITEM "&Autoruns\tCtrl+Shift+A",     ID_VIEW_AUTORUNS
         MENUITEM "D&evices\tCtrl+Shift+E",      ID_VIEW_DEVICES
         MENUITEM "Event &Log\tCtrl+Shift+L",    ID_VIEW_EVENTS
@@ -99,6 +100,10 @@ BEGIN
         MENUITEM "&Keep Selection Visible",     ID_VIEW_KEEPSELECTIONVISIBLE
         MENUITEM "Show &Unnamed Handles",       ID_VIEW_SHOWUNNAMEDHANDLES
         MENUITEM "Group Users by &Account",     ID_USERS_GROUPBYACCOUNT
+        MENUITEM "Hide &Idle Threads",          ID_THREADS_HIDEIDLE
+        MENUITEM "Hide the Idle Pro&cess",      ID_THREADS_HIDEIDLEPROCESS
+        MENUITEM "Hide Processes Running &Throughout", ID_TIMELINE_HIDETHROUGHOUT
+        MENUITEM "&Fit the Timeline",           ID_TIMELINE_FIT
         POPUP "&Hide Processes"
         BEGIN
             MENUITEM "Other &Users' Processes",     ID_VIEW_HIDEOTHERUSERS
@@ -1807,6 +1812,7 @@ BEGIN
     "W",            ID_VIEW_WSL,            VIRTKEY, SHIFT, CONTROL
     "R",            ID_VIEW_REGISTRY,       VIRTKEY, SHIFT, CONTROL
     "T",            ID_VIEW_THREADS,        VIRTKEY, SHIFT, CONTROL
+    "M",            ID_VIEW_TIMELINE,       VIRTKEY, SHIFT, CONTROL
     "Q",            ID_VIEW_COMMANDPALETTE, VIRTKEY, CONTROL
     "Q",            ID_VIEW_SEARCH,         VIRTKEY, SHIFT, CONTROL
     "N",            ID_FILE_SNAPSHOTS,      VIRTKEY, SHIFT, CONTROL
@@ -2175,6 +2181,8 @@ BEGIN
     ID_VIEW_HIDESIGNED      "Hide the processes whose executable has a valid signature\nHide Signed Processes"
     ID_VIEW_HIDEMENU        "Choose the processes to hide\nHide Processes"
     ID_USERS_GROUPBYACCOUNT "Group the processes by the accounts they run as, instead of by session\nGroup by Account"
+    ID_THREADS_HIDEIDLE     "Hide the threads that used no CPU and made no context switch since the last refresh (Threads tab)\nHide Idle Threads"
+    ID_THREADS_HIDEIDLEPROCESS "Hide the Idle process's threads, one or more a processor (Threads tab)\nHide Idle Process"
     ID_FILE_RUNLIMITED      "Start a program without administrator rights, at medium integrity\nRun as Limited User"
     ID_PROCESS_CRITICAL     "Make the selected process critical, so Windows crashes when it exits, or no longer critical (needs elevation)\nCritical Process"
     ID_VIEW_IPC             "Show which processes talk to which over ALPC and RPC (needs elevation)\nRPC/ALPC (Ctrl+8)"
@@ -2230,6 +2238,9 @@ BEGIN
     ID_VIEW_WSL             "Show the WSL distributions and their Linux processes\nWSL (Ctrl+Shift+W)"
     ID_VIEW_REGISTRY        "Show the registry operations of each process (needs elevation)\nRegistry (Ctrl+Shift+R)"
     ID_VIEW_THREADS         "Show every thread of every process\nThreads (Ctrl+Shift+T)"
+    ID_VIEW_TIMELINE        "Show what ran when: a bar per process from its start to its exit\nTimeline (Ctrl+Shift+M)"
+    ID_TIMELINE_HIDETHROUGHOUT "Leave out the processes that ran through the whole time shown (Timeline tab)\nHide Running Throughout"
+    ID_TIMELINE_FIT         "Show the whole recording, following now (Timeline tab)\nFit"
 END
 
 STRINGTABLE

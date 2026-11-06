@@ -25,6 +25,7 @@ enum class TabType {
 	Wsl,		// the WSL distributions and their Linux processes
 	Registry,	// registry operations by process and key
 	Threads,	// every process's threads
+	Timeline,	// what ran when
 };
 
 struct AlertRule;

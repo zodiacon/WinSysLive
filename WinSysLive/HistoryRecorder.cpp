@@ -16,6 +16,7 @@ namespace {
 HistoryRecorder::HistoryRecorder(::ProcessManager& pm, uint32_t events) : m_Events(events), m_Since(Now()) {
 	for (auto& p : pm.GetProcesses()) {
 		m_BaselineProcesses.insert(p->Key);
+		AddLife(pm, *p, true);
 		if (p->Id > 4)
 			m_Processes[p->Key] = Process::OpenById(p->Id, p->Key.Created, ProcessAccessMask::QueryLimitedInformation | ProcessAccessMask::Synchronize);
 	}
@@ -66,6 +67,73 @@ void HistoryRecorder::Clear() {
 	m_FirstSequence += m_Lines.size();
 	m_Lines.clear();
 	m_Since = Now();
+	// the running processes stay, as there when recording started
+	std::erase_if(m_Lives, [](auto const& e) { return e.second.End != 0; });
+	for (auto& [key, life] : m_Lives)
+		life.Baseline = true;
+}
+
+void HistoryRecorder::AddLife(::ProcessManager& pm, ProcessInfoEx& p, bool baseline) {
+	ProcessLife life;
+	life.Key = p.Key;
+	life.Start = p.Key.Created;
+	life.Baseline = baseline;
+	life.Name = p.GetImageName();
+	if (p.Id > 4) {
+		life.Path = p.GetImagePath();
+		life.CommandLine = p.GetCommandLine();
+		life.User = p.GetUser();
+	}
+	// the parent, if it's the one running with that ID (created before the child: the ID isn't reused)
+	if (auto parent = pm.GetProcessById(p.ParentId); parent && parent->Key.Created <= p.Key.Created && p.Id != 0)
+		life.Parent = parent->Key;
+	else
+		life.Parent = { 0, p.ParentId };
+	m_Lives.insert_or_assign(p.Key, std::move(life));
+}
+
+void HistoryRecorder::MergeExited(ProcessCreationTracker& creations) {
+	for (auto& c : creations.TakeExited()) {
+		if (auto it = m_Lives.find(c.Key()); it != m_Lives.end()) {
+			// seen by a snapshot: the exit's exact time and code
+			it->second.End = c.ExitTime;
+			if (c.ExitCode)
+				it->second.ExitCode = c.ExitCode;
+			continue;
+		}
+		// before recording started (or was cleared): not this recording's
+		if (c.CreateTime < m_Since)
+			continue;
+		ProcessLife life;
+		life.Key = c.Key();
+		life.Start = c.CreateTime;
+		life.End = c.ExitTime;
+		life.ExitCode = c.ExitCode;
+		life.Traced = true;
+		life.Path = c.ImagePath.starts_with(L"\\") ? Helpers::GetDosNameFromNtName(c.ImagePath.c_str()) : c.ImagePath;
+		if (life.Path.empty())
+			life.Path = c.ImagePath;
+		auto slash = life.Path.rfind(L'\\');
+		life.Name = slash == std::wstring::npos ? life.Path : life.Path.substr(slash + 1);
+		// the parent: the latest process with its ID created before it
+		life.Parent = { 0, c.ParentPid };
+		for (auto& [key, other] : m_Lives)
+			if (key.Id == c.ParentPid && other.Start <= c.CreateTime && other.Start > life.Parent.Created && (!other.End || other.End >= c.CreateTime))
+				life.Parent = key;
+		m_Lives.insert_or_assign(life.Key, std::move(life));
+	}
+}
+
+void HistoryRecorder::TrimLives() {
+	if (m_Lives.size() <= LifeLimit)
+		return;
+	std::vector<std::pair<int64_t, WinSys::ProcessOrThreadKey>> exited;
+	for (auto& [key, life] : m_Lives)
+		if (life.End)
+			exited.push_back({ life.End, key });
+	std::ranges::sort(exited, [](auto& a, auto& b) { return a.first < b.first; });
+	for (size_t i = 0; i < exited.size() && m_Lives.size() > LifeLimit; i++)
+		m_Lives.erase(exited[i].second);
 }
 
 std::wstring HistoryRecorder::Format(Line const& line) {
@@ -82,6 +150,7 @@ void HistoryRecorder::CollectProcesses(::ProcessManager& pm, std::vector<Line>& 
 		// there when recording started: not a start
 		if (m_BaselineProcesses.erase(p->Key))
 			continue;
+		AddLife(pm, *p, false);
 		if (p->Id > 4 && !m_Processes.contains(p->Key))
 			m_Processes[p->Key] = Process::OpenById(p->Id, p->Key.Created, ProcessAccessMask::QueryLimitedInformation | ProcessAccessMask::Synchronize);
 		if (!IsEnabled(Event::ProcessStarted))
@@ -102,9 +171,14 @@ void HistoryRecorder::CollectProcesses(::ProcessManager& pm, std::vector<Line>& 
 			m_Processes.erase(it);
 		}
 		m_BaselineProcesses.erase(p->Key);
+		auto now = Now();
+		// the trace's exact exit may have come already
+		if (auto life = m_Lives.find(p->Key); life != m_Lives.end() && !life->second.End) {
+			life->second.End = now;
+			life->second.ExitCode = code;
+		}
 		if (!IsEnabled(Event::ProcessExited))
 			continue;
-		auto now = Now();
 		auto text = std::format(L"{} ({})  ran {}", p->GetImageName(), p->Id, Duration(now - p->Key.Created));
 		bool warning = false;
 		if (code) {
@@ -177,9 +251,12 @@ void HistoryRecorder::CollectServices(std::vector<Line>& lines) {
 	}
 }
 
-void HistoryRecorder::Update(::ProcessManager& pm) {
+void HistoryRecorder::Update(::ProcessManager& pm, ProcessCreationTracker* creations) {
 	std::vector<Line> lines;
 	CollectProcesses(pm, lines);
+	if (creations)
+		MergeExited(*creations);
+	TrimLives();
 	// services cost an SCM enumeration: only while one of their kinds is on (the baseline goes stale meanwhile)
 	if (IsEnabled(Event::ServiceStarted) || IsEnabled(Event::ServiceStopped) || IsEnabled(Event::ServicePaused) || IsEnabled(Event::ServiceInstalled))
 		CollectServices(lines);

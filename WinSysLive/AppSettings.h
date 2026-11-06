@@ -35,6 +35,9 @@ struct AppSettings : Settings {
 		SETTING_STRING(IpcColumns, L"");	// the RPC/ALPC tab
 		SETTING_STRING(ZombieColumns, L"");	// the Zombie Processes tab
 		SETTING_STRING(ThreadsViewColumns, L"");	// the Threads tab
+		SETTING(ThreadsHideIdle, 0, SettingType::Bool);
+		SETTING(ThreadsHideIdleProcess, 1, SettingType::Bool);
+		SETTING(TimelineHideThroughout, 1, SettingType::Bool);
 		SETTING_STRING(ObjectTypeColumns, L"");	// the Object Types tab
 		SETTING_STRING(ObjectManagerColumns, L"");	// the Object Manager tab
 		SETTING_STRING(PoolTagColumns, L"");	// the Pool Tags tab
@@ -120,6 +123,9 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(IpcColumns)
 	DEF_SETTING_STRING(ZombieColumns)
 	DEF_SETTING_STRING(ThreadsViewColumns)
+	DEF_SETTING(ThreadsHideIdle, int)
+	DEF_SETTING(ThreadsHideIdleProcess, int)
+	DEF_SETTING(TimelineHideThroughout, int)
 	DEF_SETTING_STRING(ObjectTypeColumns)
 	DEF_SETTING_STRING(ObjectManagerColumns)
 	DEF_SETTING_STRING(PoolTagColumns)

@@ -12,6 +12,7 @@
 #include "SettingsTransfer.h"
 #include "UpdateInstaller.h"
 #include "ExplorerMenu.h"
+#include "CommandLine.h"
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/LogonTask.h>
 #include <WinSys/Token.h>
@@ -146,6 +147,13 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	// Windows 11 24H2 the system handle table (SystemExtendedHandleInformation) has the objects' addresses only with it
 	// (null otherwise, elevated or not): the Handles pages' Address column, the handle sheet, zombie processes
 	WinSys::SecurityHelper::EnablePrivilege(SE_DEBUG_NAME, true);
+
+	// /snapshot, /compare, /export, /help: no window, no settings, no running instance involved
+	if (auto request = CommandLine::Parse(::GetCommandLine())) {
+		int code = CommandLine::Run(*request);
+		::CoUninitialize();
+		return code;
+	}
 
 	hRes = _Module.Init(nullptr, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));

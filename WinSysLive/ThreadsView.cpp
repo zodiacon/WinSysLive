@@ -8,6 +8,7 @@
 #include <ClipboardHelper.h>
 #include <DpiHelper.h>
 #include <WinSys/SecurityHelper.h>
+#include <ToolbarHelper.h>
 
 using namespace WinSys;
 
@@ -39,6 +40,13 @@ namespace {
 		{ L"COM Apartment", L"ComApartment", 110, LVCFMT_LEFT, false },
 	};
 
+	// beside the filter, as the Users tab's Group by Account
+	const ToolBarButtonInfo s_HideButtons[] = {
+		{ ID_THREADS_HIDEIDLE, IDI_PAUSE, BTNS_CHECK | BTNS_AUTOSIZE, L"Hide Idle Threads" },
+		{ ID_THREADS_HIDEIDLEPROCESS, IDI_PROCESS_HIDE, BTNS_CHECK | BTNS_AUTOSIZE, L"Hide Idle Process" },
+	};
+	const int HideButtonImageSize = 16;	// at 96 DPI
+
 	std::unique_ptr<Thread> OpenThread(uint32_t tid) {
 		// limited access is all a protected process's threads allow; the I/O and memory priorities need more
 		if (auto thread = Thread::OpenById(tid, ThreadAccessMask::QueryInformation))
@@ -64,7 +72,97 @@ LRESULT CThreadsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		UpdateStatus();
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
+	m_HideBar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, s_HideButtons, _countof(s_HideButtons), HideButtonImageSize);
+	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
+	m_HideBar.SetFont(m_HideBarFont);
+	m_HideBar.AutoSize();
+	AddSimpleReBarBand(m_HideBar, nullptr, FALSE);
+	// two bands would get grippers; the filter keeps its width, the buttons' band takes the rest of the row
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_STYLE | RBBIM_CHILD | RBBIM_CHILDSIZE };
+		rebar.GetBandInfo(i, &band);
+		band.fStyle |= RBBS_NOGRIPPER;
+		band.fMask = RBBIM_STYLE;
+		if (band.hwndChild == m_Filter.GetHwnd()) {
+			band.fMask |= RBBIM_CHILDSIZE;
+			band.cxMinChild = m_Filter.GetWidth();
+		}
+		rebar.SetBandInfo(i, &band);
+	}
+	LayoutHideBar();
+	auto& settings = AppSettings::Get();
+	m_HideIdle = settings.ThreadsHideIdle() != 0;
+	m_HideIdleProcess = settings.ThreadsHideIdleProcess() != 0;
+	UpdateHideChecks();
 	return 0;
+}
+
+void CThreadsView::OnDpiChanged(UINT /*dpi*/) {
+	// the frame's image list has the new DPI's size: the rows take its height
+	m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+	LayoutHideBar();
+}
+
+void CThreadsView::UpdateLayout(BOOL resizeBars) {
+	CViewBase::UpdateLayout(resizeBars);
+	// the rebar gives a row's extra width to its first band: the buttons' band takes it, the filter keeps its width
+	if (m_HideBar) {
+		CReBarCtrl rebar(m_hWndToolBar);
+		rebar.MaximizeBand(rebar.GetBandCount() - 1, FALSE);
+	}
+}
+
+void CThreadsView::LayoutHideBar() {
+	ToolbarHelper::UpdateToolBarImages(m_HideBar, s_HideButtons, _countof(s_HideButtons), HideButtonImageSize);
+	m_HideBarFont.DeleteObject();
+	m_HideBarFont.Attach(DpiHelper::CreateControlFont(DpiHelper::GetDpi(m_HideBar)));
+	m_HideBar.SetFont(m_HideBarFont);
+	m_HideBar.AutoSize();
+	// its band: the buttons' height, the width to the last one's end
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_HideBar) {
+			CRect rc;
+			m_HideBar.GetItemRect(m_HideBar.GetButtonCount() - 1, &rc);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = rc.right;
+			band.cyMinChild = rc.Height();
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+}
+
+void CThreadsView::UpdateHideChecks() {
+	m_HideBar.CheckButton(ID_THREADS_HIDEIDLE, m_HideIdle);
+	m_HideBar.CheckButton(ID_THREADS_HIDEIDLEPROCESS, m_HideIdleProcess);
+	auto& ui = Frame()->GetUI();
+	ui.UISetCheck(ID_THREADS_HIDEIDLE, m_HideIdle);
+	ui.UISetCheck(ID_THREADS_HIDEIDLEPROCESS, m_HideIdleProcess);
+}
+
+LRESULT CThreadsView::OnHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	if (wID == ID_THREADS_HIDEIDLE) {
+		m_HideIdle = !m_HideIdle;
+		settings.ThreadsHideIdle(m_HideIdle);
+	}
+	else {
+		m_HideIdleProcess = !m_HideIdleProcess;
+		settings.ThreadsHideIdleProcess(m_HideIdleProcess);
+	}
+	settings.Save();
+	UpdateHideChecks();
+	ShowRows(GetSelectedKey());
+	UpdateStatus();
+	return 0;
+}
+
+bool CThreadsView::IsIdle(Row const& row) {
+	// new and exited threads show, as they're highlighted
+	return !row.New && !row.Exited && row.CpuTimeDelta == 0 && row.ContextSwitchDelta == 0;
 }
 
 LRESULT CThreadsView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
@@ -74,7 +172,13 @@ LRESULT CThreadsView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 }
 
 void CThreadsView::OnActivate(bool active) {
-	Frame()->GetUI().UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	auto& ui = Frame()->GetUI();
+	ui.UIEnable(ID_VIEW_SELECTCOLUMNS, active);
+	// View > Hide Idle Threads, Hide the Idle Process
+	ui.UIEnable(ID_THREADS_HIDEIDLE, active);
+	ui.UIEnable(ID_THREADS_HIDEIDLEPROCESS, active);
+	if (active)
+		UpdateHideChecks();
 	m_Active = active;
 	if (active) {
 		// taken only while active: the rates start again
@@ -179,6 +283,7 @@ void CThreadsView::Update() {
 			auto cpuTime = row.KernelTime + row.UserTime;
 			if (state->Known && elapsed > 0) {
 				row.CPU = (int32_t)((cpuTime - state->CpuTime) * 1000000 / elapsed / processors);
+				row.CpuTimeDelta = cpuTime - state->CpuTime;
 				row.ContextSwitchDelta = row.ContextSwitches - state->ContextSwitches;
 			}
 			state->CpuTime = cpuTime;
@@ -379,9 +484,15 @@ bool CThreadsView::Matches(Row const& row) const {
 
 void CThreadsView::ShowRows(ProcessOrThreadKey const& selected) {
 	m_Rows.clear();
-	for (auto& row : m_All)
+	m_Hidden = 0;
+	for (auto& row : m_All) {
+		if ((m_HideIdleProcess && row.State->Pid == 0) || (m_HideIdle && IsIdle(row))) {
+			m_Hidden++;
+			continue;
+		}
 		if (Matches(row))
 			m_Rows.push_back(&row);
+	}
 	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 	if (auto si = GetSortInfo(m_List))
 		DoSort(si);
@@ -413,8 +524,11 @@ void CThreadsView::UpdateStatus() {
 	if (!m_Active)
 		return;
 	auto text = std::format(L"{} threads in {} processes", FormatHelper::FormatNumber((int64_t)m_States.size()), m_ProcessCount);
-	if (!m_Filter.GetText().empty())
-		text += std::format(L"; {} match the filter", FormatHelper::FormatNumber((int64_t)m_Rows.size()));
+	if (m_Hidden)
+		text += std::format(L"; {} hidden ({})", FormatHelper::FormatNumber((int64_t)m_Hidden),
+			m_HideIdle && m_HideIdleProcess ? L"idle threads, the Idle process" : m_HideIdle ? L"idle threads" : L"the Idle process");
+	if (!m_Filter.GetText().empty() || m_Hidden)
+		text += std::format(L"; {} shown", FormatHelper::FormatNumber((int64_t)m_Rows.size()));
 	if (!SecurityHelper::IsRunningElevated())
 		text += L"; not elevated: other users' threads show the snapshot's values only";
 	Frame()->SetStatusText(0, text.c_str());

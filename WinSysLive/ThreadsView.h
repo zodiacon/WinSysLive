@@ -54,9 +54,7 @@ public:
 	void SaveSettings() override {
 		SaveColumns();
 	}
-	void OnDpiChanged(UINT /*dpi*/) override {
-		m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
-	}
+	void OnDpiChanged(UINT /*dpi*/) override;
 
 	// CVirtualListView
 	CString GetColumnText(HWND, int row, int col) const;
@@ -65,6 +63,7 @@ public:
 	int GetSaveColumnRange(HWND, int&) const;
 	bool OnRightClickList(HWND, int row, int col, POINT const& pt);
 	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt);
+	void UpdateLayout(BOOL resizeBars = TRUE);
 
 	BEGIN_MSG_MAP(CThreadsView)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -75,6 +74,9 @@ public:
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		// posted to the view itself by a double-click (the frame's commands come through ALT_MSG_MAP(1))
 		COMMAND_ID_HANDLER(ID_THREAD_STACK, OnThreadCommand)
+		// the buttons beside the filter (their toolbar is the view's)
+		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLE, OnHide)
+		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLEPROCESS, OnHide)
 		CHAIN_MSG_MAP(CVirtualListView<CThreadsView>)
 		CHAIN_MSG_MAP(CViewBase<CThreadsView>)
 	ALT_MSG_MAP(1)
@@ -85,6 +87,8 @@ public:
 		COMMAND_ID_HANDLER(ID_COLUMN_RESET, OnResetColumns)
 		COMMAND_ID_HANDLER(ID_KILL, OnKill)
 		COMMAND_ID_HANDLER(ID_THREADS_GOTOPROCESS, OnGoToProcess)
+		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLE, OnHide)
+		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLEPROCESS, OnHide)
 		COMMAND_ID_HANDLER(ID_THREAD_STACK, OnThreadCommand)
 		COMMAND_ID_HANDLER(ID_THREAD_WAITCHAIN, OnThreadCommand)
 		COMMAND_ID_HANDLER(ID_THREAD_SUSPEND, OnThreadCommand)
@@ -120,6 +124,7 @@ private:
 		int Priority{ 0 }, BasePriority{ 0 };
 		uint32_t ContextSwitches{ 0 };
 		int64_t ContextSwitchDelta{ -1 };
+		int64_t CpuTimeDelta{ -1 };	// -1: not known
 		void* StartAddress{ nullptr };	// the snapshot's (zero when not elevated)
 		bool New{ false }, Exited{ false };
 	};
@@ -171,6 +176,14 @@ private:
 	LRESULT OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnThreadCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Hide Idle Threads, Hide Idle Process: the buttons (which check themselves) or the View menu
+	LRESULT OnHide(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the buttons and the View menu's items checked as the options are
+	void UpdateHideChecks();
+	// the buttons' icons and font in the toolbar's DPI, and their band's size
+	void LayoutHideBar();
+	// it used no CPU and made no context switch since the last refresh (not known on the first: not idle)
+	static bool IsIdle(Row const& row);
 
 	// the threads from the frame's snapshot
 	void Update();
@@ -198,6 +211,11 @@ private:
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;
+	CToolBarCtrl m_HideBar;	// in the rebar after the filter: Hide Idle Threads, Hide Idle Process
+	CFont m_HideBarFont;
+	bool m_HideIdle{ false };			// the ThreadsHideIdle setting
+	bool m_HideIdleProcess{ true };		// the ThreadsHideIdleProcess setting
+	size_t m_Hidden{ 0 };				// rows the options hide, for the status line
 	int m_MenuColumn{ -1 };
 	std::vector<Row> m_All;	// every row of the last refresh
 	std::vector<Row const*> m_Rows;	// into m_All: the list's, in display order

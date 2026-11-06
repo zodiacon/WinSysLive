@@ -99,6 +99,9 @@
     <ClCompile Include="ThreadsView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="TimelineView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ZombieHandlesDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -276,6 +279,9 @@
     <ClCompile Include="HistoryRecorder.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="TimelineModel.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="ProcessPages.cpp">
       <Filter>Pages</Filter>
     </ClCompile>
@@ -361,6 +367,12 @@
       <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="SnapshotCapture.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandLine.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandLineRun.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="NetworkSharesDlg.cpp">
@@ -468,6 +480,9 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ThreadsView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="TimelineView.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="ZombieHandlesDlg.h">
@@ -677,6 +692,9 @@
     <ClInclude Include="HistoryRecorder.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="TimelineModel.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
     <ClInclude Include="ProcessPages.h">
       <Filter>Pages</Filter>
     </ClInclude>
@@ -759,6 +777,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="Snapshot.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandLine.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="NetworkSharesDlg.h">

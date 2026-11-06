@@ -4,6 +4,7 @@
 #include <WinSys/Processes.h>
 #include <WinSys/ServiceInfo.h>
 #include <WinSys/Keys.h>
+#include <WinSys/ProcessCreation.h>
 #include <unordered_set>
 #include <deque>
 
@@ -17,6 +18,9 @@
 // the enabled kinds are recorded (the HistoryEvents setting). The frame calls Update once per refresh, after the
 // snapshot and before the views (Recorders::OnRefresh); the view reads the lines it hasn't shown by sequence number.
 // At most LineLimit lines are kept, the oldest dropped. UI thread only.
+//
+// The Timeline tab's data is kept too, whatever kinds are on: each process's lifetime (ProcessLife), those running when
+// recording started with their real creation times, until LifeLimit, past which the processes that exited first go.
 //
 class HistoryRecorder {
 public:
@@ -37,11 +41,26 @@ public:
 
 	static constexpr size_t LineLimit = 100000;
 
+	// a process from its start (or the recording's, for one running then) to its exit
+	struct ProcessLife {
+		WinSys::ProcessOrThreadKey Key{};
+		WinSys::ProcessOrThreadKey Parent{};	// its parent's key; Created 0 when the parent wasn't seen (it exited before)
+		std::wstring Name, Path, CommandLine, User;
+		int64_t Start{ 0 };	// FILETIME: its creation
+		int64_t End{ 0 };	// FILETIME: the refresh that saw it gone; 0 while it runs
+		std::optional<uint32_t> ExitCode;
+		bool Baseline{ false };	// running when recording started (or was cleared)
+		bool Traced{ false };	// known only from the process creation trace: it lived between two snapshots
+	};
+	static constexpr size_t LifeLimit = 20000;
+
 	// takes the baseline from the snapshot as it is now
 	HistoryRecorder(ProcessManager& pm, uint32_t events);
 
-	// the snapshot's changes since the last update (and the services', if a service kind is on)
-	void Update(ProcessManager& pm);
+	// the snapshot's changes since the last update (and the services', if a service kind is on); with the process
+	// creation tracker (running when elevated, for the Processes tab's Tampered color, the Timeline tab or Record from
+	// Startup), the processes that came and went between snapshots too, and every exit's exact time and code
+	void Update(ProcessManager& pm, WinSys::ProcessCreationTracker* creations = nullptr);
 
 	[[nodiscard]] uint32_t GetEvents() const {
 		return m_Events;
@@ -68,6 +87,11 @@ public:
 		return m_FirstSequence + m_Lines.size();
 	}
 
+	// by process key
+	[[nodiscard]] std::unordered_map<WinSys::ProcessOrThreadKey, ProcessLife> const& GetLives() const {
+		return m_Lives;
+	}
+
 	[[nodiscard]] static PCWSTR EventName(Event kind);
 	// "2026-10-23 21:30:05.123  Process started    <text>"
 	[[nodiscard]] static std::wstring Format(Line const& line);
@@ -83,6 +107,12 @@ private:
 	void TakeServices();
 	void CollectProcesses(ProcessManager& pm, std::vector<Line>& lines);
 	void CollectServices(std::vector<Line>& lines);
+	// a new lifetime from the snapshot's process (the parent looked up there, by ID and an earlier creation)
+	void AddLife(ProcessManager& pm, ProcessInfoEx& p, bool baseline);
+	// past LifeLimit: the processes that exited first go
+	void TrimLives();
+	// the tracker's exited processes: the times of those seen, and lifetimes for those that weren't
+	void MergeExited(WinSys::ProcessCreationTracker& creations);
 
 	uint32_t m_Events;	// the enabled kinds, 1 << Event
 	int64_t m_Since;
@@ -93,4 +123,5 @@ private:
 	// each process seen, opened when it was, for its exit code once it's gone
 	std::unordered_map<WinSys::ProcessOrThreadKey, std::unique_ptr<WinSys::Process>> m_Processes;
 	std::unordered_map<std::wstring, KnownService> m_Services;	// by name
+	std::unordered_map<WinSys::ProcessOrThreadKey, ProcessLife> m_Lives;
 };

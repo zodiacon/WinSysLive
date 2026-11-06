@@ -106,6 +106,8 @@ namespace {
 		IDI_REGISTRY,
 		// the Certificate Stores dialog's Local Machine
 		IDI_SYSINFO,
+		// the Timeline tab
+		IDI_CHART,
 	};
 
 	// the system's stock icons in the image list too (GetIconIndex(SystemIconId(IDI_WARNING)))
@@ -141,6 +143,7 @@ namespace {
 		{ ID_VIEW_DISK, IDI_HARDDISK, BTNS_CHECK },
 		{ ID_VIEW_REGISTRY, IDI_REGISTRY, BTNS_CHECK },
 		{ ID_VIEW_HISTORY, IDI_HISTORY, BTNS_CHECK },
+		{ ID_VIEW_TIMELINE, IDI_CHART, BTNS_CHECK },
 		{ ID_VIEW_AUTORUNS, IDI_AUTORUNS, BTNS_CHECK },
 		{ ID_VIEW_DEVICES, IDI_DEVICE, BTNS_CHECK },
 		{ ID_VIEW_WSL, IDI_WSL, BTNS_CHECK },
@@ -267,6 +270,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UIAddMenu(GetMenu());
 	// the Users tab's, enabled while it's active (it may not be open)
 	UIEnable(ID_USERS_GROUPBYACCOUNT, false);
+	UIEnable(ID_THREADS_HIDEIDLE, false);
+	UIEnable(ID_THREADS_HIDEIDLEPROCESS, false);
+	UIEnable(ID_TIMELINE_HIDETHROUGHOUT, false);
+	UIEnable(ID_TIMELINE_FIT, false);
 
 	// register object for message filtering and idle updates
 	CMessageLoop* pLoop = _Module.GetMessageLoop();

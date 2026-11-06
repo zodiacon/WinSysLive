@@ -18,6 +18,7 @@
 #include "WslView.h"
 #include "RegistryView.h"
 #include "ThreadsView.h"
+#include "TimelineView.h"
 #include "EventsView.h"
 
 template<typename TView>
@@ -50,6 +51,7 @@ std::pair<IView*, CMessageMap*> CMainFrame::CreateView(TabType type) {
 		case TabType::Wsl: return DoCreateView(new CWslView(this), m_Tabs);
 		case TabType::Registry: return DoCreateView(new CRegistryView(this), m_Tabs);
 		case TabType::Threads: return DoCreateView(new CThreadsView(this), m_Tabs);
+		case TabType::Timeline: return DoCreateView(new CTimelineView(this), m_Tabs);
 		case TabType::Events: return DoCreateView(new CEventsView(this), m_Tabs);
 	}
 	ATLASSERT(false);

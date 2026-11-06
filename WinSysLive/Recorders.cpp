@@ -53,8 +53,9 @@ std::shared_ptr<HistoryRecorder> Recorders::AcquireHistory(ProcessManager& pm) {
 }
 
 void Recorders::OnRefresh(ProcessManager& pm) {
+	// the creation tracker's exits before the removals below
 	if (auto history = s_History.lock())
-		history->Update(pm);
+		history->Update(pm, s_Creation.lock().get());
 	auto ipc = s_Ipc.lock();
 	auto fileIo = s_FileIo.lock();
 	auto registryIo = s_RegistryIo.lock();

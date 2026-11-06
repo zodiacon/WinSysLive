@@ -409,6 +409,7 @@
     <ClCompile Include="ProcessHistory.cpp" />
     <ClCompile Include="Recorders.cpp" />
     <ClCompile Include="HistoryRecorder.cpp" />
+    <ClCompile Include="TimelineModel.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
     <ClCompile Include="MemoryPage.cpp" />
     <ClCompile Include="JobPage.cpp" />
@@ -444,6 +445,8 @@
     <ClCompile Include="SystemInfoDlg.cpp" />
     <ClCompile Include="Snapshot.cpp" />
     <ClCompile Include="SnapshotCapture.cpp" />
+    <ClCompile Include="CommandLine.cpp" />
+    <ClCompile Include="CommandLineRun.cpp" />
     <ClCompile Include="SnapshotDlg.cpp" />
     <ClCompile Include="GpuPage.cpp" />
     <ClCompile Include="DotNetPage.cpp" />
@@ -490,6 +493,7 @@
     <ClCompile Include="IpcView.cpp" />
     <ClCompile Include="ZombiesView.cpp" />
     <ClCompile Include="ThreadsView.cpp" />
+    <ClCompile Include="TimelineView.cpp" />
     <ClCompile Include="ZombieHandlesDlg.cpp" />
     <ClCompile Include="ObjectTypesView.cpp" />
     <ClCompile Include="ObjectManagerView.cpp" />
@@ -542,6 +546,7 @@
     <ClInclude Include="ProcessHistory.h" />
     <ClInclude Include="Recorders.h" />
     <ClInclude Include="HistoryRecorder.h" />
+    <ClInclude Include="TimelineModel.h" />
     <ClInclude Include="ProcessPages.h" />
     <ClInclude Include="MemoryPage.h" />
     <ClInclude Include="JobPage.h" />
@@ -577,6 +582,7 @@
     <ClInclude Include="PageFilesDlg.h" />
     <ClInclude Include="SystemInfoDlg.h" />
     <ClInclude Include="Snapshot.h" />
+    <ClInclude Include="CommandLine.h" />
     <ClInclude Include="SnapshotDlg.h" />
     <ClInclude Include="GpuPage.h" />
     <ClInclude Include="DotNetPage.h" />
@@ -617,6 +623,7 @@
     <ClInclude Include="IpcView.h" />
     <ClInclude Include="ZombiesView.h" />
     <ClInclude Include="ThreadsView.h" />
+    <ClInclude Include="TimelineView.h" />
     <ClInclude Include="ZombieHandlesDlg.h" />
     <ClInclude Include="ObjectTypesView.h" />
     <ClInclude Include="ObjectManagerView.h" />

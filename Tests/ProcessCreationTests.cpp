@@ -157,3 +157,44 @@ TEST(ProcessCreation_LiveSpoofedParent) {
 	tracker.Stop();
 	CHECK(!tracker.IsRunning());
 }
+
+TEST(ProcessCreation_LiveExit) {
+	if (!SecurityHelper::IsRunningElevated())
+		return;
+	ProcessCreationTracker tracker;
+	CHECK(tracker.Start(L"WinSysLive Tests ProcessCreation"));
+	if (!tracker.IsRunning())
+		return;
+	// a process too short for a snapshot to see: its start and its stop from the trace
+	auto cmd = SystemFile(L"cmd.exe");
+	std::wstring line = L"\"" + cmd + L"\" /c exit 3";
+	STARTUPINFO si{ sizeof(si) };
+	PROCESS_INFORMATION pi{};
+	CHECK(::CreateProcess(cmd.c_str(), line.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi));
+	if (!pi.hProcess)
+		return;
+	::WaitForSingleObject(pi.hProcess, 5000);
+	auto pid = pi.dwProcessId;
+	::CloseHandle(pi.hThread);
+	::CloseHandle(pi.hProcess);
+	std::optional<ProcessCreation> exited;
+	for (int i = 0; i < 50 && !exited; i++) {
+		for (auto& c : tracker.TakeExited())
+			if (c.Pid == pid)
+				exited = c;
+		if (!exited)
+			::Sleep(100);
+	}
+	CHECK(exited.has_value());
+	if (!exited)
+		return;
+	CHECK(exited->Started);
+	CHECK(exited->ExitCode.has_value() && *exited->ExitCode == 3);
+	CHECK(exited->ExitTime >= exited->CreateTime);
+	CHECK_EQ(exited->ParentPid, ::GetCurrentProcessId());
+	CHECK(exited->ImagePath.size() > 8 && ::_wcsicmp(exited->ImagePath.c_str() + exited->ImagePath.size() - 8, L"\\cmd.exe") == 0);
+	// once
+	CHECK(std::ranges::none_of(tracker.TakeExited(), [&](auto& c) { return c.Pid == pid; }));
+	// a running process isn't a mismatch once it's gone
+	CHECK(std::ranges::none_of(tracker.GetMismatches(), [&](auto& c) { return c.Pid == pid; }));
+}

@@ -92,11 +92,16 @@
     <ClCompile Include="ProcessCreationTests.cpp" />
     <ClCompile Include="CertificateTests.cpp" />
     <ClCompile Include="ComApartmentTests.cpp" />
+    <ClCompile Include="CommandLineTests.cpp" />
+    <ClCompile Include="TimelineTests.cpp" />
     <!-- the app's (its #include "pch.h" takes this project's precompiled header, which is the app's pch) -->
     <ClCompile Include="..\WinSysLive\AlertRules.cpp" />
     <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp" />
     <ClCompile Include="..\WinSysLive\ExplorerMenu.cpp" />
     <ClCompile Include="..\WinSysLive\Snapshot.cpp" />
+    <ClCompile Include="..\WinSysLive\CommandLine.cpp" />
+    <ClCompile Include="..\WinSysLive\TimelineModel.cpp" />
+    <ClCompile Include="..\WinSysLive\ListExport.cpp" />
     <ClCompile Include="..\WinSysLive\HistoryRecorder.cpp" />
     <ClCompile Include="..\WinSysLive\ProcessInfoEx.cpp" />
     <ClCompile Include="..\WinSysLive\VersionInfo.cpp" />

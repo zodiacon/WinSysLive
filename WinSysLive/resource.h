@@ -880,6 +880,12 @@
 #define IDC_CE_COPYTHUMBPRINT           1573
 #define ID_VIEW_THREADS                 33051
 #define ID_THREADS_GOTOPROCESS          33052
+#define ID_THREADS_HIDEIDLE             33053
+#define ID_THREADS_HIDEIDLEPROCESS      33054
+#define ID_VIEW_TIMELINE                33055
+#define ID_TIMELINE_HIDETHROUGHOUT      33056
+#define ID_TIMELINE_FIT                 33057
+#define ID_TIMELINE_GOTOPROCESS         33058
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -936,7 +942,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        360
-#define _APS_NEXT_COMMAND_VALUE         33053
+#define _APS_NEXT_COMMAND_VALUE         33059
 #define _APS_NEXT_CONTROL_VALUE         1574
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
