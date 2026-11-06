@@ -10,14 +10,14 @@ namespace {
 	bool Contains(std::wstring const& text, std::wstring const& lowerFilter) {
 		return Lowercase(text).find(lowerFilter) != std::wstring::npos;
 	}
+}
 
-	std::wstring LocalTime(int64_t time) {
-		FILETIME local;
-		SYSTEMTIME st{};
-		if (!::FileTimeToLocalFileTime((FILETIME const*)&time, &local) || !::FileTimeToSystemTime(&local, &st))
-			return L"";
-		return std::format(L"{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	}
+std::wstring TimelineModel::LocalTime(int64_t time) {
+	FILETIME local;
+	SYSTEMTIME st{};
+	if (!::FileTimeToLocalFileTime((FILETIME const*)&time, &local) || !::FileTimeToSystemTime(&local, &st))
+		return L"";
+	return std::format(L"{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 }
 
 std::vector<TimelineRow> TimelineModel::Build(std::unordered_map<WinSys::ProcessOrThreadKey, HistoryRecorder::ProcessLife> const& lives,
@@ -44,8 +44,67 @@ std::vector<TimelineRow> TimelineModel::Build(std::unordered_map<WinSys::Process
 	std::unordered_map<WinSys::ProcessOrThreadKey, int> index;
 	for (int i = 0; i < (int)rows.size(); i++)
 		index[rows[i].Life->Key] = i;
+
+	if (options.Group == Grouping::Parent) {
+		// the roots (no parent shown) by start time, each one's children after it, depth first, by start time
+		std::vector<std::vector<int>> children(rows.size());
+		std::vector<int> roots;
+		for (int i = 0; i < (int)rows.size(); i++) {
+			auto it = rows[i].Life->Parent.Created ? index.find(rows[i].Life->Parent) : index.end();
+			// a parent recorded as starting after its child (a reused key) is no parent
+			if (it != index.end() && it->second < i)
+				children[it->second].push_back(i);
+			else
+				roots.push_back(i);
+		}
+		std::vector<TimelineRow> tree;
+		tree.reserve(rows.size());
+		std::vector<std::pair<int, int>> stack;	// row, depth
+		for (auto root = roots.rbegin(); root != roots.rend(); ++root)
+			stack.push_back({ *root, 0 });
+		while (!stack.empty()) {
+			auto [i, depth] = stack.back();
+			stack.pop_back();
+			auto row = rows[i];
+			row.Depth = depth;
+			tree.push_back(row);
+			for (auto child = children[i].rbegin(); child != children[i].rend(); ++child)
+				stack.push_back({ *child, depth + 1 });
+		}
+		rows = std::move(tree);
+	}
+	else if (options.Group == Grouping::User) {
+		// the users by name (any case), an unknown one last; their processes by start time (the sort is stable)
+		std::ranges::stable_sort(rows, [](auto& a, auto& b) {
+			auto& u1 = a.Life->User;
+			auto& u2 = b.Life->User;
+			if (u1.empty() != u2.empty())
+				return u2.empty();
+			return ::_wcsicmp(u1.c_str(), u2.c_str()) < 0;
+			});
+		std::vector<TimelineRow> grouped;
+		grouped.reserve(rows.size() + 16);
+		for (size_t i = 0; i < rows.size(); ) {
+			auto& user = rows[i].Life->User;
+			size_t end = i;
+			while (end < rows.size() && ::_wcsicmp(rows[end].Life->User.c_str(), user.c_str()) == 0)
+				end++;
+			TimelineRow heading;
+			heading.Header = std::format(L"{} ({} process{})", user.empty() ? L"Unknown user" : user, end - i, end - i == 1 ? L"" : L"es");
+			grouped.push_back(std::move(heading));
+			grouped.insert(grouped.end(), rows.begin() + i, rows.begin() + end);
+			i = end;
+		}
+		rows = std::move(grouped);
+	}
+	if (options.Group != Grouping::None) {
+		index.clear();
+		for (int i = 0; i < (int)rows.size(); i++)
+			if (rows[i].Life)
+				index[rows[i].Life->Key] = i;
+	}
 	for (auto& row : rows)
-		if (row.Life->Parent.Created)
+		if (row.Life && row.Life->Parent.Created)
 			if (auto it = index.find(row.Life->Parent); it != index.end())
 				row.ParentRow = it->second;
 	if (hidden)
@@ -128,4 +187,24 @@ std::wstring TimelineModel::Describe(HistoryRecorder::ProcessLife const& life, s
 	else
 		text += L"\nRunning for " + Duration(now - life.Start);
 	return text;
+}
+
+std::vector<std::vector<std::wstring>> TimelineModel::Table(std::vector<TimelineRow> const& rows,
+	std::unordered_map<WinSys::ProcessOrThreadKey, HistoryRecorder::ProcessLife> const& lives, int64_t now) {
+	std::vector<std::vector<std::wstring>> table;
+	table.push_back({ L"Name", L"PID", L"Parent PID", L"Parent", L"User", L"Started", L"Exited", L"Ran", L"Exit Code", L"Command Line", L"Seen" });
+	for (auto& row : rows) {
+		if (!row.Life)
+			continue;
+		auto& life = *row.Life;
+		std::wstring parent;
+		if (life.Parent.Created)
+			if (auto it = lives.find(life.Parent); it != lives.end())
+				parent = it->second.Name;
+		table.push_back({ life.Name, std::to_wstring(life.Key.Id), life.Parent.Id ? std::to_wstring(life.Parent.Id) : L"", parent, life.User,
+			LocalTime(life.Start), life.End ? LocalTime(life.End) : L"", Duration(EndOf(life, now) - life.Start),
+			life.ExitCode ? std::to_wstring((int32_t)*life.ExitCode) : L"", life.CommandLine,
+			life.Baseline ? L"Before recording" : life.Traced ? L"Between refreshes" : L"" });
+	}
+	return table;
 }

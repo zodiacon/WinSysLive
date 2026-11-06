@@ -275,6 +275,9 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	UIEnable(ID_THREADS_HIDEIDLEPROCESS, false);
 	UIEnable(ID_TIMELINE_HIDETHROUGHOUT, false);
 	UIEnable(ID_TIMELINE_FIT, false);
+	UIEnable(ID_THREADS_GROUPBYPROCESS, false);
+	UIEnable(ID_TIMELINE_GROUPBYPARENT, false);
+	UIEnable(ID_TIMELINE_GROUPBYUSER, false);
 
 	// register object for message filtering and idle updates
 	CMessageLoop* pLoop = _Module.GetMessageLoop();

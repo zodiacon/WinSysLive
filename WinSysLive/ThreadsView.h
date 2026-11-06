@@ -11,6 +11,7 @@
 #include <WinSys/Keys.h>
 #include <WinSys/Thread.h>
 #include <VirtualListView.h>
+#include <unordered_set>
 
 //
 // The Threads tab: every thread of every process (some 9,000 here), from the frame's snapshot (each process entry's
@@ -30,6 +31,12 @@
 //
 // A row's context menu is the Threads page's (ThreadCommands: Stack, the double-click, Wait Chain, Suspend or Resume,
 // Terminate, Set Priority, Affinity) with Go to Process; Del terminates the selected thread, after asking.
+//
+// Group by Process (the button beside the filter, View > Group Threads by Process, the ThreadsGroupByProcess setting) puts
+// a row for each process above its threads, with the totals of the threads it shows (CPU, the times, the context
+// switches and their delta) and their count (beside its name). A process's threads show once it's expanded (the double-click, Enter, Right
+// and Left, its menu, Expand All and Collapse All), and all of them while the filter has text. The processes are sorted by
+// the sort column (their totals, or their texts), and their threads under each the same way.
 //
 class CThreadsView :
 	public CViewBase<CThreadsView>,
@@ -79,6 +86,10 @@ public:
 		// the buttons beside the filter (their toolbar is the view's)
 		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLE, OnHide)
 		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLEPROCESS, OnHide)
+		COMMAND_ID_HANDLER(ID_THREADS_GROUPBYPROCESS, OnGroupByProcess)
+		// posted by a process row's double-click
+		COMMAND_ID_HANDLER(ID_THREADS_TOGGLEGROUP, OnToggleGroup)
+		NOTIFY_CODE_HANDLER(LVN_KEYDOWN, OnListKeyDown)
 		CHAIN_MSG_MAP(CVirtualListView<CThreadsView>)
 		CHAIN_MSG_MAP(CViewBase<CThreadsView>)
 	ALT_MSG_MAP(1)
@@ -91,6 +102,10 @@ public:
 		COMMAND_ID_HANDLER(ID_THREADS_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLE, OnHide)
 		COMMAND_ID_HANDLER(ID_THREADS_HIDEIDLEPROCESS, OnHide)
+		COMMAND_ID_HANDLER(ID_THREADS_GROUPBYPROCESS, OnGroupByProcess)
+		COMMAND_ID_HANDLER(ID_THREADS_EXPANDALL, OnExpandAll)
+		COMMAND_ID_HANDLER(ID_THREADS_COLLAPSEALL, OnExpandAll)
+		COMMAND_ID_HANDLER(ID_THREADS_TOGGLEGROUP, OnToggleGroup)
 		COMMAND_ID_HANDLER(ID_THREAD_STACK, OnThreadCommand)
 		COMMAND_ID_HANDLER(ID_THREAD_WAITCHAIN, OnThreadCommand)
 		COMMAND_ID_HANDLER(ID_THREAD_SUSPEND, OnThreadCommand)
@@ -129,7 +144,13 @@ private:
 		int64_t CpuTimeDelta{ -1 };	// -1: not known
 		void* StartAddress{ nullptr };	// the snapshot's (zero when not elevated)
 		bool New{ false }, Exited{ false };
+		// Group by Process: a process's row (State is m_GroupStates', Key the process's with GroupBit in the ID), with the
+		// totals of the threads it shows and their count
+		bool Group{ false };
+		uint32_t Threads{ 0 };
 	};
+	// in a process row's key, so it isn't taken for a thread's
+	static constexpr uint32_t GroupBit = 0x80000000;
 	// per thread, kept between refreshes
 	struct ThreadState {
 		uint32_t Pid{ 0 };
@@ -180,6 +201,14 @@ private:
 	LRESULT OnThreadCommand(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	// Hide Idle Threads, Hide Idle Process: the buttons (which check themselves) or the View menu
 	LRESULT OnHide(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGroupByProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Expand All, Collapse All
+	LRESULT OnExpandAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the selected process row's threads shown or hidden
+	LRESULT OnToggleGroup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Right and Left expand and collapse the selected process row (from one of its threads, Left goes to it), Enter
+	// toggles it
+	LRESULT OnListKeyDown(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	// the buttons and the View menu's items checked as the options are
 	void UpdateHideChecks();
 	// the buttons' icons and font in the toolbar's DPI, and their band's size
@@ -200,6 +229,20 @@ private:
 	bool Matches(Row const& row) const;
 	// the rows the filter keeps, sorted, the selection kept (by thread key)
 	void ShowRows(WinSys::ProcessOrThreadKey const& selected);
+	// Group by Process: the process rows of the threads shown, with their totals
+	void BuildGroups(std::vector<Row const*> const& threads);
+	// Group by Process: m_Rows from the process rows (in m_GroupOrder's order) and the threads of those expanded
+	void Flatten();
+	// a process row's threads are shown: expanded, or the filter has text
+	bool IsExpanded(Row const& group) const;
+	void SetExpanded(Row const& group, bool expanded);
+	// m_Rows again after expanding or collapsing, the selection kept (a thread that's hidden: its process row)
+	void Reflow();
+	// by the column; ties by process, then thread ID
+	void SortRows(std::vector<Row const*>& rows, Column column, bool ascending) const;
+	static WinSys::ProcessOrThreadKey ProcessKey(ThreadState const& state) {
+		return { state.ProcessCreated, state.Pid };
+	}
 	Row const* GetSelected() const;
 	WinSys::ProcessOrThreadKey GetSelectedKey() const;
 	void SelectRow(WinSys::ProcessOrThreadKey const& key);
@@ -213,11 +256,18 @@ private:
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;
-	CToolBarCtrl m_HideBar;	// in the rebar after the filter: Hide Idle Threads, Hide Idle Process
+	CToolBarCtrl m_HideBar;	// in the rebar after the filter: Hide Idle Threads, Hide Idle Process, Group by Process
 	CBarFont m_HideBarFont;
 	bool m_HideIdle{ false };			// the ThreadsHideIdle setting
 	bool m_HideIdleProcess{ true };		// the ThreadsHideIdleProcess setting
 	size_t m_Hidden{ 0 };				// rows the options hide, for the status line
+	bool m_GroupByProcess{ false };		// the ThreadsGroupByProcess setting
+	std::vector<Row> m_Groups;			// the process rows of the last ShowRows (m_Rows points into it)
+	std::vector<std::vector<Row const*>> m_GroupThreads;	// each process row's threads shown, in m_Groups' order, sorted
+	std::vector<size_t> m_GroupOrder;	// m_Groups' indices, sorted
+	// the processes' names and icons for their rows, by process key, while the process has threads
+	std::unordered_map<WinSys::ProcessOrThreadKey, std::unique_ptr<ThreadState>> m_GroupStates;
+	std::unordered_set<WinSys::ProcessOrThreadKey> m_Expanded;	// by process key; the others collapsed
 	int m_MenuColumn{ -1 };
 	std::vector<Row> m_All;	// every row of the last refresh
 	std::vector<Row const*> m_Rows;	// into m_All: the list's, in display order

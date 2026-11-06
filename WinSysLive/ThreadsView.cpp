@@ -44,6 +44,7 @@ namespace {
 	const ToolBarButtonInfo s_HideButtons[] = {
 		{ ID_THREADS_HIDEIDLE, IDI_PAUSE, BTNS_CHECK | BTNS_AUTOSIZE, L"Hide Idle Threads" },
 		{ ID_THREADS_HIDEIDLEPROCESS, IDI_PROCESS_HIDE, BTNS_CHECK | BTNS_AUTOSIZE, L"Hide Idle Process" },
+		{ ID_THREADS_GROUPBYPROCESS, IDI_TREE, BTNS_CHECK | BTNS_AUTOSIZE, L"Group by Process" },
 	};
 	const int HideButtonImageSize = 16;	// at 96 DPI
 
@@ -92,6 +93,7 @@ LRESULT CThreadsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	auto& settings = AppSettings::Get();
 	m_HideIdle = settings.ThreadsHideIdle() != 0;
 	m_HideIdleProcess = settings.ThreadsHideIdleProcess() != 0;
+	m_GroupByProcess = settings.ThreadsGroupByProcess() != 0;
 	UpdateHideChecks();
 	return 0;
 }
@@ -133,9 +135,169 @@ void CThreadsView::LayoutHideBar() {
 void CThreadsView::UpdateHideChecks() {
 	m_HideBar.CheckButton(ID_THREADS_HIDEIDLE, m_HideIdle);
 	m_HideBar.CheckButton(ID_THREADS_HIDEIDLEPROCESS, m_HideIdleProcess);
+	m_HideBar.CheckButton(ID_THREADS_GROUPBYPROCESS, m_GroupByProcess);
 	auto& ui = Frame()->GetUI();
 	ui.UISetCheck(ID_THREADS_HIDEIDLE, m_HideIdle);
 	ui.UISetCheck(ID_THREADS_HIDEIDLEPROCESS, m_HideIdleProcess);
+	ui.UISetCheck(ID_THREADS_GROUPBYPROCESS, m_GroupByProcess);
+}
+
+LRESULT CThreadsView::OnGroupByProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto selected = GetSelected();
+	// a process row selected: its first thread's key isn't known here, so the selection goes
+	auto key = selected && !selected->Group ? selected->Key : ProcessOrThreadKey{};
+	m_GroupByProcess = !m_GroupByProcess;
+	auto& settings = AppSettings::Get();
+	settings.ThreadsGroupByProcess(m_GroupByProcess);
+	settings.Save();
+	UpdateHideChecks();
+	ShowRows(key);
+	// a thread whose process is collapsed: its process row
+	if (m_GroupByProcess && selected && !selected->Group && !GetSelected())
+		SelectRow({ selected->State->ProcessCreated, selected->State->Pid | GroupBit });
+	UpdateStatus();
+	return 0;
+}
+
+LRESULT CThreadsView::OnExpandAll(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (!m_GroupByProcess)
+		return 0;
+	if (wID == ID_THREADS_EXPANDALL)
+		for (auto& group : m_Groups)
+			m_Expanded.insert(ProcessKey(*group.State));
+	else
+		m_Expanded.clear();
+	Reflow();
+	return 0;
+}
+
+LRESULT CThreadsView::OnToggleGroup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto row = GetSelected(); row && row->Group)
+		SetExpanded(*row, !IsExpanded(*row));
+	return 0;
+}
+
+LRESULT CThreadsView::OnListKeyDown(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	auto kd = reinterpret_cast<NMLVKEYDOWN*>(hdr);
+	auto row = GetSelected();
+	if (hdr->hwndFrom != m_List || !m_GroupByProcess || !row || (::GetKeyState(VK_CONTROL) & 0x8000)) {
+		bHandled = FALSE;
+		return 0;
+	}
+	switch (kd->wVKey) {
+		case VK_RIGHT:
+			if (row->Group && !IsExpanded(*row))
+				SetExpanded(*row, true);
+			break;
+		case VK_LEFT:
+			if (row->Group) {
+				if (IsExpanded(*row))
+					SetExpanded(*row, false);
+			}
+			else {
+				// to the thread's process row
+				SelectRow({ row->State->ProcessCreated, row->State->Pid | GroupBit });
+				if (int index = m_List.GetSelectedIndex(); index >= 0)
+					m_List.EnsureVisible(index, FALSE);
+			}
+			break;
+		case VK_RETURN:
+			if (row->Group)
+				SetExpanded(*row, !IsExpanded(*row));
+			break;
+		default:
+			bHandled = FALSE;
+	}
+	return 0;
+}
+
+bool CThreadsView::IsExpanded(Row const& group) const {
+	return !m_Filter.GetText().empty() || m_Expanded.contains(ProcessKey(*group.State));
+}
+
+void CThreadsView::SetExpanded(Row const& group, bool expanded) {
+	if (expanded)
+		m_Expanded.insert(ProcessKey(*group.State));
+	else
+		m_Expanded.erase(ProcessKey(*group.State));
+	Reflow();
+}
+
+void CThreadsView::Reflow() {
+	auto row = GetSelected();
+	auto key = row ? row->Key : ProcessOrThreadKey{};
+	ProcessOrThreadKey group{};
+	if (row && !row->Group)
+		group = { row->State->ProcessCreated, row->State->Pid | GroupBit };
+	Flatten();
+	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL);
+	SelectRow(std::ranges::any_of(m_Rows, [&](auto r) { return r->Key == key; }) ? key : group);
+	if (int index = m_List.GetSelectedIndex(); index >= 0)
+		m_List.EnsureVisible(index, FALSE);
+	m_List.Invalidate();
+	UpdateStatus();
+}
+
+void CThreadsView::BuildGroups(std::vector<Row const*> const& threads) {
+	m_Groups.clear();
+	m_GroupThreads.clear();
+	m_GroupOrder.clear();
+	// in the snapshot's order of the processes
+	std::unordered_map<ProcessOrThreadKey, size_t> index;
+	for (auto row : threads) {
+		auto [it, added] = index.try_emplace(ProcessKey(*row->State), m_GroupThreads.size());
+		if (added)
+			m_GroupThreads.emplace_back();
+		m_GroupThreads[it->second].push_back(row);
+	}
+	// sized once: m_Rows points into it
+	m_Groups.resize(m_GroupThreads.size());
+	for (auto& [key, i] : index) {
+		auto& list = m_GroupThreads[i];
+		auto& state = m_GroupStates[key];
+		if (!state) {
+			auto& first = *list.front()->State;
+			state = std::make_unique<ThreadState>();
+			state->Pid = first.Pid;
+			state->ProcessCreated = first.ProcessCreated;
+			state->ProcessName = first.ProcessName;
+			state->ImagePath = first.ImagePath;
+		}
+		auto& group = m_Groups[i];
+		group.Group = true;
+		group.State = state.get();
+		group.Key = { key.Created, key.Id | GroupBit };
+		group.Threads = (uint32_t)list.size();
+		group.New = group.Exited = true;
+		group.ContextSwitchDelta = -1;
+		for (auto t : list) {
+			group.KernelTime += t->KernelTime;
+			group.UserTime += t->UserTime;
+			group.ContextSwitches += t->ContextSwitches;
+			if (t->CPU >= 0)
+				group.CPU = (std::max)(group.CPU, 0) + t->CPU;
+			if (t->CpuTimeDelta >= 0)
+				group.CpuTimeDelta = (std::max)(group.CpuTimeDelta, (int64_t)0) + t->CpuTimeDelta;
+			if (t->ContextSwitchDelta >= 0)
+				group.ContextSwitchDelta = (std::max)(group.ContextSwitchDelta, (int64_t)0) + t->ContextSwitchDelta;
+			// highlighted as new or exited when all its threads are
+			group.New &= t->New;
+			group.Exited &= t->Exited;
+		}
+	}
+	std::erase_if(m_GroupStates, [&](auto const& e) { return !index.contains(e.first); });
+	for (size_t i = 0; i < m_Groups.size(); i++)
+		m_GroupOrder.push_back(i);
+}
+
+void CThreadsView::Flatten() {
+	m_Rows.clear();
+	for (auto i : m_GroupOrder) {
+		auto& group = m_Groups[i];
+		m_Rows.push_back(&group);
+		if (IsExpanded(group))
+			m_Rows.insert(m_Rows.end(), m_GroupThreads[i].begin(), m_GroupThreads[i].end());
+	}
 }
 
 LRESULT CThreadsView::OnHide(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -172,6 +334,7 @@ void CThreadsView::OnActivate(bool active) {
 	// View > Hide Idle Threads, Hide the Idle Process
 	ui.UIEnable(ID_THREADS_HIDEIDLE, active);
 	ui.UIEnable(ID_THREADS_HIDEIDLEPROCESS, active);
+	ui.UIEnable(ID_THREADS_GROUPBYPROCESS, active);
 	if (active)
 		UpdateHideChecks();
 	m_Active = active;
@@ -203,7 +366,7 @@ void CThreadsView::OnFontChanged(HFONT font) {
 
 void CThreadsView::OnFrameIdle() {
 	auto row = GetSelected();
-	Frame()->GetUI().UIEnable(ID_KILL, m_Active && row && !row->Exited && ThreadCommands::CanControl(row->State->Pid));
+	Frame()->GetUI().UIEnable(ID_KILL, m_Active && row && !row->Exited && !row->Group && ThreadCommands::CanControl(row->State->Pid));
 }
 
 bool CThreadsView::IsShown(Column column) const {
@@ -326,6 +489,13 @@ void CThreadsView::Update() {
 		if (auto it = m_Processes.find(p->Key); it != m_Processes.end())
 			it->second.SeenRefresh = m_Refresh;
 	std::erase_if(m_Processes, [&](auto const& e) { return e.second.SeenRefresh != m_Refresh; });
+	// the processes that are gone are forgotten as expanded
+	if (!m_Expanded.empty()) {
+		std::unordered_set<ProcessOrThreadKey> running;
+		for (auto& p : processes)
+			running.insert(p->Key);
+		std::erase_if(m_Expanded, [&](auto const& key) { return !running.contains(key); });
+	}
 	if (m_ShowCom)
 		for (auto& row : m_All)
 			if (!row.Exited)
@@ -364,7 +534,7 @@ CThreadsView::ProcessState* CThreadsView::GetProcess(ThreadState const& state) c
 
 void CThreadsView::Read(Row const& row) const {
 	auto& state = *row.State;
-	if (row.Exited || state.ReadRefresh == m_Refresh)
+	if (row.Group || row.Exited || state.ReadRefresh == m_Refresh)
 		return;
 	bool consecutive = state.ReadRefresh && state.ReadRefresh == m_Refresh - 1;
 	state.ReadRefresh = m_Refresh;
@@ -424,6 +594,19 @@ bool CThreadsView::HasMta(ThreadState const& state) const {
 std::wstring CThreadsView::GetText(Row const& row, Column column) const {
 	static const bool groups = ::GetActiveProcessorGroupCount() > 1;
 	auto& state = *row.State;
+	if (row.Group) {
+		// a process's row: its threads' count and totals
+		switch (column) {
+			// the count beside the name (the TID column is narrow)
+			case Column::Process: return std::format(L"{} ({})", state.ProcessName, row.Threads);
+			case Column::Created: return state.ProcessCreated > 0 ? FormatHelper::FormatDateTime(state.ProcessCreated) : L"";
+			case Column::Pid: case Column::CPU: case Column::CpuTime: case Column::KernelTime:
+			case Column::UserTime: case Column::ContextSwitches: case Column::ContextSwitchDelta:
+				break;
+			default:
+				return L"";
+		}
+	}
 	if (NeedsHandle(column))
 		Read(row);
 	bool handle = state.Handle != nullptr && !row.Exited;
@@ -484,17 +667,30 @@ bool CThreadsView::Matches(Row const& row) const {
 void CThreadsView::ShowRows(ProcessOrThreadKey const& selected) {
 	m_Rows.clear();
 	m_Hidden = 0;
+	std::vector<Row const*> shown;
 	for (auto& row : m_All) {
 		if ((m_HideIdleProcess && row.State->Pid == 0) || (m_HideIdle && IsIdle(row))) {
 			m_Hidden++;
 			continue;
 		}
 		if (Matches(row))
-			m_Rows.push_back(&row);
+			shown.push_back(&row);
 	}
-	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+	if (m_GroupByProcess)
+		BuildGroups(shown);
+	else {
+		m_Groups.clear();
+		m_GroupThreads.clear();
+		m_GroupOrder.clear();
+		m_GroupStates.clear();
+		m_Rows = std::move(shown);
+	}
+	// sorting grouped rows makes them again (DoSort)
 	if (auto si = GetSortInfo(m_List))
 		DoSort(si);
+	else if (m_GroupByProcess)
+		Flatten();
+	m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 	SelectRow(selected);
 	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 }
@@ -526,7 +722,16 @@ void CThreadsView::UpdateStatus() {
 	if (m_Hidden)
 		text += std::format(L"; {} hidden ({})", FormatHelper::FormatNumber((int64_t)m_Hidden),
 			m_HideIdle && m_HideIdleProcess ? L"idle threads, the Idle process" : m_HideIdle ? L"idle threads" : L"the Idle process");
-	if (!m_Filter.GetText().empty() || m_Hidden)
+	if (m_GroupByProcess) {
+		size_t threads = 0;
+		for (auto& list : m_GroupThreads)
+			threads += list.size();
+		if (!m_Filter.GetText().empty() || m_Hidden)
+			text += std::format(L"; {} shown", FormatHelper::FormatNumber((int64_t)threads));
+		text += std::format(L"; grouped by process ({} shown, {} expanded)", m_Groups.size(),
+			m_Filter.GetText().empty() ? std::ranges::count_if(m_Groups, [&](auto& g) { return IsExpanded(g); }) : (ptrdiff_t)m_Groups.size());
+	}
+	else if (!m_Filter.GetText().empty() || m_Hidden)
 		text += std::format(L"; {} shown", FormatHelper::FormatNumber((int64_t)m_Rows.size()));
 	if (!SecurityHelper::IsRunningElevated())
 		text += L"; not elevated: other users' threads show the snapshot's values only";
@@ -536,7 +741,12 @@ void CThreadsView::UpdateStatus() {
 CString CThreadsView::GetColumnText(HWND, int row, int col) const {
 	if (row >= (int)m_Rows.size())
 		return L"";
-	return GetText(*m_Rows[row], GetColumnManager(m_List)->GetColumnTag<Column>(col)).c_str();
+	auto& r = *m_Rows[row];
+	auto text = GetText(r, GetColumnManager(m_List)->GetColumnTag<Column>(col));
+	// grouped: the process rows' leftmost column shows whether they're expanded, their threads' is indented
+	if (m_GroupByProcess && ColumnLayout::IsLeftmostColumn(m_List, col))
+		text = (r.Group ? (IsExpanded(r) ? L"\u25BE " : L"\u25B8 ") : L"      ") + text;
+	return text.c_str();
 }
 
 int CThreadsView::GetRowImage(HWND, int row, int col) const {
@@ -546,7 +756,7 @@ int CThreadsView::GetRowImage(HWND, int row, int col) const {
 	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(col);
 	if (column == Column::Process)
 		return Frame()->GetProcessIcon(r.State->ImagePath);
-	if (!ColumnLayout::IsLeftmostColumn(m_List, col))
+	if (r.Group || !ColumnLayout::IsLeftmostColumn(m_List, col))
 		return -1;
 	return Frame()->GetIconIndex(r.Exited ? IDI_KILL : ThreadCommands::StateIcon(r.RunState));
 }
@@ -560,9 +770,34 @@ void CThreadsView::DoSort(SortInfo const* si) {
 	auto selected = GetSelectedKey();
 	auto column = GetColumnManager(m_List)->GetColumnTag<Column>(si->SortColumn);
 	// by a handle's value: every row's read (once this refresh)
-	if (NeedsHandle(column) && column != Column::StartAddress && column != Column::ComApartment)
+	if (NeedsHandle(column) && column != Column::StartAddress && column != Column::ComApartment) {
 		for (auto row : m_Rows)
 			Read(*row);
+		for (auto& list : m_GroupThreads)
+			for (auto row : list)
+				Read(*row);
+	}
+	if (!m_GroupByProcess)
+		SortRows(m_Rows, column, si->SortAscending);
+	else {
+		// the processes by their rows, then each one's threads
+		std::vector<Row const*> groups;
+		groups.reserve(m_Groups.size());
+		for (auto& group : m_Groups)
+			groups.push_back(&group);
+		SortRows(groups, column, si->SortAscending);
+		m_GroupOrder.clear();
+		for (auto group : groups)
+			m_GroupOrder.push_back(group - m_Groups.data());
+		for (auto& list : m_GroupThreads)
+			SortRows(list, column, si->SortAscending);
+		Flatten();
+		m_List.SetItemCountEx((int)m_Rows.size(), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
+	}
+	SelectRow(selected);
+}
+
+void CThreadsView::SortRows(std::vector<Row const*>& rows, Column column, bool ascending) const {
 	auto compare = [](auto const& a, auto const& b) { return a < b ? -1 : (b < a ? 1 : 0); };
 	auto numeric = [&](Row const& r1, Row const& r2, int& result) {
 		auto& s1 = *r1.State;
@@ -591,31 +826,30 @@ void CThreadsView::DoSort(SortInfo const* si) {
 		return false;
 	};
 	int probe;
-	if (!m_Rows.empty() && numeric(*m_Rows[0], *m_Rows[0], probe))
-		std::ranges::stable_sort(m_Rows, [&](Row const* r1, Row const* r2) {
+	if (!rows.empty() && numeric(*rows[0], *rows[0], probe))
+		std::ranges::stable_sort(rows, [&](Row const* r1, Row const* r2) {
 			int result = 0;
 			numeric(*r1, *r2, result);
 			// ties by process, then thread ID, so equal values don't jump around
 			if (result == 0)
 				result = compare(std::pair(r1->State->Pid, r1->Key.Id), std::pair(r2->State->Pid, r2->Key.Id));
-			return si->SortAscending ? result < 0 : result > 0;
+			return ascending ? result < 0 : result > 0;
 			});
 	else {
 		// a text column: each row's text once
 		std::vector<std::pair<std::wstring, Row const*>> texts;
-		texts.reserve(m_Rows.size());
-		for (auto row : m_Rows)
+		texts.reserve(rows.size());
+		for (auto row : rows)
 			texts.push_back({ GetText(*row, column), row });
 		std::ranges::stable_sort(texts, [&](auto const& t1, auto const& t2) {
 			int result = ::_wcsicmp(t1.first.c_str(), t2.first.c_str());
 			if (result == 0)
 				result = compare(std::pair(t1.second->State->Pid, t1.second->Key.Id), std::pair(t2.second->State->Pid, t2.second->Key.Id));
-			return si->SortAscending ? result < 0 : result > 0;
+			return ascending ? result < 0 : result > 0;
 			});
 		for (size_t i = 0; i < texts.size(); i++)
-			m_Rows[i] = texts[i].second;
+			rows[i] = texts[i].second;
 	}
-	SelectRow(selected);
 }
 
 ThreadCommands::Target CThreadsView::GetTarget(Row const& row) const {
@@ -624,9 +858,28 @@ ThreadCommands::Target CThreadsView::GetTarget(Row const& row) const {
 }
 
 bool CThreadsView::OnRightClickList(HWND, int row, int, POINT const& pt) {
-	if (row < 0 || row >= (int)m_Rows.size() || m_Rows[row]->Exited)
+	if (row < 0 || row >= (int)m_Rows.size())
 		return false;
 	auto& r = *m_Rows[row];
+	if (r.Group) {
+		// a process's row
+		CMenu menu;
+		menu.CreatePopupMenu();
+		bool filtered = !m_Filter.GetText().empty();	// every process expanded
+		menu.AppendMenu(MF_STRING | (filtered ? MF_GRAYED : 0), ID_THREADS_TOGGLEGROUP, IsExpanded(r) ? L"&Collapse" : L"&Expand");
+		menu.AppendMenu(MF_STRING | (filtered ? MF_GRAYED : 0), ID_THREADS_EXPANDALL, L"Expand &All");
+		menu.AppendMenu(MF_STRING | (filtered ? MF_GRAYED : 0), ID_THREADS_COLLAPSEALL, L"C&ollapse All");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING | (r.Exited ? MF_GRAYED : 0), ID_THREADS_GOTOPROCESS, L"&Go to Process");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_EDIT_COPY, L"&Copy\tCtrl+C");
+		if (!filtered)
+			menu.SetMenuDefaultItem(ID_THREADS_TOGGLEGROUP);
+		Frame()->ShowContextMenu(menu, pt, TPM_RIGHTBUTTON);
+		return true;
+	}
+	if (r.Exited)
+		return false;
 	Read(r);
 	std::optional<ThreadPriorityLevel> current;
 	if (r.State->Handle)
@@ -642,7 +895,14 @@ bool CThreadsView::OnRightClickList(HWND, int row, int, POINT const& pt) {
 }
 
 bool CThreadsView::OnDoubleClickList(HWND, int row, int, POINT const&) {
-	if (row < 0 || row >= (int)m_Rows.size() || m_Rows[row]->Exited)
+	if (row < 0 || row >= (int)m_Rows.size())
+		return false;
+	// a process's row expands or collapses
+	if (m_Rows[row]->Group) {
+		PostMessage(WM_COMMAND, ID_THREADS_TOGGLEGROUP);
+		return true;
+	}
+	if (m_Rows[row]->Exited)
 		return false;
 	// posted, so the dialog doesn't run inside the list's mouse handling
 	PostMessage(WM_COMMAND, ID_THREAD_STACK);
@@ -650,13 +910,13 @@ bool CThreadsView::OnDoubleClickList(HWND, int row, int, POINT const&) {
 }
 
 LRESULT CThreadsView::OnThreadCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (auto row = GetSelected(); row && !row->Exited)
+	if (auto row = GetSelected(); row && !row->Exited && !row->Group)
 		ThreadCommands::Execute(m_hWnd, wID, GetTarget(*row));
 	return 0;
 }
 
 LRESULT CThreadsView::OnKill(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (auto row = GetSelected(); row && !row->Exited)
+	if (auto row = GetSelected(); row && !row->Exited && !row->Group)
 		ThreadCommands::Execute(m_hWnd, ID_THREAD_TERMINATE, GetTarget(*row));
 	return 0;
 }
@@ -697,6 +957,8 @@ LRESULT CThreadsView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 				cd->clrTextBk = dark ? RGB(0, 96, 0) : RGB(160, 255, 160);
 				cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
 			}
+			else if (row.Group)
+				cd->clrTextBk = dark ? RGB(44, 52, 68) : RGB(228, 236, 248);
 			break;
 		}
 	}

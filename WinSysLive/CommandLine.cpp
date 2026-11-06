@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CommandLine.h"
 #include "ListExport.h"
+#include "ThreadCommands.h"
 
 namespace {
 	std::wstring Lowercase(std::wstring text) {
@@ -71,11 +72,15 @@ std::optional<CommandLineRequest> CommandLine::Parse(std::vector<std::wstring> c
 			break;
 		case CommandLineRequest::Action::Export:
 			if (values.size() != 1)
-				request.Error = L"/export takes what to export: processes, modules, services, drivers or autoruns";
+				request.Error = L"/export takes what to export: processes, modules, threads, services, drivers or autoruns";
 			else {
 				request.What = Lowercase(values[0]);
-				if (std::ranges::none_of(ExportKinds, [&](PCWSTR kind) { return request.What == kind; }))
-					request.Error = L"Nothing called \"" + values[0] + L"\" to export: processes, modules, services, drivers or autoruns";
+				auto is = [&](PCWSTR kind) { return request.What == kind; };
+				bool live = std::ranges::any_of(LiveExportKinds, is);
+				if (!live && std::ranges::none_of(ExportKinds, is))
+					request.Error = L"Nothing called \"" + values[0] + L"\" to export: processes, modules, threads, services, drivers or autoruns";
+				else if (live && !request.From.empty())
+					request.Error = L"Snapshots don't keep the " + request.What + L": /export " + request.What + L" takes the system now, without /from";
 			}
 			break;
 	}
@@ -105,6 +110,8 @@ std::wstring CommandLine::Usage() {
 		L"      What changed between two snapshots, or since one (without the second).\r\n"
 		L"  WinSysLive /export processes|modules|services|drivers|autoruns [/from <file.wslsnap>] [/out <file>]\r\n"
 		L"      A table of the system now, or of a saved snapshot.\r\n"
+		L"  WinSysLive /export threads [/out <file>]\r\n"
+		L"      Every process's threads now (snapshots don't keep them).\r\n"
 		L"\r\n"
 		L"/out writes CSV for a .csv file, else tab-separated text; without it the table goes to the console.\r\n"
 		L"Run elevated for every process's modules and command line.\r\n"
@@ -152,6 +159,25 @@ std::vector<std::vector<std::wstring>> CommandLine::ExportTable(Snapshot const& 
 		for (auto& a : s.Autoruns)
 			rows.push_back({ a.Category, a.Location, a.Name, a.Enabled, a.Command, a.ImagePath });
 	}
+	return rows;
+}
+
+std::vector<std::vector<std::wstring>> CommandLine::ThreadsTable(std::vector<CommandLineThread> const& threads) {
+	// "1:02:03.456", hours as many as there are
+	auto span = [](int64_t ticks) {
+		auto ms = ticks / 10000;
+		return std::format(L"{}:{:02}:{:02}.{:03}", ms / 3600000, ms / 60000 % 60, ms / 1000 % 60, ms % 1000);
+	};
+	std::vector<std::vector<std::wstring>> rows;
+	rows.push_back({ L"PID", L"Process", L"TID", L"State", L"Wait Reason", L"Priority", L"Base Priority", L"CPU Time",
+		L"Kernel Time", L"User Time", L"Context Switches", L"Start Address", L"Created" });
+	for (auto& t : threads)
+		rows.push_back({ std::to_wstring(t.Pid), t.Process, std::to_wstring(t.Tid), ThreadCommands::StateText(t.State),
+			t.State == 5 ? ThreadCommands::WaitReasonText(t.WaitReason) : L"",	// Waiting
+			std::to_wstring(t.Priority), std::to_wstring(t.BasePriority), span(t.KernelTime + t.UserTime), span(t.KernelTime),
+			span(t.UserTime), std::to_wstring(t.ContextSwitches), t.StartAddress ? std::format(L"0x{:X}", t.StartAddress) : L"",
+			// the System process's threads made at boot have a time near 0, before the clock was set: none
+			t.Created > 116444736000000000 ? IsoTime(t.Created) : L"" });	// 1970
 	return rows;
 }
 

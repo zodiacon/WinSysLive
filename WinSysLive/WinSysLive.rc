@@ -102,8 +102,11 @@ BEGIN
         MENUITEM "Group Users by &Account",     ID_USERS_GROUPBYACCOUNT
         MENUITEM "Hide &Idle Threads",          ID_THREADS_HIDEIDLE
         MENUITEM "Hide the Idle Pro&cess",      ID_THREADS_HIDEIDLEPROCESS
+        MENUITEM "Group Threads by P&rocess",   ID_THREADS_GROUPBYPROCESS
         MENUITEM "Hide Processes Running &Throughout", ID_TIMELINE_HIDETHROUGHOUT
         MENUITEM "&Fit the Timeline",           ID_TIMELINE_FIT
+        MENUITEM "Timeline by &Parent",         ID_TIMELINE_GROUPBYPARENT
+        MENUITEM "Timeline by Us&er",           ID_TIMELINE_GROUPBYUSER
         POPUP "&Hide Processes"
         BEGIN
             MENUITEM "Other &Users' Processes",     ID_VIEW_HIDEOTHERUSERS
@@ -2257,6 +2260,12 @@ BEGIN
     ID_VIEW_TIMELINE        "Show what ran when: a bar per process from its start to its exit\nTimeline (Ctrl+Shift+M)"
     ID_TIMELINE_HIDETHROUGHOUT "Leave out the processes that ran through the whole time shown (Timeline tab)\nHide Running Throughout"
     ID_TIMELINE_FIT         "Show the whole recording, following now (Timeline tab)\nFit"
+    ID_TIMELINE_GROUPBYPARENT "Order the processes as a tree: each one's children below it (Timeline tab)\nBy Parent"
+    ID_TIMELINE_GROUPBYUSER "Group the processes by the user they ran as (Timeline tab)\nBy User"
+    ID_THREADS_GROUPBYPROCESS "Group the threads under their processes, with each process's totals (Threads tab)\nGroup by Process"
+    ID_THREADS_EXPANDALL    "Show every process's threads (Threads tab)\nExpand All"
+    ID_THREADS_COLLAPSEALL  "Show only the processes (Threads tab)\nCollapse All"
+    ID_THREADS_TOGGLEGROUP  "Show or hide the process's threads (Threads tab)\nExpand or Collapse"
 END
 
 STRINGTABLE

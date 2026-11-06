@@ -116,3 +116,66 @@ TEST(Timeline_Describe) {
 	CHECK(text.find(L"Parent: ? (100)") != std::wstring::npos);
 	CHECK(text.ends_with(L"Running for 20 s"));
 }
+
+TEST(Timeline_Grouping) {
+	Lives lives;
+	Add(lives, 100, T0 + 1 * S, 0, L"explorer.exe");
+	Add(lives, 200, T0 + 2 * S, T0 + 20 * S, L"setup.exe", 100, T0 + 1 * S);
+	Add(lives, 900, T0 + 3 * S, 0, L"svchost.exe");
+	Add(lives, 300, T0 + 4 * S, 0, L"msiexec.exe", 200, T0 + 2 * S);
+	Add(lives, 400, T0 + 5 * S, T0 + 6 * S, L"notepad.exe", 100, T0 + 1 * S);
+	lives[{ T0 + 1 * S, 100 }].User = L"PC\\me";
+	lives[{ T0 + 2 * S, 200 }].User = L"pc\\ME";	// the same user, another case
+	lives[{ T0 + 3 * S, 900 }].User = L"NT AUTHORITY\\SYSTEM";
+	lives[{ T0 + 5 * S, 400 }].User = L"PC\\me";
+	auto ids = [](std::vector<TimelineRow> const& rows) {
+		std::vector<uint32_t> ids;
+		for (auto& r : rows)
+			ids.push_back(r.Life ? r.Life->Key.Id : 0);
+		return ids;
+	};
+
+	TimelineModel::Options options{ T0, T0 + 100 * S, T0 + 100 * S, L"", false, TimelineModel::Grouping::Parent };
+	auto rows = TimelineModel::Build(lives, options);
+	// explorer, its children by start (setup with its own child), then the other root
+	CHECK(ids(rows) == std::vector<uint32_t>({ 100, 200, 300, 400, 900 }));
+	CHECK_EQ(rows[0].Depth, 0);
+	CHECK_EQ(rows[1].Depth, 1);
+	CHECK_EQ(rows[2].Depth, 2);
+	CHECK_EQ(rows[3].Depth, 1);
+	CHECK_EQ(rows[4].Depth, 0);
+	CHECK_EQ(rows[2].ParentRow, 1);
+	CHECK_EQ(rows[3].ParentRow, 0);
+	// a child whose parent the filter leaves out is a root
+	options.Filter = L"msiexec";
+	rows = TimelineModel::Build(lives, options);
+	CHECK(rows.size() == 1 && rows[0].Depth == 0 && rows[0].ParentRow == -1);
+	options.Filter.clear();
+
+	options.Group = TimelineModel::Grouping::User;
+	rows = TimelineModel::Build(lives, options);
+	// NT AUTHORITY first, then PC\me (either case, by start), the unknown user last; a heading before each
+	CHECK(ids(rows) == std::vector<uint32_t>({ 0, 900, 0, 100, 200, 400, 0, 300 }));
+	CHECK_EQ(rows[0].Header, std::wstring(L"NT AUTHORITY\\SYSTEM (1 process)"));
+	CHECK_EQ(rows[2].Header, std::wstring(L"PC\\me (3 processes)"));
+	CHECK_EQ(rows[6].Header, std::wstring(L"Unknown user (1 process)"));
+	CHECK(rows[2].Life == nullptr && rows[3].Life != nullptr);
+	CHECK_EQ(rows[4].ParentRow, 3);	// setup's parent, explorer
+	CHECK_EQ(rows[7].ParentRow, 4);	// msiexec's, setup, in another group
+
+	// the table leaves the headings out
+	auto table = TimelineModel::Table(rows, lives, T0 + 100 * S);
+	CHECK_EQ(table.size(), (size_t)6);
+	CHECK_EQ(table[0][3], std::wstring(L"Parent"));
+	auto setup = std::ranges::find_if(table, [](auto& r) { return r[1] == L"200"; });
+	CHECK(setup != table.end());
+	if (setup != table.end()) {
+		CHECK_EQ((*setup)[0], std::wstring(L"setup.exe"));
+		CHECK_EQ((*setup)[2], std::wstring(L"100"));
+		CHECK_EQ((*setup)[3], std::wstring(L"explorer.exe"));
+		CHECK_EQ((*setup)[7], std::wstring(L"18 s"));
+		CHECK_EQ((*setup)[6], TimelineModel::LocalTime(T0 + 20 * S));
+	}
+	auto msiexec = std::ranges::find_if(table, [](auto& r) { return r[1] == L"300"; });
+	CHECK(msiexec != table.end() && (*msiexec)[6].empty() && (*msiexec)[7] == L"1:36");	// running: until now
+}

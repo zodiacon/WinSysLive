@@ -134,3 +134,34 @@ TEST(CommandLine_Tables) {
 	CHECK_EQ(CommandLine::IsoTime((int64_t)ULARGE_INTEGER{ ft.dwLowDateTime, ft.dwHighDateTime }.QuadPart), std::wstring(L"2026-11-05T00:00:00Z"));
 	CHECK_EQ(CommandLine::IsoTime(0), std::wstring());
 }
+
+TEST(CommandLine_Threads) {
+	// the system now only: snapshots don't keep threads
+	auto r = Parse({ L"/export", L"Threads", L"/out", L"t.csv" });
+	CHECK(r && r->Command == CommandLineRequest::Action::Export && r->What == L"threads" && r->Out == L"t.csv" && r->Error.empty());
+	r = Parse({ L"/export", L"threads", L"/from", L"a.wslsnap" });
+	CHECK(r && !r->Error.empty() && r->Error.find(L"/from") != std::wstring::npos);
+	r = Parse({ L"/from", L"a.wslsnap" });
+	CHECK(!r.has_value());
+
+	CommandLineThread waiting{ 1234, L"app.exe", 5678, 0, 12345678, 20000000, 5, 6, 10, 8, 42, 0x7FF612340000 };
+	CommandLineThread running{ 1234, L"app.exe", 5680, 120000000, 0, 0, 2, 0, 9, 8, 7, 0 };	// created at "boot": 12 s after 1601
+	auto table = CommandLine::ThreadsTable({ waiting, running });
+	CHECK_EQ(table.size(), (size_t)3);
+	CHECK_EQ(table[0].size(), table[1].size());
+	CHECK_EQ(table[0][3], std::wstring(L"State"));
+	CHECK_EQ(table[1][2], std::wstring(L"5678"));
+	CHECK_EQ(table[1][3], std::wstring(L"Waiting"));
+	CHECK_EQ(table[1][4], std::wstring(L"User Request"));
+	CHECK_EQ(table[1][7], std::wstring(L"0:00:03.234"));	// kernel and user
+	CHECK_EQ(table[1][8], std::wstring(L"0:00:01.234"));
+	CHECK_EQ(table[1][11], std::wstring(L"0x7FF612340000"));
+	CHECK_EQ(table[1][12], std::wstring());	// no creation time
+	// the wait reason only for a waiting thread; no start address when the snapshot has none
+	CHECK_EQ(table[2][3], std::wstring(L"Running"));
+	CHECK_EQ(table[2][4], std::wstring());
+	CHECK_EQ(table[2][11], std::wstring());
+	CHECK_EQ(table[2][12], std::wstring());
+	waiting.Created = 0x01DD6D5A00000000;
+	CHECK(CommandLine::ThreadsTable({ waiting })[1][12].starts_with(L"20"));
+}

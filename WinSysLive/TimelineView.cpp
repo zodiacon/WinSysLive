@@ -7,11 +7,18 @@
 #include <ToolbarHelper.h>
 #include <ClipboardHelper.h>
 #include <WinSys/SecurityHelper.h>
+#include <WinSys/Helpers.h>
+#include "ListExport.h"
+#include <wincodec.h>
+
+#pragma comment(lib, "windowscodecs")
 
 namespace {
 	const ToolBarButtonInfo s_Buttons[] = {
 		{ ID_TIMELINE_HIDETHROUGHOUT, IDI_PROCESS_HIDE, BTNS_CHECK | BTNS_AUTOSIZE, L"Hide Running Throughout" },
 		{ ID_TIMELINE_FIT, IDI_REFRESH, BTNS_AUTOSIZE, L"Fit" },
+		{ ID_TIMELINE_GROUPBYPARENT, IDI_TREE, BTNS_CHECK | BTNS_AUTOSIZE, L"By Parent" },
+		{ ID_TIMELINE_GROUPBYUSER, IDI_USER, BTNS_CHECK | BTNS_AUTOSIZE, L"By User" },
 	};
 	const int ButtonImageSize = 16;	// at 96 DPI
 	const int64_t MinSpan = TimelineModel::Second;	// zoomed in at most to a second
@@ -38,6 +45,34 @@ namespace {
 		if (step >= 60 * TimelineModel::Second)
 			return std::format(L"{:02}:{:02}", st.wHour, st.wMinute);
 		return std::format(L"{:02}:{:02}:{:02}", st.wHour, st.wMinute, st.wSecond);
+	}
+
+	// the bitmap as a PNG file (WIC converts its pixels)
+	HRESULT SavePng(HBITMAP bitmap, std::wstring const& path) {
+		CComPtr<IWICImagingFactory> factory;
+		auto hr = factory.CoCreateInstance(CLSID_WICImagingFactory);
+		if (FAILED(hr))
+			return hr;
+		CComPtr<IWICBitmap> image;
+		if (FAILED(hr = factory->CreateBitmapFromHBITMAP(bitmap, nullptr, WICBitmapIgnoreAlpha, &image)))
+			return hr;
+		CComPtr<IWICStream> stream;
+		if (FAILED(hr = factory->CreateStream(&stream)) || FAILED(hr = stream->InitializeFromFilename(path.c_str(), GENERIC_WRITE)))
+			return hr;
+		CComPtr<IWICBitmapEncoder> encoder;
+		if (FAILED(hr = factory->CreateEncoder(GUID_ContainerFormatPng, nullptr, &encoder))
+			|| FAILED(hr = encoder->Initialize(stream, WICBitmapEncoderNoCache)))
+			return hr;
+		CComPtr<IWICBitmapFrameEncode> frame;
+		if (FAILED(hr = encoder->CreateNewFrame(&frame, nullptr)) || FAILED(hr = frame->Initialize(nullptr)))
+			return hr;
+		UINT width, height;
+		image->GetSize(&width, &height);
+		WICPixelFormatGUID format = GUID_WICPixelFormat24bppBGR;
+		if (FAILED(hr = frame->SetSize(width, height)) || FAILED(hr = frame->SetPixelFormat(&format))
+			|| FAILED(hr = frame->WriteSource(image, nullptr)) || FAILED(hr = frame->Commit()))
+			return hr;
+		return encoder->Commit();
 	}
 
 	int64_t LocalOffset() {
@@ -96,10 +131,13 @@ void CTimelineCtrl::Measure() {
 	m_NameWidth = DpiHelper::Scale(260, m_hWnd);
 }
 
-int CTimelineCtrl::ChartWidth() const {
-	CRect rc;
-	GetClientRect(&rc);
-	return (std::max)(10, (int)rc.Width() - m_NameWidth - DpiHelper::Scale(8, m_hWnd));
+int CTimelineCtrl::ChartWidth(int width) const {
+	if (width < 0) {
+		CRect rc;
+		GetClientRect(&rc);
+		width = rc.Width();
+	}
+	return (std::max)(10, width - m_NameWidth - DpiHelper::Scale(8, m_hWnd));
 }
 
 void CTimelineCtrl::SetRows(std::vector<TimelineRow> rows, int64_t from, int64_t to, int64_t now, int64_t since) {
@@ -112,7 +150,7 @@ void CTimelineCtrl::SetRows(std::vector<TimelineRow> rows, int64_t from, int64_t
 	m_Selected = -1;
 	m_SelectedLife = nullptr;
 	for (int i = 0; i < (int)m_Rows.size(); i++)
-		if (m_Rows[i].Life->Key == m_SelectedKey) {
+		if (m_Rows[i].Life && m_Rows[i].Life->Key == m_SelectedKey) {
 			m_Selected = i;
 			m_SelectedLife = m_Rows[i].Life;
 			break;
@@ -163,8 +201,9 @@ void CTimelineCtrl::Select(int row) {
 	if (row < 0 || row >= (int)m_Rows.size())
 		return;
 	m_Selected = row;
+	// a heading has no process
 	m_SelectedLife = m_Rows[row].Life;
-	m_SelectedKey = m_SelectedLife->Key;
+	m_SelectedKey = m_SelectedLife ? m_SelectedLife->Key : WinSys::ProcessOrThreadKey{};
 	// kept in view
 	CRect rc;
 	GetClientRect(&rc);
@@ -181,14 +220,38 @@ LRESULT CTimelineCtrl::OnPaint(UINT, WPARAM, LPARAM, BOOL&) {
 	CRect rc;
 	GetClientRect(&rc);
 	CMemoryDC dc(pdc, rc);
+	Draw(dc.m_hDC, rc, m_Top, true);
+	return 0;
+}
+
+HBITMAP CTimelineCtrl::CreateImage() const {
+	CRect client;
+	GetClientRect(&client);
+	int height = (std::min)(m_AxisHeight + (int)m_Rows.size() * m_RowHeight, MaxImageHeight);
+	CRect rc(0, 0, (std::max)((int)client.Width(), m_NameWidth + DpiHelper::Scale(300, m_hWnd)), height);
+	CClientDC screen(m_hWnd);
+	CDC dc;
+	dc.CreateCompatibleDC(screen);
+	CBitmap bitmap;
+	bitmap.CreateCompatibleBitmap(screen, rc.Width(), rc.Height());
+	if (!bitmap)
+		return nullptr;
+	auto old = dc.SelectBitmap(bitmap);
+	Draw(dc.m_hDC, rc, 0, false);
+	dc.SelectBitmap(old);
+	return bitmap.Detach();
+}
+
+void CTimelineCtrl::Draw(CDCHandle dc, CRect const& rc, int top, bool selection) const {
 	auto colors = GetColors();
 	dc.FillSolidRect(&rc, colors.Back);
 	auto oldFont = dc.SelectFont(m_Font);
 	dc.SetBkMode(TRANSPARENT);
 
-	int left = ChartLeft(), width = ChartWidth();
+	int left = ChartLeft(), width = ChartWidth(rc.Width());
 	auto x = [&](int64_t t) { return TimelineModel::X(t, m_From, m_To, left, width); };
 	int pad = DpiHelper::Scale(4, m_hWnd);
+	int indent = DpiHelper::Scale(12, m_hWnd);
 
 	// the axis: its band, the ticks and their grid lines
 	CRect axis(rc.left, rc.top, rc.right, rc.top + m_AxisHeight);
@@ -207,18 +270,31 @@ LRESULT CTimelineCtrl::OnPaint(UINT, WPARAM, LPARAM, BOOL&) {
 	}
 	dc.SetTextColor(colors.Text);
 	CRect title(rc.left + pad, rc.top, left - pad, rc.top + m_AxisHeight);
-	dc.DrawText(std::format(L"{} processes", m_Rows.size()).c_str(), -1, &title, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+	auto processes = std::ranges::count_if(m_Rows, [](auto& row) { return row.Life != nullptr; });
+	dc.DrawText(std::format(L"{} processes", processes).c_str(), -1, &title, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
-	// the rows on screen
+	// the rows in rc
 	int page = ((int)rc.Height() - m_AxisHeight) / m_RowHeight + 1;
 	int barInset = m_RowHeight / 5;
 	bool focused = ::GetFocus() == m_hWnd;
-	for (int i = m_Top; i < (int)m_Rows.size() && i < m_Top + page; i++) {
-		auto& life = *m_Rows[i].Life;
-		int y = rc.top + m_AxisHeight + (i - m_Top) * m_RowHeight;
-		if (i == m_Selected)
+	for (int i = top; i < (int)m_Rows.size() && i < top + page; i++) {
+		auto& row = m_Rows[i];
+		int y = rc.top + m_AxisHeight + (i - top) * m_RowHeight;
+		bool selected = selection && i == m_Selected;
+		if (!row.Life) {
+			// a group's heading, across
+			dc.FillSolidRect(rc.left, y, rc.Width(), m_RowHeight, selected ? (focused ? colors.Selected : colors.Grid) : colors.Axis);
+			CRect text(rc.left + pad, y, rc.right - pad, y + m_RowHeight);
+			dc.SetTextColor(colors.Text);
+			dc.DrawText(row.Header.c_str(), -1, &text, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+			continue;
+		}
+		auto& life = *row.Life;
+		if (selected)
 			dc.FillSolidRect(rc.left, y, rc.Width(), m_RowHeight, focused ? colors.Selected : colors.Grid);
-		CRect name(rc.left + pad, y, left - pad, y + m_RowHeight);
+		// below its parent, by its depth (at most a third of the names' width)
+		int shift = (std::min)(row.Depth * indent, (left - 2 * pad) / 3);
+		CRect name(rc.left + pad + shift, y, left - pad, y + m_RowHeight);
 		dc.SetTextColor(life.End ? colors.Dim : colors.Text);
 		dc.DrawText(std::format(L"{} ({})", life.Name, life.Key.Id).c_str(), -1, &name, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 		int x1 = (std::max)(x(life.Start), left);
@@ -237,14 +313,14 @@ LRESULT CTimelineCtrl::OnPaint(UINT, WPARAM, LPARAM, BOOL&) {
 		int parent = m_Rows[i].ParentRow;
 		if (parent < 0)
 			continue;
-		// a link crosses the screen if either end is on it, or they're on both sides
+		// a link crosses the area if either end is in it, or they're on both sides
 		int lo = (std::min)(i, parent), hi = (std::max)(i, parent);
-		if (hi < m_Top || lo >= m_Top + page)
+		if (hi < top || lo >= top + page)
 			continue;
 		int lx = x(m_Rows[i].Life->Start);
 		if (lx < left || lx > left + width)
 			continue;
-		auto center = [&](int row) { return rc.top + m_AxisHeight + (row - m_Top) * m_RowHeight + m_RowHeight / 2; };
+		auto center = [&](int row) { return rc.top + m_AxisHeight + (row - top) * m_RowHeight + m_RowHeight / 2; };
 		int y1 = (std::max)(center(parent), rc.top + m_AxisHeight), y2 = (std::max)(center(i), rc.top + m_AxisHeight);
 		dc.MoveTo(lx, y1);
 		dc.LineTo(lx, y2);
@@ -257,7 +333,6 @@ LRESULT CTimelineCtrl::OnPaint(UINT, WPARAM, LPARAM, BOOL&) {
 	if (int nx = x(m_Now); nx >= left && nx <= left + width)
 		dc.FillSolidRect(nx, rc.top, (std::max)(1, DpiHelper::Scale(2, m_hWnd)), rc.Height(), colors.Now);
 	dc.SelectFont(oldFont);
-	return 0;
 }
 
 LRESULT CTimelineCtrl::OnSize(UINT, WPARAM, LPARAM, BOOL&) {
@@ -328,7 +403,7 @@ LRESULT CTimelineCtrl::OnLButtonUp(UINT, WPARAM, LPARAM, BOOL&) {
 }
 
 LRESULT CTimelineCtrl::OnLButtonDblClk(UINT, WPARAM, LPARAM lParam, BOOL&) {
-	if (int row = RowAt(GET_Y_LPARAM(lParam)); row >= 0)
+	if (int row = RowAt(GET_Y_LPARAM(lParam)); row >= 0 && m_Rows[row].Life)
 		m_View.GoToProcess(*m_Rows[row].Life);
 	return 0;
 }
@@ -407,7 +482,7 @@ LRESULT CTimelineCtrl::OnGetTipText(int, LPNMHDR hdr, BOOL&) {
 	::GetCursorPos(&pt);
 	ScreenToClient(&pt);
 	m_TipRow = RowAt(pt.y);
-	m_TipText = m_TipRow >= 0 ? m_View.Describe(*m_Rows[m_TipRow].Life) : L"";
+	m_TipText = m_TipRow < 0 ? L"" : m_Rows[m_TipRow].Life ? m_View.Describe(*m_Rows[m_TipRow].Life) : m_Rows[m_TipRow].Header;
 	di->lpszText = m_TipText.data();
 	return 0;
 }
@@ -446,8 +521,11 @@ LRESULT CTimelineView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		}
 		rebar.SetBandInfo(i, &band);
 	}
-	m_HideThroughout = AppSettings::Get().TimelineHideThroughout() != 0;
-	m_Bar.CheckButton(ID_TIMELINE_HIDETHROUGHOUT, m_HideThroughout);
+	auto& settings = AppSettings::Get();
+	m_HideThroughout = settings.TimelineHideThroughout() != 0;
+	auto grouping = settings.TimelineGrouping();
+	m_Grouping = grouping > 0 && grouping < (int)TimelineModel::Grouping::_Count ? (TimelineModel::Grouping)grouping : TimelineModel::Grouping::None;
+	UpdateChecks();
 
 	// the frame's with Record from Startup (what happened since the app started), else one of the tab's own
 	m_Recorder = Recorders::AcquireHistory(Frame()->GetProcessManager());
@@ -490,8 +568,10 @@ void CTimelineView::OnActivate(bool active) {
 	m_Active = active;
 	auto& ui = Frame()->GetUI();
 	ui.UIEnable(ID_TIMELINE_HIDETHROUGHOUT, active);
-	ui.UISetCheck(ID_TIMELINE_HIDETHROUGHOUT, m_HideThroughout);
 	ui.UIEnable(ID_TIMELINE_FIT, active);
+	ui.UIEnable(ID_TIMELINE_GROUPBYPARENT, active);
+	ui.UIEnable(ID_TIMELINE_GROUPBYUSER, active);
+	UpdateChecks();
 	if (active) {
 		Rebuild();
 		m_Chart.SetFocus();
@@ -549,9 +629,9 @@ void CTimelineView::Rebuild() {
 		m_To = now;
 		m_From = now - span;
 	}
-	TimelineModel::Options options{ m_From, m_To, now, m_Filter.GetText(), m_HideThroughout };
+	TimelineModel::Options options{ m_From, m_To, now, m_Filter.GetText(), m_HideThroughout, m_Grouping };
 	auto rows = TimelineModel::Build(m_Recorder->GetLives(), options, &m_Hidden);
-	m_Shown = rows.size();
+	m_Shown = std::ranges::count_if(rows, [](auto& row) { return row.Life != nullptr; });
 	m_Chart.SetRows(std::move(rows), m_From, m_To, now, m_Recorder->GetSince());
 	UpdateStatus();
 }
@@ -614,12 +694,74 @@ LRESULT CTimelineView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 
 LRESULT CTimelineView::OnHideThroughout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	m_HideThroughout = !m_HideThroughout;
-	m_Bar.CheckButton(ID_TIMELINE_HIDETHROUGHOUT, m_HideThroughout);
-	Frame()->GetUI().UISetCheck(ID_TIMELINE_HIDETHROUGHOUT, m_HideThroughout);
+	UpdateChecks();
 	auto& settings = AppSettings::Get();
 	settings.TimelineHideThroughout(m_HideThroughout);
 	settings.Save();
 	Rebuild();
+	return 0;
+}
+
+void CTimelineView::UpdateChecks() {
+	m_Bar.CheckButton(ID_TIMELINE_HIDETHROUGHOUT, m_HideThroughout);
+	m_Bar.CheckButton(ID_TIMELINE_GROUPBYPARENT, m_Grouping == TimelineModel::Grouping::Parent);
+	m_Bar.CheckButton(ID_TIMELINE_GROUPBYUSER, m_Grouping == TimelineModel::Grouping::User);
+	auto& ui = Frame()->GetUI();
+	ui.UISetCheck(ID_TIMELINE_HIDETHROUGHOUT, m_HideThroughout);
+	ui.UISetCheck(ID_TIMELINE_GROUPBYPARENT, m_Grouping == TimelineModel::Grouping::Parent);
+	ui.UISetCheck(ID_TIMELINE_GROUPBYUSER, m_Grouping == TimelineModel::Grouping::User);
+}
+
+LRESULT CTimelineView::OnGrouping(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto grouping = wID == ID_TIMELINE_GROUPBYPARENT ? TimelineModel::Grouping::Parent : TimelineModel::Grouping::User;
+	m_Grouping = m_Grouping == grouping ? TimelineModel::Grouping::None : grouping;
+	auto& settings = AppSettings::Get();
+	settings.TimelineGrouping((int)m_Grouping);
+	settings.Save();
+	UpdateChecks();
+	Rebuild();
+	return 0;
+}
+
+LRESULT CTimelineView::OnExport(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (!m_Recorder || m_Chart.GetRows().empty())
+		return 0;
+	// taken before the dialog: the rows go on changing while it's open
+	auto table = TimelineModel::Table(m_Chart.GetRows(), m_Recorder->GetLives(), HistoryRecorder::Now());
+	SYSTEMTIME st;
+	::GetLocalTime(&st);
+	auto name = std::format(L"Timeline {:04}-{:02}-{:02} {:02}{:02}{:02}", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+	SuspendResumeHook sr;
+	CSimpleFileDialog dlg(FALSE, L"csv", (name + L".csv").c_str(), OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER,
+		L"CSV Files (*.csv)\0*.csv\0Text Files, Tab Separated (*.txt)\0*.txt\0PNG Image of the Chart (*.png)\0*.png\0", m_hWnd);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return 0;
+	std::wstring path = dlg.m_szFileName;
+	auto index = dlg.m_ofn.nFilterIndex;
+	bool image = index == 3 || (path.size() >= 4 && ::_wcsicmp(path.c_str() + path.size() - 4, L".png") == 0);
+	if (image) {
+		CWaitCursor wait;
+		auto rows = m_Chart.GetRows().size();
+		HRESULT hr = E_OUTOFMEMORY;
+		if (auto bitmap = m_Chart.CreateImage()) {
+			hr = SavePng(bitmap, path);
+			::DeleteObject(bitmap);
+		}
+		if (FAILED(hr)) {
+			AtlMessageBox(m_hWnd, std::format(L"Failed to write {}: {}", path, WinSys::Helpers::GetErrorText(hr)).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+			return 0;
+		}
+		auto shown = m_Chart.GetImageRowCount();
+		Frame()->SetStatusText(0, std::format(L"The chart saved to {}{}", path,
+			shown < rows ? L" (its first rows: the image's height is limited)" : L"").c_str());
+		return 0;
+	}
+	if (!ListExport::Save(path, index == 2 ? ListExport::ToText(table) : ListExport::ToCsv(table))) {
+		AtlMessageBox(m_hWnd, std::format(L"Failed to write {}: {}", path, WinSys::Helpers::GetErrorText(::GetLastError())).c_str(),
+			IDR_MAINFRAME, MB_ICONERROR);
+		return 0;
+	}
+	Frame()->SetStatusText(0, std::format(L"{} processes exported to {}", table.size() - 1, path).c_str());
 	return 0;
 }
 

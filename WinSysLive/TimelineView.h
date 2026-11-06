@@ -16,6 +16,8 @@ class CTimelineView;
 // red; a line from the parent's row to the child's start where both are shown; the recording's start and now marked.
 // Ctrl+wheel (or + and -) zooms around the mouse, Shift+wheel (or dragging, or the arrow keys) pans, the wheel scrolls
 // the rows, Home fits the whole recording. A click selects a row; the tooltip describes the process under the mouse.
+// Grouped by parent, a process's name is indented below its parent's; grouped by user, a heading row comes before each
+// user's processes.
 //
 class CTimelineCtrl : public CWindowImpl<CTimelineCtrl> {
 public:
@@ -25,8 +27,18 @@ public:
 
 	void SetRows(std::vector<TimelineRow> rows, int64_t from, int64_t to, int64_t now, int64_t since);
 	void SetFont(HFONT font);
-	// the selected row's lifetime; nullptr for none
+	// the selected row's lifetime; nullptr for none (or a heading)
 	HistoryRecorder::ProcessLife const* GetSelected() const;
+	std::vector<TimelineRow> const& GetRows() const {
+		return m_Rows;
+	}
+	// every row drawn into a bitmap as wide as the chart (at most MaxImageHeight high), without the selection
+	[[nodiscard]] HBITMAP CreateImage() const;
+	static constexpr int MaxImageHeight = 30000;
+	// the rows that fit in the image
+	size_t GetImageRowCount() const {
+		return (std::min)(m_Rows.size(), (size_t)(std::max)(0, (MaxImageHeight - m_AxisHeight) / m_RowHeight));
+	}
 
 	BEGIN_MSG_MAP(CTimelineCtrl)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -75,17 +87,19 @@ private:
 	LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnGetTipText(int, LPNMHDR, BOOL&);
 
+	// the chart in rc, its rows from top; selection: the selected row highlighted
+	void Draw(CDCHandle dc, CRect const& rc, int top, bool selection) const;
 	void Measure();
 	void UpdateScrollBar();
 	// the row at the client y, or -1
 	int RowAt(int y) const;
 	void Select(int row);
 	void ScrollTo(int top);
-	// the chart's left edge and width (right of the names)
+	// the chart's left edge and width (right of the names), for a client area as wide as width (default: the window's)
 	int ChartLeft() const {
 		return m_NameWidth;
 	}
-	int ChartWidth() const;
+	int ChartWidth(int width = -1) const;
 
 	CTimelineView& m_View;
 	std::vector<TimelineRow> m_Rows;
@@ -114,6 +128,9 @@ private:
 // boot's processes stand out. The filter matches the name, PID, command line and user. With the process creation tracker
 // (elevated) the tooltip also says who created a process that another created for its parent, or whose parent was
 // spoofed. Double-click or Go to Process selects a running process in the Processes tab; Copy copies its description.
+// By Parent orders the processes as a tree and By User groups them under their users (the TimelineGrouping setting; the
+// buttons and View's items exclude each other). File > Export saves the rows shown as CSV or text (TimelineModel::Table),
+// or the chart, every row of it, as a PNG image.
 //
 class CTimelineView : public CViewBase<CTimelineView> {
 public:
@@ -124,6 +141,9 @@ public:
 	}
 	bool CanCopy() const override {
 		return m_Chart.GetSelected() != nullptr;
+	}
+	bool CanExport() const override {
+		return !m_Chart.GetRows().empty();
 	}
 	void OnActivate(bool active) override;
 	void OnRefresh(bool active) override;
@@ -148,6 +168,8 @@ public:
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
 		COMMAND_ID_HANDLER(ID_TIMELINE_HIDETHROUGHOUT, OnHideThroughout)
 		COMMAND_ID_HANDLER(ID_TIMELINE_FIT, OnFit)
+		COMMAND_ID_HANDLER(ID_TIMELINE_GROUPBYPARENT, OnGrouping)
+		COMMAND_ID_HANDLER(ID_TIMELINE_GROUPBYUSER, OnGrouping)
 		CHAIN_MSG_MAP(CViewBase<CTimelineView>)
 	ALT_MSG_MAP(1)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnCopy)
@@ -155,6 +177,9 @@ public:
 		COMMAND_ID_HANDLER(ID_TIMELINE_GOTOPROCESS, OnGoToProcess)
 		COMMAND_ID_HANDLER(ID_TIMELINE_HIDETHROUGHOUT, OnHideThroughout)
 		COMMAND_ID_HANDLER(ID_TIMELINE_FIT, OnFit)
+		COMMAND_ID_HANDLER(ID_TIMELINE_GROUPBYPARENT, OnGrouping)
+		COMMAND_ID_HANDLER(ID_TIMELINE_GROUPBYUSER, OnGrouping)
+		COMMAND_ID_HANDLER(ID_FILE_EXPORT, OnExport)
 		CHAIN_MSG_MAP_ALT(CViewBase<CTimelineView>, 1)
 	END_MSG_MAP()
 
@@ -168,6 +193,9 @@ private:
 	LRESULT OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnHideThroughout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// By Parent, By User: on, or off when it was
+	LRESULT OnGrouping(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnExport(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -177,16 +205,19 @@ private:
 	// the rows from the recorder's lifetimes for the range and the options
 	void Rebuild();
 	void UpdateStatus();
+	// the buttons and View's items checked as the options are
+	void UpdateChecks();
 
 	CTimelineCtrl m_Chart;
 	CFilterBox m_Filter;
-	CToolBarCtrl m_Bar;	// Hide Running Throughout, Fit
+	CToolBarCtrl m_Bar;	// Hide Running Throughout, Fit, By Parent, By User
 	CBarFont m_BarFont;
 	std::shared_ptr<HistoryRecorder> m_Recorder;
 	std::shared_ptr<WinSys::ProcessCreationTracker> m_Creations;	// elevated only
 	int64_t m_From{ 0 }, m_To{ 0 };
 	bool m_Follow{ true };	// the range's end is now
 	bool m_HideThroughout{ true };
+	TimelineModel::Grouping m_Grouping{ TimelineModel::Grouping::None };
 	bool m_Active{ false };
 	size_t m_Shown{ 0 }, m_Hidden{ 0 };
 };
