@@ -80,6 +80,7 @@ public:
 		NOTIFY_CODE_HANDLER(TBVN_PAGEACTIVATED, OnPageActivated)
 		NOTIFY_CODE_HANDLER(TBVN_TABCLOSEBTN, OnTabClose)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipText)
+		NOTIFY_CODE_HANDLER(NM_CLICK, OnStatusBarClick)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_FILE_RUNASADMIN, OnRunAsAdmin)
 		COMMAND_ID_HANDLER(ID_FILE_RUN, OnRun)
@@ -197,6 +198,8 @@ public:
 	LRESULT OnViewToolBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnPause(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// a click on the status bar's Updates pane pauses or resumes, as View > Pause Updates
+	LRESULT OnStatusBarClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnUpdateInterval(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewTab(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -397,6 +400,9 @@ private:
 	void RecordHistory();
 	void SetUpdateInterval(int interval);
 	void SetPaused(bool paused);
+	// the status bar's Updates pane: a play icon and "Updating" while the updates run, a pause icon and "Paused" while
+	// they don't, its tooltip, and its width for the icon and the longer text (the icons loaded for the DPI)
+	void UpdatePausePane();
 	void SaveSettings();
 	// the tray icon as the TrayIcon setting has it
 	void ApplyTrayIcons(CTrayIcons::Modes const& modes);
@@ -420,6 +426,8 @@ private:
 	CMultiPaneStatusBarCtrl m_StatusBar;
 	CToolBarCtrl m_ToolBar;
 	int m_PauseImage{ -1 }, m_RunImage{ -1 };	// the pause button shows the action it performs
+	CIcon m_PlayPaneIcon, m_PausePaneIcon;		// the Updates pane shows the state (the status bar keeps the handle)
+	int m_PaneIconSize{ 0 };
 	int m_ShieldImage{ -1 };
 	CImageListManaged m_Images;
 	std::unordered_map<UINT, int> m_IconIndices;

@@ -2341,6 +2341,7 @@ BEGIN
     ID_PANE_PROCESSES       "Processes: 00000"
     ID_PANE_CPU             "CPU: 100.0%  "
     ID_PANE_ELEVATION       "Standard User  "
+    ID_PANE_UPDATES         "Updating"
     ID_PROCESS_KILL         "Terminate the selected process\nKill Process"
     ID_PROCESS_SUSPEND      "Suspend all the threads of the selected process\nSuspend"
     ID_PROCESS_RESUME       "Resume the threads of the selected process\nResume"

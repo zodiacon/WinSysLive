@@ -153,7 +153,8 @@ namespace {
 	const int ToolBarIconSize = 24;	// at 96 DPI
 
 	// pane widths come from the panes' string resources
-	int s_Panes[] = { ID_DEFAULT_PANE, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
+	// (the Updates pane's is set for its icon too: UpdatePausePane)
+	int s_Panes[] = { ID_DEFAULT_PANE, ID_PANE_UPDATES, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
 
 	// an executable's icon in a size (ExtractIconEx's small icons are of the system DPI)
 	HICON ExtractFileIcon(std::wstring const& path, int size) {
@@ -406,6 +407,8 @@ LRESULT CMainFrame::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam
 	InitMenu(GetMenu());
 	// the pane widths for the status bar's font at the new DPI
 	m_StatusBar.SetPanes(s_Panes, _countof(s_Panes), false);
+	m_PaneIconSize = 0;	// the Updates pane's width and icons again
+	UpdatePausePane();
 	UpdateStatusBar();
 	// a font of the user's choice, at the new DPI (the views' default fonts follow the DPI by themselves)
 	if (!m_Font.IsNull())
@@ -1001,6 +1004,53 @@ void CMainFrame::InitStatusBar() {
 	m_StatusBar.SetPanes(s_Panes, _countof(s_Panes), false);
 	m_StatusBar.SetPaneText(ID_PANE_CPU, L"CPU: --");
 	m_StatusBar.SetPaneText(ID_PANE_ELEVATION, WinSys::SecurityHelper::IsRunningElevated() ? L"Administrator" : L"Standard User");
+	UpdatePausePane();
+}
+
+void CMainFrame::UpdatePausePane() {
+	if (!m_StatusBar)
+		return;
+	auto size = DpiHelper::SmallIconSize(m_hWnd);
+	// the icons and the width only when the DPI changed (SetPanes, before this, set the width from the string again)
+	bool resize = size != m_PaneIconSize;
+	if (resize) {
+		// the old icons are released after the pane takes the new one
+		CIcon play(IconHelper::Load(IDI_RUN, size)), pause(IconHelper::Load(IDI_PAUSE, size));
+		m_StatusBar.SetPaneIcon(ID_PANE_UPDATES, m_Paused ? pause : play);
+		std::swap(m_PlayPaneIcon.m_hIcon, play.m_hIcon);
+		std::swap(m_PausePaneIcon.m_hIcon, pause.m_hIcon);
+		m_PaneIconSize = size;
+	}
+	m_StatusBar.SetPaneIcon(ID_PANE_UPDATES, m_Paused ? m_PausePaneIcon : m_PlayPaneIcon);
+	m_StatusBar.SetPaneText(ID_PANE_UPDATES, m_Paused ? L"Paused" : L"Updating");
+	auto interval = AppSettings::Get().UpdateInterval();
+	m_StatusBar.SetPaneTipText(ID_PANE_UPDATES, m_Paused ? L"Updates are paused; click to resume"
+		: std::format(L"Updating every {} s; click to pause", interval % 1000 ? std::format(L"{:.1f}", interval / 1000.0) : std::to_wstring(interval / 1000)).c_str());
+	if (!resize)
+		return;
+	// the icon, a gap and the longer text, in the status bar's font
+	CClientDC dc(m_StatusBar);
+	auto old = dc.SelectFont(m_StatusBar.GetFont());
+	int text = 0;
+	for (auto s : { L"Updating", L"Paused" }) {
+		SIZE extent{};
+		dc.GetTextExtent(s, -1, &extent);
+		text = (std::max)(text, (int)extent.cx);
+	}
+	dc.SelectFont(old);
+	m_StatusBar.SetPaneWidth(ID_PANE_UPDATES, size + text + DpiHelper::Scale(14, m_hWnd));
+}
+
+LRESULT CMainFrame::OnStatusBarClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
+	if (hdr->hwndFrom != m_hWndStatusBar) {
+		bHandled = FALSE;
+		return 0;
+	}
+	auto mouse = reinterpret_cast<NMMOUSE*>(hdr);
+	// posted: pausing changes the parts, which the status bar is still handling the click with (it crashed)
+	if ((int)mouse->dwItemSpec == m_StatusBar.GetPaneIndexFromID(ID_PANE_UPDATES))
+		PostMessage(WM_COMMAND, ID_VIEW_PAUSE);
+	return 0;
 }
 
 void CMainFrame::CreateTabs() {
@@ -1239,6 +1289,8 @@ void CMainFrame::SetUpdateInterval(int interval) {
 	UISetRadioMenuItem(it->CommandId, ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000);
 	if (!m_Paused)
 		SetTimer(TimerId, it->Interval);
+	// its tooltip says the interval
+	UpdatePausePane();
 }
 
 void CMainFrame::SetPaused(bool paused) {
@@ -1250,6 +1302,7 @@ void CMainFrame::SetPaused(bool paused) {
 	else
 		SetTimer(TimerId, AppSettings::Get().UpdateInterval());
 	m_StatusBar.SetPaneText(ID_DEFAULT_PANE, paused ? L"Updates paused" : L"Ready");
+	UpdatePausePane();
 }
 
 void CMainFrame::SaveSettings() {

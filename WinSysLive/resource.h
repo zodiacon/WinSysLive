@@ -897,6 +897,7 @@
 #define ID_THREADS_TOGGLEGROUP          33067
 #define ID_TIMELINE_GROUPBYPARENT       33068
 #define ID_TIMELINE_GROUPBYUSER         33069
+#define ID_PANE_UPDATES                 33070
 #define ID_SYSTEM_FIREWALL              33033
 #define ID_VIEW_WSL                     33034
 #define ID_VIEW_REGISTRY                33035
@@ -953,7 +954,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        360
-#define _APS_NEXT_COMMAND_VALUE         33070
+#define _APS_NEXT_COMMAND_VALUE         33071
 #define _APS_NEXT_CONTROL_VALUE         1574
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
