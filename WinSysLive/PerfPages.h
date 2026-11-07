@@ -376,6 +376,7 @@ private:
 	// slowest of three or more classes, as Meteor Lake's low-power cores); empty when all cores are alike
 	std::vector<PCWSTR> m_CoreKinds;
 	std::wstring m_CoresText;	// "Cores: 24 (8 P, 16 E in teal)"
+	int m_ThreadsPerCore{ 1 };	// the most logical processors a core has (2 with hyperthreading), for the tiles' layout
 	CButton m_ShowCores;
 	CBrush m_Background;
 	CRect m_GraphsRect;	// the last layout's, to lay out again when the check box changes

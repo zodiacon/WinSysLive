@@ -288,6 +288,18 @@ void CPerfCpuPage::InitCoreKinds() {
 		slowest = (std::min)(slowest, c.EfficiencyClass);
 	}
 	m_CoresText = std::format(L"Cores: {}", count);
+
+	// a core's logical processors (its hyperthreads) drawn closer together, as Process Explorer does; the system
+	// numbers them one after the other, and a core whose processors aren't is left as separate tiles
+	std::vector<uint32_t> groups(cores.size());
+	for (size_t i = 0, run = 0; i < cores.size(); i++) {
+		groups[i] = cores[i].Core;
+		run = i > 0 && cores[i].Core == cores[i - 1].Core ? run + 1 : 1;
+		m_ThreadsPerCore = (std::max)(m_ThreadsPerCore, (int)run);
+	}
+	if (m_ThreadsPerCore > 1)
+		m_Cores.SetTileGroups(std::move(groups));
+
 	if (fastest == slowest)
 		return;
 
@@ -390,7 +402,15 @@ void CPerfCpuPage::LayoutGraphs(CRect const& rc, int gap) {
 	// aim for square tiles instead (each tile's title takes part of its height, so wider tiles get short plots)
 	if (auto count = (int)m_Cores.GetGraphCount(); count > 0 && coresHeight > 0) {
 		int columns = std::clamp((int)std::lround(std::sqrt((double)count * rc.Width() / coresHeight)), 1, count);
-		m_Cores.SetLayout(columns, (count + columns - 1) / columns);
+		if (m_ThreadsPerCore > 1) {
+			// whole cores in a row: a multiple of the threads per core, so the cores line up from row to row
+			if (count > m_ThreadsPerCore)
+				columns = (std::max)(m_ThreadsPerCore, (columns + m_ThreadsPerCore / 2) / m_ThreadsPerCore * m_ThreadsPerCore);
+			// wider gaps between the cores, for their frames (at this DPI)
+			m_Cores.SetSpacing(Scale(6));
+		}
+		// the rows are the grid's: a core that doesn't fit a row's end starts the next
+		m_Cores.SetLayout(columns, 0);
 	}
 }
 
