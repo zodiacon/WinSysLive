@@ -374,6 +374,7 @@
 #define IDC_WIN_CLOSE                   1270
 #define IDC_WIN_REFRESH                 1271
 #define IDC_WIN_STATUS                  1272
+#define IDC_WIN_GOTOPROCESS             1574
 #define IDC_FW_TABS                     1273
 #define IDC_FW_SUMMARY                  1274
 #define IDC_FW_VARS                     1275
@@ -955,7 +956,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        360
 #define _APS_NEXT_COMMAND_VALUE         33071
-#define _APS_NEXT_CONTROL_VALUE         1574
+#define _APS_NEXT_CONTROL_VALUE         1575
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

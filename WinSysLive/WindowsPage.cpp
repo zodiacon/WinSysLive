@@ -105,6 +105,10 @@ LRESULT CProcWindowsPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 	m_Details.InsertColumn(1, L"Value", LVCFMT_LEFT, ::MulDiv(560, dpi, 96));
 	ListViewHelper::EnableColumnDpiScaling(m_Details);
 
+	// Go to Process only where the sheet can close for it (the window finder's, the Window Stations dialog's)
+	if (!m_GoToProcessEnabled)
+		GetDlgItem(IDC_WIN_GOTOPROCESS).ShowWindow(SW_HIDE);
+
 	m_Splitter.SetSplitterPanes(m_Tree, m_Details);
 	m_Splitter.SetSplitterPosPct(60, false);
 	ShowDetails();
@@ -137,7 +141,9 @@ void CProcWindowsPage::Layout(int cx, int cy) {
 	int row = cy - margin - refresh.cy;
 	GetDlgItem(IDC_WIN_REFRESH).SetWindowPos(nullptr, cx - margin - refresh.cx, row, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 	int x = margin;
-	for (UINT id : { IDC_WIN_SHOW, IDC_WIN_HIDE, IDC_WIN_FRONT, IDC_WIN_CLOSE }) {
+	for (UINT id : { IDC_WIN_SHOW, IDC_WIN_HIDE, IDC_WIN_FRONT, IDC_WIN_CLOSE, IDC_WIN_GOTOPROCESS }) {
+		if (id == IDC_WIN_GOTOPROCESS && !m_GoToProcessEnabled)
+			continue;
 		GetDlgItem(id).SetWindowPos(nullptr, x, row, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 		x += size(id).cx + gap;
 	}
@@ -267,6 +273,7 @@ void CProcWindowsPage::ShowDetails() {
 	for (UINT id : { IDC_WIN_SHOW, IDC_WIN_HIDE, IDC_WIN_FRONT })
 		GetDlgItem(id).EnableWindow(w && !w->MessageOnly);
 	GetDlgItem(IDC_WIN_CLOSE).EnableWindow(w != nullptr);
+	GetDlgItem(IDC_WIN_GOTOPROCESS).EnableWindow(w && w->ProcessId);
 	if (!w)
 		return;
 
@@ -284,6 +291,7 @@ void CProcWindowsPage::ShowDetails() {
 		{ L"Class", w->ClassName },
 		{ L"Text", w->Text },
 		{ L"Process ID", std::to_wstring(w->ProcessId) },
+		{ L"Process Name", GetProcessName(w->ProcessId) },
 		{ L"Thread ID", std::to_wstring(w->ThreadId) },
 		{ L"Control ID", (w->Style & WS_CHILD) ? std::format(L"{} (0x{:X})", w->Id, w->Id) : L"" },
 		{ L"Style", std::format(L"0x{:08X} ({})", w->Style, StyleText(w->Style)) },
@@ -299,6 +307,22 @@ void CProcWindowsPage::ShowDetails() {
 		int row = m_Details.InsertItem(m_Details.GetItemCount(), name);
 		m_Details.SetItemText(row, 1, value.c_str());
 	}
+}
+
+std::wstring CProcWindowsPage::GetProcessName(uint32_t pid) const {
+	if (m_ProcessName)
+		return m_ProcessName(pid);
+	return pid == m_Props.Id ? m_Props.ImageName : L"";
+}
+
+LRESULT CProcWindowsPage::OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto w = GetSelected();
+	if (!w || !w->ProcessId)
+		return 0;
+	// the caller goes to the process once the sheet is closed
+	m_GoToProcessId = w->ProcessId;
+	GetPropertySheet().PressButton(PSBTN_CANCEL);
+	return 0;
 }
 
 LRESULT CProcWindowsPage::OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -363,7 +387,8 @@ namespace {
 	};
 }
 
-void ShowWindowTree(HWND owner, HWND window) {
+void ShowWindowTree(HWND owner, HWND window, std::function<std::wstring(uint32_t)> processName,
+	std::function<void(uint32_t)> goToProcess) {
 	if (!::IsWindow(window))
 		return;
 	// the page reads only the process's ID (and with a root window, no process-wide list)
@@ -374,6 +399,12 @@ void ShowWindowTree(HWND owner, HWND window) {
 	CWindowSheet sheet(title.c_str(), 0, owner);
 	sheet.m_psh.dwFlags |= PSH_NOAPPLYNOW | PSH_NOCONTEXTHELP;
 	CProcWindowsPage page(props, window);
+	if (processName)
+		page.SetProcessName(std::move(processName));
+	if (goToProcess)
+		page.EnableGoToProcess();
 	sheet.AddPage(page);
 	sheet.DoModal(owner);
+	if (goToProcess && page.GetGoToProcessId())
+		goToProcess(page.GetGoToProcessId());
 }

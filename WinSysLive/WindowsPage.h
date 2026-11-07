@@ -16,14 +16,22 @@
 // window and its descendants only (ProcessWindows::EnumTree), the root expanded and selected at first.
 //
 // a window's tree and properties: the Windows page alone, rooted at the window, in a resizable sheet of its own (Close
-// only), modal over the owner (the Window Stations dialog's Child Windows and Properties, the window finder's drop)
-void ShowWindowTree(HWND owner, HWND window);
+// only), modal over the owner (the Window Stations dialog's Child Windows and Properties, the window finder's drop).
+// processName names a window's process (by ID) in the properties; with goToProcess, a Go to Process button closes the
+// sheet and calls it with the selected window's process
+void ShowWindowTree(HWND owner, HWND window, std::function<std::wstring(uint32_t)> processName = {},
+	std::function<void(uint32_t)> goToProcess = {});
 
 class CProcWindowsPage : public CPropertyPageImpl<CProcWindowsPage> {
 public:
 	enum { IDD = IDD_PROC_WINDOWS };
 
 	explicit CProcWindowsPage(ProcessProperties const& props, HWND root = nullptr);
+	// a window's process name, by its ID (without it: the sheet's process's name, if it's that process)
+	void SetProcessName(std::function<std::wstring(uint32_t)> processName) { m_ProcessName = std::move(processName); }
+	// shows Go to Process, which closes the sheet: the selected window's process is then GetGoToProcessId's
+	void EnableGoToProcess() { m_GoToProcessEnabled = true; }
+	uint32_t GetGoToProcessId() const { return m_GoToProcessId; }
 
 	// CPropertyPageImpl (_WTL_NEW_PAGE_NOTIFY_HANDLERS, WTL's default): 0 allows the activation
 	int OnSetActive();
@@ -37,6 +45,7 @@ public:
 		COMMAND_ID_HANDLER(IDC_WIN_HIDE, OnAction)
 		COMMAND_ID_HANDLER(IDC_WIN_FRONT, OnAction)
 		COMMAND_ID_HANDLER(IDC_WIN_CLOSE, OnAction)
+		COMMAND_ID_HANDLER(IDC_WIN_GOTOPROCESS, OnGoToProcess)
 		NOTIFY_CODE_HANDLER(TLVN_GETDISPINFO, OnGetDispInfo)
 		NOTIFY_CODE_HANDLER(TLVN_SELCHANGED, OnSelChanged)
 		CHAIN_MSG_MAP(CPropertyPageImpl<CProcWindowsPage>)
@@ -56,6 +65,7 @@ private:
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnRefresh(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAction(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGoToProcess(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGetDispInfo(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnSelChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 
@@ -68,6 +78,7 @@ private:
 	// the selected window's properties into the list below, and the buttons for it
 	void ShowDetails();
 	std::wstring GetText(WinSys::WindowInfo const& w, Column column) const;
+	std::wstring GetProcessName(uint32_t pid) const;
 
 	ProcessProperties const& m_Props;
 	CCustomHorSplitterWindow m_Splitter;
@@ -75,4 +86,7 @@ private:
 	CListViewCtrl m_Details;
 	std::vector<WinSys::WindowInfo> m_Windows;	// in tree order; each item's data is its index here
 	bool m_Loaded{ false };
+	std::function<std::wstring(uint32_t)> m_ProcessName;
+	bool m_GoToProcessEnabled{ false };
+	uint32_t m_GoToProcessId{ 0 };
 };

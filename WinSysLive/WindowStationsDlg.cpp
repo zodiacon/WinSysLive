@@ -374,7 +374,11 @@ LRESULT CWindowStationsDlg::OnWindowTree(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	auto w = GetSelectedWindow();
 	if (!w || !::IsWindow(w->Handle))
 		return 0;
-	ShowWindowTree(m_hWnd, w->Handle);
+	// Go to Process closes this dialog too
+	ShowWindowTree(m_hWnd, w->Handle, m_ProcessName, m_GoToProcess ? std::function<void(uint32_t)>([this](uint32_t pid) {
+		EndDialog(IDOK);
+		m_GoToProcess(pid);
+	}) : std::function<void(uint32_t)>());
 	return 0;
 }
 

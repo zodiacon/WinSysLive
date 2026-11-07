@@ -2237,7 +2237,8 @@ void CMainFrame::OnWindowFound(HWND hWnd) {
 		return;
 	}
 	RestoreWindow();
-	ShowWindowTree(m_hWnd, hWnd);
+	ShowWindowTree(m_hWnd, hWnd, [this](uint32_t pid) { return m_ProcessManager.GetProcessNameById(pid); },
+		[this](uint32_t pid) { GoToProcess(pid); });
 }
 
 void CMainFrame::GoToProcess(uint32_t pid) {
