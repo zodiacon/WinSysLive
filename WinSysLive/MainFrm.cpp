@@ -63,6 +63,10 @@
 #include "SettingsTransfer.h"
 #include "Recorders.h"
 #include "NetworkTracking.h"
+#include "IntervalText.h"
+#include "GlobalHotKey.h"
+#include "UpdateIntervalDlg.h"
+#include "HotKeyDlg.h"
 #include <DpiHelper.h>
 
 namespace {
@@ -314,7 +318,16 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	VirusTotalChecker::Get().SetApiKey(VirusTotalChecker::Unprotect(settings.VirusTotalKey()));
 	VirusTotalChecker::Get().SetRequestsPerMinute(settings.VirusTotalRate());
 
+	// Other's check mark a bullet, as the fixed intervals' (SetUpdateInterval)
+	CMenuItemInfo mii;
+	mii.fMask = MIIM_FTYPE;
+	if (::GetMenuItemInfo(GetMenu(), ID_UPDATEINTERVAL_OTHER, FALSE, &mii)) {
+		mii.fType |= MFT_RADIOCHECK;
+		::SetMenuItemInfo(GetMenu(), ID_UPDATEINTERVAL_OTHER, FALSE, &mii);
+	}
 	SetUpdateInterval(settings.UpdateInterval());
+	// a key another program took since stays unregistered (and the setting kept): Options > Global Hotkey says so
+	SetGlobalHotKey((WORD)settings.GlobalHotKey());
 
 	// an elevated instance still gets these from the shell and a second, non-elevated instance (UIPI)
 	::ChangeWindowMessageFilterEx(m_hWnd, s_TaskbarCreated, MSGFLT_ALLOW, nullptr);
@@ -1025,7 +1038,7 @@ void CMainFrame::UpdatePausePane() {
 	m_StatusBar.SetPaneText(ID_PANE_UPDATES, m_Paused ? L"Paused" : L"Updating");
 	auto interval = AppSettings::Get().UpdateInterval();
 	m_StatusBar.SetPaneTipText(ID_PANE_UPDATES, m_Paused ? L"Updates are paused; click to resume"
-		: std::format(L"Updating every {} s; click to pause", interval % 1000 ? std::format(L"{:.1f}", interval / 1000.0) : std::to_wstring(interval / 1000)).c_str());
+		: std::format(L"Updating every {} s; click to pause", IntervalText::Seconds(interval)).c_str());
 	if (!resize)
 		return;
 	// the icon, a gap and the longer text, in the status bar's font
@@ -1173,6 +1186,8 @@ void CMainFrame::SaveTabs() {
 
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	KillTimer(TimerId);
+	if (m_HotKey)
+		::UnregisterHotKey(m_hWnd, HotKeyId);
 	SaveSettings();
 	m_TrayIcons.RemoveAll();
 	m_AlertIcon.Show(false);
@@ -1278,17 +1293,28 @@ void CMainFrame::UpdateStatusBar() {
 }
 
 void CMainFrame::SetUpdateInterval(int interval) {
-	auto it = std::ranges::find(s_Intervals, interval, &IntervalInfo::Interval);
-	if (it == std::end(s_Intervals))
-		it = std::ranges::find(s_Intervals, 1000, &IntervalInfo::Interval);
+	if (interval < IntervalText::MinMilliseconds || interval > IntervalText::MaxMilliseconds)
+		interval = 1000;
 
 	auto& settings = AppSettings::Get();
-	settings.UpdateInterval(it->Interval);
+	settings.UpdateInterval(interval);
 	// the views count the highlighting in updates
-	Highlight::Set(settings.NewHighlight(), settings.ExitedHighlight(), it->Interval);
-	UISetRadioMenuItem(it->CommandId, ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000);
+	Highlight::Set(settings.NewHighlight(), settings.ExitedHighlight(), interval);
+	// one of the fixed intervals checked (their radio state: CheckMenuRadioItem when the menu opens), or Other with
+	// the value in its text. Other can't have a radio range too, as WTL keeps an item's text and its range in one
+	// union, so it's checked (a bullet all the same: its item is MFT_RADIOCHECK, which WTL keeps setting the text);
+	// a range up to Other's number would also take in the priority commands' radio states, which lie between
+	auto it = std::ranges::find(s_Intervals, interval, &IntervalInfo::Interval);
+	bool other = it == std::end(s_Intervals);
+	if (other)
+		for (auto& i : s_Intervals)
+			UISetRadio(i.CommandId, FALSE);
+	else
+		UISetRadioMenuItem(it->CommandId, ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000);
+	UISetCheck(ID_UPDATEINTERVAL_OTHER, other);
+	UISetText(ID_UPDATEINTERVAL_OTHER, other ? std::format(L"&Other ({} s)...", IntervalText::Seconds(interval)).c_str() : L"&Other...");
 	if (!m_Paused)
-		SetTimer(TimerId, it->Interval);
+		SetTimer(TimerId, interval);
 	// its tooltip says the interval
 	UpdatePausePane();
 }
@@ -1411,6 +1437,57 @@ LRESULT CMainFrame::OnUpdateInterval(WORD /*wNotifyCode*/, WORD id, HWND /*hWndC
 	auto it = std::ranges::find(s_Intervals, id, &IntervalInfo::CommandId);
 	ATLASSERT(it != std::end(s_Intervals));
 	SetUpdateInterval(it->Interval);
+	return 0;
+}
+
+LRESULT CMainFrame::OnOtherUpdateInterval(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CUpdateIntervalDlg dlg(AppSettings::Get().UpdateInterval());
+	if (dlg.DoModal(m_hWnd) == IDOK)
+		SetUpdateInterval(dlg.GetInterval());
+	return 0;
+}
+
+bool CMainFrame::SetGlobalHotKey(WORD hotKey) {
+	if (hotKey == m_HotKey)
+		return true;
+	if (m_HotKey)
+		::UnregisterHotKey(m_hWnd, HotKeyId);
+	if (hotKey && !::RegisterHotKey(m_hWnd, HotKeyId, GlobalHotKey::Modifiers(hotKey), GlobalHotKey::VirtualKey(hotKey))) {
+		auto error = ::GetLastError();
+		// the old one back
+		if (m_HotKey && !::RegisterHotKey(m_hWnd, HotKeyId, GlobalHotKey::Modifiers(m_HotKey), GlobalHotKey::VirtualKey(m_HotKey)))
+			m_HotKey = 0;
+		::SetLastError(error);
+		return false;
+	}
+	m_HotKey = hotKey;
+	return true;
+}
+
+LRESULT CMainFrame::OnGlobalHotKey(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	CHotKeyDlg dlg((WORD)settings.GlobalHotKey(), [this](WORD key) { return SetGlobalHotKey(key); });
+	if (dlg.DoModal(m_hWnd) == IDOK) {
+		settings.GlobalHotKey(dlg.GetHotKey());
+		settings.Save();
+	}
+	return 0;
+}
+
+LRESULT CMainFrame::OnHotKey(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
+	if (wParam != HotKeyId) {
+		bHandled = FALSE;
+		return 0;
+	}
+	// in front already: minimized (to the tray, with Minimize to Tray); else shown, in front
+	if (::GetForegroundWindow() == m_hWnd && IsWindowVisible() && !IsIconic())
+		ShowWindow(SW_MINIMIZE);
+	else {
+		RestoreWindow();
+		// a modal dialog of the frame's comes to the front with it
+		if (auto popup = ::GetLastActivePopup(m_hWnd); popup != m_hWnd)
+			::SetForegroundWindow(popup);
+	}
 	return 0;
 }
 

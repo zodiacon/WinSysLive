@@ -126,6 +126,8 @@ BEGIN
             MENUITEM "1 Second",                    ID_UPDATEINTERVAL_1000
             MENUITEM "2 Seconds",                   ID_UPDATEINTERVAL_2000
             MENUITEM "5 Seconds",                   ID_UPDATEINTERVAL_5000
+            MENUITEM SEPARATOR
+            MENUITEM "&Other...",                   ID_UPDATEINTERVAL_OTHER
         END
         MENUITEM SEPARATOR
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
@@ -268,6 +270,7 @@ BEGIN
         MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
         MENUITEM "&Minimize to Tray",           ID_OPTIONS_MINIMIZETOTRAY
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
+        MENUITEM "Global Hot&key...",           ID_OPTIONS_HOTKEY
         MENUITEM "Single &Instance",            ID_OPTIONS_SINGLEINSTANCE
         MENUITEM "&Replace Task Manager",       ID_OPTIONS_REPLACETASKMANAGER
         MENUITEM "Run at Windows Start&up",     ID_OPTIONS_RUNATSTARTUP
@@ -704,6 +707,32 @@ BEGIN
     PUSHBUTTON      "&Close Window...",IDC_WIN_CLOSE,169,209,62,14
     PUSHBUTTON      "&Go to Process",IDC_WIN_GOTOPROCESS,235,209,58,14
     PUSHBUTTON      "&Refresh",IDC_WIN_REFRESH,323,209,50,14
+END
+
+IDD_UPDATEINTERVAL DIALOGEX 0, 0, 200, 76
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Update Interval"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Update every:",IDC_STATIC,7,9,60,9
+    EDITTEXT        IDC_UI_SECONDS,70,7,50,13,ES_AUTOHSCROLL
+    LTEXT           "seconds",IDC_STATIC,125,9,40,9
+    LTEXT           "",IDC_UI_STATUS,7,28,186,18,SS_NOPREFIX
+    DEFPUSHBUTTON   "OK",IDOK,89,55,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,143,55,50,14
+END
+
+IDD_HOTKEY DIALOGEX 0, 0, 240, 92
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Global Hotkey"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Press the keys that should show WinSysLive from any program (Ctrl or Alt with a key):",IDC_STATIC,7,7,226,18
+    CONTROL         "",IDC_HK_KEY,"msctls_hotkey32",WS_BORDER | WS_TABSTOP,7,29,170,13
+    PUSHBUTTON      "C&lear",IDC_HK_CLEAR,183,28,50,14
+    LTEXT           "",IDC_HK_STATUS,7,48,226,18,SS_NOPREFIX
+    DEFPUSHBUTTON   "OK",IDOK,129,71,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,183,71,50,14
 END
 
 IDD_HIGHLIGHTING DIALOGEX 0, 0, 260, 118
@@ -2278,6 +2307,8 @@ END
 STRINGTABLE
 BEGIN
     ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
+    ID_UPDATEINTERVAL_OTHER "Update at an interval of your own, from 0.1 to 60 seconds\nOther Update Interval"
+    ID_OPTIONS_HOTKEY       "A key that shows the window from any program\nGlobal Hotkey"
     ID_MEMORY_EMPTYWORKINGSETS 
                             "Trim every process's working set (needs elevation)\nEmpty Working Sets"
     ID_MEMORY_FLUSHMODIFIED "Write the modified pages out, making them standby (needs elevation)\nFlush Modified List"

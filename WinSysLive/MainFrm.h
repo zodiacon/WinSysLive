@@ -77,6 +77,7 @@ public:
 		MESSAGE_HANDLER(UpdateChecker::WM_UPDATE_CHECKED, OnUpdateChecked)
 		MESSAGE_HANDLER(s_TaskbarCreated, OnTaskbarCreated)
 		MESSAGE_HANDLER(ActivateMessage, OnActivateMessage)
+		MESSAGE_HANDLER(WM_HOTKEY, OnHotKey)
 		NOTIFY_CODE_HANDLER(TBVN_PAGEACTIVATED, OnPageActivated)
 		NOTIFY_CODE_HANDLER(TBVN_TABCLOSEBTN, OnTabClose)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipText)
@@ -92,6 +93,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_REFRESH, OnRefresh)
 		COMMAND_ID_HANDLER(ID_VIEW_PAUSE, OnPause)
 		COMMAND_RANGE_HANDLER(ID_UPDATEINTERVAL_500, ID_UPDATEINTERVAL_5000, OnUpdateInterval)
+		COMMAND_ID_HANDLER(ID_UPDATEINTERVAL_OTHER, OnOtherUpdateInterval)
 		COMMAND_ID_HANDLER(ID_VIEW_PROCESSES, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_THREADS, OnViewTab)
 		COMMAND_ID_HANDLER(ID_VIEW_TIMELINE, OnViewTab)
@@ -161,6 +163,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RECORDFROMSTARTUP, OnRecordFromStartup)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
+		COMMAND_ID_HANDLER(ID_OPTIONS_HOTKEY, OnGlobalHotKey)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RESOLVEADDRESSES, OnResolveAddresses)
 		COMMAND_ID_HANDLER(ID_OPTIONS_REPLACETASKMANAGER, OnReplaceTaskManager)
@@ -201,6 +204,12 @@ public:
 	// a click on the status bar's Updates pane pauses or resumes, as View > Pause Updates
 	LRESULT OnStatusBarClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT OnUpdateInterval(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// View > Update Interval > Other...: an interval of the user's own (IntervalText)
+	LRESULT OnOtherUpdateInterval(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// Options > Global Hotkey...
+	LRESULT OnGlobalHotKey(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	// the global hotkey: the window shown and in front, or minimized when it's in front already
+	LRESULT OnHotKey(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnViewTab(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -398,7 +407,13 @@ private:
 	void UpdateStatusBar();
 	// a performance sample for every process (ProcessInfoEx::GetHistory), after each snapshot
 	void RecordHistory();
+	// any interval from IntervalText's range (else 1 second); the menu's fixed ones checked, or Other with its value
 	void SetUpdateInterval(int interval);
+	// registers the hotkey (GlobalHotKey.h; 0: none) in place of the current one, which stays when the new one can't
+	// be registered (false, the last error set)
+	bool SetGlobalHotKey(WORD hotKey);
+	static constexpr int HotKeyId = 1;
+	WORD m_HotKey{ 0 };	// registered
 	void SetPaused(bool paused);
 	// the status bar's Updates pane: a play icon and "Updating" while the updates run, a pause icon and "Paused" while
 	// they don't, its tooltip, and its width for the icon and the longer text (the icons loaded for the DPI)

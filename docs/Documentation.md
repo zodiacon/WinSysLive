@@ -63,7 +63,8 @@ buttons, or their shortcuts): choosing a closed tab opens it, choosing an open t
 choosing the active tab closes it. A tab's close button closes it too. Drag tabs to reorder them. The open tabs, their
 order and the active one are remembered.
 
-Everything refreshes together at the **update interval** (View > Update Interval: 0.5, 1, 2 or 5 seconds).
+Everything refreshes together at the **update interval** (View > Update Interval: 0.5, 1, 2 or 5 seconds, or **Other...** for
+an interval of your own, from 0.1 to 60 seconds, such as 0.25 or 10).
 **View > Pause Updates** (Space) stops refreshing; **View > Refresh** (F5) refreshes once.
 
 Common to the list tabs:
@@ -137,6 +138,9 @@ position.
 
 **View > Lower Pane** (Ctrl+L) shows the selected process's **Threads**, **Modules** and **Handles** below the list.
 Each page has its own filter box, columns and Copy.
+The Threads page (and the Threads tab) can show a **CPU History** column: a small graph of each thread's CPU since the
+column was shown, as a percent of one processor (a thread that's always running is at 100%); in the Threads tab grouped by
+process, a process's row graphs its threads' total as a percent of the whole machine.
 
 - **Threads:** CPU, context switches and their deltas, state, priorities, start address (with its symbol), service
   (for service hosts) and more. The context menu has **Stack** (also a double-click: the call stack with symbols),
@@ -504,6 +508,7 @@ control, account and dependencies, and optionally starts it.
 | Alerts... | See [Alerts](#alerts) |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |
 | Always on Top | Keeps the window above others |
+| Global Hotkey... | A key (Ctrl or Alt with a key) that shows WinSysLive from any program, or minimizes it when it's already in front. None by default; a key another program uses is refused |
 | Single Instance | Starting WinSysLive again brings the running instance to the front |
 | Replace Task Manager | Starts WinSysLive instead of Task Manager (Ctrl+Shift+Esc, the taskbar's menu). Like Task Manager, it starts elevated without a UAC prompt; if it's already running, that instance comes to the front. Changing it needs elevation |
 | Run at Windows Startup | Starts WinSysLive minimized when you sign in |

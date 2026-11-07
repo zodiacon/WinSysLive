@@ -123,6 +123,12 @@
     <ClCompile Include="HighlightDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="HotKeyDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateIntervalDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="Highlight.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -514,6 +520,21 @@
     </ClInclude>
     <ClInclude Include="HighlightDlg.h">
       <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="HotKeyDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateIntervalDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalHotKey.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IntervalText.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="CpuHistory.h">
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="Highlight.h">
       <Filter>Helpers</Filter>

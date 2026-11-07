@@ -45,6 +45,7 @@ namespace {
 		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
 		// version 1: shown in saved layouts too
 		{ L"COM Apartment", L"ComApartment", 110, LVCFMT_LEFT, true, false, nullptr, 1 },
+		{ L"CPU History", L"CpuHistory", 90, LVCFMT_LEFT, false },
 	};
 
 
@@ -95,6 +96,13 @@ LRESULT CThreadsPage::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		});
 
 	SetColumns(ColumnLayout::Parse(m_Columns ? *m_Columns : AppSettings::Get().ThreadColumns(), s_Columns));
+	m_CellGraphs.SetDataCallback([this](GraphCtrl::CellRef const& cell, GraphCtrl::CellData& data) {
+		if (cell.Item >= m_Rows.size())
+			return false;
+		auto state = FindState(m_Rows[cell.Item].Key);
+		return state && CpuHistory::GetData(state->CpuHistory, data);
+	});
+	m_CellGraphs.EnableTooltips(m_List);
 
 	// a tool for the whole list, whose text depends on the cell under the mouse (OnGetTipText)
 	m_Tip.Create(m_hWnd, nullptr, nullptr, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP);
@@ -224,6 +232,7 @@ LRESULT CThreadsPage::OnDoubleClick(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled)
 LRESULT CThreadsPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	// the widths and the order also change by dragging in the header
 	SaveColumns();
+	m_CellGraphs.DisableTooltips();
 	bHandled = FALSE;
 	return 0;
 }
@@ -235,6 +244,23 @@ std::vector<ColumnLayout::ShownColumn> CThreadsPage::GetShownColumns() const {
 void CThreadsPage::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
 	ClearSort(m_List.m_hWnd);
 	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
+	ConfigureCellGraphs();
+}
+
+void CThreadsPage::ConfigureCellGraphs() {
+	m_CellGraphs.ClearColumns();
+	auto cm = GetColumnManager(m_List);
+	for (int i = 0; i < cm->GetCount(); i++)
+		if (cm->GetColumnTag<Column>(i) == Column::CpuHistory)
+			CpuHistory::SetColumn(m_CellGraphs, i);
+}
+
+CThreadsPage::ThreadState const* CThreadsPage::FindState(WinSys::ProcessOrThreadKey const& key) const {
+	if (auto it = m_Threads.find(key); it != m_Threads.end())
+		return &it->second;
+	if (auto it = m_Exited.find(key); it != m_Exited.end())
+		return &it->second;
+	return nullptr;
 }
 
 void CThreadsPage::SaveColumns() const {
@@ -376,7 +402,9 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 		// the snapshot is SystemExtendedProcessInformation (or Full): the threads follow the process entry
 		auto pid = HandleToULong(info->UniqueProcessId);
 		// COM's flags are in the threads' TEBs: the process opened once (again for another process), while the column is shown
-		bool com = pid > 4 && std::ranges::any_of(GetShownColumns(), [](auto& c) { return (Column)c.Id == Column::ComApartment; });
+		auto shown = GetShownColumns();
+		bool com = pid > 4 && std::ranges::any_of(shown, [](auto& c) { return (Column)c.Id == Column::ComApartment; });
+		bool history = std::ranges::any_of(shown, [](auto& c) { return (Column)c.Id == Column::CpuHistory; });
 		WinSys::ProcessOrThreadKey processKey{ info->CreateTime.QuadPart, pid };
 		if (!com)
 			m_hProcess.reset();
@@ -456,6 +484,7 @@ void CThreadsPage::Update(SYSTEM_PROCESS_INFORMATION const* info, int64_t time) 
 			state.ContextSwitches = row.ContextSwitches;
 			state.Cycles = row.Cycles;
 			state.Known = true;
+			CpuHistory::Update(state.CpuHistory, row.CPU, history, CpuHistory::Scale::Processor);
 			auto& kept = current.insert({ row.Key, std::move(state) }).first->second;
 			row.Service = &kept.Service;
 			kept.Last = row;
@@ -507,7 +536,7 @@ std::wstring CThreadsPage::GetText(ThreadRow const& row, Column column) const {
 	static const bool groups = ::GetActiveProcessorGroupCount() > 1;
 	switch (column) {
 		case Column::Id: return std::to_wstring(row.Key.Id);
-		case Column::CPU: return row.CPU < 0 ? L"" : FormatHelper::FormatCpu(row.CPU);
+		case Column::CPU: case Column::CpuHistory: return row.CPU < 0 ? L"" : FormatHelper::FormatCpu(row.CPU);
 		case Column::CpuTime: return FormatHelper::FormatTimeSpan(row.KernelTime + row.UserTime);
 		case Column::KernelTime: return FormatHelper::FormatTimeSpan(row.KernelTime);
 		case Column::UserTime: return FormatHelper::FormatTimeSpan(row.UserTime);
@@ -565,7 +594,7 @@ void CThreadsPage::DoSort(SortInfo const* si) {
 		int result = 0;
 		switch (column) {
 			case Column::Id: result = compare(r1.Key.Id, r2.Key.Id); break;
-			case Column::CPU: result = compare(r1.CPU, r2.CPU); break;
+			case Column::CPU: case Column::CpuHistory: result = compare(r1.CPU, r2.CPU); break;
 			case Column::CpuTime: result = compare(r1.KernelTime + r1.UserTime, r2.KernelTime + r2.UserTime); break;
 			case Column::KernelTime: result = compare(r1.KernelTime, r2.KernelTime); break;
 			case Column::UserTime: result = compare(r1.UserTime, r2.UserTime); break;
@@ -594,15 +623,13 @@ LRESULT CThreadsPage::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 		return 0;
 	}
 	auto cd = reinterpret_cast<NMLVCUSTOMDRAW*>(hdr);
-	switch (cd->nmcd.dwDrawStage) {
-		case CDDS_PREPAINT:
-			return CDRF_NOTIFYITEMDRAW;
-
-		case CDDS_ITEMPREPAINT:
-		{
-			auto index = (int)cd->nmcd.dwItemSpec;
-			if (index < 0 || index >= (int)m_Rows.size())
-				break;
+	auto stage = cd->nmcd.dwDrawStage;
+	if (stage == CDDS_PREPAINT)
+		return m_CellGraphs.CustomDraw(cd, CDRF_NOTIFYITEMDRAW);
+	// the row's colors, again for each cell when the sparklines ask for the cells' stages
+	if ((stage & ~CDDS_SUBITEM) == CDDS_ITEMPREPAINT) {
+		auto index = (int)cd->nmcd.dwItemSpec;
+		if (index >= 0 && index < (int)m_Rows.size()) {
 			auto& row = m_Rows[index];
 			bool dark = WTLHelper::IsDarkMode();
 			// the colors of new and exited processes in the process list
@@ -614,10 +641,10 @@ LRESULT CThreadsPage::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 				cd->clrTextBk = dark ? RGB(0, 96, 0) : RGB(160, 255, 160);
 				cd->clrText = dark ? RGB(255, 255, 255) : RGB(0, 0, 0);
 			}
-			break;
 		}
 	}
-	return CDRF_DODEFAULT;
+	// CPU History's sparklines over its cells
+	return m_CellGraphs.CustomDraw(cd, CDRF_DODEFAULT);
 }
 
 void CThreadsPage::ShowRows(uint32_t selected) {

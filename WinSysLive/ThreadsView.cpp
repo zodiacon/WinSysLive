@@ -38,6 +38,7 @@ namespace {
 		{ L"Start Address", L"StartAddress", 260, LVCFMT_LEFT, true },	// its symbol, once resolved
 		{ L"Created", L"Created", 150, LVCFMT_LEFT, true },
 		{ L"COM Apartment", L"ComApartment", 110, LVCFMT_LEFT, false },
+		{ L"CPU History", L"CpuHistory", 90, LVCFMT_LEFT, false },
 	};
 
 	// beside the filter, as the Users tab's Group by Account
@@ -67,6 +68,13 @@ LRESULT CThreadsView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 	SetColumns(ColumnLayout::Parse(AppSettings::Get().ThreadsViewColumns(), s_Columns));
+	m_CellGraphs.SetDataCallback([this](GraphCtrl::CellRef const& cell, GraphCtrl::CellData& data) {
+		if (cell.Item >= m_Rows.size())
+			return false;
+		auto state = m_Rows[cell.Item]->State;
+		return state && CpuHistory::GetData(state->CpuHistory, data);
+	});
+	m_CellGraphs.EnableTooltips(m_List);
 
 	m_Filter.Create(m_hWndToolBar, IDC_VIEW_FILTER, 280, L"Process, PID, TID, state or wait reason (Ctrl+F)", m_List, [this](auto&) {
 		ShowRows(GetSelectedKey());
@@ -324,6 +332,7 @@ bool CThreadsView::IsIdle(Row const& row) {
 
 LRESULT CThreadsView::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	SaveColumns();
+	m_CellGraphs.DisableTooltips();
 	bHandled = FALSE;
 	return 0;
 }
@@ -384,6 +393,7 @@ void CThreadsView::Update() {
 	int64_t elapsed = m_PrevTime.QuadPart ? (now.QuadPart - m_PrevTime.QuadPart) * 10000000 / frequency : 0;
 	m_Refresh++;
 	m_ShowCom = IsShown(Column::ComApartment);
+	bool history = IsShown(Column::CpuHistory);
 	auto newTicks = Highlight::NewTicks();
 
 	m_Rows.clear();
@@ -451,6 +461,7 @@ void CThreadsView::Update() {
 			state->CpuTime = cpuTime;
 			state->ContextSwitches = row.ContextSwitches;
 			state->Known = true;
+			CpuHistory::Update(state->CpuHistory, row.CPU, history, CpuHistory::Scale::Processor);
 			auto [it, added] = current.emplace(row.Key, std::move(state));
 			if (!added)
 				continue;	// the same key twice (not seen): the first is kept
@@ -503,6 +514,9 @@ void CThreadsView::Update() {
 	m_PrevTime = now;
 
 	ShowRows(selected);
+	// the process rows' totals, once a refresh (ShowRows makes the rows again as the filter changes)
+	for (auto& group : m_Groups)
+		CpuHistory::Update(group.State->CpuHistory, group.CPU, history, CpuHistory::Scale::Machine);
 	UpdateStatus();
 }
 
@@ -600,7 +614,7 @@ std::wstring CThreadsView::GetText(Row const& row, Column column) const {
 			// the count beside the name (the TID column is narrow)
 			case Column::Process: return std::format(L"{} ({})", state.ProcessName, row.Threads);
 			case Column::Created: return state.ProcessCreated > 0 ? FormatHelper::FormatDateTime(state.ProcessCreated) : L"";
-			case Column::Pid: case Column::CPU: case Column::CpuTime: case Column::KernelTime:
+			case Column::Pid: case Column::CPU: case Column::CpuHistory: case Column::CpuTime: case Column::KernelTime:
 			case Column::UserTime: case Column::ContextSwitches: case Column::ContextSwitchDelta:
 				break;
 			default:
@@ -614,7 +628,7 @@ std::wstring CThreadsView::GetText(Row const& row, Column column) const {
 		case Column::Process: return state.ProcessName;
 		case Column::Pid: return std::to_wstring(state.Pid);
 		case Column::Id: return std::to_wstring(row.Key.Id);
-		case Column::CPU: return row.CPU < 0 ? L"" : FormatHelper::FormatCpu(row.CPU);
+		case Column::CPU: case Column::CpuHistory: return row.CPU < 0 ? L"" : FormatHelper::FormatCpu(row.CPU);
 		case Column::CpuTime: return FormatHelper::FormatTimeSpan(row.KernelTime + row.UserTime);
 		case Column::KernelTime: return FormatHelper::FormatTimeSpan(row.KernelTime);
 		case Column::UserTime: return FormatHelper::FormatTimeSpan(row.UserTime);
@@ -805,7 +819,7 @@ void CThreadsView::SortRows(std::vector<Row const*>& rows, Column column, bool a
 		switch (column) {
 			case Column::Pid: result = compare(s1.Pid, s2.Pid); return true;
 			case Column::Id: result = compare(r1.Key.Id, r2.Key.Id); return true;
-			case Column::CPU: result = compare(r1.CPU, r2.CPU); return true;
+			case Column::CPU: case Column::CpuHistory: result = compare(r1.CPU, r2.CPU); return true;
 			case Column::CpuTime: result = compare(r1.KernelTime + r1.UserTime, r2.KernelTime + r2.UserTime); return true;
 			case Column::KernelTime: result = compare(r1.KernelTime, r2.KernelTime); return true;
 			case Column::UserTime: result = compare(r1.UserTime, r2.UserTime); return true;
@@ -938,14 +952,13 @@ LRESULT CThreadsView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 		return 0;
 	}
 	auto cd = reinterpret_cast<NMLVCUSTOMDRAW*>(hdr);
-	switch (cd->nmcd.dwDrawStage) {
-		case CDDS_PREPAINT:
-			return CDRF_NOTIFYITEMDRAW;
-		case CDDS_ITEMPREPAINT:
-		{
-			auto index = (int)cd->nmcd.dwItemSpec;
-			if (index < 0 || index >= (int)m_Rows.size())
-				break;
+	auto stage = cd->nmcd.dwDrawStage;
+	if (stage == CDDS_PREPAINT)
+		return m_CellGraphs.CustomDraw(cd, CDRF_NOTIFYITEMDRAW);
+	// the row's colors, again for each cell when the sparklines ask for the cells' stages
+	if ((stage & ~CDDS_SUBITEM) == CDDS_ITEMPREPAINT) {
+		auto index = (int)cd->nmcd.dwItemSpec;
+		if (index >= 0 && index < (int)m_Rows.size()) {
 			auto& row = *m_Rows[index];
 			bool dark = WTLHelper::IsDarkMode();
 			// the colors of new and exited processes in the process list
@@ -959,10 +972,10 @@ LRESULT CThreadsView::OnCustomDraw(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) 
 			}
 			else if (row.Group)
 				cd->clrTextBk = dark ? RGB(44, 52, 68) : RGB(228, 236, 248);
-			break;
 		}
 	}
-	return CDRF_DODEFAULT;
+	// CPU History's sparklines over its cells
+	return m_CellGraphs.CustomDraw(cd, CDRF_DODEFAULT);
 }
 
 LRESULT CThreadsView::OnFilterChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -988,6 +1001,15 @@ std::vector<ColumnLayout::ShownColumn> CThreadsView::GetShownColumns() const {
 void CThreadsView::SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns) {
 	ClearSort(m_List.m_hWnd);
 	ColumnLayout::SetColumns(GetColumnManager(m_List), columns, s_Columns);
+	ConfigureCellGraphs();
+}
+
+void CThreadsView::ConfigureCellGraphs() {
+	m_CellGraphs.ClearColumns();
+	auto cm = GetColumnManager(m_List);
+	for (int i = 0; i < cm->GetCount(); i++)
+		if (cm->GetColumnTag<Column>(i) == Column::CpuHistory)
+			CpuHistory::SetColumn(m_CellGraphs, i);
 }
 
 void CThreadsView::SaveColumns() const {

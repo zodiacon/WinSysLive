@@ -93,6 +93,7 @@ struct AppSettings : Settings {
 		SETTING(RecordFromStartup, 0, SettingType::Bool);	// the frame holds the recorders from its start (Recorders::Holder)
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
 		SETTING(SingleInstance, 0, SettingType::Bool);	// starting the app again brings the running instance to the front
+		SETTING(GlobalHotKey, 0, SettingType::Int32);	// GlobalHotKey.h: the hotkey control's value; 0: none
 		SETTING(ResolveAddresses, 1, SettingType::Bool);	// connections' addresses by their DNS names (AddressResolver)
 	END_SETTINGS
 
@@ -182,6 +183,7 @@ struct AppSettings : Settings {
 	DEF_SETTING_STRING(TrayIcons)
 	DEF_SETTING(AlwaysOnTop, int)
 	DEF_SETTING(SingleInstance, int)
+	DEF_SETTING(GlobalHotKey, int)
 	DEF_SETTING(ResolveAddresses, int)
 
 	static constexpr PCWSTR MainWindowPlacement = L"MainWindowPlacement";

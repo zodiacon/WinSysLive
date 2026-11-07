@@ -7,6 +7,7 @@
 #include "ThreadCommands.h"
 #include "FilterBox.h"
 #include "Symbols.h"
+#include "CpuHistory.h"
 #include "resource.h"
 
 struct ProcessInfoEx;
@@ -21,7 +22,8 @@ struct ProcessInfoEx;
 // (with their last values) for one refresh. The columns are chosen from the header's context menu and kept in the
 // ThreadColumns setting. The start addresses show their symbols (SymbolEngine) once resolved, with the address in a
 // tooltip; Stack (a row's context menu, or a double-click) shows a thread's stack (CStackDlg). The context menu also
-// suspends, resumes and terminates the thread, after asking.
+// suspends, resumes and terminates the thread, after asking. CPU History (hidden by default) is a sparkline of each
+// thread's CPU since the column was shown (CpuHistory.h), drawn by GraphControl's CellGraphs from the custom draw.
 //
 class CThreadsPage :
 	public CWindowImpl<CThreadsPage>,
@@ -107,7 +109,7 @@ private:
 	enum class Column {
 		Id, CPU, CpuTime, KernelTime, UserTime, Cycles, CyclesDelta, State, WaitReason, Priority, BasePriority, IdealCpu,
 		IoPriority, MemoryPriority, ContextSwitches, ContextSwitchDelta, Service, StartAddress, Created, ComApartment,
-		_Count
+		CpuHistory, _Count
 	};
 
 	// copied from the snapshot (whose buffer the next update overwrites) and the thread's handle
@@ -145,6 +147,7 @@ private:
 		// queried from the thread once, when the snapshot has none (it hasn't when not elevated)
 		std::optional<void*> StartAddress;
 		int ExitedTicks{ 0 };	// once it exited: refreshes left to show it
+		std::optional<GraphCtrl::Series> CpuHistory;	// while the CPU History column is shown
 		ThreadRow Last;		// shown, as it was, for a while after the thread exits
 	};
 
@@ -194,6 +197,10 @@ private:
 	std::vector<ColumnLayout::ShownColumn> GetShownColumns() const;
 	// rebuilds the list's columns; that clears the sorting, whose column indices refer to the old ones
 	void SetColumns(std::vector<ColumnLayout::ShownColumn> const& columns);
+	// the sparklines on the CPU History column, wherever it is among the list's columns
+	void ConfigureCellGraphs();
+	// a row's thread's state: still running, or exited and still shown
+	ThreadState const* FindState(WinSys::ProcessOrThreadKey const& key) const;
 
 	CListViewCtrl m_List;
 	CFilterBox m_Filter;	// above the list
@@ -223,4 +230,5 @@ private:
 	bool m_Wow64{ false };	// its COM is in its threads' 32-bit TEBs
 	bool m_HasMta{ false };	// a thread of it is in the MTA: those that didn't initialize COM are in it implicitly
 	int m_MenuColumn{ -1 };	// the Column the header's context menu was opened on, or -1
+	GraphCtrl::CellGraphs m_CellGraphs;	// CPU History's sparklines
 };

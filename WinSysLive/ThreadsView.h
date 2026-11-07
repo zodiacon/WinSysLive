@@ -8,6 +8,7 @@
 #include "ColumnLayout.h"
 #include "ThreadCommands.h"
 #include "Symbols.h"
+#include "CpuHistory.h"
 #include <WinSys/Keys.h>
 #include <WinSys/Thread.h>
 #include <VirtualListView.h>
@@ -37,6 +38,9 @@
 // switches and their delta) and their count (beside its name). A process's threads show once it's expanded (the double-click, Enter, Right
 // and Left, its menu, Expand All and Collapse All), and all of them while the filter has text. The processes are sorted by
 // the sort column (their totals, or their texts), and their threads under each the same way.
+//
+// CPU History (hidden by default) is a sparkline of each row's CPU (CpuHistory.h; a process row's, its threads' total)
+// at the refreshes taken while the tab was active: the first one after it's shown again is a gap.
 //
 class CThreadsView :
 	public CViewBase<CThreadsView>,
@@ -125,7 +129,7 @@ private:
 	enum class Column {
 		Process, Pid, Id, CPU, CpuTime, KernelTime, UserTime, Cycles, CyclesDelta, State, WaitReason, Priority, BasePriority,
 		IdealCpu, IoPriority, MemoryPriority, ContextSwitches, ContextSwitchDelta, Service, StartAddress, Created, ComApartment,
-		_Count
+		CpuHistory, _Count
 	};
 	// a handle unused this long is closed (ms)
 	static constexpr ULONGLONG HandleIdle = 60000;
@@ -175,6 +179,7 @@ private:
 		WinSys::ComFlags Com{ WinSys::ComFlags::Error };
 		std::optional<std::wstring> Service;	// once: a thread's service doesn't change
 		std::optional<void*> StartAddress;		// once, when the snapshot has none
+		std::optional<GraphCtrl::Series> CpuHistory;	// while the CPU History column is shown
 	};
 	// per process, for the COM apartments
 	struct ProcessState {
@@ -281,4 +286,7 @@ private:
 	LARGE_INTEGER m_PrevTime{};	// of the previous refresh (QPC); 0: none (the first, or the first since shown again)
 	bool m_Active{ false };
 	bool m_ShowCom{ false };	// COM Apartment is shown: Read reads the TEBs
+	GraphCtrl::CellGraphs m_CellGraphs;	// CPU History's sparklines
+	// the sparklines on the CPU History column, wherever it is among the list's columns
+	void ConfigureCellGraphs();
 };

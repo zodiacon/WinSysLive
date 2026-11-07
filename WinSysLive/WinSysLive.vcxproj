@@ -501,6 +501,8 @@
     <ClCompile Include="DiskView.cpp" />
     <ClCompile Include="HistoryView.cpp" />
     <ClCompile Include="HighlightDlg.cpp" />
+    <ClCompile Include="HotKeyDlg.cpp" />
+    <ClCompile Include="UpdateIntervalDlg.cpp" />
     <ClCompile Include="Highlight.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="TrayIcons.cpp" />
@@ -634,6 +636,11 @@
     <ClInclude Include="DiskView.h" />
     <ClInclude Include="HistoryView.h" />
     <ClInclude Include="HighlightDlg.h" />
+    <ClInclude Include="HotKeyDlg.h" />
+    <ClInclude Include="UpdateIntervalDlg.h" />
+    <ClInclude Include="GlobalHotKey.h" />
+    <ClInclude Include="IntervalText.h" />
+    <ClInclude Include="CpuHistory.h" />
     <ClInclude Include="Highlight.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="TrayIcons.h" />
