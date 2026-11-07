@@ -339,7 +339,7 @@ log has its own filter, search (Ctrl+F) and level buttons. The context menu choo
 ## Autoruns
 
 What starts by itself, as Sysinternals' Autoruns shows it: Run and RunOnce keys, startup folders, Active Setup,
-scheduled tasks, auto-start services and drivers, Winlogon, AppInit, BootExecute, LSA packages, and Image File
+packaged apps' startup tasks (Store and MSIX apps such as Spotify, as Task Manager lists them), scheduled tasks, auto-start services and drivers, Winlogon, AppInit, BootExecute, LSA packages, and Image File
 Execution Options debuggers and silent process exit monitors. Each entry's image is checked for a signature; an image
 that isn't there is yellow and a disabled entry gray.
 

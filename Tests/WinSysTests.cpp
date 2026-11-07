@@ -37,6 +37,57 @@ TEST(Autoruns_ResolveImage) {
 	CHECK(SameText(Autoruns::ResolveImage(L"where.exe"), system + L"\\where.exe"));
 }
 
+TEST(Autoruns_ParseStartupTasks) {
+	// a desktop app's task (Spotify's shape: the extension's executable), a UWP app's (the application's), other extensions
+	constexpr auto manifest = R"(<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+	xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+	xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5">
+  <Applications>
+    <Application Id="Spotify" Executable="Spotify.exe" EntryPoint="Windows.FullTrustApplication">
+      <Extensions>
+        <uap:Extension Category="windows.protocol" Executable="Other.exe" xmlns:uap="x"><uap:Protocol Name="spotify"/></uap:Extension>
+        <desktop:Extension Category="windows.startupTask" Executable="Bin/SpotifyStartupTask.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="Spotify" Enabled="false" DisplayName="Spotify" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+    <Application Id="App" Executable="Todo.exe" EntryPoint="Todo.App">
+      <Extensions>
+        <uap5:Extension Category="windows.startupTask">
+          <uap5:StartupTask TaskId="App" Enabled="true" DisplayName="ms-resource:app_name" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>)";
+	auto tasks = Autoruns::ParseStartupTasks(manifest);
+	CHECK_EQ(tasks.size(), 2u);
+	if (tasks.size() == 2) {
+		CHECK(tasks[0].TaskId == L"Spotify" && tasks[0].DisplayName == L"Spotify" && !tasks[0].Enabled);
+		CHECK(tasks[0].Executable == L"Bin\\SpotifyStartupTask.exe");
+		CHECK(tasks[1].TaskId == L"App" && tasks[1].DisplayName == L"ms-resource:app_name" && tasks[1].Enabled);
+		CHECK(tasks[1].Executable == L"Todo.exe");
+	}
+	CHECK(Autoruns::ParseStartupTasks("<Package/>").empty());
+	CHECK(Autoruns::ParseStartupTasks("not xml <").empty());
+}
+
+TEST(Autoruns_PackageTasks_Live) {
+	// whatever packages this machine has: each task names a program in its package and has a state (the program may be
+	// missing: Copilot's manifest names a copilotapp_proxy.exe it doesn't have)
+	auto com = ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	for (auto& e : Autoruns::Enum()) {
+		if (e.Store != AutorunStore::PackageTask)
+			continue;
+		CHECK(!e.Name.empty() && e.Enabled.has_value());
+		CHECK(e.ImagePath.find(e.Location) != std::wstring::npos);
+		wprintf(L"  %s: %s, %s\n", e.Name.c_str(), e.Details.c_str(), e.ImagePath.c_str());
+	}
+	if (SUCCEEDED(com))
+		::CoUninitialize();
+}
+
 TEST(Devices_ProblemText) {
 	CHECK_EQ(Devices::ProblemText(10), std::wstring(L"The device can't start (code 10)"));
 	CHECK_EQ(Devices::ProblemText(22), std::wstring(L"Disabled (code 22)"));

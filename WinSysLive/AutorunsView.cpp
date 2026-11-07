@@ -575,6 +575,10 @@ LRESULT CAutorunsView::OnJump(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 			::ShellExecute(m_hWnd, nullptr, L"taskschd.msc", nullptr, nullptr, SW_SHOWNORMAL);
 			Frame()->SetStatusText(0, std::format(L"The task is {}", e.TaskPath).c_str());
 			break;
+		case AutorunStore::PackageTask:
+			// declared in the package's manifest: Settings' Startup apps page lists it
+			::ShellExecute(m_hWnd, L"open", L"ms-settings:startupapps", nullptr, nullptr, SW_SHOWNORMAL);
+			break;
 	}
 	return 0;
 }
