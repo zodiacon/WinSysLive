@@ -73,6 +73,7 @@ public:
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_SYSCOMMAND, OnSysCommand)
 		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_TRAYICON, OnTrayIcon)
 		MESSAGE_HANDLER(UpdateChecker::WM_UPDATE_CHECKED, OnUpdateChecked)
@@ -164,6 +165,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALERTS, OnAlerts)
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
+		COMMAND_ID_HANDLER(ID_OPTIONS_CLOSETOTRAY, OnCloseToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RECORDFROMSTARTUP, OnRecordFromStartup)
 		COMMAND_ID_HANDLER(ID_OPTIONS_LEAKWATCH, OnLeakWatch)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
@@ -267,6 +269,7 @@ public:
 	LRESULT OnExportList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCopyAllRows(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSysCommand(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTaskbarCreated(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -274,6 +277,7 @@ public:
 	LRESULT OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnCloseToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRecordFromStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnLeakWatch(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

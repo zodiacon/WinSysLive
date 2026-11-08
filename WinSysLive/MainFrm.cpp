@@ -346,6 +346,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	m_AlertIcon.Init(m_hWnd, WM_TRAYICON);
 	m_AlertIcon.Show(m_Alerts.AnyEnabled());
 	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
+	UISetCheck(ID_OPTIONS_CLOSETOTRAY, settings.CloseToTray());
 	if (settings.AlwaysOnTop())
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	UISetCheck(ID_OPTIONS_ALWAYSONTOP, settings.AlwaysOnTop());
@@ -393,6 +394,7 @@ void CMainFrame::ApplyTrayIcons(CTrayIcons::Modes const& modes) {
 	if (!any && !IsWindowVisible())
 		RestoreWindow();
 	UIEnable(ID_OPTIONS_MINIMIZETOTRAY, any);
+	UIEnable(ID_OPTIONS_CLOSETOTRAY, any);
 }
 
 void CMainFrame::RestoreWindow() {
@@ -408,6 +410,19 @@ LRESULT CMainFrame::OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL
 	if (wParam == SIZE_MINIMIZED && m_TrayIcons.AnyShown() && AppSettings::Get().MinimizeToTray())
 		ShowWindow(SW_HIDE);
 	bHandled = FALSE;	// the frame's layout
+	return 0;
+}
+
+LRESULT CMainFrame::OnSysCommand(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
+	// the close button, Alt+F4, the taskbar's Close Window. Exit, restarts and other programs send WM_CLOSE, which exits.
+	// Minimized first, so the window's in the state Minimize to Tray leaves it (its Find dialog goes with it, which
+	// hiding an owner doesn't do)
+	if ((wParam & 0xFFF0) == SC_CLOSE && m_TrayIcons.AnyShown() && AppSettings::Get().CloseToTray()) {
+		ShowWindow(SW_MINIMIZE);
+		ShowWindow(SW_HIDE);
+		return 0;
+	}
+	bHandled = FALSE;
 	return 0;
 }
 
@@ -590,6 +605,14 @@ LRESULT CMainFrame::OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	settings.MinimizeToTray(!settings.MinimizeToTray());
 	settings.Save();
 	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
+	return 0;
+}
+
+LRESULT CMainFrame::OnCloseToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	settings.CloseToTray(!settings.CloseToTray());
+	settings.Save();
+	UISetCheck(ID_OPTIONS_CLOSETOTRAY, settings.CloseToTray());
 	return 0;
 }
 

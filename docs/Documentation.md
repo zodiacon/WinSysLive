@@ -515,6 +515,7 @@ control, account and dependencies, and optionally starts it.
 | Alerts... | See [Alerts](#alerts) |
 | Leak Watch | Off by default. While it's on, every process is sampled every 10 seconds (handles, private bytes, GDI and USER objects), and a counter that has grown steadily for 10 minutes or more is reported as a suspected leak: in the Processes tab's **Leaks** column (Memory) and by **A process leaks** alert rules. Growth that falls back (a garbage collector), stops, or happened once (a cache filled at startup) isn't a leak. It's judged on the last half hour; turning it off forgets everything |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |
+| Close to Tray | The window's close button and Alt+F4 send the window to the tray instead of exiting (while an icon is shown). File > Exit and the tray menu's Exit still exit |
 | Always on Top | Keeps the window above others |
 | Global Hotkey... | A key (Ctrl or Alt with a key) that shows WinSysLive from any program, or minimizes it when it's already in front. None by default; a key another program uses is refused |
 | Single Instance | Starting WinSysLive again brings the running instance to the front |

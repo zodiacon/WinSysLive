@@ -505,6 +505,7 @@
 #define ID_VM_GOTOWORKER                33075
 #define ID_VM_GOTOMEMORY                33076
 #define ID_OPTIONS_LEAKWATCH            33077
+#define ID_OPTIONS_CLOSETOTRAY          33078
 #define ID_PANE_PROCESSES               32784
 #define ID_PANE_CPU                     32785
 #define ID_PANE_ELEVATION               32786
@@ -985,7 +986,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        365
-#define _APS_NEXT_COMMAND_VALUE         33078
+#define _APS_NEXT_COMMAND_VALUE         33079
 #define _APS_NEXT_CONTROL_VALUE         1593
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

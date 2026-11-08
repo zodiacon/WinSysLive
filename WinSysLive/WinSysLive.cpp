@@ -31,12 +31,13 @@ int Run(LPTSTR lpstrCmdLine = nullptr, int nCmdShow = SW_SHOWDEFAULT) {
 		return 0;
 	}
 
-	// restore the last position, but never start minimized
+	// restore the last position, but never start minimized (exiting from the tray saves a minimized window): as it was
+	// before it was minimized
 	auto& settings = AppSettings::Get();
 	if (auto wp = settings.GetBinary<WINDOWPLACEMENT>(AppSettings::MainWindowPlacement); wp) {
 		auto placement = *wp;
 		if (placement.showCmd == SW_SHOWMINIMIZED || placement.showCmd == SW_MINIMIZE)
-			placement.showCmd = SW_SHOWNORMAL;
+			placement.showCmd = (placement.flags & WPF_RESTORETOMAXIMIZED) ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
 		// as Settings::LoadWindowPosition: the first placement puts the window on its monitor, where it takes that
 		// monitor's DPI (and its WM_DPICHANGED resizes it from the DPI it had); the second gives it the saved size at
 		// that DPI (saved with the position; none before DPI awareness: 96)

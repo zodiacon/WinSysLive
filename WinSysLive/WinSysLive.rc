@@ -272,6 +272,7 @@ BEGIN
         MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
         MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
         MENUITEM "&Minimize to Tray",           ID_OPTIONS_MINIMIZETOTRAY
+        MENUITEM "Close to Tra&y",              ID_OPTIONS_CLOSETOTRAY
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
         MENUITEM "Global Hot&key...",           ID_OPTIONS_HOTKEY
         MENUITEM "Single &Instance",            ID_OPTIONS_SINGLEINSTANCE
@@ -2454,6 +2455,7 @@ BEGIN
     ID_OPTIONS_TRAYICON     "Choose the icons in the notification area: CPU, I/O, commit charge, physical memory, network\nTray Icons"
     ID_OPTIONS_MINIMIZETOTRAY 
                             "Hide the window from the taskbar when it's minimized (the tray icon brings it back)\nMinimize to Tray"
+    ID_OPTIONS_CLOSETOTRAY  "The window's close button hides the window in the tray instead of exiting (the tray icon brings it back; File > Exit exits)\nClose to Tray"
     ID_OPTIONS_ALWAYSONTOP  "Keep the window above the other windows\nAlways on Top"
 END
 

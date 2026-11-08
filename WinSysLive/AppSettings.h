@@ -90,6 +90,7 @@ struct AppSettings : Settings {
 		SETTING(TrayIcon, 1, SettingType::Bool);	// the CPU graph in the notification area
 		SETTING_STRING(TrayIcons, L"");	// Key:Mode per icon (CTrayIcons::Load); empty: TrayIcon's CPU graph
 		SETTING(MinimizeToTray, 0, SettingType::Bool);	// minimized, the window leaves the taskbar
+		SETTING(CloseToTray, 0, SettingType::Bool);	// the close button hides the window; Exit exits
 		SETTING(RecordFromStartup, 0, SettingType::Bool);	// the frame holds the recorders from its start (Recorders::Holder)
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
 		SETTING(LeakWatch, 0, SettingType::Bool);	// Options > Leak Watch: the frame samples the processes for leaks (LeakWatcher)
@@ -180,6 +181,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(Font, LOGFONT)
 	DEF_SETTING(TrayIcon, int)
 	DEF_SETTING(MinimizeToTray, int)
+	DEF_SETTING(CloseToTray, int)
 	DEF_SETTING(RecordFromStartup, int)
 	DEF_SETTING_STRING(TrayIcons)
 	DEF_SETTING(AlwaysOnTop, int)
