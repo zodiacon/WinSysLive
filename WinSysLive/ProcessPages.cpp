@@ -83,6 +83,10 @@ LRESULT CProcGeneralPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM 
 	SetDlgItemText(IDC_PROC_USER, p.User.c_str());
 	SetDlgItemText(IDC_PROC_SESSION, std::to_wstring(p.SessionId).c_str());
 	SetDlgItemText(IDC_PROC_STARTED, p.CreateTime ? FormatHelper::FormatDateTime(p.CreateTime).c_str() : L"");
+	SetDlgItemText(IDC_PROC_VM, p.VirtualMachine.c_str());
+	// only a VM's processes have one
+	GetDlgItem(IDC_PROC_VM_LABEL).ShowWindow(p.VirtualMachine.empty() ? SW_HIDE : SW_SHOW);
+	GetDlgItem(IDC_PROC_VM).ShowWindow(p.VirtualMachine.empty() ? SW_HIDE : SW_SHOW);
 	if (!ShowComServer())
 		SetTimer(ComServerTimer, 200);
 	ShowMitigations();

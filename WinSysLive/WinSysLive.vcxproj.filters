@@ -411,6 +411,12 @@
     <ClCompile Include="DcomDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="VirtualMachinesDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="VirtualMachineLookup.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="RamDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -844,6 +850,12 @@
     </ClInclude>
     <ClInclude Include="DcomDlg.h">
       <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="VirtualMachinesDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="VirtualMachineLookup.h">
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="RamDlg.h">
       <Filter>Dialogs</Filter>

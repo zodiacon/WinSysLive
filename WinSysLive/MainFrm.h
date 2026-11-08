@@ -145,6 +145,7 @@ public:
 		COMMAND_ID_HANDLER(ID_SYSTEM_FIREWALL, OnFirewall)
 		COMMAND_ID_HANDLER(ID_SYSTEM_COMREGISTRATION, OnComRegistration)
 		COMMAND_ID_HANDLER(ID_SYSTEM_DCOM, OnDcom)
+		COMMAND_ID_HANDLER(ID_SYSTEM_VIRTUALMACHINES, OnVirtualMachines)
 		COMMAND_ID_HANDLER(ID_SYSTEM_RAM, OnRam)
 		COMMAND_ID_HANDLER(ID_SYSTEM_KERNELCALLBACKS, OnKernelCallbacks)
 		COMMAND_ID_HANDLER(ID_SYSTEM_CERTIFICATES, OnCertificates)
@@ -240,6 +241,7 @@ public:
 	LRESULT OnFirewall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnComRegistration(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDcom(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnVirtualMachines(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnKernelCallbacks(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCertificates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

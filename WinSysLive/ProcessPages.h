@@ -37,6 +37,8 @@ struct ProcessProperties {
 	HWND Frame{ nullptr };	// the main window, for the pages' requests (WM_SHOW_OBJECT_PATH); may be gone
 	// what it serves as a COM server, shared with the UI thread's lookup (Done once it's known); null: not asked
 	std::shared_ptr<ComServerLookup::Result> ComServer;
+	// the VM it belongs to (VirtualMachineLookup::TextOf, with its role: "Windows11 (Hyper-V VM): worker process"); empty if none
+	std::wstring VirtualMachine;
 };
 
 // the process, if it's still the one the sheet is for (its ID may have been reused): null otherwise, with the last

@@ -218,6 +218,7 @@ BEGIN
         MENUITEM "&DCOM and Running Objects...", ID_SYSTEM_DCOM
         MENUITEM "&Kernel Callbacks and Minifilters...", ID_SYSTEM_KERNELCALLBACKS
         MENUITEM "Certificate &Stores...",      ID_SYSTEM_CERTIFICATES
+        MENUITEM "&Virtual Machines and Containers...", ID_SYSTEM_VIRTUALMACHINES
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
         MENUITEM SEPARATOR
         POPUP "&Memory Lists"
@@ -465,6 +466,8 @@ IDI_CALLBACK            ICON                    "res\\callback.ico"
 IDI_FILTER              ICON                    "res\\Filter.ico"
 IDI_CERTIFICATES        ICON                    "res\\Certificates.ico"
 
+IDI_VIRTUALMACHINE      ICON                    "res\\VirtualMachine.ico"
+
 IDI_ALPC                ICON                    "res\\message.ico"
 
 IDI_MUTEX               ICON                    "res\\mutex.ico"
@@ -627,6 +630,8 @@ BEGIN
     EDITTEXT        IDC_PROC_SESSION,288,104,35,13,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Started:",IDC_STATIC,7,123,50,9
     EDITTEXT        IDC_PROC_STARTED,60,121,124,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "VM:",IDC_PROC_VM_LABEL,192,123,16,9
+    EDITTEXT        IDC_PROC_VM,210,121,113,13,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "COM server:",IDC_STATIC,7,140,50,9
     EDITTEXT        IDC_PROC_COMSERVER,60,138,263,13,ES_AUTOHSCROLL | ES_READONLY
     GROUPBOX        "Security",IDC_STATIC,7,157,316,62,0,WS_EX_TRANSPARENT
@@ -1111,6 +1116,18 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_CE_REFRESH,558,379,55,14
     PUSHBUTTON      "&Copy",IDC_CE_COPY,618,379,55,14
     PUSHBUTTON      "Close",IDCANCEL,683,379,50,14
+END
+
+IDD_VIRTUALMACHINES DIALOGEX 0, 0, 560, 240
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Virtual Machines and Containers"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_VM_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,7,7,546,201
+    LTEXT           "",IDC_VM_STATUS,7,222,360,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_VM_REFRESH,383,219,55,14
+    PUSHBUTTON      "&Copy",IDC_VM_COPY,443,219,55,14
+    PUSHBUTTON      "Close",IDCANCEL,503,219,50,14
 END
 
 IDD_DCOM DIALOGEX 0, 0, 640, 400
@@ -2102,6 +2119,8 @@ BEGIN
     0, 100, 0, 0,
     0, 100, 0, 0,
     0, 100, 100, 0,
+    0, 100, 0, 0,
+    0, 100, 100, 0,
     0, 100, 100, 0,
     0, 100, 0, 0,
     0, 100, 50, 0,
@@ -2324,6 +2343,8 @@ STRINGTABLE
 BEGIN
     ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
     ID_SYSTEM_DCOM          "The machine's DCOM settings and limits, the app IDs' security, the classes UAC elevates, DCOM's errors and the Running Object Table\nDCOM and Running Objects"
+    ID_SYSTEM_VIRTUALMACHINES "Hyper-V's VMs, WSL 2's VM, Windows Sandbox and containers: their state, CPU, memory and processes
+Virtual Machines and Containers"
     ID_UPDATEINTERVAL_OTHER "Update at an interval of your own, from 0.1 to 60 seconds\nOther Update Interval"
     ID_OPTIONS_HOTKEY       "A key that shows the window from any program\nGlobal Hotkey"
     ID_MEMORY_EMPTYWORKINGSETS 

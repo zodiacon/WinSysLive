@@ -42,17 +42,17 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-${{ steps.vcpkg.outputs.commit }}-phnt-wil-detours-wtl
+          key: vcpkg-${{ steps.vcpkg.outputs.commit }}-phnt-wil-detours-wtl-nlohmann
           restore-keys: vcpkg-
 
       # vcpkg with user-wide integration, as the projects expect: phnt (WinSys and the app), WIL, Detours (WTLHelper's
-      # dark mode) and WTL; both triplets, as WTLHelper and HexControl use the static one (VcpkgUseStatic), the rest the
-      # default one. From the binary cache when it has them
-      - name: Install the vcpkg packages (phnt, WIL, Detours, WTL)
+      # dark mode), WTL and nlohmann-json (WinSys's HCS answers); both triplets, as WTLHelper and HexControl use the
+      # static one (VcpkgUseStatic), the rest the default one. From the binary cache when it has them
+      - name: Install the vcpkg packages (phnt, WIL, Detours, WTL, nlohmann-json)
         shell: pwsh
         run: |
           $vcpkg = Join-Path $env:VCPKG_INSTALLATION_ROOT 'vcpkg.exe'
-          $packages = 'phnt', 'wil', 'detours', 'wtl'
+          $packages = 'phnt', 'wil', 'detours', 'wtl', 'nlohmann-json'
           & $vcpkg install ($packages | ForEach-Object { "${_}:x64-windows"; "${_}:x64-windows-static" })
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           & $vcpkg integrate install

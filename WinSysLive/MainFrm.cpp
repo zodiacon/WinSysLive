@@ -40,6 +40,7 @@
 #include "FirewallDlg.h"
 #include "ComRegistrationDlg.h"
 #include "DcomDlg.h"
+#include "VirtualMachinesDlg.h"
 #include "ServiceInstallDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
@@ -986,6 +987,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_FIREWALL, IDI_FIREWALL },
 		{ ID_SYSTEM_COMREGISTRATION, IDI_COM },
 		{ ID_SYSTEM_DCOM, IDI_COM_SERVER },
+		{ ID_SYSTEM_VIRTUALMACHINES, IDI_VIRTUALMACHINE },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_KERNELCALLBACKS, IDI_SYSTEM_DRIVER },
 		{ ID_SYSTEM_CERTIFICATES, IDI_CERTIFICATES },
@@ -1715,6 +1717,12 @@ LRESULT CMainFrame::OnComRegistration(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 
 LRESULT CMainFrame::OnDcom(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CDcomDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnVirtualMachines(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CVirtualMachinesDlg dlg(m_ProcessManager, [this](uint32_t pid) { GoToProcess(pid); });
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

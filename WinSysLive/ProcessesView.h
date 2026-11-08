@@ -128,7 +128,7 @@ private:
 		ImageIntegrity, ExecutableMemory,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
-		PackageName, WindowTitle, VirusTotal, Description, ComServer, ImagePath, CommandLine,
+		PackageName, WindowTitle, VirusTotal, Description, ComServer, VirtualMachine, ImagePath, CommandLine,
 		CpuHistory, MemoryHistory, IoHistory, NetworkHistory,
 		_Count
 	};

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "resource.h"
 #include "ProcessesView.h"
+#include "VirtualMachineLookup.h"
 #include "ProcessSheet.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
@@ -93,6 +94,7 @@ namespace {
 		{ L"VirusTotal", L"VirusTotal", 90, LVCFMT_RIGHT, false, false, L"Security" },
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true, false, L"General" },
 		{ L"COM Server", L"ComServer", 260, LVCFMT_LEFT, false, false, L"General" },
+		{ L"Virtual Machine", L"VirtualMachine", 200, LVCFMT_LEFT, false, false, L"General" },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true, false, L"General" },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true, false, L"General" },
 		{ L"CPU History", L"CpuHistory", 90, LVCFMT_LEFT, false, false, L"CPU" },
@@ -967,7 +969,8 @@ bool CProcessesView::Matches(ProcessItem& item) {
 	auto contains = [&](std::wstring const& text) { return CFilterBox::Contains(text, filter); };
 	// the cheap ones first; the others are cached in ProcessInfoEx once queried
 	return contains(p.GetImageName()) || contains(std::to_wstring(p.Id)) || contains(p.GetUser())
-		|| contains(p.GetDescriptionOrSurrogate()) || contains(p.GetCommandLine()) || contains(ComServerText(p));
+		|| contains(p.GetDescriptionOrSurrogate()) || contains(p.GetCommandLine()) || contains(ComServerText(p))
+		|| contains(VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p));
 }
 
 void CProcessesView::UpdateFilterStatus() {
@@ -1428,6 +1431,8 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::Description: return p.GetDescriptionOrSurrogate();
 		// looked up on a thread: shown from the refresh after it's known
 		case Column::ComServer: return ComServerText(p);
+		// the VM a worker, memory, security or WSL host process belongs to; named once the lookup has read the VMs
+		case Column::VirtualMachine: return VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p);
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
 	}
@@ -1588,6 +1593,8 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		}
 		case Column::Description: return compareText(p1.GetDescriptionOrSurrogate(), p2.GetDescriptionOrSurrogate());
 		case Column::ComServer: return compareText(ComServerText(p1), ComServerText(p2));
+		case Column::VirtualMachine: return compareText(VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p1),
+			VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p2));
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
 	}
@@ -2253,6 +2260,8 @@ LRESULT CProcessesView::OnProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	props.User = p.GetUser();
 	props.Description = p.GetDescriptionOrSurrogate();
 	props.ComServer = p.GetComServerLookup();
+	if (auto vm = VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p); !vm.empty())
+		props.VirtualMachine = vm + L": " + VirtualMachineLookup::RoleOf(p);
 	props.ThreadColumns = AppSettings::Get().ThreadColumns();
 	props.ModuleColumns = AppSettings::Get().ModuleColumns();
 	props.HandleColumns = AppSettings::Get().HandleColumns();
