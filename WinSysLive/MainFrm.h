@@ -13,6 +13,7 @@
 #include "FindHandleDlg.h"
 #include "TrayIcons.h"
 #include "Alerts.h"
+#include "LeakWatcher.h"
 #include "Recorders.h"
 #include "WindowFinder.h"
 #include "UpdateChecker.h"
@@ -164,6 +165,7 @@ public:
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALERTS, OnAlerts)
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RECORDFROMSTARTUP, OnRecordFromStartup)
+		COMMAND_ID_HANDLER(ID_OPTIONS_LEAKWATCH, OnLeakWatch)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
 		COMMAND_ID_HANDLER(ID_OPTIONS_HOTKEY, OnGlobalHotKey)
 		COMMAND_ID_HANDLER(ID_OPTIONS_SINGLEINSTANCE, OnSingleInstance)
@@ -273,6 +275,7 @@ public:
 	LRESULT OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRecordFromStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnLeakWatch(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSingleInstance(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResolveAddresses(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -321,6 +324,7 @@ private:
 	// the device's Resources and Drivers (the command palette's search; not the Devices tab, whose scan may not be done)
 	void ShowDevice(WinSys::DeviceInfo device);
 	void AddAlertRule(AlertRule const& rule) override;
+	LeakWatcher const* GetLeakWatcher() const override;
 	// switches to the tab, opening it if it's closed; its view
 	IView* ActivateTab(TabType type);
 
@@ -459,6 +463,7 @@ private:
 	CFont m_Font;	// the views' (see ApplyFont)
 	CTrayIcons m_TrayIcons;
 	CAlerts m_Alerts;	// evaluated in Refresh
+	LeakWatcher m_LeakWatcher;	// sampled in Refresh while the LeakWatch setting is on
 	Recorders::Holder m_Recorders;	// while Record from Startup is on: the History, RPC/ALPC, Disk and network recorders
 	CAlertIcon m_AlertIcon;	// while a rule is enabled
 	AlertEvent m_LastAlert;	// the last balloon's, for its click

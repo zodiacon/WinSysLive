@@ -128,7 +128,7 @@ private:
 		ImageIntegrity, ExecutableMemory,
 		IoRead, IoWrite, IoOther, NetworkSend, NetworkReceive,
 		GpuUsage, GpuDedicated, GpuShared, NpuUsage, NpuMemory,
-		PackageName, WindowTitle, VirusTotal, Description, ComServer, VirtualMachine, ImagePath, CommandLine,
+		PackageName, WindowTitle, VirusTotal, Description, ComServer, VirtualMachine, Leaks, ImagePath, CommandLine,
 		CpuHistory, MemoryHistory, IoHistory, NetworkHistory,
 		_Count
 	};
@@ -317,6 +317,8 @@ private:
 	static bool IsQueriedColumn(Column column);
 	// the COM Server column: what the process serves, with a surrogate's DLL; empty while it's looked up
 	static std::wstring ComServerText(ProcessInfoEx& p);
+	// the Leaks column: what Leak Watch suspects of the process (LeakDetector::Describe); empty while it's off
+	std::wstring LeaksText(ProcessInfoEx const& p) const;
 	int64_t GetQueriedValue(ProcessItem& item, Column column) const;
 	static int CALLBACK CompareItems(HTLITEM h1, HTLITEM h2, LPARAM lParam);
 	int CompareProcesses(ProcessItem& item1, ProcessItem& item2) const;

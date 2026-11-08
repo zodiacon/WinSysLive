@@ -472,6 +472,8 @@
     <ClCompile Include="VirtualMachinesDlg.cpp" />
     <ClCompile Include="VirtualMachineLookup.cpp" />
     <ClCompile Include="DiskHealthMonitor.cpp" />
+    <ClCompile Include="LeakWatcher.cpp" />
+    <ClCompile Include="LeakWatch.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
@@ -618,6 +620,8 @@
     <ClInclude Include="VirtualMachinesDlg.h" />
     <ClInclude Include="VirtualMachineLookup.h" />
     <ClInclude Include="DiskHealthMonitor.h" />
+    <ClInclude Include="LeakWatcher.h" />
+    <ClInclude Include="LeakWatch.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />

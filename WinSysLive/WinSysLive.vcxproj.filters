@@ -420,6 +420,12 @@
     <ClCompile Include="DiskHealthMonitor.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="LeakWatcher.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="LeakWatch.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="RamDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -861,6 +867,12 @@
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="DiskHealthMonitor.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="LeakWatcher.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="LeakWatch.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="RamDlg.h">

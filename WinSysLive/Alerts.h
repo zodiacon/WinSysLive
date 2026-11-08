@@ -12,6 +12,8 @@
 #include <mutex>
 #include <WinSys/EventLog.h>
 
+class LeakWatcher;
+
 //
 // Alerts (Options > Alerts..., CAlertsDlg): rules evaluated after every snapshot update (CMainFrame::Refresh), which
 // raise a notification balloon (CAlertIcon) and go to a list of recent alerts. A process rule matches image names with
@@ -51,7 +53,8 @@ public:
 
 	// after every update of the snapshot; cpu: the system's, percent (none on the first update). The new alerts, which
 	// are also added to the recent ones
-	std::vector<AlertEvent> Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu);
+	// leaks: Leak Watch's findings (null while it's off: the ProcessLeaks rules fire nothing)
+	std::vector<AlertEvent> Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu, LeakWatcher const* leaks);
 
 	std::deque<AlertEvent> const& GetRecent() const;
 	// the rule's counts (kept across SetRules for a rule that stays the same, enabled or not)
@@ -67,6 +70,8 @@ private:
 		AlertThrottle Throttle;	// the rule's alerts grouped and held back (its quiet period)
 		// ProcessTampered: the running processes it reported, an image and a parent apart (each once)
 		std::unordered_set<WinSys::ProcessOrThreadKey> ImageReported, ParentReported;
+		// ProcessLeaks: the counters reported of each process (bits by LeakCounter), each once while it runs
+		std::unordered_map<WinSys::ProcessOrThreadKey, unsigned> LeakReported;
 	};
 	// while a ProcessTampered rule is on: the images checked (once a process is two seconds old: a hollowing is done
 	// while it's suspended) and who created each process (elevated only)

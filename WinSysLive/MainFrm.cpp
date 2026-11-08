@@ -300,6 +300,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	if (AppSettings::Get().RecordFromStartup())
 		m_Recorders.Start(m_ProcessManager);
 	UISetCheck(ID_OPTIONS_RECORDFROMSTARTUP, AppSettings::Get().RecordFromStartup());
+	UISetCheck(ID_OPTIONS_LEAKWATCH, AppSettings::Get().LeakWatch());
 
 	CreateTabs();
 
@@ -545,6 +546,21 @@ LRESULT CMainFrame::OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 		ApplyTrayIcons(dlg.GetModes());
 	}
 	return 0;
+}
+
+LRESULT CMainFrame::OnLeakWatch(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	bool on = !settings.LeakWatch();
+	settings.LeakWatch(on);
+	settings.Save();
+	UISetCheck(ID_OPTIONS_LEAKWATCH, on);
+	// off: the samples go (on again, the 10 minutes start over); on: the first sample at the next update
+	m_LeakWatcher.Clear();
+	return 0;
+}
+
+LeakWatcher const* CMainFrame::GetLeakWatcher() const {
+	return AppSettings::Get().LeakWatch() ? &m_LeakWatcher : nullptr;
 }
 
 LRESULT CMainFrame::OnRecordFromStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -1235,6 +1251,8 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& b
 void CMainFrame::Refresh() {
 	m_ProcessManager.Update();
 	RecordHistory();
+	if (AppSettings::Get().LeakWatch())
+		m_LeakWatcher.Update(m_ProcessManager);
 	// the History recorder takes the changes and the trackers forget the exited processes before the views look
 	Recorders::OnRefresh(m_ProcessManager);
 	for (auto& v : m_Views)
@@ -1246,7 +1264,7 @@ void CMainFrame::Refresh() {
 	if (auto idle = m_ProcessManager.GetProcessById(0); idle && cpuValid)
 		cpu = std::clamp(100.0 - idle->CPU / 10000.0, 0.0, 100.0);
 	m_TrayIcons.Refresh(cpu);
-	ShowAlerts(m_Alerts.Evaluate(m_ProcessManager, cpu));
+	ShowAlerts(m_Alerts.Evaluate(m_ProcessManager, cpu, GetLeakWatcher()));
 }
 
 void CMainFrame::RecordHistory() {

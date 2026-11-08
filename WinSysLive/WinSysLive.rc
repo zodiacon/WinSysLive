@@ -267,6 +267,7 @@ BEGIN
         END
         MENUITEM "Resolve Addresse&s",          ID_OPTIONS_RESOLVEADDRESSES
         MENUITEM "Record from Startu&p",        ID_OPTIONS_RECORDFROMSTARTUP
+        MENUITEM "&Leak Watch",                 ID_OPTIONS_LEAKWATCH
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
         MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
@@ -2316,6 +2317,7 @@ END
 
 STRINGTABLE
 BEGIN
+    ID_OPTIONS_LEAKWATCH    "Watch every process for handles, private bytes, GDI or USER objects growing steadily over 10 minutes or more (the Leaks column, the leak alert rules)\nLeak Watch"
     ID_OPTIONS_RECORDFROMSTARTUP 
                             "Record History, RPC/ALPC, Disk and network traffic from the start, so their tabs show what happened before they were opened\nRecord from Startup"
     ID_SYSTEM_FIREWALL      "Windows Defender Firewall's rules and profiles\nFirewall Rules"

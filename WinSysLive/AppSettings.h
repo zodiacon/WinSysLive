@@ -92,6 +92,7 @@ struct AppSettings : Settings {
 		SETTING(MinimizeToTray, 0, SettingType::Bool);	// minimized, the window leaves the taskbar
 		SETTING(RecordFromStartup, 0, SettingType::Bool);	// the frame holds the recorders from its start (Recorders::Holder)
 		SETTING(AlwaysOnTop, 0, SettingType::Bool);
+		SETTING(LeakWatch, 0, SettingType::Bool);	// Options > Leak Watch: the frame samples the processes for leaks (LeakWatcher)
 		SETTING(SingleInstance, 0, SettingType::Bool);	// starting the app again brings the running instance to the front
 		SETTING(GlobalHotKey, 0, SettingType::Int32);	// GlobalHotKey.h: the hotkey control's value; 0: none
 		SETTING(ResolveAddresses, 1, SettingType::Bool);	// connections' addresses by their DNS names (AddressResolver)
@@ -182,6 +183,7 @@ struct AppSettings : Settings {
 	DEF_SETTING(RecordFromStartup, int)
 	DEF_SETTING_STRING(TrayIcons)
 	DEF_SETTING(AlwaysOnTop, int)
+	DEF_SETTING(LeakWatch, int)
 	DEF_SETTING(SingleInstance, int)
 	DEF_SETTING(GlobalHotKey, int)
 	DEF_SETTING(ResolveAddresses, int)

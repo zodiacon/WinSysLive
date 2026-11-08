@@ -27,6 +27,7 @@ namespace {
 		{ L"EventLogged", L"An event is logged", true, false, L"" },
 		{ L"AuditFailure", L"A Security audit failure is logged", true, false, L"" },
 		{ L"ProcessTampered", L"A process is tampered with (image or parent)", true, false, L"" },
+		{ L"ProcessLeaks", L"A process leaks (with Options > Leak Watch on)", true, false, L"" },
 	};
 
 	const uint64_t AuditFailureKeyword = 0x10000000000000;
@@ -157,6 +158,7 @@ std::wstring AlertRule::DescribeCondition() const {
 			return L"Security audit failure" + (EventId ? std::format(L" {}", EventId) : std::wstring())
 				+ (Pattern.empty() ? L"" : L" from " + Pattern);
 		case AlertKind::ProcessTampered: return who + L" is tampered with";
+		case AlertKind::ProcessLeaks: return who + L" leaks (handles, memory, GDI or USER objects)";
 	}
 	return L"";
 }

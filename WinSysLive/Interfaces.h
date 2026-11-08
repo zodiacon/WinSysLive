@@ -29,6 +29,7 @@ enum class TabType {
 };
 
 struct AlertRule;
+class LeakWatcher;
 
 // posted to the main window by a process property sheet's page (the sheets run on threads of their own): opens the Object Manager tab at an object
 // namespace path; lParam: a new std::wstring, the receiver's to delete
@@ -63,6 +64,8 @@ struct IMainFrame abstract : IIconSource {
 	virtual void GoToDriver(std::wstring const& path) = 0;
 	// the alert rule dialog with the rule filled in; on OK the rule is added (enabled, saved, the alerts icon shown)
 	virtual void AddAlertRule(AlertRule const& rule) = 0;
+	// Leak Watch's findings while it's on (Options > Leak Watch); null while it's off
+	virtual LeakWatcher const* GetLeakWatcher() const = 0;
 };
 
 struct IView abstract {

@@ -513,6 +513,7 @@ control, account and dependencies, and optionally starts it.
 | Record from Startup | Records History, RPC/ALPC, Disk, Registry and per-connection network traffic from WinSysLive's start, so their tabs show what happened before they were opened (all but History need elevation; it costs a little all the time) |
 | Tray Icons... | Up to five notification area icons with small graphs: CPU, I/O, commit charge, physical memory, network. Click one to bring the window back; right-click for a menu |
 | Alerts... | See [Alerts](#alerts) |
+| Leak Watch | Off by default. While it's on, every process is sampled every 10 seconds (handles, private bytes, GDI and USER objects), and a counter that has grown steadily for 10 minutes or more is reported as a suspected leak: in the Processes tab's **Leaks** column (Memory) and by **A process leaks** alert rules. Growth that falls back (a garbage collector), stops, or happened once (a cache filled at startup) isn't a leak. It's judged on the last half hour; turning it off forgets everything |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |
 | Always on Top | Keeps the window above others |
 | Global Hotkey... | A key (Ctrl or Alt with a key) that shows WinSysLive from any program, or minimizes it when it's already in front. None by default; a key another program uses is refused |
@@ -531,7 +532,9 @@ control, account and dependencies, and optionally starts it.
 - the system's CPU, commit charge or physical memory stays above a percentage for some seconds;
 - a process's CPU or private bytes stays above a threshold;
 - a service starts, stops or fails;
-- an event is logged (System, Application, Security or any, by source and ID), or a Security audit failure is.
+- an event is logged (System, Application, Security or any, by source and ID), or a Security audit failure is;
+- a process leaks, as **Options > Leak Watch** sees it (once per process and kind of leak; nothing while Leak Watch is
+  off).
 
 Rules are checked on every update (not while paused). A rule with many alerts at once makes one ("and 24 more like
 it"), and a quiet period limits a rule to one alert in that time. Clicking a balloon brings the window back and goes to

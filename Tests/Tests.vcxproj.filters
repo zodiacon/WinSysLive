@@ -87,6 +87,9 @@
     <ClCompile Include="DiskHealthTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="LeakWatchTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="CommandLineTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
@@ -103,6 +106,9 @@
       <Filter>Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinSysLive\LeakWatch.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\Snapshot.cpp">

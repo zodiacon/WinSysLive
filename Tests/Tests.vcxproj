@@ -94,6 +94,7 @@
     <ClCompile Include="ComApartmentTests.cpp" />
     <ClCompile Include="VirtualMachineTests.cpp" />
     <ClCompile Include="DiskHealthTests.cpp" />
+    <ClCompile Include="LeakWatchTests.cpp" />
     <ClCompile Include="CommandLineTests.cpp" />
     <ClCompile Include="TimelineTests.cpp" />
     <ClCompile Include="SearchOnlineTests.cpp" />
@@ -101,6 +102,7 @@
     <ClCompile Include="BarFontTests.cpp" />
     <!-- the app's (its #include "pch.h" takes this project's precompiled header, which is the app's pch) -->
     <ClCompile Include="..\WinSysLive\AlertRules.cpp" />
+    <ClCompile Include="..\WinSysLive\LeakWatch.cpp" />
     <ClCompile Include="..\WinSysLive\ColumnLayoutText.cpp" />
     <ClCompile Include="..\WinSysLive\ExplorerMenu.cpp" />
     <ClCompile Include="..\WinSysLive\Snapshot.cpp" />

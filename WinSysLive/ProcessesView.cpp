@@ -2,6 +2,7 @@
 #include "resource.h"
 #include "ProcessesView.h"
 #include "VirtualMachineLookup.h"
+#include "LeakWatcher.h"
 #include "ProcessSheet.h"
 #include "FormatHelper.h"
 #include "AppSettings.h"
@@ -95,6 +96,7 @@ namespace {
 		{ L"Description", L"Description", 220, LVCFMT_LEFT, true, false, L"General" },
 		{ L"COM Server", L"ComServer", 260, LVCFMT_LEFT, false, false, L"General" },
 		{ L"Virtual Machine", L"VirtualMachine", 200, LVCFMT_LEFT, false, false, L"General" },
+		{ L"Leaks", L"Leaks", 320, LVCFMT_LEFT, false, false, L"Memory" },
 		{ L"Image Path", L"ImagePath", 300, LVCFMT_LEFT, true, false, L"General" },
 		{ L"Command Line", L"CommandLine", 400, LVCFMT_LEFT, true, false, L"General" },
 		{ L"CPU History", L"CpuHistory", 90, LVCFMT_LEFT, false, false, L"CPU" },
@@ -131,6 +133,11 @@ namespace {
 		float v = s.Last();
 		return v == v ? v : 0;	// not NaN
 	}
+}
+
+std::wstring CProcessesView::LeaksText(ProcessInfoEx const& p) const {
+	auto leaks = Frame()->GetLeakWatcher();
+	return leaks ? LeakDetector::Describe(leaks->GetFindings(p.Key)) : std::wstring();
 }
 
 std::wstring CProcessesView::ComServerText(ProcessInfoEx& p) {
@@ -970,7 +977,7 @@ bool CProcessesView::Matches(ProcessItem& item) {
 	// the cheap ones first; the others are cached in ProcessInfoEx once queried
 	return contains(p.GetImageName()) || contains(std::to_wstring(p.Id)) || contains(p.GetUser())
 		|| contains(p.GetDescriptionOrSurrogate()) || contains(p.GetCommandLine()) || contains(ComServerText(p))
-		|| contains(VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p));
+		|| contains(VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p)) || contains(LeaksText(p));
 }
 
 void CProcessesView::UpdateFilterStatus() {
@@ -1433,6 +1440,8 @@ std::wstring CProcessesView::GetColumnText(ProcessItem& item, Column column) con
 		case Column::ComServer: return ComServerText(p);
 		// the VM a worker, memory, security or WSL host process belongs to; named once the lookup has read the VMs
 		case Column::VirtualMachine: return VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p);
+		// Leak Watch's suspicions (Options > Leak Watch; empty while it's off)
+		case Column::Leaks: return LeaksText(p);
 		case Column::ImagePath: return p.GetImagePath();
 		case Column::CommandLine: return p.GetCommandLine();
 	}
@@ -1595,6 +1604,7 @@ int CProcessesView::CompareProcesses(ProcessItem& item1, ProcessItem& item2) con
 		case Column::ComServer: return compareText(ComServerText(p1), ComServerText(p2));
 		case Column::VirtualMachine: return compareText(VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p1),
 			VirtualMachineLookup::TextOf(Frame()->GetProcessManager(), p2));
+		case Column::Leaks: return compareText(LeaksText(p1), LeaksText(p2));
 		case Column::ImagePath: return compareText(p1.GetImagePath(), p2.GetImagePath());
 		case Column::CommandLine: return compareText(p1.GetCommandLine(), p2.GetCommandLine());
 	}

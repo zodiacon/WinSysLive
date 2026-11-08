@@ -4,6 +4,7 @@
 #include "AppSettings.h"
 #include "FormatHelper.h"
 #include "Recorders.h"
+#include "LeakWatcher.h"
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/SystemInfo.h>
 #include <WinSys/ServiceManager.h>
@@ -146,7 +147,7 @@ void CAlerts::UpdateTampering(WinSys::ProcessManager<ProcessInfoEx>& pm) {
 			m_Integrity.CheckImage(p->Key);
 }
 
-std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu) {
+std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>& pm, std::optional<double> cpu, LeakWatcher const* leaks) {
 	std::vector<AlertEvent> events;
 	bool baseline = !m_Baseline;
 	m_Baseline = true;
@@ -283,6 +284,29 @@ std::vector<AlertEvent> CAlerts::Evaluate(WinSys::ProcessManager<ProcessInfoEx>&
 							add(i, std::format(L"{} ({}): {}", p->GetImageName(), p->Id, WinSys::ProcessCreationParser::Describe(*c)), p->Id, true);
 				}
 				break;
+
+			case AlertKind::ProcessLeaks: {
+				// each counter of each process once while it runs (a leak goes on: one alert says it); nothing while
+				// Leak Watch is off
+				std::unordered_map<WinSys::ProcessOrThreadKey, unsigned> reported;
+				for (auto& p : processes) {
+					if (!leaks || !AlertRule::Matches(rule.Pattern, p->GetImageName()))
+						continue;
+					auto it = state.LeakReported.find(p->Key);
+					unsigned bits = it == state.LeakReported.end() ? 0 : it->second;
+					for (auto& f : leaks->GetFindings(p->Key)) {
+						auto bit = 1u << (int)f.Counter;
+						if (bits & bit)
+							continue;
+						bits |= bit;
+						add(i, std::format(L"{} ({}) may be leaking: {}", p->GetImageName(), p->Id, LeakDetector::Describe(f)), p->Id, true);
+					}
+					if (bits)
+						reported[p->Key] = bits;
+				}
+				state.LeakReported = std::move(reported);
+				break;
+			}
 
 			case AlertKind::ServiceStarted:
 			case AlertKind::ServiceStopped:
