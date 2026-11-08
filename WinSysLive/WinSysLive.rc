@@ -215,6 +215,7 @@ BEGIN
         MENUITEM "Installed P&ackages...",      ID_SYSTEM_PACKAGES
         MENUITEM "Firewall R&ules...",          ID_SYSTEM_FIREWALL
         MENUITEM "&COM Registration...",        ID_SYSTEM_COMREGISTRATION
+        MENUITEM "&DCOM and Running Objects...", ID_SYSTEM_DCOM
         MENUITEM "&Kernel Callbacks and Minifilters...", ID_SYSTEM_KERNELCALLBACKS
         MENUITEM "Certificate &Stores...",      ID_SYSTEM_CERTIFICATES
         MENUITEM "&RAM...",                     ID_SYSTEM_RAM
@@ -1110,6 +1111,21 @@ BEGIN
     PUSHBUTTON      "&Refresh",IDC_CE_REFRESH,558,379,55,14
     PUSHBUTTON      "&Copy",IDC_CE_COPY,618,379,55,14
     PUSHBUTTON      "Close",IDCANCEL,683,379,50,14
+END
+
+IDD_DCOM DIALOGEX 0, 0, 640, 400
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "DCOM and Running Objects"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_DC_TABS,"SysTabControl32",WS_CLIPSIBLINGS | WS_TABSTOP,7,7,626,366
+    EDITTEXT        IDC_DC_FILTER,13,25,614,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_DC_LIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,13,43,614,210
+    CONTROL         "",IDC_DC_DETAILS,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,13,258,614,109
+    LTEXT           "",IDC_DC_STATUS,7,382,450,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "&Refresh",IDC_DC_REFRESH,463,379,55,14
+    PUSHBUTTON      "&Copy",IDC_DC_COPY,523,379,55,14
+    PUSHBUTTON      "Close",IDCANCEL,583,379,50,14
 END
 
 IDD_KERNELCALLBACKS DIALOGEX 0, 0, 600, 380
@@ -2307,6 +2323,7 @@ END
 STRINGTABLE
 BEGIN
     ID_OPTIONS_HIGHLIGHTING "How long new and exited items stay highlighted\nHighlighting"
+    ID_SYSTEM_DCOM          "The machine's DCOM settings and limits, the app IDs' security, the classes UAC elevates, DCOM's errors and the Running Object Table\nDCOM and Running Objects"
     ID_UPDATEINTERVAL_OTHER "Update at an interval of your own, from 0.1 to 60 seconds\nOther Update Interval"
     ID_OPTIONS_HOTKEY       "A key that shows the window from any program\nGlobal Hotkey"
     ID_MEMORY_EMPTYWORKINGSETS 

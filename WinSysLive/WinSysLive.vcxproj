@@ -467,6 +467,8 @@
     <ClCompile Include="FirewallDlg.cpp" />
     <ClCompile Include="RegistryEditor.cpp" />
     <ClCompile Include="ComRegistrationDlg.cpp" />
+    <ClCompile Include="ComPermissionInfo.cpp" />
+    <ClCompile Include="DcomDlg.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
@@ -608,6 +610,8 @@
     <ClInclude Include="FirewallDlg.h" />
     <ClInclude Include="RegistryEditor.h" />
     <ClInclude Include="ComRegistrationDlg.h" />
+    <ClInclude Include="ComPermissionInfo.h" />
+    <ClInclude Include="DcomDlg.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />

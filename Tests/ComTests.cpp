@@ -4,6 +4,7 @@
 #include <WinSys/Ipc.h>
 #include <WinSys/ProcessManager.h>
 #include <WinSys/Processes.h>
+#include <WinSys/EventLog.h>
 
 using namespace WinSys;
 
@@ -272,4 +273,98 @@ TEST(Com_LiveRegistry) {
 	auto sd = ComRegistry::GetPermission(L"", true, false, isDefault);
 	printf("  default launch permission: %zu bytes\n", sd.size());
 	CHECK(isDefault);
+}
+
+// the DCOM permissions' entries and rights (WinSys ComSecurity), on a security descriptor made from SDDL: COM writes its
+// rights in the DS rights' bits (CC 1 = COM_RIGHTS_EXECUTE, DC 2 = local, LC 4 = remote, SW 8 = local activation,
+// RP 16 = remote activation)
+TEST(Dcom_ParsePermission) {
+	PSECURITY_DESCRIPTOR sd = nullptr;
+	CHECK(::ConvertStringSecurityDescriptorToSecurityDescriptor(L"O:BAG:BAD:(A;;CCDCLCSWRP;;;SY)(A;;CCDCSW;;;WD)(D;;CCLC;;;AN)",
+		SDDL_REVISION_1, &sd, nullptr));
+	if (!sd)
+		return;
+	auto entries = ComSecurity::ParsePermission(sd);
+	::LocalFree(sd);
+	CHECK_EQ(entries.size(), (size_t)3);
+	if (entries.size() != 3)
+		return;
+	CHECK_EQ(entries[0].Sid, std::wstring(L"S-1-5-18"));
+	CHECK(entries[0].Allow);
+	CHECK_EQ(entries[0].Rights, (uint32_t)0x1F);
+	CHECK(ComSecurity::GrantsRemote(entries[0]));
+	CHECK_EQ(entries[1].Sid, std::wstring(L"S-1-1-0"));
+	CHECK(!entries[1].Account.empty());
+	CHECK_EQ(ComSecurity::RightsText(entries[1].Rights, true), std::wstring(L"Local Launch, Local Activation"));
+	CHECK(!ComSecurity::GrantsRemote(entries[1]));
+	CHECK_EQ(entries[2].Sid, std::wstring(L"S-1-5-7"));
+	CHECK(!entries[2].Allow);
+	CHECK(!ComSecurity::GrantsRemote(entries[2]));	// a deny grants nothing
+	CHECK_EQ(ComSecurity::RightsText(entries[2].Rights, false), std::wstring(L"Remote Access"));
+	// an old-style entry (COM_RIGHTS_EXECUTE alone) has every right
+	CHECK_EQ(ComSecurity::RightsText(1, true), std::wstring(L"Local Launch, Remote Launch, Local Activation, Remote Activation"));
+	CHECK_EQ(ComSecurity::RightsText(1, false), std::wstring(L"Local Access, Remote Access"));
+	CHECK(ComSecurity::GrantsRemote({ L"", L"S-1-1-0", true, 1 }));
+	CHECK_EQ(ComSecurity::RightsText(0, true), std::wstring(L"None"));
+	// not a security descriptor
+	uint8_t junk[16]{};
+	CHECK(ComSecurity::ParsePermission(junk).empty());
+	CHECK(ComSecurity::ParsePermission(nullptr).empty());
+	CHECK(ComSecurity::IsBroadAccount(L"S-1-1-0"));
+	CHECK(ComSecurity::IsBroadAccount(L"s-1-5-32-545"));
+	CHECK(!ComSecurity::IsBroadAccount(L"S-1-5-32-544"));
+	CHECK(!ComSecurity::IsBroadAccount(L"S-1-5-4"));	// Interactive: never in a remote caller's token
+	CHECK_EQ(ComSecurity::AuthenticationLevelText(1), std::wstring(L"None (1)"));
+	CHECK_EQ(ComSecurity::AuthenticationLevelText(6), std::wstring(L"Packet Privacy (6)"));
+	CHECK_EQ(ComSecurity::AuthenticationLevelText(9), std::wstring(L"9"));
+	CHECK_EQ(ComSecurity::ImpersonationLevelText(2), std::wstring(L"Identify (2)"));
+}
+
+// the machine's DCOM settings, the app IDs, the Running Object Table and the DCOM events as this machine has them
+TEST(Dcom_Live) {
+	auto settings = ComSecurity::GetMachineSettings();
+	CHECK(settings.size() >= 10);
+	if (!settings.empty())
+		CHECK_EQ(settings[0].Name, std::wstring(L"EnableDCOM"));
+	int permissions = 0;
+	for (auto& s : settings) {
+		CHECK(!s.Value.empty());
+		CHECK(!s.Description.empty());
+		if (s.IsPermission) {
+			permissions++;
+			CHECK_EQ(s.Present, !s.SecurityDescriptor.empty());
+		}
+	}
+	CHECK_EQ(permissions, 4);
+	// Windows sets the limits
+	auto limit = std::ranges::find(settings, std::wstring(L"MachineLaunchRestriction"), &DcomMachineSetting::Name);
+	CHECK(limit != settings.end() && limit->Present);
+	if (limit != settings.end() && limit->Present)
+		CHECK(!ComSecurity::ParsePermission(limit->SecurityDescriptor.data()).empty());
+
+	auto ids = ComRegistry::EnumAppIds();
+	CHECK(ids.size() > 100);
+	bool service = false, executable = false, launch = false;
+	for (auto& a : ids) {
+		CHECK(a.AppId.size() == 38 && a.AppId.front() == L'{');
+		service |= !a.ServiceName.empty();
+		executable |= !a.Executables.empty();
+		launch |= !a.LaunchPermission.empty();
+	}
+	CHECK(service);
+	CHECK(executable);
+	CHECK(launch);
+
+	auto com = ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	auto rot = ComSecurity::EnumRunningObjects();
+	CHECK(rot.has_value());
+	if (SUCCEEDED(com))
+		::CoUninitialize();
+
+	// only the provider's events (there may be none in the last month)
+	auto events = EventLog::Query(L"System", 4, 24 * 30, 50, EventDataRead::None, L"Microsoft-Windows-DistributedCOM");
+	CHECK(events.has_value());
+	if (events)
+		for (auto& e : *events)
+			CHECK(e.Provider.find(L"DistributedCOM") != std::wstring::npos || e.Provider == L"DCOM");
 }

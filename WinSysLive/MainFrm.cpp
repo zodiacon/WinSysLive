@@ -39,6 +39,7 @@
 #include "PackagesDlg.h"
 #include "FirewallDlg.h"
 #include "ComRegistrationDlg.h"
+#include "DcomDlg.h"
 #include "ServiceInstallDlg.h"
 #include "VirusTotalDlg.h"
 #include "HighlightDlg.h"
@@ -984,6 +985,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_PACKAGES, IDI_PACKAGE },
 		{ ID_SYSTEM_FIREWALL, IDI_FIREWALL },
 		{ ID_SYSTEM_COMREGISTRATION, IDI_COM },
+		{ ID_SYSTEM_DCOM, IDI_COM_SERVER },
 		{ ID_SYSTEM_RAM, IDI_MEMORY },
 		{ ID_SYSTEM_KERNELCALLBACKS, IDI_SYSTEM_DRIVER },
 		{ ID_SYSTEM_CERTIFICATES, IDI_CERTIFICATES },
@@ -1707,6 +1709,12 @@ LRESULT CMainFrame::OnPipes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/
 
 LRESULT CMainFrame::OnComRegistration(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	CComRegistrationDlg dlg;
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+LRESULT CMainFrame::OnDcom(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CDcomDlg dlg;
 	dlg.DoModal(m_hWnd);
 	return 0;
 }

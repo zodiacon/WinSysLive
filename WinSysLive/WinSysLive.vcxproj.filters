@@ -405,6 +405,12 @@
     <ClCompile Include="ComRegistrationDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
+    <ClCompile Include="ComPermissionInfo.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="DcomDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="RamDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -831,6 +837,12 @@
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="ComRegistrationDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ComPermissionInfo.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="DcomDlg.h">
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="RamDlg.h">

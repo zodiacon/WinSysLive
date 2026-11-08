@@ -380,6 +380,13 @@
 #define IDC_HK_KEY                      1577
 #define IDC_HK_STATUS                   1578
 #define IDC_HK_CLEAR                    1579
+#define IDC_DC_TABS                     1580
+#define IDC_DC_FILTER                   1581
+#define IDC_DC_LIST                     1582
+#define IDC_DC_DETAILS                  1583
+#define IDC_DC_STATUS                   1584
+#define IDC_DC_REFRESH                  1585
+#define IDC_DC_COPY                     1586
 #define IDC_FW_TABS                     1273
 #define IDC_FW_SUMMARY                  1274
 #define IDC_FW_VARS                     1275
@@ -487,6 +494,7 @@
 #define ID_UPDATEINTERVAL_5000          32783
 #define ID_UPDATEINTERVAL_OTHER         33071
 #define ID_OPTIONS_HOTKEY               33072
+#define ID_SYSTEM_DCOM                  33073
 #define ID_PANE_PROCESSES               32784
 #define ID_PANE_CPU                     32785
 #define ID_PANE_ELEVATION               32786
@@ -877,6 +885,7 @@
 #define IDD_CERTIFICATES                356
 #define IDD_UPDATEINTERVAL              360
 #define IDD_HOTKEY                      361
+#define IDD_DCOM                        362
 #define ID_SYSTEM_CERTIFICATES          33050
 #define IDC_CE_TREE                     1564
 #define IDC_CE_FILTER                   1565
@@ -963,9 +972,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        362
-#define _APS_NEXT_COMMAND_VALUE         33073
-#define _APS_NEXT_CONTROL_VALUE         1580
+#define _APS_NEXT_RESOURCE_VALUE        363
+#define _APS_NEXT_COMMAND_VALUE         33074
+#define _APS_NEXT_CONTROL_VALUE         1587
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
