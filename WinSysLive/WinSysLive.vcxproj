@@ -471,6 +471,7 @@
     <ClCompile Include="DcomDlg.cpp" />
     <ClCompile Include="VirtualMachinesDlg.cpp" />
     <ClCompile Include="VirtualMachineLookup.cpp" />
+    <ClCompile Include="DiskHealthMonitor.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
     <ClCompile Include="SignatureVerifier.cpp" />
@@ -616,6 +617,7 @@
     <ClInclude Include="DcomDlg.h" />
     <ClInclude Include="VirtualMachinesDlg.h" />
     <ClInclude Include="VirtualMachineLookup.h" />
+    <ClInclude Include="DiskHealthMonitor.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />
     <ClInclude Include="SignatureVerifier.h" />

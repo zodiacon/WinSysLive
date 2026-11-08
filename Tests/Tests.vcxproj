@@ -93,6 +93,7 @@
     <ClCompile Include="CertificateTests.cpp" />
     <ClCompile Include="ComApartmentTests.cpp" />
     <ClCompile Include="VirtualMachineTests.cpp" />
+    <ClCompile Include="DiskHealthTests.cpp" />
     <ClCompile Include="CommandLineTests.cpp" />
     <ClCompile Include="TimelineTests.cpp" />
     <ClCompile Include="SearchOnlineTests.cpp" />

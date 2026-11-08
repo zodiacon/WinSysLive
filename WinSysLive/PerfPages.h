@@ -508,6 +508,9 @@ private:
 	GraphCtrl::SeriesId m_ActiveSeries{ GraphCtrl::InvalidSeries };
 	GraphCtrl::CCompositionBar m_Space;
 	wchar_t m_Letter;
+	// the physical disks under the volume (more than one when it spans or mirrors), read when the page is made; their
+	// health (DiskHealthMonitor's last reading) takes two lines each below the volume's
+	std::vector<uint32_t> m_Disks;
 };
 
 //

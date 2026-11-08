@@ -3,6 +3,7 @@
 #include "FormatHelper.h"
 #include "AppSettings.h"
 #include <WinSys/SystemInfo.h>
+#include "DiskHealthMonitor.h"
 #include <ListViewhelper.h>
 
 using namespace GraphCtrl;
@@ -45,6 +46,64 @@ namespace {
 		wchar_t text[32];
 		Format::BytesPerSec((float)bytesPerSecond, text, _countof(text));
 		return text;
+	}
+
+	// a drive page's two lines for one of its disks: who it is, its health, temperature and age; then what its kind
+	// reports (an NVMe drive's wear, spare and data written; an ATA drive's sectors)
+	std::pair<std::wstring, std::wstring> DiskHealthLines(uint32_t disk, DiskHealthMonitor::Reading const& reading) {
+		using namespace WinSys;
+		std::wstring first = std::format(L"Disk {}", disk);
+		if (!reading.Done)
+			return { first + L": reading its health...", L"" };
+		if (!reading.Health)
+			return { first + (reading.Asleep ? L": asleep (its health is read when it spins up)" : L": can't be read"), L"" };
+		auto& h = *reading.Health;
+		first += L": " + h.Model + (h.BusType.empty() ? L"" : L" (" + h.BusType + L")");
+		auto asleep = reading.Asleep ? L" (asleep: last reading)" : L"";
+		if (h.Source == DiskHealthSource::None)
+			return { first + L"    Health: not reported by the drive" + asleep, L"" };
+
+		first += std::wstring(L"    Health: ") + DiskHealthReader::StateText(h.State);
+		for (size_t i = 0; i < h.Problems.size(); i++)
+			first += (i ? L"; " : L" (") + h.Problems[i] + (i + 1 == h.Problems.size() ? L")" : L"");
+		if (h.Temperature) {
+			first += std::format(L"    Temperature: {} \u00B0C", *h.Temperature);
+			if (h.TemperatureWarning)
+				first += std::format(L" (warning at {} \u00B0C)", *h.TemperatureWarning);
+		}
+		if (h.PowerOnHours)
+			first += std::format(L"    Power-on: {} h", FormatHelper::FormatNumber((int64_t)*h.PowerOnHours));
+		if (h.PowerCycles)
+			first += std::format(L"    Power cycles: {}", FormatHelper::FormatNumber((int64_t)*h.PowerCycles));
+		first += asleep;
+
+		std::wstring second;
+		auto add = [&](std::wstring text) {
+			second += (second.empty() ? L"" : L"    ") + text;
+		};
+		auto number = [](std::optional<uint64_t> value) { return FormatHelper::FormatNumber((int64_t)value.value_or(0)); };
+		if (h.Source == DiskHealthSource::Nvme) {
+			if (h.PercentageUsed)
+				add(std::format(L"Endurance used: {}%", *h.PercentageUsed));
+			if (h.AvailableSpare)
+				add(std::format(L"Spare: {}% (threshold {}%)", *h.AvailableSpare, h.AvailableSpareThreshold.value_or(0)));
+			if (h.BytesRead)
+				add(L"Read: " + FormatBytes((int64_t)*h.BytesRead));
+			if (h.BytesWritten)
+				add(L"Written: " + FormatBytes((int64_t)*h.BytesWritten));
+			add(L"Unsafe shutdowns: " + number(h.UnsafeShutdowns));
+			add(L"Media errors: " + number(h.MediaErrors));
+			add(L"Error log entries: " + number(h.ErrorLogEntries));
+		}
+		else {
+			add(L"Reallocated sectors: " + number(h.ReallocatedSectors));
+			add(L"Pending: " + number(h.PendingSectors));
+			add(L"Uncorrectable: " + number(h.UncorrectableSectors));
+			if (h.StartStopCount)
+				add(L"Start/stop count: " + number(h.StartStopCount));
+			add(std::wstring(L"SMART: ") + (h.PredictFailure ? L"failure predicted" : L"no failure predicted"));
+		}
+		return { first, second };
 	}
 
 	std::wstring DiskLine(PerfSample const& s) {
@@ -791,7 +850,8 @@ void CPerfDiskPage::CreateGraphs() {
 	m_Space.AddSegment(L"Free", RGB(90, 90, 100));
 	m_Space.SetTitle(L"Space");
 	m_Space.SetValueFormatter(Format::Bytes);
-	m_Lines.resize(2);
+	m_Disks = WinSys::DiskHealthReader::GetVolumeDisks(m_Letter);
+	m_Lines.resize(2 + 2 * m_Disks.size());
 }
 
 void CPerfDiskPage::LayoutGraphs(CRect const& rc, int gap) {
@@ -804,6 +864,12 @@ void CPerfDiskPage::LayoutGraphs(CRect const& rc, int gap) {
 }
 
 void CPerfDiskPage::Sample(PerfSample const& sample) {
+	for (size_t i = 0; i < m_Disks.size(); i++) {
+		auto [health, details] = DiskHealthLines(m_Disks[i], DiskHealthMonitor::Get(m_Disks[i]));
+		m_Lines[2 + 2 * i] = std::move(health);
+		m_Lines[3 + 2 * i] = std::move(details);
+	}
+
 	auto it = std::ranges::find_if(*sample.Disks, [&](auto& v) { return v.Letter == m_Letter; });
 	if (it == sample.Disks->end() || !it->HasPerformance) {
 		m_Active.PushSample(m_ActiveSeries, MissingSample);

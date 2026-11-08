@@ -84,6 +84,9 @@
     <ClCompile Include="VirtualMachineTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="DiskHealthTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="CommandLineTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>

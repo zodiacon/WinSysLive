@@ -241,7 +241,12 @@ their history while hidden.
   modified, standby by priority.
 - **Network:** a graph per active adapter.
 - **I/O:** the system's read, write and other transfer rates.
-- **Disk (one per drive):** read and write rates, active time and response time.
+- **Disk (one per drive):** read and write rates, active time and response time. Below them, the health of the
+  physical disk the drive is on, as the disk reports it: **Good**, **Warning** (worn out, media errors, bad sectors,
+  running hot) or **Critical** (the disk itself warns, or predicts a failure), with the reasons; its temperature and
+  warning threshold, power-on hours and power cycles; an NVMe SSD's endurance used, spare capacity, data read and
+  written, unsafe shutdowns and errors; a SATA disk's reallocated, pending and uncorrectable sectors. Read every 30
+  seconds, without elevation; a hard disk that has spun down isn't woken for it. USB drives mostly report nothing.
 - **GPU and NPU (one per adapter):** a graph per engine, and dedicated and shared memory.
 - **Power** (on a machine with a battery or ACPI thermal zones, such as a laptop): the batteries' charge and charging or discharging power, the thermal zones' temperatures, and below them each battery's state, rate, voltage, time left, capacity against its design (its wear), cycles and chemistry, and the power source.
 

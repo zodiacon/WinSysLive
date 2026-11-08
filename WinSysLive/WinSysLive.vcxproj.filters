@@ -417,6 +417,9 @@
     <ClCompile Include="VirtualMachineLookup.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="DiskHealthMonitor.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="RamDlg.cpp">
       <Filter>Dialogs</Filter>
     </ClCompile>
@@ -855,6 +858,9 @@
       <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="VirtualMachineLookup.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="DiskHealthMonitor.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="RamDlg.h">
