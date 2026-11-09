@@ -307,7 +307,7 @@ BEGIN
         MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
         MENUITEM "&Resume",                     ID_PROCESS_RESUME
         MENUITEM SEPARATOR
-        POPUP "&Priority"
+        POPUP "&Priority Class"
         BEGIN
             MENUITEM "&Realtime",                   ID_PRIORITY_REALTIME
             MENUITEM "&High",                       ID_PRIORITY_HIGH

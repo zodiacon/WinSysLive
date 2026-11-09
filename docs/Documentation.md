@@ -167,7 +167,7 @@ The **Process** menu and the row context menu:
 | Kill All with the Same Name | Terminates every process with the same image name |
 | Restart | Terminates the process and starts it again with the same command line, directory, environment, user and elevation (not for services, packaged apps or WinSysLive itself) |
 | Suspend / Resume | Suspends or resumes all the process's threads |
-| Set Priority, I/O Priority, Memory Priority | Sets the priority; the current one is checked |
+| Priority Class, I/O Priority, Memory Priority | Sets the priority; the current one is checked |
 | Set Affinity... | Chooses the processors it may run on (by processor group on systems with more than 64 processors) |
 | Efficiency Mode | Low priority and EcoQoS, as Task Manager's |
 | Reduce Working Set | Empties the working set |
