@@ -90,6 +90,9 @@
     <ClCompile Include="LeakWatchTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="ProcessRuleTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
     <ClCompile Include="CommandLineTests.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
@@ -109,6 +112,9 @@
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\LeakWatch.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinSysLive\ProcessRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\WinSysLive\Snapshot.cpp">

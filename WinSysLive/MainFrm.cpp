@@ -61,6 +61,7 @@
 #include "UpdateChecker.h"
 #include "UpdateDlg.h"
 #include "TrayIconsDlg.h"
+#include "ProcessRulesDlg.h"
 #include <WinSys/LogonTask.h>
 #include "SettingsTransfer.h"
 #include "Recorders.h"
@@ -343,6 +344,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	m_TrayIcons.Init(m_hWnd, WM_TRAYICON);
 	ApplyTrayIcons(CTrayIcons::Load());
 	m_Alerts.SetRules(CAlerts::Load());
+	m_ProcessRules.SetRules(CProcessRules::Load());
 	m_AlertIcon.Init(m_hWnd, WM_TRAYICON);
 	m_AlertIcon.Show(m_Alerts.AnyEnabled());
 	UISetCheck(ID_OPTIONS_MINIMIZETOTRAY, settings.MinimizeToTray());
@@ -523,6 +525,25 @@ LRESULT CMainFrame::OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 		});
 	dlg.DoModal(m_hWnd);
 	return 0;
+}
+
+LRESULT CMainFrame::OnProcessRules(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	CProcessRulesDlg dlg(m_ProcessRules, m_ProcessManager);
+	dlg.DoModal(m_hWnd);
+	return 0;
+}
+
+void CMainFrame::AddProcessRule(std::wstring const& imageName) {
+	ProcessRule rule;
+	rule.Pattern = imageName;
+	CProcessRuleDlg dlg(rule);
+	if (dlg.DoModal(m_hWnd) != IDOK)
+		return;
+	auto rules = m_ProcessRules.GetRules();
+	rules.push_back(dlg.GetRule());
+	CProcessRules::Save(rules);
+	m_ProcessRules.SetRules(rules);
+	m_ProcessRules.ApplyToRunning(m_ProcessManager, rules.back());
 }
 
 void CMainFrame::AddAlertRule(AlertRule const& rule) {
@@ -1020,6 +1041,7 @@ void CMainFrame::InitMenu(HMENU hMenu) {
 		{ ID_SYSTEM_ETWSESSIONS, IDI_ETW },
 		{ ID_SYSTEM_WINSTATIONS, IDI_WINSTA },
 		{ ID_OPTIONS_ALERTS, IDI_ALERT },
+		{ ID_OPTIONS_PROCESSRULES, IDI_CPU },
 		{ ID_SYSTEM_POWERREQUESTS, IDI_CAPABILITY },
 		{ ID_SYSTEM_PIPES, IDI_PIPE },
 		{ ID_SYSTEM_PACKAGES, IDI_PACKAGE },
@@ -1273,6 +1295,7 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL& b
 
 void CMainFrame::Refresh() {
 	m_ProcessManager.Update();
+	m_ProcessRules.Update(m_ProcessManager);
 	RecordHistory();
 	if (AppSettings::Get().LeakWatch())
 		m_LeakWatcher.Update(m_ProcessManager);

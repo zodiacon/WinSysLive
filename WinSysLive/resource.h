@@ -393,6 +393,22 @@
 #define IDC_VM_REFRESH                  1590
 #define IDC_VM_COPY                     1591
 #define IDC_PROC_VM_LABEL               1592
+#define IDC_PRULE_RULES                 1593
+#define IDC_PRULE_ADD                   1594
+#define IDC_PRULE_EDIT                  1595
+#define IDC_PRULE_REMOVE                1596
+#define IDC_PRULE_RECENT                1597
+#define IDC_PRULE_CLEAR                 1598
+#define IDC_PRULE_STATUS                1599
+#define IDC_PRULE_PATTERN               1600
+#define IDC_PRULE_PRIORITY              1601
+#define IDC_PRULE_EFFICIENCY            1602
+#define IDC_PRULE_AFFINITY              1603
+#define IDC_PRULE_AFFINITY_TEXT         1604
+#define IDC_PRULE_AFFINITY_CHOOSE       1605
+#define IDC_PRULE_CPUSETS               1606
+#define IDC_PRULE_CPUSETS_TEXT          1607
+#define IDC_PRULE_CPUSETS_CHOOSE        1608
 #define IDC_FW_TABS                     1273
 #define IDC_FW_SUMMARY                  1274
 #define IDC_FW_VARS                     1275
@@ -506,6 +522,8 @@
 #define ID_VM_GOTOMEMORY                33076
 #define ID_OPTIONS_LEAKWATCH            33077
 #define ID_OPTIONS_CLOSETOTRAY          33078
+#define ID_OPTIONS_PROCESSRULES         33079
+#define ID_PROCESS_ADDRULE              33080
 #define ID_PANE_PROCESSES               32784
 #define ID_PANE_CPU                     32785
 #define ID_PANE_ELEVATION               32786
@@ -898,6 +916,8 @@
 #define IDD_HOTKEY                      361
 #define IDD_DCOM                        362
 #define IDD_VIRTUALMACHINES             363
+#define IDD_PROCESS_RULES               365
+#define IDD_PROCESS_RULE                366
 #define IDI_VIRTUALMACHINE              364
 #define ID_SYSTEM_CERTIFICATES          33050
 #define IDC_CE_TREE                     1564
@@ -985,9 +1005,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        365
-#define _APS_NEXT_COMMAND_VALUE         33079
-#define _APS_NEXT_CONTROL_VALUE         1593
+#define _APS_NEXT_RESOURCE_VALUE        367
+#define _APS_NEXT_COMMAND_VALUE         33081
+#define _APS_NEXT_CONTROL_VALUE         1609
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -12,6 +12,7 @@
 #include "Interfaces.h"
 #include "FindHandleDlg.h"
 #include "TrayIcons.h"
+#include "ProcessRuleRunner.h"
 #include "Alerts.h"
 #include "LeakWatcher.h"
 #include "Recorders.h"
@@ -164,6 +165,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_COPYALL, OnCopyAllRows)
 		COMMAND_ID_HANDLER(ID_OPTIONS_TRAYICON, OnTrayIconOption)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALERTS, OnAlerts)
+		COMMAND_ID_HANDLER(ID_OPTIONS_PROCESSRULES, OnProcessRules)
 		COMMAND_ID_HANDLER(ID_OPTIONS_MINIMIZETOTRAY, OnMinimizeToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_CLOSETOTRAY, OnCloseToTray)
 		COMMAND_ID_HANDLER(ID_OPTIONS_RECORDFROMSTARTUP, OnRecordFromStartup)
@@ -276,6 +278,7 @@ public:
 	LRESULT OnActivateMessage(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnTrayIconOption(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlerts(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnProcessRules(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnMinimizeToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCloseToTray(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnRecordFromStartup(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -328,6 +331,7 @@ private:
 	// the device's Resources and Drivers (the command palette's search; not the Devices tab, whose scan may not be done)
 	void ShowDevice(WinSys::DeviceInfo device);
 	void AddAlertRule(AlertRule const& rule) override;
+	void AddProcessRule(std::wstring const& imageName) override;
 	LeakWatcher const* GetLeakWatcher() const override;
 	// switches to the tab, opening it if it's closed; its view
 	IView* ActivateTab(TabType type);
@@ -466,6 +470,7 @@ private:
 	std::unique_ptr<CFindHandleDlg> m_FindDlg;	// modeless; created again once closed
 	CFont m_Font;	// the views' (see ApplyFont)
 	CTrayIcons m_TrayIcons;
+	CProcessRules m_ProcessRules;
 	CAlerts m_Alerts;	// evaluated in Refresh
 	LeakWatcher m_LeakWatcher;	// sampled in Refresh while the LeakWatch setting is on
 	Recorders::Holder m_Recorders;	// while Record from Startup is on: the History, RPC/ALPC, Disk and network recorders

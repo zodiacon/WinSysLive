@@ -143,7 +143,7 @@ BEGIN
         MENUITEM "&Suspend",                    ID_PROCESS_SUSPEND
         MENUITEM "&Resume",                     ID_PROCESS_RESUME
         MENUITEM SEPARATOR
-        POPUP "Set &Priority"
+        POPUP "&Priority Class"
         BEGIN
             MENUITEM "&Realtime",                   ID_PRIORITY_REALTIME
             MENUITEM "&High",                       ID_PRIORITY_HIGH
@@ -169,6 +169,7 @@ BEGIN
         END
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
+        MENUITEM "Add Process Ru&le...",        ID_PROCESS_ADDRULE
         MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
         POPUP "Adva&nced"
         BEGIN
@@ -271,6 +272,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Tray Icons...",              ID_OPTIONS_TRAYICON
         MENUITEM "&Alerts...",                  ID_OPTIONS_ALERTS
+        MENUITEM "Process &Rules...",           ID_OPTIONS_PROCESSRULES
         MENUITEM "&Minimize to Tray",           ID_OPTIONS_MINIMIZETOTRAY
         MENUITEM "Close to Tra&y",              ID_OPTIONS_CLOSETOTRAY
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
@@ -331,6 +333,7 @@ BEGIN
         END
         MENUITEM "Set &Affinity...",            ID_PROCESS_AFFINITY
         MENUITEM "&Efficiency Mode",            ID_PROCESS_EFFICIENCY
+        MENUITEM "Add Process Ru&le...",        ID_PROCESS_ADDRULE
         MENUITEM "Red&uce Working Set",         ID_PROCESS_EMPTYWORKINGSET
         POPUP "Adva&nced"
         BEGIN
@@ -1101,6 +1104,46 @@ BEGIN
     LTEXT           "seconds after an alert (0: none)",IDC_AR_QUIET_HINT,126,123,147,9
     DEFPUSHBUTTON   "OK",IDOK,169,148,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,223,148,50,14
+END
+
+IDD_PROCESS_RULES DIALOGEX 0, 0, 440, 300
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Process Rules"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Rules apply when a matching process starts, to the running ones when a rule is added, changed or turned on, and when WinSysLive starts, while it runs. Turning a rule off or removing it doesn't undo what it did. With several matching, the lower one wins.",IDC_STATIC,7,7,426,18
+    LTEXT           "&Rules (checked ones are on):",IDC_STATIC,7,29,200,9
+    CONTROL         "",IDC_PRULE_RULES,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,7,40,370,88
+    PUSHBUTTON      "&Add...",IDC_PRULE_ADD,383,40,50,14
+    PUSHBUTTON      "&Edit...",IDC_PRULE_EDIT,383,58,50,14
+    PUSHBUTTON      "Re&move",IDC_PRULE_REMOVE,383,76,50,14
+    LTEXT           "What they did:",IDC_STATIC,7,135,300,9
+    CONTROL         "",IDC_PRULE_RECENT,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,146,370,128
+    PUSHBUTTON      "C&lear",IDC_PRULE_CLEAR,383,146,50,14
+    LTEXT           "",IDC_PRULE_STATUS,7,283,300,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "Close",IDCANCEL,383,279,50,14
+END
+
+IDD_PROCESS_RULE DIALOGEX 0, 0, 280, 139
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Process Rule"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Image names:",IDC_STATIC,7,9,60,9
+    EDITTEXT        IDC_PRULE_PATTERN,72,7,201,14,ES_AUTOHSCROLL
+    LTEXT           "Wildcards, separated by ';': notepad.exe; game*.exe",IDC_STATIC,72,23,201,9
+    LTEXT           "&Priority:",IDC_STATIC,7,40,60,9
+    COMBOBOX        IDC_PRULE_PRIORITY,72,38,100,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "E&fficiency mode:",IDC_STATIC,7,59,60,9
+    COMBOBOX        IDC_PRULE_EFFICIENCY,72,57,100,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "&Affinity:",IDC_PRULE_AFFINITY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,78,60,10
+    LTEXT           "",IDC_PRULE_AFFINITY_TEXT,72,79,146,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "C&hoose...",IDC_PRULE_AFFINITY_CHOOSE,223,76,50,14
+    CONTROL         "CPU &sets:",IDC_PRULE_CPUSETS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,97,60,10
+    LTEXT           "",IDC_PRULE_CPUSETS_TEXT,72,98,146,9,SS_NOPREFIX | SS_ENDELLIPSIS
+    PUSHBUTTON      "Ch&oose...",IDC_PRULE_CPUSETS_CHOOSE,223,95,50,14
+    DEFPUSHBUTTON   "OK",IDOK,169,118,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,223,118,50,14
 END
 
 IDD_CERTIFICATES DIALOGEX 0, 0, 740, 400
@@ -1918,8 +1961,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,8,0
- PRODUCTVERSION 1,8,0
+ FILEVERSION 1,9,0
+ PRODUCTVERSION 1,9,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1936,12 +1979,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "WinSysLive - Windows Live System Explorer"
-            VALUE "FileVersion", "1.7.0"
+            VALUE "FileVersion", "1.9.0"
             VALUE "InternalName", "WinSysLive"
             VALUE "LegalCopyright", "©2026 Pavel Yosifovich"
             VALUE "OriginalFilename", "WinSysLive.exe"
             VALUE "ProductName", "WinSysLive"
-            VALUE "ProductVersion", "1.8.0"
+            VALUE "ProductVersion", "1.9.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -2446,6 +2489,8 @@ END
 STRINGTABLE
 BEGIN
     ID_PROCESS_AFFINITY     "Choose the processors the selected process may run on\nSet Affinity"
+    ID_PROCESS_ADDRULE      "Make a rule for the selected process's image: its priority, efficiency mode, affinity or CPU sets set whenever it starts\nAdd Process Rule"
+    ID_OPTIONS_PROCESSRULES "Set priority, efficiency mode, affinity or CPU sets on processes as they start, by image name\nProcess Rules"
     ID_PROCESS_EFFICIENCY   "Run the selected process with low priority and power efficiency (EcoQoS), as Task Manager does\nEfficiency Mode"
     ID_VIEW_NETWORK         "Show the TCP connections and UDP endpoints of all processes\nNetwork"
     ID_VIEW_DRIVERS         "Show the driver services: kernel and file system drivers\nDrivers"

@@ -473,6 +473,9 @@
     <ClCompile Include="VirtualMachineLookup.cpp" />
     <ClCompile Include="DiskHealthMonitor.cpp" />
     <ClCompile Include="LeakWatcher.cpp" />
+    <ClCompile Include="ProcessRules.cpp" />
+    <ClCompile Include="ProcessRuleRunner.cpp" />
+    <ClCompile Include="ProcessRulesDlg.cpp" />
     <ClCompile Include="LeakWatch.cpp" />
     <ClCompile Include="RamDlg.cpp" />
     <ClCompile Include="Signature.cpp" />
@@ -621,6 +624,9 @@
     <ClInclude Include="VirtualMachineLookup.h" />
     <ClInclude Include="DiskHealthMonitor.h" />
     <ClInclude Include="LeakWatcher.h" />
+    <ClInclude Include="ProcessRules.h" />
+    <ClInclude Include="ProcessRuleRunner.h" />
+    <ClInclude Include="ProcessRulesDlg.h" />
     <ClInclude Include="LeakWatch.h" />
     <ClInclude Include="RamDlg.h" />
     <ClInclude Include="Signature.h" />

@@ -1699,7 +1699,7 @@ void CProcessesView::UpdateUI() {
 	auto item = GetSelectedProcess();
 	bool live = m_Active && CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_KILLTREE, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP,
-		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG, ID_PROCESS_INJECTDLL })
+		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG, ID_PROCESS_INJECTDLL, ID_PROCESS_ADDRULE })
 		ui.UIEnable(id, live);
 	ui.UIEnable(ID_PROCESS_RESTART, m_Active && CanRestart(item));
 	ui.UIEnable(ID_PROCESS_CRITICAL, m_Active && CanSetCritical(item));
@@ -1779,7 +1779,7 @@ void CProcessesView::ShowRowMenu(CPoint pt) {
 
 	bool live = CanControl(item);
 	for (UINT id : { ID_PROCESS_KILL, ID_PROCESS_KILLALL, ID_PROCESS_KILLTREE, ID_PROCESS_SUSPEND, ID_PROCESS_RESUME, ID_PROCESS_MINIDUMP,
-		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG, ID_PROCESS_INJECTDLL })
+		ID_PROCESS_FULLDUMP, ID_PROCESS_WAITCHAIN, ID_PROCESS_EMPTYWORKINGSET, ID_PROCESS_DEBUG, ID_PROCESS_INJECTDLL, ID_PROCESS_ADDRULE })
 		popup.EnableMenuItem(id, MF_BYCOMMAND | (live ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_RESTART, MF_BYCOMMAND | (CanRestart(item) ? MF_ENABLED : MF_GRAYED));
 	popup.EnableMenuItem(ID_PROCESS_CRITICAL, MF_BYCOMMAND | (CanSetCritical(item) ? MF_ENABLED : MF_GRAYED));
@@ -2244,6 +2244,13 @@ LRESULT CProcessesView::OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWN
 	if (!process->SetEfficiencyMode(!item->Process->GetEfficiencyMode().value_or(false)))
 		ShowError(L"Setting the efficiency mode");
 	UpdateUI();
+	return 0;
+}
+
+LRESULT CProcessesView::OnAddRule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto item = GetSelectedProcess();
+	if (CanControl(item))
+		Frame()->AddProcessRule(item->Process->GetImageName());
 	return 0;
 }
 

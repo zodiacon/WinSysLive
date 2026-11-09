@@ -420,6 +420,15 @@
     <ClCompile Include="DiskHealthMonitor.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="ProcessRules.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessRuleRunner.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessRulesDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
     <ClCompile Include="LeakWatcher.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -868,6 +877,15 @@
     </ClInclude>
     <ClInclude Include="DiskHealthMonitor.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessRules.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessRuleRunner.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessRulesDlg.h">
+      <Filter>Dialogs</Filter>
     </ClInclude>
     <ClInclude Include="LeakWatcher.h">
       <Filter>Helpers</Filter>

@@ -64,6 +64,8 @@ struct IMainFrame abstract : IIconSource {
 	virtual void GoToDriver(std::wstring const& path) = 0;
 	// the alert rule dialog with the rule filled in; on OK the rule is added (enabled, saved, the alerts icon shown)
 	virtual void AddAlertRule(AlertRule const& rule) = 0;
+	// the process rule dialog with the image name filled in; on OK the rule is added, saved and applied to the running ones
+	virtual void AddProcessRule(std::wstring const& imageName) = 0;
 	// Leak Watch's findings while it's on (Options > Leak Watch); null while it's off
 	virtual LeakWatcher const* GetLeakWatcher() const = 0;
 };

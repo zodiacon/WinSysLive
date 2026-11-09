@@ -97,6 +97,7 @@ public:
 		COMMAND_RANGE_HANDLER(ID_MEMPRIORITY_VERYLOW, ID_MEMPRIORITY_NORMAL, OnSetMemoryPriority)
 		COMMAND_ID_HANDLER(ID_PROCESS_AFFINITY, OnSetAffinity)
 		COMMAND_ID_HANDLER(ID_PROCESS_EFFICIENCY, OnEfficiencyMode)
+		COMMAND_ID_HANDLER(ID_PROCESS_ADDRULE, OnAddRule)
 		COMMAND_ID_HANDLER(ID_PROCESS_GOTOFILELOCATION, OnGoToFileLocation)
 		COMMAND_ID_HANDLER(ID_VT_REPORT, OnVirusTotalCommand)
 		COMMAND_ID_HANDLER(ID_VT_CHECK, OnVirusTotalCommand)
@@ -194,6 +195,7 @@ private:
 	// Set Affinity with more than one processor group (over 64 processors)
 	void SetGroupsAffinity(WinSys::Process& process, std::vector<WinSys::SystemInfo::ProcessorGroup> const& groups);
 	LRESULT OnEfficiencyMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnAddRule(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnGoToFileLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnVirusTotalCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCreateDump(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

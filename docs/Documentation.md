@@ -39,6 +39,7 @@ This document describes every tab, dialog and option. For installation, see the 
 - [Computer menu](#computer-menu)
 - [Tools menu](#tools-menu)
 - [Options](#options)
+- [Process Rules](#process-rules)
 - [Alerts](#alerts)
 - [Symbols](#symbols)
 - [VirusTotal](#virustotal)
@@ -514,6 +515,7 @@ control, account and dependencies, and optionally starts it.
 | Tray Icons... | Up to five notification area icons with small graphs: CPU, I/O, commit charge, physical memory, network. Click one to bring the window back; right-click for a menu |
 | Alerts... | See [Alerts](#alerts) |
 | Leak Watch | Off by default. While it's on, every process is sampled every 10 seconds (handles, private bytes, GDI and USER objects), and a counter that has grown steadily for 10 minutes or more is reported as a suspected leak: in the Processes tab's **Leaks** column (Memory) and by **A process leaks** alert rules. Growth that falls back (a garbage collector), stops, or happened once (a cache filled at startup) isn't a leak. It's judged on the last half hour; turning it off forgets everything |
+| Process Rules... | See [Process Rules](#process-rules) |
 | Minimize to Tray | A minimized window goes to the tray (while an icon is shown) |
 | Close to Tray | The window's close button and Alt+F4 send the window to the tray instead of exiting (while an icon is shown). File > Exit and the tray menu's Exit still exit |
 | Always on Top | Keeps the window above others |
@@ -524,6 +526,16 @@ control, account and dependencies, and optionally starts it.
 | Run at Windows Startup (Elevated) | The same, elevated without a UAC prompt (a scheduled task; changing it needs elevation) |
 | Check for Updates at Startup | Checks once a day at most |
 | Export Settings... / Import Settings... | Saves all settings to an INI file, or loads them (applied on restart) |
+
+## Process Rules
+
+**Options > Process Rules...** sets a process's priority, efficiency mode, affinity or CPU sets by its image name, whenever it starts. **Process > Add Process Rule...** makes a rule for the selected process's image.
+
+- A rule applies when a matching process starts, within one update. It also applies to the running processes when it's added, changed or turned on, and when WinSysLive starts.
+- It's applied once per process: whatever the process or you change afterwards stays. Turning a rule off or removing it doesn't undo what it did.
+- With several matching rules, the lower one's settings win. A rule's priority wins over the idle priority its efficiency mode brings.
+- Rules run only while WinSysLive runs and updates aren't paused. A process that lives shorter than an update isn't seen.
+- WinSysLive must be allowed to change the process: unelevated, that excludes elevated processes and other users'; elevated, protected ones. The dialog's lower list shows what each rule did and why it failed.
 
 ## Alerts
 
