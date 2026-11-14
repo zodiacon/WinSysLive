@@ -60,6 +60,8 @@ namespace {
 		auto& h = *reading.Health;
 		first += L": " + h.Model + (h.BusType.empty() ? L"" : L" (" + h.BusType + L")");
 		auto asleep = reading.Asleep ? L" (asleep: last reading)" : L"";
+		if (!h.NotRead.empty())
+			return { first + L"    Health: not read (" + h.NotRead + L")", L"" };
 		if (h.Source == DiskHealthSource::None)
 			return { first + L"    Health: not reported by the drive" + asleep, L"" };
 
@@ -852,6 +854,9 @@ void CPerfDiskPage::CreateGraphs() {
 	m_Space.SetValueFormatter(Format::Bytes);
 	m_Disks = WinSys::DiskHealthReader::GetVolumeDisks(m_Letter);
 	m_Lines.resize(2 + 2 * m_Disks.size());
+	// until the page is first shown (the next update after it is)
+	for (size_t i = 0; i < m_Disks.size(); i++)
+		m_Lines[2 + 2 * i] = std::format(L"Disk {}: reading its health...", m_Disks[i]);
 }
 
 void CPerfDiskPage::LayoutGraphs(CRect const& rc, int gap) {
@@ -864,7 +869,8 @@ void CPerfDiskPage::LayoutGraphs(CRect const& rc, int gap) {
 }
 
 void CPerfDiskPage::Sample(PerfSample const& sample) {
-	for (size_t i = 0; i < m_Disks.size(); i++) {
+	// hidden, the lines keep what they had (no one sees them) and the disks aren't asked for, so they aren't read
+	for (size_t i = 0; m_Shown && i < m_Disks.size(); i++) {
 		auto [health, details] = DiskHealthLines(m_Disks[i], DiskHealthMonitor::Get(m_Disks[i]));
 		m_Lines[2 + 2 * i] = std::move(health);
 		m_Lines[3 + 2 * i] = std::move(details);

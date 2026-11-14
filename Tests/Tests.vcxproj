@@ -110,6 +110,7 @@
     <ClCompile Include="..\WinSysLive\Snapshot.cpp" />
     <ClCompile Include="..\WinSysLive\CommandLine.cpp" />
     <ClCompile Include="..\WinSysLive\ThreadText.cpp" />
+    <ClCompile Include="..\WinSysLive\ThreadPriority.cpp" />
     <ClCompile Include="..\WinSysLive\TimelineModel.cpp" />
     <ClCompile Include="..\WinSysLive\ListExport.cpp" />
     <ClCompile Include="..\WinSysLive\HistoryRecorder.cpp" />

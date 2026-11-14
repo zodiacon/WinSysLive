@@ -305,13 +305,21 @@ int CPerfView::PowerItem() const {
 void CPerfView::SamplePower(PerfSample& sample) {
 	if (!m_HasPower)
 		return;
+	// the batteries and the zones are ACPI methods the firmware runs (often through the embedded controller, which
+	// the firmware and other tools use too), so they're read every 5 seconds; the samples between repeat the last
+	auto now = ::GetTickCount64();
+	bool due = m_PowerRead == 0 || now - m_PowerRead >= PowerReadInterval;
+	if (due)
+		m_PowerRead = now;
 	if (m_HasBattery) {
-		m_Batteries = m_Battery.Read();
+		if (due)
+			m_Batteries = m_Battery.Read();
 		sample.Batteries = &m_Batteries;
-		sample.Power = WinSys::BatteryMonitor::GetSystemState();
+		sample.Power = WinSys::BatteryMonitor::GetSystemState();	// the power manager's, kept by it: cheap
 	}
 	if (m_HasThermal) {
-		m_Zones = m_Thermal.Read();
+		if (due)
+			m_Zones = m_Thermal.Read();
 		sample.ThermalZones = &m_Zones;
 	}
 }

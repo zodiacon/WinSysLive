@@ -496,6 +496,12 @@ public:
 
 	explicit CPerfDiskPage(wchar_t letter) : m_Letter(letter) {}
 
+	// the disks' health is asked for only while the page is shown (DiskHealthMonitor reads what's asked for)
+	void Update(PerfSample const& sample, bool visible) override {
+		m_Shown = visible;
+		CPerfPage<CPerfDiskPage>::Update(sample, visible);
+	}
+
 	void CreateGraphs();
 	void LayoutGraphs(CRect const& rc, int gap);
 	void Sample(PerfSample const& sample);
@@ -511,6 +517,7 @@ private:
 	// the physical disks under the volume (more than one when it spans or mirrors), read when the page is made; their
 	// health (DiskHealthMonitor's last reading) takes two lines each below the volume's
 	std::vector<uint32_t> m_Disks;
+	bool m_Shown{ false };	// the page is visible (this update's): only then is the health asked for
 };
 
 //

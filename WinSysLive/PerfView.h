@@ -102,4 +102,7 @@ private:
 	std::vector<WinSys::BatteryInfo> m_Batteries;
 	std::vector<WinSys::ThermalZone> m_Zones;
 	bool m_HasPower{ false }, m_HasBattery{ false }, m_HasThermal{ false };
+	// when the batteries and zones were last read (GetTickCount64; 0: never), at most every PowerReadInterval ms
+	ULONGLONG m_PowerRead{ 0 };
+	static constexpr ULONGLONG PowerReadInterval = 5000;
 };

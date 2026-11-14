@@ -13,6 +13,7 @@
 #include "UpdateInstaller.h"
 #include "ExplorerMenu.h"
 #include "CommandLine.h"
+#include "ThreadPriority.h"
 #include <WinSys/SecurityHelper.h>
 #include <WinSys/LogonTask.h>
 #include <WinSys/Token.h>
@@ -144,6 +145,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	AtlInitCommonControls(ICC_BAR_CLASSES | ICC_LINK_CLASS);	// SysLink: the About box
 	::SetPriorityClass(::GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 	::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+	// every other thread two below normal (11, not 13): a stuck worker, or a driver it waits on, holds less of the
+	// machine
+	ThreadPriority::LowerNewThreads();
 	// an elevated token has SeDebugPrivilege, disabled. Enabled, it opens more processes and threads, and since
 	// Windows 11 24H2 the system handle table (SystemExtendedHandleInformation) has the objects' addresses only with it
 	// (null otherwise, elevated or not): the Handles pages' Address column, the handle sheet, zombie processes

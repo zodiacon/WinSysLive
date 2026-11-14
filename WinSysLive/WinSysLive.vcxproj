@@ -533,6 +533,7 @@
     <ClCompile Include="ThreadsPage.cpp" />
     <ClCompile Include="ThreadCommands.cpp" />
     <ClCompile Include="ThreadText.cpp" />
+    <ClCompile Include="ThreadPriority.cpp" />
     <ClCompile Include="SearchOnline.cpp" />
     <ClCompile Include="UsersView.cpp" />
     <ClCompile Include="VersionInfo.cpp" />
@@ -648,6 +649,7 @@
     <ClInclude Include="IpcView.h" />
     <ClInclude Include="ZombiesView.h" />
     <ClInclude Include="ThreadsView.h" />
+    <ClInclude Include="ThreadPriority.h" />
     <ClInclude Include="TimelineView.h" />
     <ClInclude Include="ZombieHandlesDlg.h" />
     <ClInclude Include="ObjectTypesView.h" />

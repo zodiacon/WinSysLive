@@ -196,6 +196,8 @@ void ShowProcessProperties(ProcessProperties props) {
 	auto id = std::make_shared<std::atomic<DWORD>>(0);
 	auto window = std::make_shared<std::atomic<HWND>>(nullptr);
 	std::thread thread([props = std::move(props), id, window]() mutable {
+		// a UI thread: at the class's normal, not two below as the workers start (ThreadPriority)
+		::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_NORMAL);
 		{
 			// a message queue, before CloseProcessProperties can post to it
 			MSG msg;

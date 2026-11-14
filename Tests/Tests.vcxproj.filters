@@ -111,6 +111,9 @@
     <ClCompile Include="..\WinSysLive\AlertRules.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\WinSysLive\ThreadPriority.cpp">
+      <Filter>App Sources</Filter>
+    </ClCompile>
     <ClCompile Include="..\WinSysLive\LeakWatch.cpp">
       <Filter>App Sources</Filter>
     </ClCompile>

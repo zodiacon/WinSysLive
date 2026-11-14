@@ -173,6 +173,19 @@ TEST(DiskHealth_Ata) {
 	CHECK(none.Source == DiskHealthSource::None);
 }
 
+// only NVMe, ATA and SATA disks are asked for their health: a RAID controller's (Intel RST's) driver is passed by, as
+// a laptop with RST froze when its disk was read; the reason is the drive page's text
+TEST(DiskHealth_Buses) {
+	for (auto bus : { BusTypeNvme, BusTypeAta, BusTypeSata })
+		CHECK(DiskHealthReader::WhyNotRead(bus).empty());
+	CHECK_EQ(DiskHealthReader::WhyNotRead(BusTypeRAID), std::wstring(L"behind a RAID controller"));
+	CHECK_EQ(DiskHealthReader::WhyNotRead(BusTypeUnknown), std::wstring(L"on an unknown bus"));
+	CHECK_EQ(DiskHealthReader::WhyNotRead(BusTypeUsb), std::wstring(L"on a USB bus"));
+	for (auto bus : { BusTypeScsi, BusTypeSas, BusTypeVirtual, BusTypeFileBackedVirtual, BusTypeSpaces })
+		CHECK(!DiskHealthReader::WhyNotRead(bus).empty());
+	CHECK_EQ(DiskHealthReader::WhyNotRead(200), std::wstring(L"on an unknown bus"));
+}
+
 // the system drive's disks, read as the drive page reads them (no elevation needed)
 TEST(DiskHealth_Live) {
 	WCHAR windows[MAX_PATH];

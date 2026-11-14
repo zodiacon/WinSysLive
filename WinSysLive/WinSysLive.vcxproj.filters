@@ -45,6 +45,9 @@
     <ClCompile Include="ColumnLayoutText.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="ThreadPriority.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
     <ClCompile Include="AddressResolver.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
@@ -465,6 +468,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColumnLayout.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPriority.h">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="AddressResolver.h">

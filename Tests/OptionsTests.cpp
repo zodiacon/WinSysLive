@@ -3,9 +3,60 @@
 #include "../WinSysLive/IntervalText.h"
 #include "../WinSysLive/GlobalHotKey.h"
 #include "../WinSysLive/CpuHistory.h"
+#include "../WinSysLive/ThreadPriority.h"
+#include <thread>
+#include <wil/resource.h>
 
-// View > Update Interval > Other... (IntervalText.h), Options > Global Hotkey (GlobalHotKey.h) and the threads' CPU
-// History scales (CpuHistory.h)
+// View > Update Interval > Other... (IntervalText.h), Options > Global Hotkey (GlobalHotKey.h), the threads' CPU
+// History scales (CpuHistory.h) and the worker threads' priority (ThreadPriority.h)
+
+// new threads start two below normal once turned on (the TLS callback), the calling thread stays as it is, and a
+// thread pool's thread is lowered too; turned off, new threads start at normal again
+TEST(Options_ThreadPriority) {
+	auto newThreadPriority = [] {
+		int priority = THREAD_PRIORITY_ERROR_RETURN;
+		std::thread([&] { priority = ::GetThreadPriority(::GetCurrentThread()); }).join();
+		return priority;
+	};
+	auto self = ::GetThreadPriority(::GetCurrentThread());
+	CHECK_EQ(newThreadPriority(), THREAD_PRIORITY_NORMAL);
+	// one made before, waiting: lowered as well
+	wil::unique_event go(wil::EventOptions::ManualReset);
+	int earlier = THREAD_PRIORITY_ERROR_RETURN;
+	std::thread before([&] {
+		go.wait();
+		earlier = ::GetThreadPriority(::GetCurrentThread());
+	});
+
+	ThreadPriority::LowerNewThreads();
+	go.SetEvent();
+	before.join();
+	CHECK_EQ(earlier, THREAD_PRIORITY_LOWEST);
+	CHECK_EQ(newThreadPriority(), THREAD_PRIORITY_LOWEST);
+	CHECK_EQ(::GetThreadPriority(::GetCurrentThread()), self);
+	// a thread the system makes (a private pool's: a new thread, not one made before)
+	if (auto pool = ::CreateThreadpool(nullptr)) {
+		TP_CALLBACK_ENVIRON env;
+		::InitializeThreadpoolEnvironment(&env);
+		::SetThreadpoolCallbackPool(&env, pool);
+		struct Result {
+			int Priority{ THREAD_PRIORITY_ERROR_RETURN };
+			wil::unique_event Done{ wil::EventOptions::ManualReset };
+		} result;
+		CHECK(::TrySubmitThreadpoolCallback([](PTP_CALLBACK_INSTANCE, PVOID p) {
+			auto r = static_cast<Result*>(p);
+			r->Priority = ::GetThreadPriority(::GetCurrentThread());
+			r->Done.SetEvent();
+			}, &result, &env));
+		CHECK(result.Done.wait(5000));
+		CHECK_EQ(result.Priority, THREAD_PRIORITY_LOWEST);
+		::DestroyThreadpoolEnvironment(&env);
+		::CloseThreadpool(pool);
+	}
+
+	ThreadPriority::LowerNewThreads(false);
+	CHECK_EQ(newThreadPriority(), THREAD_PRIORITY_NORMAL);
+}
 
 TEST(Options_IntervalParse) {
 	using IntervalText::ParseSeconds;
