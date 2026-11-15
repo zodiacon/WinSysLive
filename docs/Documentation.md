@@ -82,8 +82,8 @@ Common to the list tabs:
   closes a handle. Its tooltip says which.
 
 The toolbar also has the **window finder**: drag the target button onto any window to select its process in the
-Processes tab, as in Process Explorer. While dragging, the window is outlined and named in the status bar; Escape
-cancels.
+Processes tab, as in Process Explorer. While dragging, WinSysLive's main window is hidden, so the windows under it can
+be picked, and the window under the cursor is outlined; Escape cancels.
 
 **View > Command Palette...** (Ctrl+Q) runs any menu command by typing part of its name, and **View > Search...**
 (Ctrl+Shift+Q) finds processes, services, drivers, devices, connections and the open tabs' rows (see

@@ -89,6 +89,7 @@ LRESULT CWindowFinder::OnLButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lP
 	::SetLayeredWindowAttributes(m_Highlight, 0, 255, LWA_ALPHA);
 	m_Dragging = true;
 	PressButton(m_CommandId, TRUE);
+	HideRoot();
 	SetCapture();
 	::SetCursor(::LoadCursor(nullptr, IDC_CROSS));
 	return 0;
@@ -142,4 +143,32 @@ void CWindowFinder::EndDrag() {
 	PressButton(m_CommandId, FALSE);
 	SetTarget(nullptr);
 	m_Highlight.DestroyWindow();
+	ShowRoot();
+}
+
+void CWindowFinder::HideRoot() {
+	auto hRoot = ::GetAncestor(m_hWnd, GA_ROOT);
+	if (!hRoot || m_hHiddenRoot)
+		return;
+	m_hHiddenRoot = hRoot;
+	BOOL cloak = TRUE;
+	::DwmSetWindowAttribute(hRoot, DWMWA_CLOAK, &cloak, sizeof(cloak));
+	m_RootExStyle = ::GetWindowLong(hRoot, GWL_EXSTYLE);
+	::SetWindowLong(hRoot, GWL_EXSTYLE, m_RootExStyle | WS_EX_LAYERED | WS_EX_TRANSPARENT);
+	// fully transparent too, should cloaking fail
+	::SetLayeredWindowAttributes(hRoot, 0, 0, LWA_ALPHA);
+}
+
+void CWindowFinder::ShowRoot() {
+	auto hRoot = m_hHiddenRoot;
+	if (!hRoot)
+		return;
+	m_hHiddenRoot = nullptr;
+	if (!::IsWindow(hRoot))
+		return;
+	::SetWindowLong(hRoot, GWL_EXSTYLE, m_RootExStyle);
+	// a window that stops being layered must be painted again
+	::RedrawWindow(hRoot, nullptr, nullptr, RDW_ERASE | RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
+	BOOL cloak = FALSE;
+	::DwmSetWindowAttribute(hRoot, DWMWA_CLOAK, &cloak, sizeof(cloak));
 }

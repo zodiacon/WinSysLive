@@ -51,10 +51,17 @@ private:
 
 	void SetTarget(HWND hWnd);
 	void EndDrag();
+	// the toolbar's top-level window out of sight while dragging, so the windows under it can be picked: cloaked and
+	// made layered and transparent (WindowFromPoint looks through it), not hidden, which would activate another
+	// window and take the mouse capture and Escape from the drag
+	void HideRoot();
+	void ShowRoot();
 
 	std::function<void(HWND)> m_Hover, m_Found;
 	CWindowHighlight m_Highlight;
 	HWND m_hTarget{ nullptr };
+	HWND m_hHiddenRoot{ nullptr };
+	LONG m_RootExStyle{ 0 };
 	UINT m_CommandId{ 0 };
 	bool m_Dragging{ false };
 };
