@@ -59,6 +59,19 @@ namespace {
 	};
 	static_assert(_countof(s_DriverColumns) == _countof(s_Columns));
 
+	// the toolbar right of the filter box: a service's, and a driver's (no process: its loaded module)
+	const ToolBarButtonInfo s_BarButtons[] = {
+		{ ID_SERVICE_START, IDI_RUN, BTNS_AUTOSIZE, L"Start" },
+		{ ID_SERVICE_STOP, IDI_KILL, BTNS_AUTOSIZE, L"Stop" },
+		{ ID_SERVICE_GOTOPROCESS, IDI_PROCESS, BTNS_AUTOSIZE, L"Go to Process" },
+	};
+	const ToolBarButtonInfo s_DriverBarButtons[] = {
+		{ ID_SERVICE_START, IDI_RUN, BTNS_AUTOSIZE, L"Start" },
+		{ ID_SERVICE_STOP, IDI_KILL, BTNS_AUTOSIZE, L"Stop" },
+		{ ID_SERVICE_GOTOKMODULE, IDI_ATOM, BTNS_AUTOSIZE, L"Go to Kernel Module" },
+	};
+	const int BarImageSize = 16;	// at 96 DPI
+
 	template<typename Range, typename Format>
 	std::wstring Join(Range const& range, Format format) {
 		std::wstring text;
@@ -155,6 +168,24 @@ LRESULT CServicesView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 			UpdateFilterStatus();
 		});
 	AddSimpleReBarBand(m_Filter.GetHwnd(), nullptr, FALSE, m_Filter.GetWidth());
+	auto buttons = BarButtons();
+	m_Bar = ToolbarHelper::CreateAndInitToolBar(m_hWndToolBar, buttons.data(), (int)buttons.size(), BarImageSize);
+	m_BarFont.Apply(m_Bar);
+	AddSimpleReBarBand(m_Bar, nullptr, FALSE);
+	// two bands would get grippers; the filter keeps its width, the bar's band takes the rest of the row
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_STYLE | RBBIM_CHILD };
+		rebar.GetBandInfo(i, &band);
+		band.fStyle |= RBBS_NOGRIPPER;
+		band.fMask = RBBIM_STYLE;
+		if (band.hwndChild == m_Filter.GetHwnd()) {
+			band.fMask |= RBBIM_CHILDSIZE;
+			band.cxMinChild = m_Filter.GetWidth();
+		}
+		rebar.SetBandInfo(i, &band);
+	}
+	UpdateBar();
 
 	for (auto& svc : ServiceManager::EnumServices(EnumType())) {
 		auto item = std::make_shared<ServiceItem>(svc);
@@ -248,6 +279,69 @@ LRESULT CServicesView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 void CServicesView::OnFontChanged(HFONT font) {
 	m_List.SetFont(font);
 	m_Filter.SetFont(font);
+	// the bar's buttons and band (and the filter's) take the font's size
+	m_BarFont.SetUserFont(font);
+	LayoutBar();
+}
+
+std::span<ToolBarButtonInfo const> CServicesView::BarButtons() const {
+	if (m_Kind == Kind::Drivers)
+		return s_DriverBarButtons;
+	return s_BarButtons;
+}
+
+void CServicesView::UpdateLayout(BOOL resizeBars) {
+	CViewBase::UpdateLayout(resizeBars);
+	if (m_Bar) {
+		CReBarCtrl rebar(m_hWndToolBar);
+		rebar.MaximizeBand(rebar.GetBandCount() - 1, FALSE);
+	}
+}
+
+void CServicesView::LayoutBar() {
+	if (!m_Bar)
+		return;
+	auto buttons = BarButtons();
+	ToolbarHelper::UpdateToolBarImages(m_Bar, buttons.data(), (int)buttons.size(), BarImageSize);
+	m_BarFont.Apply(m_Bar);
+	// its band, as AddSimpleReBarBand set it, for the buttons' new size
+	CReBarCtrl rebar(m_hWndToolBar);
+	for (UINT i = 0; i < rebar.GetBandCount(); i++) {
+		REBARBANDINFO band{ sizeof(band), RBBIM_CHILD };
+		if (rebar.GetBandInfo(i, &band) && band.hwndChild == m_Bar) {
+			SIZE size{};
+			m_Bar.GetMaxSize(&size);
+			band.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+			band.cxMinChild = band.cxIdeal = size.cx;
+			band.cyMinChild = size.cy;
+			rebar.SetBandInfo(i, &band);
+			break;
+		}
+	}
+	UpdateLayout();
+}
+
+void CServicesView::UpdateBar() {
+	if (!m_Bar)
+		return;
+	// as the row menu enables them
+	auto item = GetSelectedService();
+	bool start = false, stop = false, go = false;
+	if (item) {
+		auto& status = item->Info.GetStatusProcess();
+		bool canStop = (status.ControlsAccepted & ServiceControlsAccepted::Stop) == ServiceControlsAccepted::Stop;
+		start = status.CurrentState == ServiceState::Stopped;
+		stop = canStop && status.CurrentState != ServiceState::Stopped && !m_Control.IsBusy();
+		go = m_Kind == Kind::Drivers ? status.CurrentState == ServiceState::Running : status.ProcessId != 0;
+	}
+	auto enable = [&](UINT id, bool enabled) {
+		// only on a change: OnFrameIdle calls this often
+		if ((m_Bar.IsButtonEnabled(id) != FALSE) != enabled)
+			m_Bar.EnableButton(id, enabled);
+	};
+	enable(ID_SERVICE_START, start);
+	enable(ID_SERVICE_STOP, stop);
+	enable(m_Kind == Kind::Drivers ? ID_SERVICE_GOTOKMODULE : ID_SERVICE_GOTOPROCESS, go);
 }
 
 void CServicesView::OnRefresh(bool active) {
@@ -727,6 +821,7 @@ LRESULT CServicesView::OnTimer(UINT /*uMsg*/, WPARAM id, LPARAM /*lParam*/, BOOL
 
 void CServicesView::OnFrameIdle() {
 	Frame()->GetUI().UIEnable(ID_VIEW_PROPERTIES, GetSelectedService() != nullptr);
+	UpdateBar();
 }
 
 LRESULT CServicesView::OnStartType(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

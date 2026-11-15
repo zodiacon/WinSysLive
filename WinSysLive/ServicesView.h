@@ -4,7 +4,9 @@
 #include "ViewBase.h"
 #include "ColumnLayout.h"
 #include "FilterBox.h"
+#include "BarFont.h"
 #include <VirtualListView.h>
+#include <ToolbarHelper.h>
 #include <WinSys/ServiceManager.h>
 #include <WinSys/Service.h>
 #include <functional>
@@ -40,7 +42,10 @@ public:
 	// the frame's image list has the new DPI's size: the rows take its height
 	void OnDpiChanged(UINT /*dpi*/) override {
 		m_List.SetImageList(Frame()->GetImageList(), LVSIL_SMALL);
+		LayoutBar();
 	}
+	// the toolbar's band takes the rest of the row (the rebar gives a row's extra width to its first band, the filter's)
+	void UpdateLayout(BOOL resizeBars = TRUE);
 	// Properties (Alt+Enter) for the selected service
 	void OnFrameIdle() override;
 	// the Drivers tab: the driver service whose image is the file
@@ -61,6 +66,11 @@ public:
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_HANDLER(IDC_VIEW_FILTER, EN_CHANGE, OnFilterChanged)
+		// the toolbar's, which come to the view itself (through the rebar), not routed by the frame
+		COMMAND_ID_HANDLER(ID_SERVICE_START, OnStart)
+		COMMAND_ID_HANDLER(ID_SERVICE_STOP, OnStop)
+		COMMAND_ID_HANDLER(ID_SERVICE_GOTOPROCESS, OnGoToProcess)
+		COMMAND_ID_HANDLER(ID_SERVICE_GOTOKMODULE, OnGoToKernelModule)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
 		CHAIN_MSG_MAP(CVirtualListView<CServicesView>)
 		CHAIN_MSG_MAP(CViewBase<CServicesView>)
@@ -174,6 +184,13 @@ private:
 	std::vector<std::shared_ptr<ServiceItem>> m_Items;	// the list's rows (those matching the filter), in display order
 	bool m_ShowPending{ false };	// refreshed while hidden: the rows are chosen and sorted when shown
 	CFilterBox m_Filter;	// in the view's rebar
+	// right of the filter: Start, Stop and Go to Process (a driver's: Go to Kernel Module), enabled for the selected
+	// service from OnFrameIdle
+	CToolBarCtrl m_Bar;
+	CBarFont m_BarFont;
+	std::span<ToolBarButtonInfo const> BarButtons() const;
+	void LayoutBar();
+	void UpdateBar();
 	std::unordered_map<std::wstring, std::shared_ptr<ServiceItem>> m_ItemsByName;
 
 	// Stop and Restart, with the running dependents (ServiceSteps.h); the timer runs while steps remain
