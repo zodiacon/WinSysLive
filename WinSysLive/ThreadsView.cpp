@@ -1061,3 +1061,16 @@ LRESULT CThreadsView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	Update();
 	return 0;
 }
+
+std::wstring CThreadsView::GetSelectionText() const {
+	auto row = GetSelected();
+	if (!row || !row->State)
+		return {};
+	auto& state = *row->State;
+	if (row->Group)
+		return std::format(L"{} ({}), {} threads", state.ProcessName, state.Pid, row->Threads);
+	auto text = std::format(L"Thread {} in {} ({})", row->Key.Id, state.ProcessName, state.Pid);
+	if (row->Exited)
+		text += L", exited";
+	return text;
+}

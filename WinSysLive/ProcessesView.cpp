@@ -2582,3 +2582,14 @@ LRESULT CProcessesView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND 
 	SaveColumns();
 	return 0;
 }
+
+std::wstring CProcessesView::GetSelectionText() const {
+	auto item = GetSelectedProcess();
+	if (!item || !item->Process)
+		return {};
+	auto& p = *item->Process;
+	auto text = std::format(L"{} ({})", p.GetImageName(), p.Id);
+	if (item->Terminated)
+		text += L", exited";
+	return text;
+}

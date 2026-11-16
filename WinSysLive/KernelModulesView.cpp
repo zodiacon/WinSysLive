@@ -520,3 +520,15 @@ LRESULT CKernelModulesView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, H
 	ShowRows(GetSelectedKey());
 	return 0;
 }
+
+std::wstring CKernelModulesView::GetSelectionText() const {
+	auto row = GetSelected();
+	if (!row)
+		return {};
+	auto text = GetText(*row, Column::Name);
+	if (auto path = GetText(*row, Column::Path); !path.empty())
+		text += L": " + path;
+	if (row->Unloaded)
+		text += L", unloaded";
+	return text;
+}

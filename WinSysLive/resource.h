@@ -524,6 +524,7 @@
 #define ID_OPTIONS_CLOSETOTRAY          33078
 #define ID_OPTIONS_PROCESSRULES         33079
 #define ID_PROCESS_ADDRULE              33080
+#define ID_PANE_SELECTION               33081
 #define ID_PANE_PROCESSES               32784
 #define ID_PANE_CPU                     32785
 #define ID_PANE_ELEVATION               32786
@@ -1006,7 +1007,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        367
-#define _APS_NEXT_COMMAND_VALUE         33081
+#define _APS_NEXT_COMMAND_VALUE         33082
 #define _APS_NEXT_CONTROL_VALUE         1609
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

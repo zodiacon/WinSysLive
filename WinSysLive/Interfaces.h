@@ -89,6 +89,9 @@ struct IView abstract {
 	virtual void OnDpiChanged(UINT /*dpi*/) {}
 	// the active view, when the frame's message loop is idle: to update commands that depend on the focus
 	virtual void OnFrameIdle() {}
+	// what's selected, in a few words, for the status bar's Selection pane; empty: nothing (or the view doesn't say). The
+	// frame asks the active view while idle and updates the pane when the text changes
+	virtual std::wstring GetSelectionText() const { return {}; }
 	// the toolbar tooltip of a command whose text depends on the view's state; empty: the command's string resource
 	virtual std::wstring GetCommandTip(UINT /*id*/) const { return {}; }
 	// whether ID_EDIT_COPY (Ctrl+C, the toolbar's Copy) has something to copy: the selection in the list with the

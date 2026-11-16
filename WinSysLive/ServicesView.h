@@ -34,6 +34,8 @@ public:
 		return m_List;
 	}
 	void OnActivate(bool active) override;
+	// the selected row, for the status bar's Selection pane
+	std::wstring GetSelectionText() const override;
 	void SaveSettings() override {
 		SaveColumns();
 	}

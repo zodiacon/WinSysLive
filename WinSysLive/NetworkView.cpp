@@ -475,3 +475,17 @@ LRESULT CNetworkView::OnResetColumns(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	ShowRows(GetSelectedKey());
 	return 0;
 }
+
+std::wstring CNetworkView::GetSelectionText() const {
+	auto c = GetSelected();
+	if (!c)
+		return {};
+	// "chrome.exe (1234): TCP 10.0.0.5:51234 -> 140.82.112.4:443, Established"
+	auto text = std::format(L"{} ({}): {} {}:{}", GetText(*c, Column::Process), GetText(*c, Column::Pid), GetText(*c, Column::Protocol),
+		GetText(*c, Column::LocalAddress), GetText(*c, Column::LocalPort));
+	if (auto remote = GetText(*c, Column::RemoteAddress); !remote.empty())
+		text += std::format(L" -> {}:{}", remote, GetText(*c, Column::RemotePort));
+	if (auto state = GetText(*c, Column::State); !state.empty())
+		text += L", " + state;
+	return text;
+}

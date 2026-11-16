@@ -917,3 +917,15 @@ LRESULT CServicesView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl
 	ClipboardHelper::CopyText(m_hWnd, text.c_str());
 	return 0;
 }
+
+std::wstring CServicesView::GetSelectionText() const {
+	auto item = GetSelectedService();
+	if (!item)
+		return {};
+	// "Spooler (Print Spooler): Running, PID 4567"
+	auto& status = item->Info.GetStatusProcess();
+	auto text = std::format(L"{} ({}): {}", item->Info.GetName(), item->Info.GetDisplayName(), GetText(*item, Column::State));
+	if (status.ProcessId)
+		text += std::format(L", PID {}", status.ProcessId);
+	return text;
+}

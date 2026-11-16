@@ -41,6 +41,8 @@ public:
 		return item ? m_Tree.GetCellText(item, 0) : std::wstring();
 	}
 	void OnActivate(bool active) override;
+	// the selected row, for the status bar's Selection pane
+	std::wstring GetSelectionText() const override;
 	void SaveSettings() override;
 	void OnRefresh(bool active) override;
 	void OnThemeChanged(bool dark) override;

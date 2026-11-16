@@ -161,7 +161,8 @@ namespace {
 
 	// pane widths come from the panes' string resources
 	// (the Updates pane's is set for its icon too: UpdatePausePane)
-	int s_Panes[] = { ID_DEFAULT_PANE, ID_PANE_UPDATES, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
+	// (the Selection pane's is set for its text: UpdateSelectionPane)
+	int s_Panes[] = { ID_DEFAULT_PANE, ID_PANE_SELECTION, ID_PANE_UPDATES, ID_PANE_PROCESSES, ID_PANE_THREADS, ID_PANE_CPU, ID_PANE_ELEVATION };
 
 	// an executable's icon in a size (ExtractIconEx's small icons are of the system DPI)
 	HICON ExtractFileIcon(std::wstring const& path, int size) {
@@ -250,6 +251,8 @@ BOOL CMainFrame::OnIdle() {
 	// the active view's commands may depend on the focus, which changes without telling the views
 	if (m_ActiveView)
 		m_ActiveView->OnFrameIdle();
+	// the selection changes without telling the frame, and so does the active view
+	UpdateSelectionPane();
 	bool list = GetExportList() != nullptr;
 	// a view without a list may export its own way (the History tab saves its log)
 	UIEnable(ID_FILE_EXPORT, list || (m_ActiveView && m_ActiveView->CanExport()));
@@ -442,6 +445,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam
 	m_StatusBar.SetPanes(s_Panes, _countof(s_Panes), false);
 	m_PaneIconSize = 0;	// the Updates pane's width and icons again
 	UpdatePausePane();
+	UpdateSelectionPane(true);
 	UpdateStatusBar();
 	// a font of the user's choice, at the new DPI (the views' default fonts follow the DPI by themselves)
 	if (!m_Font.IsNull())
@@ -1083,6 +1087,31 @@ void CMainFrame::InitStatusBar() {
 	m_StatusBar.SetPaneText(ID_PANE_CPU, L"CPU: --");
 	m_StatusBar.SetPaneText(ID_PANE_ELEVATION, WinSys::SecurityHelper::IsRunningElevated() ? L"Administrator" : L"Standard User");
 	UpdatePausePane();
+	UpdateSelectionPane(true);
+}
+
+void CMainFrame::UpdateSelectionPane(bool force) {
+	if (!m_StatusBar)
+		return;
+	auto text = m_ActiveView ? m_ActiveView->GetSelectionText() : std::wstring();
+	if (!force && text == m_SelectionText)
+		return;
+	m_SelectionText = std::move(text);
+	m_StatusBar.SetPaneText(ID_PANE_SELECTION, m_SelectionText.c_str());
+	m_StatusBar.SetPaneTipText(ID_PANE_SELECTION, m_SelectionText.c_str());
+	// as wide as the text, but no more than a third of the bar: the first pane has the views' messages
+	int width = 0;
+	if (!m_SelectionText.empty()) {
+		CClientDC dc(m_StatusBar);
+		auto old = dc.SelectFont(m_StatusBar.GetFont());
+		SIZE extent{};
+		dc.GetTextExtent(m_SelectionText.c_str(), (int)m_SelectionText.size(), &extent);
+		dc.SelectFont(old);
+		CRect rc;
+		m_StatusBar.GetClientRect(&rc);
+		width = (std::min)((int)extent.cx + DpiHelper::Scale(12, m_hWnd), (std::max)(rc.Width() / 3, DpiHelper::Scale(100, m_hWnd)));
+	}
+	m_StatusBar.SetPaneWidth(ID_PANE_SELECTION, width);
 }
 
 void CMainFrame::UpdatePausePane() {

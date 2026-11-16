@@ -434,6 +434,10 @@ private:
 	// the status bar's Updates pane: a play icon and "Updating" while the updates run, a pause icon and "Paused" while
 	// they don't, its tooltip, and its width for the icon and the longer text (the icons loaded for the DPI)
 	void UpdatePausePane();
+	// the Selection pane: the active view's GetSelectionText, its width for the text (up to a share of the bar); only
+	// when the text changed, unless forced (the panes were set again)
+	void UpdateSelectionPane(bool force = false);
+	std::wstring m_SelectionText;
 	void SaveSettings();
 	// the tray icon as the TrayIcon setting has it
 	void ApplyTrayIcons(CTrayIcons::Modes const& modes);
