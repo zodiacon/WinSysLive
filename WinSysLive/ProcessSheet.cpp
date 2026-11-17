@@ -217,13 +217,41 @@ void ShowProcessProperties(ProcessProperties props) {
 				sheet.ShowWindow(SW_SHOW);
 				// a modeless sheet stays open until its active page is gone (Close, Escape, the close box);
 				// CloseProcessProperties ends the loop with WM_QUIT
+				bool quit = true;
 				while (::GetMessage(&msg, nullptr, 0, 0)) {
-					if (!sheet.IsDialogMessage(&msg)) {
+					// the sheet's modeless dialogs (the Memory page's regions) get their keys too (Tab, Escape)
+					auto root = msg.hwnd ? ::GetAncestor(msg.hwnd, GA_ROOT) : nullptr;
+					bool owned = root && root != sheet.m_hWnd && ::GetWindow(root, GW_OWNER) == sheet.m_hWnd;
+					if (owned ? !::IsDialogMessage(root, &msg) : !sheet.IsDialogMessage(&msg)) {
 						::TranslateMessage(&msg);
 						::DispatchMessage(&msg);
 					}
-					if (!sheet.IsWindow() || !sheet.GetActivePage())
+					if (!sheet.IsWindow() || !sheet.GetActivePage()) {
+						quit = false;
 						break;
+					}
+				}
+				if (!quit && sheet.IsWindow()) {
+					// closed by the user: the sheet's modeless dialogs close as if their Close were clicked, so they can
+					// ask what they need to (a memory region's protection to restore). Not when the app is exiting
+					// (WM_QUIT): CloseProcessProperties waits only briefly for the thread, so the dialogs are just
+					// destroyed with the sheet (a region's protection is then restored without asking)
+					struct Owned {
+						HWND Sheet;
+						std::vector<HWND> Windows;
+					} owned{ sheet.m_hWnd };
+					::EnumThreadWindows(::GetCurrentThreadId(), [](HWND hWnd, LPARAM param) {
+						// dialogs only: the sheet owns its controls' tooltips too
+						auto& owned = *reinterpret_cast<Owned*>(param);
+						WCHAR name[16];
+						if (::GetWindow(hWnd, GW_OWNER) == owned.Sheet && ::GetClassName(hWnd, name, _countof(name))
+							&& ::wcscmp(name, L"#32770") == 0)
+							owned.Windows.push_back(hWnd);
+						return TRUE;
+						}, (LPARAM)&owned);
+					for (auto hWnd : owned.Windows)
+						if (::IsWindow(hWnd))
+							::SendMessage(hWnd, WM_CLOSE, 0, 0);
 				}
 				*window = nullptr;
 				if (sheet.IsWindow())

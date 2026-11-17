@@ -202,3 +202,27 @@ std::wstring FormatHelper::ServiceTriggerToString(WinSys::ServiceTriggerType typ
 	}
 	return std::format(L"{}: {}", action == WinSys::ServiceTriggerAction::Stop ? L"Stop" : L"Start", name);
 }
+
+std::wstring FormatHelper::PageProtectionToString(DWORD protect) {
+	if (protect == 0)
+		return L"";
+	std::wstring text;
+	switch (protect & 0xff) {
+		case PAGE_NOACCESS: text = L"No Access"; break;
+		case PAGE_READONLY: text = L"Read"; break;
+		case PAGE_READWRITE: text = L"Read/Write"; break;
+		case PAGE_WRITECOPY: text = L"Write Copy"; break;
+		case PAGE_EXECUTE: text = L"Execute"; break;
+		case PAGE_EXECUTE_READ: text = L"Execute/Read"; break;
+		case PAGE_EXECUTE_READWRITE: text = L"Execute/Read/Write"; break;
+		case PAGE_EXECUTE_WRITECOPY: text = L"Execute/Write Copy"; break;
+		default: text = std::format(L"0x{:X}", protect & 0xff); break;
+	}
+	if (protect & PAGE_GUARD)
+		text += L", Guard";
+	if (protect & PAGE_NOCACHE)
+		text += L", No Cache";
+	if (protect & PAGE_WRITECOMBINE)
+		text += L", Write Combine";
+	return text;
+}

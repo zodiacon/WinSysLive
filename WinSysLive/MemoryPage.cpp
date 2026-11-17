@@ -31,99 +31,6 @@ namespace {
 		{ L"Details", 300, LVCFMT_LEFT },
 	};
 
-	// the hex view shows no more of a region than this; a vector<bool> of the shown size tracks modified bytes
-	const int64_t MaxShownBytes = 256 << 20;
-
-	//
-	// A range of another process's memory, read as the hex view asks for it, in chunks kept until the next one is read;
-	// with a handle to write with, the hex view's changes are written to the process at once
-	//
-	class ProcessMemoryBuffer : public IBufferManager {
-	public:
-		using WriteFailed = std::function<void(uint64_t address, DWORD error)>;
-
-		// hWrite: PROCESS_VM_WRITE and PROCESS_VM_OPERATION, or null (read-only)
-		ProcessMemoryBuffer(HANDLE hProcess, HANDLE hWrite, uintptr_t address, int64_t size, WriteFailed failed) :
-			m_hProcess(hProcess), m_hWrite(hWrite), m_Address(address), m_Size(size), m_Failed(std::move(failed)) {
-		}
-
-		uint32_t GetData(int64_t offset, uint8_t* buffer, uint32_t count) override {
-			if (offset < 0 || offset >= m_Size)
-				return 0;
-			count = (uint32_t)(std::min)((int64_t)count, m_Size - offset);
-			uint32_t copied = 0;
-			while (copied < count) {
-				auto at = offset + copied;
-				auto chunk = at / ChunkSize * ChunkSize;
-				if (chunk != m_ChunkOffset) {
-					m_ChunkOffset = chunk;
-					SIZE_T read = 0;
-					auto size = (SIZE_T)(std::min)((int64_t)ChunkSize, m_Size - chunk);
-					// a partial read leaves the rest of the chunk unreadable
-					::ReadProcessMemory(m_hProcess, (void const*)(m_Address + chunk), m_Chunk, size, &read);
-					m_ChunkValid = (uint32_t)read;
-				}
-				auto inChunk = (uint32_t)(at - chunk);
-				if (inChunk >= m_ChunkValid)
-					break;
-				auto n = (std::min)(count - copied, m_ChunkValid - inChunk);
-				::memcpy(buffer + copied, m_Chunk + inChunk, n);
-				copied += n;
-			}
-			return copied;
-		}
-
-		bool Insert(int64_t, const uint8_t*, uint32_t) override {
-			return false;
-		}
-		bool Delete(int64_t, size_t) override {
-			return false;
-		}
-		bool SetData(int64_t offset, const uint8_t* data, uint32_t count) override {
-			if (!m_hWrite || offset < 0 || offset + count > m_Size)
-				return false;
-			if (!WinSys::ProcessMemory::Write(m_hWrite, m_Address + offset, data, count)) {
-				auto error = ::GetLastError();
-				// the bytes as they are
-				m_ChunkOffset = -1;
-				if (m_Failed)
-					m_Failed(m_Address + offset, error);
-				return false;
-			}
-			// the bytes kept from the last read
-			for (uint32_t i = 0; i < count; i++) {
-				auto at = offset + i;
-				if (at >= m_ChunkOffset && at < m_ChunkOffset + m_ChunkValid)
-					m_Chunk[at - m_ChunkOffset] = data[i];
-			}
-			return true;
-		}
-		bool SetData(int64_t offset, uint8_t value, uint32_t count) override {
-			std::vector<uint8_t> data(count, value);
-			return SetData(offset, data.data(), count);
-		}
-		int64_t GetSize() const override {
-			return m_Size;
-		}
-		uint8_t* GetRawData(int64_t) override {
-			return nullptr;
-		}
-		bool IsReadOnly() const override {
-			return m_hWrite == nullptr;
-		}
-
-	private:
-		static constexpr uint32_t ChunkSize = 1 << 16;
-
-		HANDLE m_hProcess, m_hWrite;
-		WriteFailed m_Failed;
-		uintptr_t m_Address;
-		int64_t m_Size;
-		int64_t m_ChunkOffset{ -1 };
-		uint32_t m_ChunkValid{ 0 };
-		uint8_t m_Chunk[ChunkSize];
-	};
-
 	PCWSTR StateToString(DWORD state) {
 		switch (state) {
 			case MEM_COMMIT: return L"Committed";
@@ -141,175 +48,6 @@ namespace {
 		}
 		return L"";
 	}
-
-	std::wstring ProtectionToString(DWORD protect) {
-		if (protect == 0)
-			return L"";
-		std::wstring text;
-		switch (protect & 0xff) {
-			case PAGE_NOACCESS: text = L"No Access"; break;
-			case PAGE_READONLY: text = L"Read"; break;
-			case PAGE_READWRITE: text = L"Read/Write"; break;
-			case PAGE_WRITECOPY: text = L"Write Copy"; break;
-			case PAGE_EXECUTE: text = L"Execute"; break;
-			case PAGE_EXECUTE_READ: text = L"Execute/Read"; break;
-			case PAGE_EXECUTE_READWRITE: text = L"Execute/Read/Write"; break;
-			case PAGE_EXECUTE_WRITECOPY: text = L"Execute/Write Copy"; break;
-			default: text = std::format(L"0x{:X}", protect & 0xff); break;
-		}
-		if (protect & PAGE_GUARD)
-			text += L", Guard";
-		if (protect & PAGE_NOCACHE)
-			text += L", No Cache";
-		if (protect & PAGE_WRITECOMBINE)
-			text += L", Write Combine";
-		return text;
-	}
-
-	// the hex view's grouping buttons', in IDC_MEM_GROUP1.. order
-	UINT const s_GroupIcons[] = { IDI_NUMBER_1, IDI_NUMBER_2, IDI_NUMBER_4, IDI_NUMBER_8 };
-
-	// the bytes of a region can be read without side effects (a guard page's read would clear its guard)
-	bool IsReadable(MEMORY_BASIC_INFORMATION const& mbi) {
-		return mbi.State == MEM_COMMIT && mbi.Protect != 0 && (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
-	}
-}
-
-int CMemoryHexView::GetWidthFor(int bytesPerLine) {
-	auto dpi = ::GetDpiForWindow(m_hWnd);
-	if (m_CharWidth == 0 || m_CharWidthDpi != dpi) {
-		// as the control measures it: its font for its DPI (FontSize is in tenths of a point)
-		LOGFONT lf{};
-		::StringCchCopy(lf.lfFaceName, LF_FACESIZE, FontName);
-		lf.lfHeight = -::MulDiv(FontSize, dpi, 720);
-		lf.lfCharSet = DEFAULT_CHARSET;
-		CFont font;
-		font.CreateFontIndirect(&lf);
-		CClientDC dc(m_hWnd);
-		auto old = dc.SelectFont(font);
-		TEXTMETRIC tm;
-		dc.GetTextMetrics(&tm);
-		dc.SelectFont(old);
-		m_CharWidth = tm.tmAveCharWidth;
-		m_CharWidthDpi = dpi;
-	}
-	// the address, the groups (two digits a byte and a space each), the characters, and a little room
-	int chars = 16 + 1 + bytesPerLine / GetDataSize() * (2 * GetDataSize() + 1) + 1 + bytesPerLine + 2;
-	return chars * m_CharWidth + ::GetSystemMetricsForDpi(SM_CXVSCROLL, dpi) + 2 * ::GetSystemMetricsForDpi(SM_CXEDGE, dpi);
-}
-
-LRESULT CMemoryHexView::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
-	bool ctrl = ::GetKeyState(VK_CONTROL) < 0;
-	if (wParam == VK_INSERT)
-		return 0;	// overwriting only: a process's memory doesn't grow
-	if (m_Page && ((wParam == 'F' && ctrl) || wParam == VK_F3)) {
-		::PostMessage(m_Page, WM_COMMAND, wParam == VK_F3 ? IDC_MEM_FINDNEXT : IDC_MEM_FIND, 0);
-		return 0;
-	}
-	bHandled = FALSE;
-	return 0;
-}
-
-void CMemoryHexView::SetGrouping(int size) {
-	if (size == GetDataSize() || !SetDataSize(size))
-		return;
-	FitBytesPerLine();
-	// the caret (and what's typed in Edit mode) is on a group's first byte
-	if (GetBufferManager()) {
-		auto caret = (std::max)(GetCaretOffset(), (int64_t)0);
-		GotoOffset(caret - caret % size);
-	}
-}
-
-void CMemoryHexView::FitBytesPerLine() {
-	CRect rc;
-	GetWindowRect(&rc);
-	int bytesPerLine = rc.Width() >= GetWidthFor(16) ? 16 : 8;
-	if (bytesPerLine != GetBytesPerLine())
-		SetBytesPerLine(bytesPerLine);
-}
-
-LRESULT CMemoryHexView::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
-	FitBytesPerLine();
-	// the control lays itself out too
-	bHandled = FALSE;
-	return 0;
-}
-
-HWND CMemoryHexPane::Create(HWND parent) {
-	if (!CWindowImpl::Create(parent, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT))
-		return nullptr;
-	// mixed buttons: the texts aren't shown (no BTNS_SHOWTEXT) but are the tooltips
-	m_ToolBar.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | TBSTYLE_FLAT | TBSTYLE_LIST
-		| TBSTYLE_TOOLTIPS | CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN, 0);
-	m_ToolBar.SetButtonStructSize();
-	m_ToolBar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
-	auto size = DpiHelper::SmallIconSize(m_hWnd);
-	m_Images.Create(size, size, ILC_COLOR32 | ILC_MASK, _countof(s_GroupIcons), 0);
-	AddImages();
-	m_ToolBar.SetImageList(m_Images);
-	PCWSTR texts[] = { L"1 Byte", L"2 Bytes", L"4 Bytes", L"8 Bytes" };
-	static_assert(_countof(texts) == _countof(s_GroupIcons));
-	for (int i = 0; i < _countof(texts); i++)
-		m_ToolBar.AddButton(IDC_MEM_GROUP1 + i, BTNS_CHECKGROUP, TBSTATE_ENABLED | (i == 0 ? TBSTATE_CHECKED : 0), i,
-			(INT_PTR)texts[i], 0);
-	m_ToolBar.AutoSize();
-
-	m_Hex.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP | WS_BORDER, 0);
-	return m_hWnd;
-}
-
-void CMemoryHexPane::AddImages() {
-	auto size = DpiHelper::SmallIconSize(m_hWnd);
-	for (auto id : s_GroupIcons)
-		m_Images.AddIcon(IconHelper::LoadCached(id, size));
-}
-
-void CMemoryHexPane::Layout() {
-	if (!m_Hex.IsWindow())
-		return;
-	CRect rc;
-	GetClientRect(&rc);
-	CRect button;
-	m_ToolBar.GetItemRect(m_ToolBar.GetButtonCount() - 1, &button);
-	int height = button.bottom + ::MulDiv(2, ::GetDpiForWindow(m_hWnd), 96);
-	m_ToolBar.SetWindowPos(nullptr, 0, 0, rc.Width(), height, SWP_NOZORDER | SWP_NOACTIVATE);
-	m_Hex.SetWindowPos(nullptr, 0, height, rc.Width(), (std::max)(0, int(rc.Height() - height)), SWP_NOZORDER | SWP_NOACTIVATE);
-}
-
-LRESULT CMemoryHexPane::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	Layout();
-	return 0;
-}
-
-LRESULT CMemoryHexPane::OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	// the toolbar and the hex view cover it
-	return 1;
-}
-
-LRESULT CMemoryHexPane::OnNotify(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
-	// the hex view's go to the page (the toolbar's are its own)
-	if (reinterpret_cast<NMHDR*>(lParam)->hwndFrom == m_Hex.m_hWnd)
-		return GetParent().SendMessage(uMsg, wParam, lParam);
-	bHandled = FALSE;
-	return 0;
-}
-
-LRESULT CMemoryHexPane::OnDpiChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
-	// the icons in the new size, at the same indices; the toolbar is given the image list again for its buttons' size
-	auto size = DpiHelper::SmallIconSize(m_hWnd);
-	m_Images.SetIconSize(size, size);
-	AddImages();
-	m_ToolBar.SetImageList(m_Images);
-	m_ToolBar.AutoSize();
-	Layout();
-	bHandled = FALSE;
-	return 0;
-}
-
-LRESULT CMemoryHexPane::OnGrouping(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	m_Hex.SetGrouping(1 << (wID - IDC_MEM_GROUP1));
-	return 0;
 }
 
 CProcMemoryPage::CProcMemoryPage(ProcessProperties const& props) : m_Props(props) {
@@ -320,9 +58,9 @@ CProcMemoryPage::CProcMemoryPage(ProcessProperties const& props) : m_Props(props
 LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	static_assert(_countof(s_Columns) == (int)Column::_Count);
 
-	// the splitter forwards the tree's notifications to the page
-	m_Splitter.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT);
-	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_TABSTOP, 0);
+	m_Tree.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_TABSTOP, 0);
+	// first in the tab order, before the buttons
+	m_Tree.SetWindowPos(HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	m_Tree.SetCallbackMode(true);
 	m_Tree.SetExtendedStyle(m_Tree.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 	SuspendHookWhilePainting(m_Tree.GetListCtrl());
@@ -332,35 +70,22 @@ LRESULT CProcMemoryPage::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	// the TreeListView doesn't scale its column widths to a new DPI
 	ListViewHelper::EnableColumnDpiScaling(m_Tree.GetListCtrl());
 
-	m_Hex.SetFont(CMemoryHexView::FontName, CMemoryHexView::FontSize);
-	// the hex view is inside the pane, below its grouping toolbar
-	m_HexPane.Create(m_Splitter);
-	m_Hex.SetPage(m_hWnd);
-	m_Hex.SetReadOnly(true);
-	m_Hex.SetOptions(HexControlOptions::DisableUndoRedo | HexControlOptions::GrayOutZeros);
-	auto& colors = m_Hex.GetColors();
-	colors.Text = ::GetSysColor(COLOR_WINDOWTEXT);
-	colors.Background = ::GetSysColor(COLOR_WINDOW);
-	if (WTLHelper::IsDarkMode()) {
-		// the defaults are dark red and blue, for a light background
-		colors.Ascii = RGB(206, 145, 120);
-		colors.Offset = colors.Ruler = RGB(86, 156, 214);
-	}
-
-	m_Splitter.SetSplitterPanes(m_Tree, m_HexPane);
-	// the hex view starts hidden (the Hex View check box)
-	m_Splitter.SetSinglePaneMode(SPLIT_PANE_LEFT);
-
 	CRect rc;
 	GetDlgItem(IDC_MEM_REFRESH).GetWindowRect(&rc);
 	m_ButtonSize = rc.Size();
-	GetDlgItem(IDC_MEM_HEXVIEW).GetWindowRect(&rc);
-	m_CheckSize = rc.Size();
-	GetDlgItem(IDC_MEM_EDIT).GetWindowRect(&rc);
-	m_EditSize = rc.Size();
+	EnableButtons();
 	GetClientRect(&rc);
 	Layout(rc.Width(), rc.Height());
 	return TRUE;
+}
+
+LRESULT CProcMemoryPage::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	// they use the page's handles; each removes itself from the list as it goes
+	auto dialogs = m_RegionDlgs;
+	for (auto dlg : dialogs)
+		dlg->DestroyWindow();
+	bHandled = FALSE;
+	return 0;
 }
 
 LRESULT CProcMemoryPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
@@ -369,35 +94,31 @@ LRESULT CProcMemoryPage::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 }
 
 void CProcMemoryPage::Layout(int cx, int cy) {
-	if (!m_Splitter.IsWindow())
+	if (!m_Tree.IsWindow())
 		return;
-	// the other pages' margins; the button at the bottom right, the check box and the status line at its left, the panes
-	// above them
+	// the other pages' margins; Refresh and View at the bottom right, the status line at their left; Find, Find Next,
+	// Go To, Save and Strings in a row above them; the tree above
 	CRect units(0, 0, 7, 4);
 	MapDialogRect(&units);
 	int margin = units.right, gap = units.bottom;
 	int bottom = cy - margin;
-	GetDlgItem(IDC_MEM_REFRESH).SetWindowPos(nullptr, cx - margin - m_ButtonSize.cx, bottom - m_ButtonSize.cy, 0, 0,
-		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-	int checkLeft = cx - margin - m_ButtonSize.cx - 2 * gap - m_CheckSize.cx;
-	GetDlgItem(IDC_MEM_HEXVIEW).SetWindowPos(nullptr, checkLeft, bottom - (m_ButtonSize.cy + m_CheckSize.cy) / 2, 0, 0,
-		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-	int editLeft = checkLeft - gap - m_EditSize.cx;
-	GetDlgItem(IDC_MEM_EDIT).SetWindowPos(nullptr, editLeft, bottom - (m_ButtonSize.cy + m_EditSize.cy) / 2, 0, 0,
-		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	int x = cx - margin - m_ButtonSize.cx;
+	for (UINT id : { IDC_MEM_REFRESH, IDC_MEM_VIEW }) {
+		GetDlgItem(id).SetWindowPos(nullptr, x, bottom - m_ButtonSize.cy, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+		x -= m_ButtonSize.cx + gap;
+	}
 	CWindow status(GetDlgItem(IDC_MEM_STATUS));
 	CRect rc;
 	status.GetWindowRect(&rc);
 	status.SetWindowPos(nullptr, margin, bottom - (m_ButtonSize.cy + rc.Height()) / 2,
-		(std::max)(0, int(editLeft - margin - gap)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
-	// Find, Find Next, Go To, Save and Strings in a row above
+		(std::max)(0, int(x + m_ButtonSize.cx - margin)), rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 	int row = bottom - m_ButtonSize.cy - gap - m_ButtonSize.cy;
-	int x = margin;
+	x = margin;
 	for (UINT id : { IDC_MEM_FIND, IDC_MEM_FINDNEXT, IDC_MEM_GOTO, IDC_MEM_SAVE, IDC_MEM_STRINGS }) {
 		GetDlgItem(id).SetWindowPos(nullptr, x, row, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 		x += m_ButtonSize.cx + gap;
 	}
-	m_Splitter.SetWindowPos(nullptr, margin, margin, (std::max)(0, cx - 2 * margin),
+	m_Tree.SetWindowPos(nullptr, margin, margin, (std::max)(0, cx - 2 * margin),
 		(std::max)(0, int(row - gap - margin)), SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
@@ -405,14 +126,6 @@ int CProcMemoryPage::OnSetActive() {
 	// read when first shown: a large address space takes a while
 	if (!m_Loaded) {
 		m_Loaded = true;
-		// the hex view as wide as 16 bytes a line take if that leaves the map 35% of the width, else as 8 bytes take.
-		// Not in OnInitDialog: the page has its template's size then, and the sheet grows it to its largest page's
-		CRect rc;
-		m_Splitter.GetClientRect(&rc);
-		int hexWidth = m_Hex.GetWidthFor(16);
-		if (hexWidth > rc.Width() * 65 / 100)
-			hexWidth = m_Hex.GetWidthFor(8);
-		m_Splitter.SetSplitterPos(std::clamp(rc.Width() - hexWidth - m_Splitter.m_cxySplitBar, rc.Width() * 35 / 100, rc.Width() * 80 / 100));
 		CWaitCursor wait;
 		Load();
 	}
@@ -434,8 +147,6 @@ void CProcMemoryPage::Load(void const* select) {
 		if (!m_Tree.GetParentItem(item) && m_Tree.GetChildItem(item) && m_Tree.IsExpanded(item))
 			expanded.insert(m_Regions[m_Tree.GetItemData(item)].Info.AllocationBase);
 
-	m_Hex.SetBufferManager(nullptr);
-	m_Bytes.reset();
 	m_Tree.DeleteAllItems();
 	m_Regions.clear();
 	m_Items.clear();
@@ -505,6 +216,7 @@ void CProcMemoryPage::Load(void const* select) {
 	if (!m_CanRead)
 		m_Summary += L"    (the memory can't be read)";
 	SetNote(L"");
+	EnableButtons();
 
 	if (selected) {
 		if (auto p = m_Tree.GetParentItem(selected))
@@ -621,18 +333,11 @@ std::wstring CProcMemoryPage::GetText(Region const& region, Column column) const
 		case Column::Size: return FormatHelper::FormatNumber(info.RegionSize >> 10) + L" KB";
 		case Column::State: return StateToString(info.State);
 		case Column::Type: return info.State == MEM_FREE ? L"" : TypeToString(info.Type);
-		case Column::Protection: return info.State == MEM_COMMIT ? ProtectionToString(info.Protect) : L"";
-		case Column::AllocationProtection: return info.State == MEM_FREE ? L"" : ProtectionToString(info.AllocationProtect);
+		case Column::Protection: return info.State == MEM_COMMIT ? FormatHelper::PageProtectionToString(info.Protect) : L"";
+		case Column::AllocationProtection: return info.State == MEM_FREE ? L"" : FormatHelper::PageProtectionToString(info.AllocationProtect);
 		case Column::Details: return region.Details;
 	}
 	return L"";
-}
-
-LRESULT CProcMemoryPage::OnToggleHexView(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	m_ShowHex = IsDlgButtonChecked(IDC_MEM_HEXVIEW) == BST_CHECKED;
-	m_Splitter.SetSinglePaneMode(m_ShowHex ? SPLIT_PANE_NONE : SPLIT_PANE_LEFT);
-	ShowBytes(GetSelectedRegion());
-	return 0;
 }
 
 CProcMemoryPage::Region const* CProcMemoryPage::GetSelectedRegion() const {
@@ -641,53 +346,96 @@ CProcMemoryPage::Region const* CProcMemoryPage::GetSelectedRegion() const {
 	return index < m_Regions.size() ? &m_Regions[index] : nullptr;
 }
 
-LRESULT CProcMemoryPage::OnSelChanged(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
-	auto item = reinterpret_cast<NMTLVITEMCHANGE*>(hdr)->hItemNew;
-	auto index = item ? (size_t)m_Tree.GetItemData(item) : SIZE_MAX;
-	ShowBytes(index < m_Regions.size() ? &m_Regions[index] : nullptr);
-	return 0;
-}
-
-void CProcMemoryPage::ShowBytes(Region const* region) {
-	m_Hex.SetBufferManager(nullptr);
-	m_Bytes.reset();
-	std::wstring note;
-	// nothing is read while the hex view is hidden
-	if (region && m_ShowHex) {
-		auto& info = region->Info;
-		if (!IsReadable(info))
-			note = info.State != MEM_COMMIT ? L"Not committed: no bytes to show" : L"Not readable (no access or guard pages)";
-		else if (!m_CanRead)
-			note = L"The process's memory can't be read";
-		else {
-			auto size = (std::min)((int64_t)info.RegionSize, MaxShownBytes);
-			m_Bytes = std::make_unique<ProcessMemoryBuffer>(m_hProcess.get(), m_Edit ? m_hWrite.get() : nullptr,
-				(uintptr_t)info.BaseAddress, size, [this](uint64_t address, DWORD error) {
-					SetNote(std::format(L"Writing at 0x{:X} failed: {}", address, WinSys::Helpers::GetErrorText(error)));
-					m_Hex.Refresh();
-				});
-			m_Hex.SetReadOnly(!m_Edit);
-			m_Hex.SetBufferManager(m_Bytes.get());
-			// the offsets shown are the addresses
-			m_Hex.SetBiasOffset((int64_t)info.BaseAddress);
-			if (size < (int64_t)info.RegionSize)
-				note = std::format(L"Showing the first {} of the region", FormatHelper::FormatBytes(size));
-		}
-	}
-	SetNote(note);
-}
-
 void CProcMemoryPage::SetNote(std::wstring const& note) {
 	SetDlgItemText(IDC_MEM_STATUS, (note.empty() ? m_Summary : m_Summary + L"    " + note).c_str());
 }
 
-void CProcMemoryPage::ShowHexView() {
-	if (m_ShowHex)
-		return;
-	CheckDlgButton(IDC_MEM_HEXVIEW, BST_CHECKED);
-	m_ShowHex = true;
-	m_Splitter.SetSinglePaneMode(SPLIT_PANE_NONE);
-	ShowBytes(GetSelectedRegion());
+LRESULT CProcMemoryPage::OnSelChanged(int /*idCtrl*/, LPNMHDR /*hdr*/, BOOL& /*bHandled*/) {
+	EnableButtons();
+	return 0;
+}
+
+LRESULT CProcMemoryPage::OnActivate(int /*idCtrl*/, LPNMHDR hdr, BOOL& /*bHandled*/) {
+	// a double-click on a region without children (an allocation with them expands or collapses)
+	auto item = reinterpret_cast<NMTLVACTIVATE*>(hdr)->hItem;
+	auto index = item ? (size_t)m_Tree.GetItemData(item) : SIZE_MAX;
+	if (index < m_Regions.size())
+		OpenRegion(m_Regions[index]);
+	return 0;
+}
+
+void CProcMemoryPage::EnableButtons() {
+	auto region = GetSelectedRegion();
+	GetDlgItem(IDC_MEM_VIEW).EnableWindow(region && m_CanRead && IsReadableRegion(region->Info));
+}
+
+LRESULT CProcMemoryPage::OnView(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	if (auto region = GetSelectedRegion())
+		OpenRegion(*region);
+	return 0;
+}
+
+CMemoryRegionDlg* CProcMemoryPage::FindRegionDlg(uint64_t base) const {
+	for (auto dlg : m_RegionDlgs)
+		if (dlg->GetBase() == base)
+			return dlg;
+	return nullptr;
+}
+
+HWND CProcMemoryPage::GetDialogParent(HWND from) const {
+	for (auto dlg : m_RegionDlgs)
+		if (dlg->m_hWnd == from)
+			return from;
+	return m_hWnd;
+}
+
+HANDLE CProcMemoryPage::OpenForWriting(HWND parent) {
+	if (m_hWrite)
+		return m_hWrite.get();
+	if (AtlMessageBox(parent, L"Changes made in the hex view are written to the process's memory as they're made, which can "
+		L"make it fail or behave differently.\n\nEdit its memory?", IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK)
+		return nullptr;
+	m_hWrite = OpenSheetProcess(m_Props, PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_LIMITED_INFORMATION);
+	if (!m_hWrite)
+		AtlMessageBox(parent, std::format(L"The process can't be opened for writing: {}",
+			WinSys::Helpers::GetErrorText(::GetLastError())).c_str(), IDR_MAINFRAME, MB_ICONERROR);
+	return m_hWrite.get();
+}
+
+CMemoryRegionDlg* CProcMemoryPage::OpenRegion(Region const& region) {
+	auto& info = region.Info;
+	if (!IsReadableRegion(info)) {
+		SetNote(info.State != MEM_COMMIT ? L"Not committed: no bytes to show" : L"Not readable (no access or guard pages)");
+		return nullptr;
+	}
+	if (!m_CanRead) {
+		SetNote(L"The process's memory can't be read");
+		return nullptr;
+	}
+	if (auto dlg = FindRegionDlg((uint64_t)info.BaseAddress)) {
+		if (dlg->IsIconic())
+			dlg->ShowWindow(SW_RESTORE);
+		dlg->SetActiveWindow();
+		return dlg;
+	}
+	auto dlg = new CMemoryRegionDlg(m_hProcess.get(), info, m_Props.ImageName, m_hWnd,
+		[this](HWND parent) { return OpenForWriting(parent); },
+		[this](CMemoryRegionDlg* closed) { std::erase(m_RegionDlgs, closed); });
+	// owned by the sheet: above it, and destroyed with it
+	if (!dlg->Create(GetParent())) {
+		delete dlg;
+		return nullptr;
+	}
+	if (!m_RegionDlgs.empty()) {
+		// cascaded from the centered one, so they don't hide each other
+		int offset = ::GetSystemMetricsForDpi(SM_CYCAPTION, ::GetDpiForWindow(dlg->m_hWnd)) * (int)(m_RegionDlgs.size() % 8);
+		CRect rc;
+		dlg->GetWindowRect(&rc);
+		dlg->SetWindowPos(nullptr, rc.left + offset, rc.top + offset, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+	m_RegionDlgs.push_back(dlg);
+	dlg->ShowWindow(SW_SHOW);
+	return dlg;
 }
 
 uint64_t CProcMemoryPage::GetCurrentAddress() const {
@@ -695,29 +443,29 @@ uint64_t CProcMemoryPage::GetCurrentAddress() const {
 	if (!region)
 		return 0;
 	auto base = (uint64_t)region->Info.BaseAddress;
-	return m_Bytes ? base + (std::max)(m_Hex.GetCaretOffset(), (int64_t)0) : base;
+	auto dlg = FindRegionDlg(base);
+	return dlg ? dlg->GetCurrentAddress() : base;
 }
 
-bool CProcMemoryPage::Reveal(uint64_t address, size_t length) {
+bool CProcMemoryPage::Reveal(uint64_t address, size_t length, std::wstring const& note) {
 	auto region = FindRegion((ULONG_PTR)address);
 	if (!region)
 		return false;
 	auto item = m_Items[region - m_Regions.data()];
 	if (auto parent = m_Tree.GetParentItem(item))
 		m_Tree.Expand(parent);
-	// shows its bytes (OnSelChanged), if it isn't selected already
 	m_Tree.SelectItem(item);
-	ShowHexView();
-	if (!m_Bytes)
+	auto dlg = OpenRegion(*region);
+	if (!dlg)
 		return true;	// the note says why
-	auto offset = (int64_t)(address - (uint64_t)region->Info.BaseAddress);
-	if (offset >= m_Bytes->GetSize()) {
-		SetNote(std::format(L"0x{:X} is past the part of the region shown", address));
+	if (!dlg->Reveal(address, length)) {
+		auto text = std::format(L"0x{:X} is past the part of the region shown", address);
+		SetNote(text);
+		dlg->SetNote(text);
 		return true;
 	}
-	m_Hex.GotoOffset(offset);
-	if (length)
-		m_Hex.SetSelection(offset, (int64_t)length);
+	SetNote(note);
+	dlg->SetNote(note);
 	return true;
 }
 
@@ -753,18 +501,20 @@ void CProcMemoryPage::Search(bool next) {
 	if (!found) {
 		m_Found = 0;
 		::MessageBeep(MB_ICONASTERISK);
-		SetNote(std::format(L"Not found{}", whole ? L"" : L" in the region"));
+		auto note = std::format(L"Not found{}", whole ? L"" : L" in the region");
+		SetNote(note);
+		if (auto dlg = region ? FindRegionDlg((uint64_t)region->Info.BaseAddress) : nullptr)
+			dlg->SetNote(note);
 		return;
 	}
 	m_Found = *found;
-	Reveal(*found, pattern.size());
-	SetNote(std::format(L"Found at 0x{:X}{} (F3: the next one)", *found, wrapped ? L", from the start again" : L""));
+	Reveal(*found, pattern.size(), std::format(L"Found at 0x{:X}{} (F3: the next one)", *found, wrapped ? L", from the start again" : L""));
 }
 
-LRESULT CProcMemoryPage::OnFind(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT CProcMemoryPage::OnFind(WORD /*wNotifyCode*/, WORD wID, HWND hWndCtl, BOOL& /*bHandled*/) {
 	if (wID == IDC_MEM_FIND || !m_Searched) {
 		CMemoryFindDlg dlg(m_Search, GetSelectedRegion() != nullptr);
-		if (dlg.DoModal(m_hWnd) != IDOK)
+		if (dlg.DoModal(GetDialogParent(hWndCtl)) != IDOK)
 			return 0;
 		m_Searched = true;
 		Search(false);
@@ -801,28 +551,23 @@ LRESULT CProcMemoryPage::OnStrings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	CMemoryStringsDlg dlg(m_Strings, m_hProcess.get(), range, [this](uint64_t address) { return DescribeAddress(address); });
 	if (dlg.DoModal(m_hWnd) != IDOK)
 		return 0;
-	if (Reveal(dlg.GetAddress(), dlg.GetByteLength()))
-		SetNote(std::format(L"The string at 0x{:X}", dlg.GetAddress()));
-	else
+	if (!Reveal(dlg.GetAddress(), dlg.GetByteLength(), std::format(L"The string at 0x{:X}", dlg.GetAddress())))
 		SetNote(std::format(L"0x{:X} isn't in the map anymore (Refresh reads it again)", dlg.GetAddress()));
 	return 0;
 }
 
-LRESULT CProcMemoryPage::OnGoTo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	CMemoryGoToDlg dlg(GetCurrentAddress());
-	if (dlg.DoModal(m_hWnd) != IDOK)
+LRESULT CProcMemoryPage::OnGoTo(WORD /*wNotifyCode*/, WORD /*wID*/, HWND hWndCtl, BOOL& /*bHandled*/) {
+	// from a region's dialog (Ctrl+G): at its caret
+	auto parent = GetDialogParent(hWndCtl);
+	uint64_t current = GetCurrentAddress();
+	for (auto dlg : m_RegionDlgs)
+		if (dlg->m_hWnd == parent)
+			current = dlg->GetCurrentAddress();
+	CMemoryGoToDlg dlg(current);
+	if (dlg.DoModal(parent) != IDOK)
 		return 0;
 	if (!Reveal(dlg.GetAddress(), 0))
 		SetNote(std::format(L"0x{:X} isn't in the address space", dlg.GetAddress()));
-	return 0;
-}
-
-LRESULT CProcMemoryPage::OnGoToRequested(int /*idCtrl*/, LPNMHDR hdr, BOOL& bHandled) {
-	if (hdr->hwndFrom != m_Hex) {
-		bHandled = FALSE;
-		return 0;
-	}
-	PostMessage(WM_COMMAND, IDC_MEM_GOTO);
 	return 0;
 }
 
@@ -871,38 +616,5 @@ LRESULT CProcMemoryPage::OnSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndC
 	}
 	SetNote(std::format(L"Saved {} to {}{}", FormatHelper::FormatBytes(size), dlg.m_szFileName,
 		unreadable ? std::format(L" ({} couldn't be read: zeros)", FormatHelper::FormatBytes(unreadable)) : std::wstring()));
-	return 0;
-}
-
-LRESULT CProcMemoryPage::OnToggleEdit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	bool edit = IsDlgButtonChecked(IDC_MEM_EDIT) == BST_CHECKED;
-	if (edit && !m_hWrite) {
-		if (AtlMessageBox(m_hWnd, L"Changes made in the hex view are written to the process's memory as they're made, which can "
-			L"make it fail or behave differently.\n\nEdit its memory?", IDR_MAINFRAME, MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2) != IDOK) {
-			CheckDlgButton(IDC_MEM_EDIT, BST_UNCHECKED);
-			return 0;
-		}
-		m_hWrite = OpenSheetProcess(m_Props, PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_LIMITED_INFORMATION);
-		if (!m_hWrite) {
-			AtlMessageBox(m_hWnd, std::format(L"The process can't be opened for writing: {}",
-				WinSys::Helpers::GetErrorText(::GetLastError())).c_str(), IDR_MAINFRAME, MB_ICONERROR);
-			CheckDlgButton(IDC_MEM_EDIT, BST_UNCHECKED);
-			return 0;
-		}
-	}
-	m_Edit = edit;
-	if (m_Edit && !m_ShowHex) {
-		ShowHexView();
-		return 0;
-	}
-	// the bytes again (with or without the handle to write with), where they were
-	auto caret = m_Hex.GetCaretOffset();
-	auto selection = m_Hex.GetSelectionOffset(), length = m_Hex.GetSelectionLength();
-	ShowBytes(GetSelectedRegion());
-	if (m_Bytes && caret >= 0 && caret < m_Bytes->GetSize()) {
-		m_Hex.GotoOffset(caret);
-		if (length > 0)
-			m_Hex.SetSelection(selection, length);
-	}
 	return 0;
 }

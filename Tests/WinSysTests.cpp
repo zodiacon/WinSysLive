@@ -8,6 +8,7 @@
 #include <WinSys/FileVersion.h>
 #include <WinSys/PowerRequests.h>
 #include <WinSys/SecurityHelper.h>
+#include <WinSys/ProcessMemory.h>
 
 using namespace WinSys;
 
@@ -572,4 +573,42 @@ TEST(PEFile_LiveDotNet) {
 		CHECK(net->RuntimeMajor == 2);
 		CHECK(PEFile::DotNetFlagsText(net->Flags).find(L"IL only") != std::wstring::npos);
 	}
+}
+
+TEST(ProcessMemory_WritableProtection) {
+	// writable already: kept, modifiers too
+	CHECK(ProcessMemory::IsWritableProtection(PAGE_READWRITE));
+	CHECK(ProcessMemory::IsWritableProtection(PAGE_EXECUTE_WRITECOPY));
+	CHECK(ProcessMemory::IsWritableProtection(PAGE_WRITECOPY | PAGE_NOCACHE));
+	CHECK(!ProcessMemory::IsWritableProtection(PAGE_READONLY));
+	CHECK(!ProcessMemory::IsWritableProtection(PAGE_EXECUTE_READ));
+	CHECK(!ProcessMemory::IsWritableProtection(PAGE_NOACCESS));
+	CHECK_EQ(ProcessMemory::WritableProtection(PAGE_WRITECOPY), (DWORD)PAGE_WRITECOPY);
+	CHECK_EQ(ProcessMemory::WritableProtection(PAGE_READWRITE | PAGE_WRITECOMBINE), (DWORD)(PAGE_READWRITE | PAGE_WRITECOMBINE));
+	// read-only: read/write; executable stays executable
+	CHECK_EQ(ProcessMemory::WritableProtection(PAGE_READONLY), (DWORD)PAGE_READWRITE);
+	CHECK_EQ(ProcessMemory::WritableProtection(PAGE_EXECUTE_READ), (DWORD)PAGE_EXECUTE_READWRITE);
+	CHECK_EQ(ProcessMemory::WritableProtection(PAGE_EXECUTE), (DWORD)PAGE_EXECUTE_READWRITE);
+	// the guard goes, the caching modifier stays
+	CHECK_EQ(ProcessMemory::WritableProtection(PAGE_READONLY | PAGE_GUARD | PAGE_NOCACHE), (DWORD)(PAGE_READWRITE | PAGE_NOCACHE));
+}
+
+TEST(ProcessMemory_Protect) {
+	// a read-only page of this process made read/write, then written
+	auto page = (BYTE*)::VirtualAlloc(nullptr, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READONLY);
+	CHECK(page != nullptr);
+	if (!page)
+		return;
+	DWORD old = 0;
+	CHECK(ProcessMemory::Protect(::GetCurrentProcess(), (uint64_t)page, 4096, ProcessMemory::WritableProtection(PAGE_READONLY), &old));
+	CHECK_EQ(old, (DWORD)PAGE_READONLY);
+	MEMORY_BASIC_INFORMATION mbi;
+	CHECK(::VirtualQuery(page, &mbi, sizeof(mbi)) == sizeof(mbi));
+	CHECK_EQ(mbi.Protect, (DWORD)PAGE_READWRITE);
+	page[0] = 0x42;
+	CHECK_EQ(page[0], (BYTE)0x42);
+	// and a failure has its error: no pages there
+	::VirtualFree(page, 0, MEM_RELEASE);
+	CHECK(!ProcessMemory::Protect(::GetCurrentProcess(), (uint64_t)page, 4096, PAGE_READWRITE));
+	CHECK(::GetLastError() != ERROR_SUCCESS);
 }

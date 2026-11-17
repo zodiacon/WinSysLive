@@ -412,6 +412,7 @@
     <ClCompile Include="TimelineModel.cpp" />
     <ClCompile Include="ProcessPages.cpp" />
     <ClCompile Include="MemoryPage.cpp" />
+    <ClCompile Include="MemoryRegionDlg.cpp" />
     <ClCompile Include="JobPage.cpp" />
     <ClCompile Include="ServicesPage.cpp" />
     <ClCompile Include="Symbols.cpp" />
@@ -565,6 +566,7 @@
     <ClInclude Include="TimelineModel.h" />
     <ClInclude Include="ProcessPages.h" />
     <ClInclude Include="MemoryPage.h" />
+    <ClInclude Include="MemoryRegionDlg.h" />
     <ClInclude Include="JobPage.h" />
     <ClInclude Include="ServicesPage.h" />
     <ClInclude Include="Symbols.h" />
@@ -821,4 +823,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>
+</Project>

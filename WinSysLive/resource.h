@@ -128,6 +128,7 @@
 #define IDD_SNAPSHOTS                   322
 #define IDI_SNAPSHOT                    323
 #define IDD_MEMORY_STRINGS              324
+#define IDD_MEMORY_REGION               367
 #define IDC_COLUMNS                     1000
 #define IDC_MOVEUP                      1001
 #define IDC_MOVEDOWN                    1002
@@ -213,7 +214,7 @@
 #define IDC_TCPIP_STATUS                1116
 #define IDC_TCPIP_COPY                  1117
 #define IDC_TCPIP_COPYALL               1118
-#define IDC_MEM_HEXVIEW                 1119
+#define IDC_MEM_VIEW                    1611
 #define IDC_STACK_LIST                  1120
 #define IDC_STACK_STATUS                1121
 #define IDC_STACK_REFRESH               1122
@@ -505,6 +506,12 @@
 #define IDC_MSTR_COPY                   1371
 #define IDC_MSTR_SAVE                   1372
 #define IDC_MEM_STRINGS                 1373
+#define IDC_MEMR_HEX                    1609
+#define IDC_MEMR_STATUS                 1610
+#define IDC_MEM_LINE8                   1612
+#define IDC_MEM_LINE16                  1613
+#define IDC_MEM_LINE24                  1614
+#define IDC_MEM_LINE32                  1615
 #define ID_OPTIONS_DARKMODE             32774
 #define ID_VIEW_PROCESSES               32775
 #define ID_VIEW_SERVICES                32776
@@ -1006,9 +1013,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        367
+#define _APS_NEXT_RESOURCE_VALUE        368
 #define _APS_NEXT_COMMAND_VALUE         33082
-#define _APS_NEXT_CONTROL_VALUE         1609
+#define _APS_NEXT_CONTROL_VALUE         1616
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

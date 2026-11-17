@@ -20,6 +20,8 @@ struct FormatHelper abstract final {
 	static PCWSTR IntegrityLevelToString(WinSys::IntegrityLevel level);
 	// "PPL (WinTcb)", "PP (Windows)"; empty when not protected
 	static std::wstring ProtectionToString(WinSys::ProcessProtection protection);
+	// a page protection (PAGE_*) in words, with its modifiers ("Execute/Read, Guard")
+	static std::wstring PageProtectionToString(DWORD protect);
 	static PCWSTR IoPriorityToString(WinSys::IoPriority priority);
 	// kernel base priority (as in SYSTEM_PROCESS_INFORMATION) to a priority class name
 	static std::wstring FormatPriority(int basePriority);
